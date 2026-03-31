@@ -1,0 +1,83 @@
+services:
+  influxdb-init:
+    image: alpine:latest
+    container_name: np-influxdb-init
+    command:
+      - sh
+      - -lc
+      - chown -R 1500:1500 /data && chmod -R u+rwX,g+rwX /data
+    volumes:
+      - influxdb_data:/data
+    restart: "no"
+
+  rabbitmq:
+    image: rabbitmq:4.0.6-management
+    container_name: np-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "${RABBITMQ_AMQP_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: np-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+  influxdb:
+    image: influxdb:3.7.0-core
+    container_name: np-influxdb
+    command:
+      - influxdb3
+      - serve
+      - --node-id-from-env
+      - INFLUXDB_NODE_ID
+      - --log-filter
+      - info
+    environment:
+      INFLUXDB_NODE_ID: node1
+    ports:
+      - "${INFLUXDB_PORT}:8181"
+    volumes:
+      - influxdb_data:/home/influxdb3/.influxdb
+    depends_on:
+      influxdb-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.1-ubuntu
+    container_name: np-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_INSTALL_PLUGINS: yesoreyeram-infinity-datasource
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN}
+      INFLUXDB_URL: http://influxdb:8181
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
+    restart: unless-stopped
+
+volumes:
+  rabbitmq_data:
+  postgres_data:
+  influxdb_data:
+  influxdb_config:
+  grafana_data:

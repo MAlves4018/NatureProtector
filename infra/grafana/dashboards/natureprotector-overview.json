@@ -1,0 +1,44 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "content": "# NatureProtector Overview\n\nDatasource esperado: `NatureProtectorInfinity`\n\nEndpoint esperado por painel:\n\n```text\n/api/v3/query_sql?db=np_telemetry&q=<SQL>&format=csv\n```\n\nAntes de usar este dashboard:\n\n1. Arranca o InfluxDB e cria um token.\n2. Atualiza `INFLUXDB_TOKEN` no ficheiro `.env`.\n3. Reinicia o Grafana.\n4. Valida primeiro a query `SHOW TABLES`.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.1.0",
+      "title": "Setup Checklist",
+      "type": "text"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [
+    "natureprotector",
+    "influxdb3",
+    "grafana"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "NatureProtector Overview",
+  "uid": "natureprotector-overview",
+  "version": 1
+}

@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: NatureProtectorInfinity
+    uid: natureprotector-infinity
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    url: ${INFLUXDB_URL}
+    isDefault: true
+    editable: true
+    jsonData:
+      auth_method: bearerToken
+      allowedHosts:
+        - ${INFLUXDB_URL}
+      timeoutInSeconds: 60
+    secureJsonData:
+      bearerToken: ${INFLUXDB_TOKEN}
