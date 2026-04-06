@@ -1,0 +1,56 @@
+﻿{
+  "scenario_id": "319bae31-9b7a-57cf-9b05-3eefdf320c95",
+  "scenario_key": "scenario_c",
+  "label": "DegradedPipeline",
+  "status": "generated",
+  "candidate_date": "2020-09-13",
+  "scenario_category": "Failure",
+  "selected_reason": "Reutiliza o mesmo contexto físico do cenário B e muda apenas o perfil de degradação para testar a pipeline e os sensores sob falhas.",
+  "fault_profile": "measurement_and_transport_faults",
+  "source_context": {
+    "selection_source": "scenario_candidates",
+    "source_dataset": "PT-FireSprd_v2.0",
+    "source_municipality": "Proenca-a-Nova",
+    "source_fire_name": "ProencaaNova_13092020",
+    "extent_ha": 14568.0,
+    "confidence_flag": 4,
+    "candidate_weather_kind": "critical_weather_context",
+    "candidate_index_kind": "critical_index_context"
+  },
+  "daily_reference": {
+    "temperature_min_c": 20.5,
+    "temperature_mean_c": 26.842,
+    "temperature_max_c": 33.9,
+    "relative_humidity_min_pct": 18.0,
+    "precipitation_total_mm": 0.0,
+    "wind_speed_max_ms": 4.95,
+    "fwi_reference": 65.377,
+    "kbdi_reference": 650.106,
+    "fire_index_reference_kind": "critical_index_context"
+  },
+  "simulator_options": {
+    "AreaId": "b3f4fb84-bf17-5522-a5f3-70fd1212f381",
+    "ScenarioId": "319bae31-9b7a-57cf-9b05-3eefdf320c95",
+    "ScenarioName": "Scenario C - Degraded Pipeline Proenca-a-Nova",
+    "ScenarioDescription": "Mesmo contexto físico do cenário B, mas com aumento de falhas e ruído para ensaiar cenários degradados.",
+    "ScenarioCategory": "Failure",
+    "StartTimestamp": "2020-09-13T12:00:00",
+    "BaseTemperature": 31.0,
+    "BaseHumidity": 25.0,
+    "BaseWindSpeed": 3.78,
+    "FailureRate": 0.18,
+    "NoiseLevel": 0.16,
+    "TimeAcceleration": 1.0,
+    "NumberOfCycles": 288,
+    "IntervalSeconds": 5,
+    "LogicalStepMinutes": 5
+  },
+  "base_scenario_id": "6034251c-b502-5f7b-a557-7187178cfb04",
+  "future_fault_injections": [
+    "invalid_sensor_state",
+    "delayed_delivery",
+    "duplicate_delivery",
+    "burst_outage",
+    "out_of_order_delivery"
+  ]
+}

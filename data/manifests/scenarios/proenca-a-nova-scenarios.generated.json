@@ -1,0 +1,165 @@
+﻿{
+  "area_id": "proenca-a-nova",
+  "version": "0.2.0",
+  "generated_at_utc": "2026-04-05T21:05:51Z",
+  "source_files": {
+    "template": "data/manifests/scenarios/proenca-a-nova-scenarios.template.json",
+    "weather_daily_reference": "data/baseline/areas/proenca-a-nova/weather_daily_reference.parquet",
+    "scenario_candidates": "data/baseline/areas/proenca-a-nova/scenario_candidates.parquet"
+  },
+  "selection_policy": {
+    "scenario_a": "dia seco de verão fora da shortlist de incêndios, próximo do centro da distribuição local de risco diário",
+    "scenario_b": "melhor candidato histórico com prioridade para ligação direta à área piloto e contexto crítico de índices",
+    "scenario_c": "mesma base física do cenário B com degradação explícita"
+  },
+  "scenarios": [
+    {
+      "scenario_id": "61087b06-87d4-5259-b5b0-0c31d8b521b1",
+      "scenario_key": "scenario_a",
+      "label": "Base",
+      "status": "generated",
+      "candidate_date": "2017-06-01",
+      "scenario_category": "Base",
+      "selected_reason": "Dia seco de verão escolhido por representar um contexto operacional plausível e próximo do centro da distribuição local de risco diário.",
+      "fault_profile": "none",
+      "source_context": {
+        "selection_source": "weather_daily_reference",
+        "source_dataset": "open_meteo_historical_api",
+        "reference_station_name": "Proença-a-Nova, P.Moitas",
+        "reference_kind": "nearest_ipma_station"
+      },
+      "daily_reference": {
+        "temperature_min_c": 15.6,
+        "temperature_mean_c": 21.804,
+        "temperature_max_c": 29.3,
+        "relative_humidity_min_pct": 31.0,
+        "precipitation_total_mm": 0.0,
+        "wind_speed_max_ms": 4.89,
+        "fwi_reference": 18.597,
+        "kbdi_reference": 185.259,
+        "fire_index_reference_kind": "moderate_index_context"
+      },
+      "simulator_options": {
+        "AreaId": "b3f4fb84-bf17-5522-a5f3-70fd1212f381",
+        "ScenarioId": "61087b06-87d4-5259-b5b0-0c31d8b521b1",
+        "ScenarioName": "Scenario A - Base Proenca-a-Nova",
+        "ScenarioDescription": "Cenário base plausível para a área piloto, derivado da referência meteorológica diária e sem injeção de falhas.",
+        "ScenarioCategory": "Base",
+        "StartTimestamp": "2017-06-01T12:00:00",
+        "BaseTemperature": 27.1,
+        "BaseHumidity": 43.0,
+        "BaseWindSpeed": 1.39,
+        "FailureRate": 0.02,
+        "NoiseLevel": 0.08,
+        "TimeAcceleration": 1.0,
+        "NumberOfCycles": 288,
+        "IntervalSeconds": 5,
+        "LogicalStepMinutes": 5
+      }
+    },
+    {
+      "scenario_id": "6034251c-b502-5f7b-a557-7187178cfb04",
+      "scenario_key": "scenario_b",
+      "label": "HighRisk",
+      "status": "generated",
+      "candidate_date": "2020-09-13",
+      "scenario_category": "HighRisk",
+      "selected_reason": "Evento selecionado por combinar contexto crítico de índices e ligação direta à área piloto ou ao seu entorno operacional imediato.",
+      "fault_profile": "none",
+      "source_context": {
+        "selection_source": "scenario_candidates",
+        "source_dataset": "PT-FireSprd_v2.0",
+        "source_municipality": "Proenca-a-Nova",
+        "source_fire_name": "ProencaaNova_13092020",
+        "extent_ha": 14568.0,
+        "confidence_flag": 4,
+        "candidate_weather_kind": "critical_weather_context",
+        "candidate_index_kind": "critical_index_context"
+      },
+      "daily_reference": {
+        "temperature_min_c": 20.5,
+        "temperature_mean_c": 26.842,
+        "temperature_max_c": 33.9,
+        "relative_humidity_min_pct": 18.0,
+        "precipitation_total_mm": 0.0,
+        "wind_speed_max_ms": 4.95,
+        "fwi_reference": 65.377,
+        "kbdi_reference": 650.106,
+        "fire_index_reference_kind": "critical_index_context"
+      },
+      "simulator_options": {
+        "AreaId": "b3f4fb84-bf17-5522-a5f3-70fd1212f381",
+        "ScenarioId": "6034251c-b502-5f7b-a557-7187178cfb04",
+        "ScenarioName": "Scenario B - High Risk Proenca-a-Nova",
+        "ScenarioDescription": "Cenário de risco elevado derivado de um candidato histórico forte e enriquecido com contexto de índices diários.",
+        "ScenarioCategory": "HighRisk",
+        "StartTimestamp": "2020-09-13T12:00:00",
+        "BaseTemperature": 31.0,
+        "BaseHumidity": 25.0,
+        "BaseWindSpeed": 3.78,
+        "FailureRate": 0.05,
+        "NoiseLevel": 0.1,
+        "TimeAcceleration": 1.0,
+        "NumberOfCycles": 288,
+        "IntervalSeconds": 5,
+        "LogicalStepMinutes": 5
+      }
+    },
+    {
+      "scenario_id": "319bae31-9b7a-57cf-9b05-3eefdf320c95",
+      "scenario_key": "scenario_c",
+      "label": "DegradedPipeline",
+      "status": "generated",
+      "candidate_date": "2020-09-13",
+      "scenario_category": "Failure",
+      "selected_reason": "Reutiliza o mesmo contexto físico do cenário B e muda apenas o perfil de degradação para testar a pipeline e os sensores sob falhas.",
+      "fault_profile": "measurement_and_transport_faults",
+      "source_context": {
+        "selection_source": "scenario_candidates",
+        "source_dataset": "PT-FireSprd_v2.0",
+        "source_municipality": "Proenca-a-Nova",
+        "source_fire_name": "ProencaaNova_13092020",
+        "extent_ha": 14568.0,
+        "confidence_flag": 4,
+        "candidate_weather_kind": "critical_weather_context",
+        "candidate_index_kind": "critical_index_context"
+      },
+      "daily_reference": {
+        "temperature_min_c": 20.5,
+        "temperature_mean_c": 26.842,
+        "temperature_max_c": 33.9,
+        "relative_humidity_min_pct": 18.0,
+        "precipitation_total_mm": 0.0,
+        "wind_speed_max_ms": 4.95,
+        "fwi_reference": 65.377,
+        "kbdi_reference": 650.106,
+        "fire_index_reference_kind": "critical_index_context"
+      },
+      "simulator_options": {
+        "AreaId": "b3f4fb84-bf17-5522-a5f3-70fd1212f381",
+        "ScenarioId": "319bae31-9b7a-57cf-9b05-3eefdf320c95",
+        "ScenarioName": "Scenario C - Degraded Pipeline Proenca-a-Nova",
+        "ScenarioDescription": "Mesmo contexto físico do cenário B, mas com aumento de falhas e ruído para ensaiar cenários degradados.",
+        "ScenarioCategory": "Failure",
+        "StartTimestamp": "2020-09-13T12:00:00",
+        "BaseTemperature": 31.0,
+        "BaseHumidity": 25.0,
+        "BaseWindSpeed": 3.78,
+        "FailureRate": 0.18,
+        "NoiseLevel": 0.16,
+        "TimeAcceleration": 1.0,
+        "NumberOfCycles": 288,
+        "IntervalSeconds": 5,
+        "LogicalStepMinutes": 5
+      },
+      "base_scenario_id": "6034251c-b502-5f7b-a557-7187178cfb04",
+      "future_fault_injections": [
+        "invalid_sensor_state",
+        "delayed_delivery",
+        "duplicate_delivery",
+        "burst_outage",
+        "out_of_order_delivery"
+      ]
+    }
+  ]
+}

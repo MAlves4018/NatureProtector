@@ -11,6 +11,11 @@ builder.Services.Configure<RabbitMqOptions>(
 builder.Services.Configure<SimulatorOptions>(
     builder.Configuration.GetSection(SimulatorOptions.SectionName));
 
+builder.Services.PostConfigure<SimulatorOptions>(
+    options => GeneratedScenarioManifestLoader.ApplyIfConfigured(
+        options,
+        builder.Environment.ContentRootPath));
+
 builder.Services.AddSingleton<SeedProvider>();
 builder.Services.AddSingleton<ScenarioContextFactory>();
 builder.Services.AddSingleton<ReadingGenerationService>();

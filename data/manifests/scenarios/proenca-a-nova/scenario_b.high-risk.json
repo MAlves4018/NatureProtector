@@ -1,0 +1,48 @@
+﻿{
+  "scenario_id": "6034251c-b502-5f7b-a557-7187178cfb04",
+  "scenario_key": "scenario_b",
+  "label": "HighRisk",
+  "status": "generated",
+  "candidate_date": "2020-09-13",
+  "scenario_category": "HighRisk",
+  "selected_reason": "Evento selecionado por combinar contexto crítico de índices e ligação direta à área piloto ou ao seu entorno operacional imediato.",
+  "fault_profile": "none",
+  "source_context": {
+    "selection_source": "scenario_candidates",
+    "source_dataset": "PT-FireSprd_v2.0",
+    "source_municipality": "Proenca-a-Nova",
+    "source_fire_name": "ProencaaNova_13092020",
+    "extent_ha": 14568.0,
+    "confidence_flag": 4,
+    "candidate_weather_kind": "critical_weather_context",
+    "candidate_index_kind": "critical_index_context"
+  },
+  "daily_reference": {
+    "temperature_min_c": 20.5,
+    "temperature_mean_c": 26.842,
+    "temperature_max_c": 33.9,
+    "relative_humidity_min_pct": 18.0,
+    "precipitation_total_mm": 0.0,
+    "wind_speed_max_ms": 4.95,
+    "fwi_reference": 65.377,
+    "kbdi_reference": 650.106,
+    "fire_index_reference_kind": "critical_index_context"
+  },
+  "simulator_options": {
+    "AreaId": "b3f4fb84-bf17-5522-a5f3-70fd1212f381",
+    "ScenarioId": "6034251c-b502-5f7b-a557-7187178cfb04",
+    "ScenarioName": "Scenario B - High Risk Proenca-a-Nova",
+    "ScenarioDescription": "Cenário de risco elevado derivado de um candidato histórico forte e enriquecido com contexto de índices diários.",
+    "ScenarioCategory": "HighRisk",
+    "StartTimestamp": "2020-09-13T12:00:00",
+    "BaseTemperature": 31.0,
+    "BaseHumidity": 25.0,
+    "BaseWindSpeed": 3.78,
+    "FailureRate": 0.05,
+    "NoiseLevel": 0.1,
+    "TimeAcceleration": 1.0,
+    "NumberOfCycles": 288,
+    "IntervalSeconds": 5,
+    "LogicalStepMinutes": 5
+  }
+}

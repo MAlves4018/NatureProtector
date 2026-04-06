@@ -1,0 +1,107 @@
+{
+  "area_id": "proenca-a-nova",
+  "version": "0.1.0",
+  "status": "baseline_weather_and_indexes_ready",
+  "canonical_crs": "EPSG:3763",
+  "source_manifests": [
+    "data/manifests/datasets/proenca-a-nova-dataset-plan.json",
+    "data/manifests/scenarios/proenca-a-nova-scenarios.template.json",
+    "data/manifests/scenarios/proenca-a-nova-scenarios.generated.json"
+  ],
+  "expected_outputs": [
+    {
+      "path": "data/baseline/areas/proenca-a-nova/area.gpkg",
+      "status": "generated"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/area.geojson",
+      "status": "generated"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/grid_1km.gpkg",
+      "status": "generated"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/grid_1km.geojson",
+      "status": "generated"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/cells_attributes.parquet",
+      "status": "land_cover_structural_hazard_slope_aspect_partial"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/cells_attributes.csv",
+      "status": "land_cover_structural_hazard_slope_aspect_partial"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/weather_reference.parquet",
+      "status": "generated_from_public_historical_api"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/weather_reference.csv",
+      "status": "generated_from_public_historical_api"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/weather_daily_reference.parquet",
+      "status": "generated_with_daily_indexes"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/weather_daily_reference.csv",
+      "status": "generated_with_daily_indexes"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/fire_history.parquet",
+      "status": "seed_enriched_with_icnf"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/fire_history.csv",
+      "status": "seed_enriched_with_icnf"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/scenario_candidates.parquet",
+      "status": "weather_and_index_enriched"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/scenario_candidates.csv",
+      "status": "weather_and_index_enriched"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/ipma_nearby_stations.csv",
+      "status": "generated"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/ipma_recent_observations.parquet",
+      "status": "generated"
+    },
+    {
+      "path": "data/baseline/areas/proenca-a-nova/ipma_recent_observations.csv",
+      "status": "generated"
+    },
+    {
+      "path": "data/manifests/scenarios/proenca-a-nova-scenarios.generated.json",
+      "status": "generated"
+    }
+  ],
+  "notes": [
+    "Bootstrap inicial criado no repositório.",
+    "Referencias publicas descarregadas: PMDFCI de Proenca-a-Nova e normais climatologicas de Alvega.",
+    "Area e grelha 1 km geradas a partir da CAOP 2025.",
+    "Seed de cells_attributes gerado a partir da grelha.",
+    "Ocupacao do solo dominante por celula preenchida com COS 2018 Serie 2.",
+    "Perigosidade estrutural 2020-2030 aplicada a cells_attributes a partir do raster oficial do geocatalogo ICNF.",
+    "Declive e exposicao de vertentes aplicados a cells_attributes a partir dos servicos oficiais LNEG derivados do EU-DEM.",
+    "Seed inicial de fire_history gerado a partir do PT-FireSprd v2.0 e proximidade municipal.",
+    "fire_history enriquecido com intersecoes locais da area ardida ICNF 2017 recortadas ao concelho.",
+    "Seed inicial de scenario_candidates gerado a partir do PT-FireSprd v2.0 e proximidade municipal.",
+    "Estacoes IPMA proximas da area piloto identificadas a partir da API publica.",
+    "Amostra recente de observacoes IPMA gerada para as estacoes proximas da area piloto.",
+    "weather_reference horario gerado para 2017-2025 com base na Historical Weather API da Open-Meteo usando a estacao IPMA mais proxima como ponto de referencia.",
+    "weather_daily_reference diario gerado a partir da serie horaria com agregados e percentis simples.",
+    "O pedido tentou ERA5-Land primeiro e usou fallback para era5_seamless porque a entrega publica de ERA5-Land veio sem vento e precipitacao.",
+    "scenario_candidates enriquecido com contexto meteorologico diario, score simples e classificacao comparativa do dia candidato.",
+    "weather_daily_reference enriquecido com uma referencia diaria aproximada de FWI e KBDI calculada a partir da serie horaria e da precipitacao diaria.",
+    "scenario_candidates regravado de forma idempotente e enriquecido com fwi_reference, kbdi_reference e classificacao de contexto por indices.",
+    "Cenarios A, B e C materializados em ficheiros de manifesto com blocos simulator_options alinhados com o Simulator.Host atual.",
+    "A altitude continua pendente porque o MDT25m da DGT esta marcado com restricoes e sem servico aberto no metadado."
+  ]
+}

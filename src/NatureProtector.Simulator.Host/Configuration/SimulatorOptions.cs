@@ -34,6 +34,18 @@ public sealed class SimulatorOptions
     public int? Seed { get; set; }
 
     /// <summary>
+    /// Optional path to a generated scenario manifest JSON file.
+    /// When configured, the manifest can override the simulator baseline options.
+    /// </summary>
+    public string? ScenarioManifestPath { get; set; }
+
+    /// <summary>
+    /// Optional scenario key used when ScenarioManifestPath points to a generated
+    /// catalog containing multiple scenarios.
+    /// </summary>
+    public string? ScenarioManifestScenarioKey { get; set; }
+
+    /// <summary>
     /// Number of simulation cycles to execute before stopping.
     /// </summary>
     public int NumberOfCycles { get; set; } = 12;

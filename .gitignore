@@ -3,3 +3,9 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+/.venv-data/
+/.venv-data312/
+/data/external/**
+!/data/external/**/.gitkeep
+/data/runtime/**
+!/data/runtime/**/.gitkeep

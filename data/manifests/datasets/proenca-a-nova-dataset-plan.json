@@ -1,0 +1,263 @@
+{
+  "area_id": "proenca-a-nova",
+  "version": "0.1.0",
+  "last_updated_utc": "2026-04-05T00:00:00Z",
+  "master_formats": {
+    "spatial": "gpkg",
+    "tabular": "parquet",
+    "interop_spatial": "geojson",
+    "interop_tabular": "csv"
+  },
+  "datasets": [
+    {
+      "id": "scenario_manifests_generated",
+      "source_name": "Generated A/B/C scenario manifests",
+      "source_url": "generated-from-weather-and-candidates",
+      "raw_target": null,
+      "curated_outputs": [
+        "data/manifests/scenarios/proenca-a-nova-scenarios.generated.json",
+        "data/manifests/scenarios/proenca-a-nova/scenario_a.base.json",
+        "data/manifests/scenarios/proenca-a-nova/scenario_b.high-risk.json",
+        "data/manifests/scenarios/proenca-a-nova/scenario_c.degraded-pipeline.json"
+      ],
+      "status": "generated",
+      "notes": "Manifestos executaveis A/B/C gerados a partir da referencia diaria e da shortlist historica enriquecida."
+    },
+    {
+      "id": "caop2025",
+      "source_name": "DGT CAOP 2025",
+      "source_url": "https://www.dgterritorio.gov.pt/atividades/cartografia/cartografia-tematica/caop",
+      "raw_target": "data/external/dgt/caop2025/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/area.gpkg",
+        "data/baseline/areas/proenca-a-nova/area.geojson"
+      ],
+      "status": "curated_area_and_grid_generated",
+      "notes": "CAOP 2025 do Continente descarregada, geopackage extraido e municipio de Proenca-a-Nova curado em 2026-04-05."
+    },
+    {
+      "id": "grid_1km",
+      "source_name": "Generated 1 km grid",
+      "source_url": "generated-from-area-boundary",
+      "raw_target": null,
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/grid_1km.gpkg",
+        "data/baseline/areas/proenca-a-nova/grid_1km.geojson"
+      ],
+      "status": "generated",
+      "notes": "Grelha 1 km gerada localmente a partir da CAOP em EPSG:3763."
+    },
+    {
+      "id": "cop_dem",
+      "source_name": "Copernicus DEM",
+      "source_url": "https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM",
+      "raw_target": "data/external/cop-dem/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/cells_attributes.parquet",
+        "data/baseline/areas/proenca-a-nova/cells_attributes.csv"
+      ],
+      "status": "blocked_auth_required_for_altitude_only",
+      "notes": "Mantem-se relevante como opcao para altitude. Slope e aspect ja foram preenchidos por servicos oficiais LNEG derivados do EU-DEM."
+    },
+    {
+      "id": "lneg_eudem_slope",
+      "source_name": "LNEG EU-DEM slope service",
+      "source_url": "https://sig.lneg.pt/server/services/EUDEM_PT_Continente_Slope/MapServer/WMSServer?request=GetCapabilities&service=WMS",
+      "raw_target": "data/external/lneg/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/cells_attributes.parquet",
+        "data/baseline/areas/proenca-a-nova/cells_attributes.csv"
+      ],
+      "status": "service_profiled_and_applied",
+      "notes": "Valores de slope_deg obtidos por identify oficial no MapServer LNEG para o centroide de cada celula."
+    },
+    {
+      "id": "lneg_eudem_aspect",
+      "source_name": "LNEG EU-DEM aspect service",
+      "source_url": "https://sig.lneg.pt/server/services/EUDEM_PT_Continente_Aspect/MapServer/WMSServer?request=GetCapabilities&service=WMS",
+      "raw_target": "data/external/lneg/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/cells_attributes.parquet",
+        "data/baseline/areas/proenca-a-nova/cells_attributes.csv"
+      ],
+      "status": "service_profiled_and_applied",
+      "notes": "Valores de aspect_deg obtidos por identify oficial no MapServer LNEG para o centroide de cada celula."
+    },
+    {
+      "id": "corine_land_cover",
+      "source_name": "CORINE Land Cover",
+      "source_url": "https://land.copernicus.eu/en/products/corine-land-cover/clc2018",
+      "raw_target": "data/external/corine/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/cells_attributes.parquet",
+        "data/baseline/areas/proenca-a-nova/cells_attributes.csv"
+      ],
+      "status": "pending_manual_download",
+      "notes": "Usar como camada de compatibilidade europeia. O COS 2018 ja foi aplicado como camada principal."
+    },
+    {
+      "id": "cos2018",
+      "source_name": "DGT COS 2018",
+      "source_url": "https://www.dgterritorio.gov.pt/Carta-de-Uso-e-Ocupacao-do-Solo-para-2018",
+      "raw_target": "data/external/dgt/cos2018/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/cells_attributes.parquet",
+        "data/baseline/areas/proenca-a-nova/cells_attributes.csv"
+      ],
+      "status": "downloaded_and_applied",
+      "notes": "Camada principal nacional para ocupacao do solo. Download concluido e aplicacao por overlay vetorial concluida em 2026-04-05."
+    },
+    {
+      "id": "tree_cover_density",
+      "source_name": "Copernicus Tree Cover Density",
+      "source_url": "https://land.copernicus.eu/en/products/high-resolution-layer-forests-and-tree-cover/tree-cover-density-2023-raster-10-m-100-m-europe-yearly",
+      "raw_target": "data/external/tree-cover-density/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/cells_attributes.parquet",
+        "data/baseline/areas/proenca-a-nova/cells_attributes.csv"
+      ],
+      "status": "blocked_auth_and_missing_raster_tooling",
+      "notes": "Agregacao por celula da densidade de coberto arboreo. O utilitario de estatistica zonal raster ja esta preparado."
+    },
+    {
+      "id": "icnf_stats",
+      "source_name": "ICNF Estatisticas de incendios",
+      "source_url": "https://www.icnf.pt/florestas/gfr/gfrgestaoinformacao/estatisticas",
+      "raw_target": "data/external/icnf/stats/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/fire_history.parquet",
+        "data/baseline/areas/proenca-a-nova/fire_history.csv"
+      ],
+      "status": "pending_manual_download",
+      "notes": "Estatisticas totais, regionais e registos individuais quando disponiveis."
+    },
+    {
+      "id": "icnf_geocatalog",
+      "source_name": "ICNF Geocatalogo",
+      "source_url": "https://geocatalogo.icnf.pt/catalogo_tema5.html",
+      "raw_target": "data/external/icnf/geocatalog/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/fire_history.parquet",
+        "data/baseline/areas/proenca-a-nova/fire_history.csv",
+        "data/baseline/areas/proenca-a-nova/cells_attributes.parquet",
+        "data/baseline/areas/proenca-a-nova/cells_attributes.csv"
+      ],
+      "status": "partially_downloaded_and_applied",
+      "notes": "Perigosidade estrutural 2020-2030 descarregada e aplicada; area ardida 2017 e 2018 descarregadas, com 2017 ja integrada no fire_history. Falta perigosidade conjuntural e anos adicionais."
+    },
+    {
+      "id": "pmdfci_proenca_a_nova",
+      "source_name": "PMDFCI Proenca-a-Nova",
+      "source_url": "https://fogos.icnf.pt/pmdfci/05_CASTELO_BRANCO/0508/2G/Caderno_I/Texto/PMDFCI_ProencaANova_Caderno_I.pdf",
+      "raw_target": "data/external/icnf/municipal_docs/PMDFCI_ProencaANova_Caderno_I.pdf",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/manifest.json"
+      ],
+      "status": "downloaded_public_reference",
+      "notes": "Documento de apoio metodologico e contextual, nao fonte operacional por celula. Descarregado em 2026-04-05."
+    },
+    {
+      "id": "era5_land",
+      "source_name": "ERA5-Land hourly",
+      "source_url": "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land",
+      "raw_target": "data/external/era5-land/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/weather_reference.parquet",
+        "data/baseline/areas/proenca-a-nova/weather_reference.csv"
+      ],
+      "status": "blocked_auth_required",
+      "notes": "Acesso oficial via CDS continua pendente por autenticacao. Mantem-se como fonte alvo principal para uma futura substituicao do bootstrap publico."
+    },
+    {
+      "id": "open_meteo_historical_api",
+      "source_name": "Open-Meteo Historical Weather API",
+      "source_url": "https://open-meteo.com/en/docs/historical-weather-api",
+      "raw_target": "data/external/open-meteo/proenca-a-nova/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/weather_daily_reference.parquet",
+        "data/baseline/areas/proenca-a-nova/weather_daily_reference.csv",
+        "data/baseline/areas/proenca-a-nova/weather_reference.parquet",
+        "data/baseline/areas/proenca-a-nova/weather_reference.csv"
+      ],
+      "status": "downloaded_applied_and_indexed",
+      "notes": "Bootstrap publico do weather_reference feito a partir da estacao IPMA mais proxima. O pedido tentou era5_land primeiro e usou era5_seamless como fallback para obter precipitacao e vento completos. A partir desta serie foram gerados o weather_daily_reference e uma referencia diaria aproximada de FWI e KBDI."
+    },
+    {
+      "id": "ipma_normals_alvega",
+      "source_name": "IPMA Normais climatologicas Alvega 1991-2020",
+      "source_url": "https://www.ipma.pt/bin/file.data/climate-normal/cn_91-20_ALVEGA.pdf",
+      "raw_target": "data/external/ipma/cn_91-20_ALVEGA.pdf",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/manifest.json"
+      ],
+      "status": "downloaded_public_reference",
+      "notes": "Fonte de validacao climatologica local. Descarregado em 2026-04-05."
+    },
+    {
+      "id": "ipma_long_series",
+      "source_name": "IPMA Series longas",
+      "source_url": "https://www.ipma.pt/pt/oclima/series.longas/",
+      "raw_target": "data/external/ipma/series-longas/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/weather_reference.parquet",
+        "data/baseline/areas/proenca-a-nova/weather_reference.csv"
+      ],
+      "status": "pending_manual_download",
+      "notes": "Usar para validacao e comparacao com ERA5-Land."
+    },
+    {
+      "id": "ipma_api_schema",
+      "source_name": "IPMA API samples",
+      "source_url": "https://api.ipma.pt/",
+      "raw_target": "data/external/ipma/api-samples/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/manifest.json",
+        "data/baseline/areas/proenca-a-nova/ipma_nearby_stations.csv",
+        "data/baseline/areas/proenca-a-nova/ipma_recent_observations.parquet",
+        "data/baseline/areas/proenca-a-nova/ipma_recent_observations.csv"
+      ],
+      "status": "downloaded_and_profiled",
+      "notes": "Amostras publicas descarregadas, shortlist espacial de estacoes gerada e observacoes recentes filtradas para a area piloto em 2026-04-05."
+    },
+    {
+      "id": "cems_fire_historical",
+      "source_name": "CEMS fire historical",
+      "source_url": "https://ewds.climate.copernicus.eu/datasets/cems-fire-historical-v1",
+      "raw_target": "data/external/cems-effis/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/scenario_candidates.parquet",
+        "data/baseline/areas/proenca-a-nova/scenario_candidates.csv"
+      ],
+      "status": "blocked_auth_required",
+      "notes": "Ajuda a escolher dias candidatos a cenarios A e B."
+    },
+    {
+      "id": "firms",
+      "source_name": "NASA FIRMS active fire",
+      "source_url": "https://firms.modaps.eosdis.nasa.gov/download/",
+      "raw_target": "data/external/firms/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/fire_history.parquet",
+        "data/baseline/areas/proenca-a-nova/fire_history.csv",
+        "data/baseline/areas/proenca-a-nova/scenario_candidates.parquet",
+        "data/baseline/areas/proenca-a-nova/scenario_candidates.csv"
+      ],
+      "status": "blocked_auth_required",
+      "notes": "Requer conta Earthdata ou codigo por email."
+    },
+    {
+      "id": "pt_firesprd_v2",
+      "source_name": "PT-FireSprd v2.0",
+      "source_url": "https://zenodo.org/records/16279793",
+      "raw_target": "data/external/pt-firesprd/",
+      "curated_outputs": [
+        "data/baseline/areas/proenca-a-nova/fire_history.parquet",
+        "data/baseline/areas/proenca-a-nova/fire_history.csv",
+        "data/baseline/areas/proenca-a-nova/scenario_candidates.parquet",
+        "data/baseline/areas/proenca-a-nova/scenario_candidates.csv"
+      ],
+      "status": "downloaded_seeded_weather_and_index_enriched",
+      "notes": "PT-FireSprd v2.0 descarregado, metadados indexados e seeds iniciais de fire_history e scenario_candidates gerados em 2026-04-05. Os scenario_candidates foram depois enriquecidos com contexto meteorologico diario e com a referencia aproximada de FWI e KBDI."
+    }
+  ]
+}
