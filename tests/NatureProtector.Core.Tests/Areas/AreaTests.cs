@@ -93,6 +93,37 @@ public class AreaTests
     }
 
     [Fact]
+    public void Ctor_Throws_WhenInitialRiskCellsContainDuplicateIds()
+    {
+        var areaId = Guid.NewGuid();
+        var duplicatedCellId = Guid.NewGuid();
+
+        var ex = Assert.Throws<ArgumentException>(
+            () => new NatureProtector.Core.Areas.Area(
+                id: areaId,
+                name: "Area A",
+                boundaries: CreateBoundaries(),
+                riskCells: new[]
+                {
+                    new RiskCell(
+                        id: duplicatedCellId,
+                        areaId: areaId,
+                        location: new Location(5.0, 5.0),
+                        initialRiskLevel: RiskLevel.Low,
+                        initialTimestamp: DateTimeOffset.UtcNow.AddMinutes(-1)),
+                    new RiskCell(
+                        id: duplicatedCellId,
+                        areaId: areaId,
+                        location: new Location(5.0001, 5.0001),
+                        initialRiskLevel: RiskLevel.Moderate,
+                        initialTimestamp: DateTimeOffset.UtcNow)
+                }));
+
+        Assert.Equal("riskCells", ex.ParamName);
+        Assert.Contains("duplicate identifiers", ex.Message);
+    }
+
+    [Fact]
     public void AddRiskCell_Throws_WhenRiskCellIsNull()
     {
         var area = CreateArea();
@@ -224,13 +255,14 @@ public class AreaTests
         var cell = new RiskCell(
             id: Guid.NewGuid(),
             areaId: area.Id,
-            location: new Location(5.0, 5.0, cellId: "CELL-01"),
-            initialRiskLevel: RiskLevel.Moderate);
+            location: new Location(5.0, 5.0),
+            initialRiskLevel: RiskLevel.Moderate,
+            cellId: "CELL-01");
 
         area.AddRiskCell(cell);
 
         var result = area.TryGetRiskCellForLocation(
-            new Location(5.0, 5.0, cellId: "cell-01"),
+            new Location(8.0, 8.0, cellId: "cell-01"),
             out var found);
 
         Assert.True(result);
@@ -267,6 +299,35 @@ public class AreaTests
         var result = area.TryGetRiskCellForLocation(new Location(9.0, 9.0), out var found);
 
         Assert.False(result);
+        Assert.Null(found);
+    }
+
+    [Fact]
+    public void GetRiskCellForLocation_ReturnsCell_WhenLocationResolves()
+    {
+        var area = CreateArea();
+        var cell = new RiskCell(
+            id: Guid.NewGuid(),
+            areaId: area.Id,
+            location: new Location(5.0, 5.0),
+            initialRiskLevel: RiskLevel.Moderate,
+            cellId: "CELL-02");
+
+        area.AddRiskCell(cell);
+
+        var found = area.GetRiskCellForLocation(new Location(9.0, 9.0, cellId: "cell-02"));
+
+        Assert.Same(cell, found);
+    }
+
+    [Fact]
+    public void GetRiskCellForLocation_ReturnsNull_WhenNoMatchExists()
+    {
+        var area = CreateArea();
+        area.AddRiskCell(CreateRiskCell(area.Id));
+
+        var found = area.GetRiskCellForLocation(new Location(9.0, 9.0));
+
         Assert.Null(found);
     }
 

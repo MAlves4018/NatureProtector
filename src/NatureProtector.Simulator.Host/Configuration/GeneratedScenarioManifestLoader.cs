@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using NatureProtector.Core.Scenarios;
 
@@ -5,11 +6,6 @@ namespace NatureProtector.Simulator.Host.Configuration;
 
 internal static class GeneratedScenarioManifestLoader
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
     public static void ApplyIfConfigured(SimulatorOptions options, string contentRootPath)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -118,7 +114,11 @@ internal static class GeneratedScenarioManifestLoader
         return property.ValueKind switch
         {
             JsonValueKind.Number => property.GetDouble(),
-            JsonValueKind.String when double.TryParse(property.GetString(), out var parsed) => parsed,
+            JsonValueKind.String when double.TryParse(
+                property.GetString(),
+                NumberStyles.Float | NumberStyles.AllowThousands,
+                CultureInfo.InvariantCulture,
+                out var parsed) => parsed,
             _ => fallback
         };
     }
@@ -133,7 +133,11 @@ internal static class GeneratedScenarioManifestLoader
         return property.ValueKind switch
         {
             JsonValueKind.Number => property.GetInt32(),
-            JsonValueKind.String when int.TryParse(property.GetString(), out var parsed) => parsed,
+            JsonValueKind.String when int.TryParse(
+                property.GetString(),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var parsed) => parsed,
             _ => fallback
         };
     }

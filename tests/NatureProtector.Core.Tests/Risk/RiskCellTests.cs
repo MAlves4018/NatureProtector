@@ -387,6 +387,56 @@ public class RiskCellTests
     }
 
     [Fact]
+    public void GetRiskTrendDescription_ReturnsStable_WhenHistoryLevelsNeverChange()
+    {
+        // Arrange
+        var t0 = DateTimeOffset.UtcNow.AddMinutes(-10);
+        var t1 = DateTimeOffset.UtcNow.AddMinutes(-5);
+        var t2 = DateTimeOffset.UtcNow;
+
+        var cell = new RiskCell(
+            id: Guid.NewGuid(),
+            areaId: Guid.NewGuid(),
+            location: new Location(38.7167, -9.1333),
+            initialRiskLevel: RiskLevel.Moderate,
+            initialTimestamp: t0);
+
+        cell.UpdateRiskLevel(RiskLevel.Moderate, t1);
+        cell.UpdateRiskLevel(RiskLevel.Moderate, t2);
+
+        // Act
+        var trend = cell.GetRiskTrendDescription();
+
+        // Assert
+        Assert.Equal("Stable", trend);
+    }
+
+    [Fact]
+    public void GetRiskTrendDescription_ReturnsVariableButOverallStable_WhenLevelsVaryButFirstEqualsLast()
+    {
+        // Arrange
+        var t0 = DateTimeOffset.UtcNow.AddMinutes(-10);
+        var t1 = DateTimeOffset.UtcNow.AddMinutes(-5);
+        var t2 = DateTimeOffset.UtcNow;
+
+        var cell = new RiskCell(
+            id: Guid.NewGuid(),
+            areaId: Guid.NewGuid(),
+            location: new Location(38.7167, -9.1333),
+            initialRiskLevel: RiskLevel.Moderate,
+            initialTimestamp: t0);
+
+        cell.UpdateRiskLevel(RiskLevel.High, t1);
+        cell.UpdateRiskLevel(RiskLevel.Moderate, t2);
+
+        // Act
+        var trend = cell.GetRiskTrendDescription();
+
+        // Assert
+        Assert.Equal("Variable but overall stable", trend);
+    }
+
+    [Fact]
     public void IsAtLeast_AndIsAbove_ReturnExpectedValues()
     {
         // Arrange

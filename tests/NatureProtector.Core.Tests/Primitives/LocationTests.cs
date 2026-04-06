@@ -18,6 +18,38 @@ public class LocationTests
         Assert.Equal(20.0, location.Altitude);
     }
 
+    [Fact]
+    public void WithCellId_ReturnsNewLocation_WithTrimmedCellId()
+    {
+        var original = new Location(38.7167, -9.1333, 20.0);
+
+        var updated = original.WithCellId(" CELL-42 ");
+
+        Assert.NotSame(original, updated);
+        Assert.Equal(original.Latitude, updated.Latitude);
+        Assert.Equal(original.Longitude, updated.Longitude);
+        Assert.Equal(original.Altitude, updated.Altitude);
+        Assert.Null(original.CellId);
+        Assert.Equal("CELL-42", updated.CellId);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void WithCellId_NormalizesWhitespace_ToNull(string? rawCellId)
+    {
+        var original = new Location(38.7167, -9.1333, 20.0, "CELL-01");
+
+        var updated = original.WithCellId(rawCellId);
+
+        Assert.NotSame(original, updated);
+        Assert.Equal(original.Latitude, updated.Latitude);
+        Assert.Equal(original.Longitude, updated.Longitude);
+        Assert.Equal(original.Altitude, updated.Altitude);
+        Assert.Null(updated.CellId);
+    }
+
     [Theory]
     [InlineData(-91.0, 0.0, "latitude")]
     [InlineData(91.0, 0.0, "latitude")]

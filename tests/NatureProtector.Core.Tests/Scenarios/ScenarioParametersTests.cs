@@ -97,6 +97,20 @@ public class ScenarioParametersTests
         Assert.Equal("failureRate", ex.ParamName);
     }
 
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void Ctor_Throws_WhenFailureRateIsNotFinite(double invalidFailureRate)
+    {
+        // Act
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new ScenarioParameters(
+            failureRate: invalidFailureRate));
+
+        // Assert
+        Assert.Equal("failureRate", ex.ParamName);
+    }
+
     [Fact]
     public void Ctor_Throws_WhenNoiseLevelIsNegative()
     {
@@ -109,9 +123,37 @@ public class ScenarioParametersTests
     }
 
     [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void Ctor_Throws_WhenNoiseLevelIsNotFinite(double invalidNoiseLevel)
+    {
+        // Act
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new ScenarioParameters(
+            noiseLevel: invalidNoiseLevel));
+
+        // Assert
+        Assert.Equal("noiseLevel", ex.ParamName);
+    }
+
+    [Theory]
     [InlineData(0.0)]
     [InlineData(-1.0)]
     public void Ctor_Throws_WhenTimeAccelerationIsNotStrictlyPositive(double invalidTimeAcceleration)
+    {
+        // Act
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new ScenarioParameters(
+            timeAcceleration: invalidTimeAcceleration));
+
+        // Assert
+        Assert.Equal("timeAcceleration", ex.ParamName);
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void Ctor_Throws_WhenTimeAccelerationIsNotFinite(double invalidTimeAcceleration)
     {
         // Act
         var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new ScenarioParameters(

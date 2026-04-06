@@ -9,3 +9,5 @@ riderModule.iml
 !/data/external/**/.gitkeep
 /data/runtime/**
 !/data/runtime/**/.gitkeep
+**/TestResults/
+/coveragereport_core/

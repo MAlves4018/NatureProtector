@@ -36,51 +36,7 @@ public sealed class PreventionWorker(
 
         var consumer = new AsyncEventingBasicConsumer(channel);
 
-        consumer.Received += async (_, ea) =>
-        {
-            try
-            {
-                var envelope = JsonEventSerializer.Deserialize<EventEnvelope<SensorReadingProducedPayload>>(ea.Body);
-
-                if (envelope is null)
-                {
-                    logger.LogWarning(
-                        "Received null or invalid message body. DeliveryTag={DeliveryTag}",
-                        ea.DeliveryTag);
-
-                    channel.BasicAck(ea.DeliveryTag, multiple: false);
-                    return;
-                }
-
-                logger.LogInformation(
-                    "Consumed {EventType} | EventId={EventId} | CorrelationId={CorrelationId} | Sensor={SensorName} | Metric={MetricType} | Value={Value} | EventTime={EventTime}",
-                    envelope.EventType,
-                    envelope.EventId,
-                    envelope.CorrelationId,
-                    envelope.Payload.SensorName,
-                    envelope.Payload.MetricType,
-                    envelope.Payload.Value,
-                    envelope.EventTime);
-
-                await readingRiskPipeline.ProcessAcceptedReadingAsync(
-                    envelope,
-                    stoppingToken);
-
-                channel.BasicAck(ea.DeliveryTag, multiple: false);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(
-                    ex,
-                    "Failed to consume message. DeliveryTag={DeliveryTag} Body={Body}",
-                    ea.DeliveryTag,
-                    Encoding.UTF8.GetString(ea.Body.ToArray()));
-
-                channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: false);
-            }
-
-            await Task.CompletedTask;
-        };
+        consumer.Received += (_, ea) => HandleReceivedAsync(channel, ea, stoppingToken);
 
         channel.BasicConsume(
             queue: NatureProtectorRabbitMqTopology.IngestionReadingsQueue,
@@ -124,6 +80,53 @@ public sealed class PreventionWorker(
                 queue: queueName,
                 exchange: NatureProtectorRabbitMqTopology.ExchangeName,
                 routingKey: routingKey);
+        }
+    }
+
+    private async Task HandleReceivedAsync(
+        IModel channel,
+        BasicDeliverEventArgs ea,
+        CancellationToken stoppingToken)
+    {
+        try
+        {
+            var envelope = JsonEventSerializer.Deserialize<EventEnvelope<SensorReadingProducedPayload>>(ea.Body);
+
+            if (envelope is null)
+            {
+                logger.LogWarning(
+                    "Received null or invalid message body. DeliveryTag={DeliveryTag}",
+                    ea.DeliveryTag);
+
+                channel.BasicAck(ea.DeliveryTag, multiple: false);
+                return;
+            }
+
+            logger.LogInformation(
+                "Consumed {EventType} | EventId={EventId} | CorrelationId={CorrelationId} | Sensor={SensorName} | Metric={MetricType} | Value={Value} | EventTime={EventTime}",
+                envelope.EventType,
+                envelope.EventId,
+                envelope.CorrelationId,
+                envelope.Payload.SensorName,
+                envelope.Payload.MetricType,
+                envelope.Payload.Value,
+                envelope.EventTime);
+
+            await readingRiskPipeline.ProcessAcceptedReadingAsync(
+                envelope,
+                stoppingToken);
+
+            channel.BasicAck(ea.DeliveryTag, multiple: false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Failed to consume message. DeliveryTag={DeliveryTag} Body={Body}",
+                ea.DeliveryTag,
+                Encoding.UTF8.GetString(ea.Body.ToArray()));
+
+            channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: false);
         }
     }
 }

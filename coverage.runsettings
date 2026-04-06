@@ -6,12 +6,10 @@
         <Configuration>
           <Format>cobertura</Format>
           <ExcludeByFile>
-            **/obj/**;
             **/bin/**;
-            **/Program.cs;
+            **/obj/**;
             **/*.g.cs;
-            **/*.Designer.cs;
-            **/*AssemblyInfo.cs
+            **/*.Designer.cs
           </ExcludeByFile>
         </Configuration>
       </DataCollector>
