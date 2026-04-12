@@ -41,4 +41,18 @@ public sealed class InMemoryAcceptedReadingRepositoryTests
 
         Assert.Equal(new[] { first.EventId, second.EventId }, result.Select(x => x.EventId));
     }
+
+    [Fact]
+    public async Task AddAsync_IgnoresDuplicateEventIds()
+    {
+        var repository = new InMemoryAcceptedReadingRepository();
+        var envelope = EnvelopeFactory.Create(eventId: Guid.NewGuid(), sensorName: "Sensor-A");
+
+        await repository.AddAsync(envelope, CancellationToken.None);
+        await repository.AddAsync(envelope, CancellationToken.None);
+
+        var result = await repository.GetAllAsync(CancellationToken.None);
+
+        Assert.Single(result);
+    }
 }

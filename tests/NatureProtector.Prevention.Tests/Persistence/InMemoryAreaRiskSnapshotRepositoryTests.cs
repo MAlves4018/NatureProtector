@@ -13,6 +13,7 @@ public sealed class InMemoryAreaRiskSnapshotRepositoryTests
         var ex = await Assert.ThrowsAsync<ArgumentNullException>(() => repository.SaveAsync(
             areaId: Guid.NewGuid(),
             snapshot: null!,
+            assessmentCount: 0,
             cancellationToken: CancellationToken.None));
 
         Assert.Equal("snapshot", ex.ParamName);
@@ -37,7 +38,7 @@ public sealed class InMemoryAreaRiskSnapshotRepositoryTests
         var areaId = Guid.NewGuid();
         var snapshot = CreateSnapshot(0.65);
 
-        await repository.SaveAsync(areaId, snapshot, CancellationToken.None);
+        await repository.SaveAsync(areaId, snapshot, 1, CancellationToken.None);
 
         var stored = await repository.GetLatestAsync(areaId, CancellationToken.None);
 
@@ -54,8 +55,8 @@ public sealed class InMemoryAreaRiskSnapshotRepositoryTests
         var first = CreateSnapshot(0.25);
         var second = CreateSnapshot(0.85);
 
-        await repository.SaveAsync(areaId, first, CancellationToken.None);
-        await repository.SaveAsync(areaId, second, CancellationToken.None);
+        await repository.SaveAsync(areaId, first, 1, CancellationToken.None);
+        await repository.SaveAsync(areaId, second, 2, CancellationToken.None);
 
         var stored = await repository.GetLatestAsync(areaId, CancellationToken.None);
 
@@ -72,8 +73,8 @@ public sealed class InMemoryAreaRiskSnapshotRepositoryTests
         var targetSnapshot = CreateSnapshot(0.45);
         var otherSnapshot = CreateSnapshot(0.90);
 
-        await repository.SaveAsync(targetAreaId, targetSnapshot, CancellationToken.None);
-        await repository.SaveAsync(otherAreaId, otherSnapshot, CancellationToken.None);
+        await repository.SaveAsync(targetAreaId, targetSnapshot, 1, CancellationToken.None);
+        await repository.SaveAsync(otherAreaId, otherSnapshot, 1, CancellationToken.None);
 
         var stored = await repository.GetLatestAsync(targetAreaId, CancellationToken.None);
 

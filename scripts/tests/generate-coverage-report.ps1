@@ -1,3 +1,17 @@
+<#
+.SYNOPSIS
+Executa os testes com cobertura e gera um relatório consolidado.
+
+.DESCRIPTION
+O script corre `dotnet test` com recolha de cobertura Cobertura, agrega todos os
+relatórios encontrados e produz uma saída HTML e um resumo textual através de
+`reportgenerator`.
+
+.NOTES
+- Exclui ficheiros de arranque e boilerplate para dar mais foco à lógica.
+- Assume que `reportgenerator` está disponível no ambiente.
+#>
+
 param(
     [string]$Solution = ".\NatureProtector.sln",
     [string]$RunSettings = ".\coverage.runsettings",
@@ -5,6 +19,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+& (Join-Path $repoRoot "scripts\dotnet\Use-RepoDotnetEnvironment.ps1") -Quiet | Out-Null
 
 $assemblyFilters = @(
     "+NatureProtector.Core",
@@ -17,6 +34,8 @@ $assemblyFilters = @(
     "-*.Tests"
 ) -join ";"
 
+# Estes filtros removem pontos de entrada e infraestrutura de baixo sinal para
+# que a cobertura se concentre no código com mais lógica.
 $fileFilters = @(
     "-**\Program.cs",
     "-**\Program.Partial.cs",
@@ -35,6 +54,9 @@ Get-ChildItem -Recurse -Directory -Filter TestResults | Remove-Item -Recurse -Fo
 Remove-Item -Recurse -Force $TargetDir -ErrorAction SilentlyContinue
 
 dotnet test $Solution `
+  --nologo `
+  -v minimal `
+  -m:1 `
   --collect:"XPlat Code Coverage" `
   --settings $RunSettings
 
@@ -45,6 +67,8 @@ if ([string]::IsNullOrWhiteSpace($reports))
     throw "No coverage.cobertura.xml files were generated."
 }
 
+# A geração do relatório consolidado acontece só depois de todos os ficheiros de
+# cobertura terem sido recolhidos.
 reportgenerator `
   -reports:"$reports" `
   -targetdir:"$TargetDir" `

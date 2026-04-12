@@ -1,41 +1,31 @@
 # Arquitetura
 
-Esta pasta guarda a leitura arquitetural do projeto e os artefactos que ajudam a ligar a intenção do módulo ao estado real do código.
+Esta pasta concentra a documentação de arquitetura do projeto, com foco principal no subsistema de prevenção da plataforma NatureProtector.
 
-## Artefactos principais
+## Conteúdo principal
 
-- [natureprotector-current-architecture.drawio.xml](natureprotector-current-architecture.drawio.xml)
-  - diagrama editável da arquitetura atual
-- [../planning/project-completion-roadmap.md](../planning/project-completion-roadmap.md)
-  - estrutura alvo, backlog e ordem recomendada de evolução
-- [../planning/pipeline-gap-and-dependency-map.md](../planning/pipeline-gap-and-dependency-map.md)
-  - lacunas verificadas e próximas prioridades
+- [architecture.md](architecture.md)
+  - documento central, autocontido, com a leitura progressiva da arquitetura;
+- [repository-exploration-guide.md](repository-exploration-guide.md)
+  - guia de entrada para quem abre o repositório pela primeira vez e precisa de uma ordem de leitura concreta;
+- [current-capabilities-and-how-to-run.md](current-capabilities-and-how-to-run.md)
+  - documento operacional focado apenas no que já é possível correr, observar e demonstrar hoje;
+- [grafana-influx-dashboard-guide.md](grafana-influx-dashboard-guide.md)
+  - guia prático para datasource, queries, painéis e desenho dos dashboards sobre `InfluxDB`;
+- [postgresql-architecture.md](postgresql-architecture.md)
+  - referência consolidada do papel do `PostgreSQL` na arquitetura atual, unificando a leitura das fases 1 a 9;
+- [diagrams/](diagrams/)
+  - ficheiros fonte em Draw.io, incluindo diagramas já importados para revisão e novos diagramas preparados para evolução;
+- [images/](images/)
+  - imagens PNG usadas no corpo do documento.
 
-## Leitura curta da arquitetura atual
+## Convenções
 
-Hoje, o fluxo técnico principal do repositório é este:
+- `architecture.md` é a referência principal para leitura técnica, apresentação e apoio ao relatório.
+- `postgresql-architecture.md` é a referência principal para perceber `control`, `pipeline` e `projection` sem ter de ler as fases históricas uma a uma.
+- Cada imagem em `images/` tem um ficheiro Draw.io homónimo em `diagrams/`.
+- O ficheiro [diagrams/00-legacy-current-repo-architecture.drawio.xml](diagrams/00-legacy-current-repo-architecture.drawio.xml) foi preservado apenas como artefacto legado e não deve ser tratado como diagrama final.
 
-1. O [../../src/NatureProtector.Simulator.Host/README.md](../../src/NatureProtector.Simulator.Host/README.md) constrói um contexto de simulação a partir de `appsettings.json` ou de um manifesto de cenário gerado.
-2. O simulador gera eventos `SensorReadingProduced` com envelope comum definido em [../../src/NatureProtector.Shared/README.md](../../src/NatureProtector.Shared/README.md).
-3. Esses eventos seguem por RabbitMQ para a fila `np.ingestion.readings`.
-4. O [../../src/NatureProtector.Prevention.Host/README.md](../../src/NatureProtector.Prevention.Host/README.md) consome essas leituras, calcula risco simples e produz snapshots agregados por área.
-5. O [../../src/NatureProtector.Infrastructure.Influx/README.md](../../src/NatureProtector.Infrastructure.Influx/README.md) escreve leituras aceites, avaliações de risco e snapshots de área em InfluxDB.
-6. O [../../src/NatureProtector.Backoffice.Api/README.md](../../src/NatureProtector.Backoffice.Api/README.md) já existe na solução, mas continua numa fase de esqueleto.
+## Nota de trabalho
 
-## O que a arquitetura já fecha
-
-- Existe separação entre domínio, contratos partilhados, simulação, prevenção e infraestrutura Influx.
-- RabbitMQ já funciona como mecanismo de desacoplamento entre produção e consumo de leituras.
-- A pipeline de dados já produz artefactos de cenário que o simulador consegue ler.
-- A baseline local de infraestrutura já é reprodutível com Docker Compose.
-
-## O que ainda está em transição
-
-- `NatureProtector.Shared` continua a juntar contratos e detalhes de RabbitMQ.
-- `Simulator.Host` ainda guarda código residual de ingestão/validação que não faz parte do arranque atual.
-- `Prevention.Host` ainda não implementa a pipeline durável que a documentação de planeamento descreve.
-- PostgreSQL já está presente na baseline local, mas ainda não serve o plano de controlo em runtime.
-
-## Como usar esta pasta
-
-Para perceber o desenho atual, devemos começar pelo diagrama e cruzá-lo com o [../../src/README.md](../../src/README.md). Para perceber a direção de evolução, devemos seguir depois para os documentos de `planning/`.
+Os ficheiros PNG desta pasta podem começar por existir como placeholders técnicos, enquanto os exports finais forem sendo produzidos a partir dos ficheiros Draw.io. O objetivo é que cada placeholder seja progressivamente substituído pelo respetivo export final sem alterar a estrutura do documento.

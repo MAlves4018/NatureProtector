@@ -1,5 +1,18 @@
 from __future__ import annotations
 
+"""Gera os manifests de cenários usados pela área piloto de Proença-a-Nova.
+
+Este script combina a referência meteorológica diária e os candidatos históricos
+já preparados e harmonizados para produzir:
+
+- um catálogo gerado com os cenários A/B/C;
+- manifests individuais consumíveis pelo simulador;
+- metadados de seleção que documentam a proveniência dos cenários.
+
+É um ponto central da ponte entre os artefactos de dados preparados e o runtime do
+simulador.
+"""
+
 import json
 import unicodedata
 import uuid
@@ -24,6 +37,7 @@ AREA_ID = uuid.UUID("b3f4fb84-bf17-5522-a5f3-70fd1212f381")
 
 
 def normalize_text(value: str | None) -> str:
+    """Normaliza texto para comparações robustas entre nomes de municípios."""
     if not value:
         return ""
     normalized = unicodedata.normalize("NFKD", value)
@@ -31,18 +45,21 @@ def normalize_text(value: str | None) -> str:
 
 
 def to_float(value: object) -> float | None:
+    """Converte um valor pandas para float arredondado quando possível."""
     if pd.isna(value):
         return None
     return round(float(value), 3)
 
 
 def to_int(value: object) -> int | None:
+    """Converte um valor pandas para inteiro quando possível."""
     if pd.isna(value):
         return None
     return int(value)
 
 
 def build_base_scenario_candidate(weather: pd.DataFrame, blocked_dates: set[pd.Timestamp]) -> pd.Series:
+    """Escolhe um dia base plausível fora da shortlist de incêndios conhecidos."""
     summer = weather.copy()
     summer["date_local"] = pd.to_datetime(summer["date_local"])
     summer = summer[
@@ -70,6 +87,7 @@ def build_base_scenario_candidate(weather: pd.DataFrame, blocked_dates: set[pd.T
 
 
 def build_high_risk_scenario_candidate(candidates: pd.DataFrame) -> pd.Series:
+    """Escolhe o melhor candidato histórico para o cenário de risco elevado."""
     ranked = candidates.copy()
     ranked["candidate_date"] = pd.to_datetime(ranked["candidate_date"])
     ranked["municipality_rank"] = ranked["source_municipality"].map(
@@ -114,10 +132,12 @@ def build_high_risk_scenario_candidate(candidates: pd.DataFrame) -> pd.Series:
 
 
 def scenario_uuid(name: str) -> str:
+    """Produz UUID determinístico por cenário para manter reprodutibilidade."""
     return str(uuid.uuid5(UUID_NAMESPACE, f"proenca-a-nova:{name}"))
 
 
 def write_json(path: Path, payload: dict[str, object]) -> None:
+    """Escreve JSON legível preservando acentos e indentação estável."""
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8-sig")
 
 
@@ -135,6 +155,7 @@ def build_simulator_options(
     noise_level: float,
     time_acceleration: float,
 ) -> dict[str, object]:
+    """Constrói o bloco `simulator_options` que será consumido pelo host."""
     start_local = datetime.fromisoformat(f"{candidate_date}T12:00:00")
 
     return {
@@ -171,6 +192,7 @@ def scenario_payload(
     base_scenario_id: str | None = None,
     future_fault_injections: list[str] | None = None,
 ) -> dict[str, object]:
+    """Monta o payload final de um cenário com proveniência e parâmetros."""
     payload = {
         "scenario_id": scenario_uuid(scenario_key),
         "scenario_key": scenario_key,
@@ -192,6 +214,7 @@ def scenario_payload(
 
 
 def main() -> None:
+    """Gera o catálogo de cenários e os manifests individuais da área piloto."""
     if not WEATHER_DAILY_REFERENCE_PARQUET.exists():
         raise FileNotFoundError(f"Missing weather_daily_reference parquet: {WEATHER_DAILY_REFERENCE_PARQUET}")
     if not SCENARIO_CANDIDATES_PARQUET.exists():
@@ -209,6 +232,8 @@ def main() -> None:
     scenario_a_date = pd.Timestamp(scenario_a_row["date_local"]).date().isoformat()
     scenario_b_date = pd.Timestamp(scenario_b_row["candidate_date"]).date().isoformat()
 
+    # O cenário A representa um dia plausível de referência, enquanto os cenários
+    # B e C partem de um candidato histórico mais severo.
     scenario_a = scenario_payload(
         scenario_key="scenario_a",
         label="Base",
@@ -299,7 +324,7 @@ def main() -> None:
         status="generated",
         scenario_category="Failure",
         candidate_date=scenario_b_date,
-        selected_reason="Reutiliza o mesmo contexto físico do cenário B e muda apenas o perfil de degradação para testar a pipeline e os sensores sob falhas.",
+            selected_reason="Reutiliza o mesmo contexto físico do cenário B e muda apenas o perfil de degradação para testar o fluxo operacional e os sensores sob falhas.",
         fault_profile="measurement_and_transport_faults",
         base_scenario_id=scenario_b["scenario_id"],
         source_context=scenario_b["source_context"],
@@ -343,6 +368,8 @@ def main() -> None:
         "scenarios": [scenario_a, scenario_b, scenario_c],
     }
 
+    # O catálogo consolidado e os manifests individuais coexistem porque servem
+    # fases diferentes: seleção de cenário e execução do simulador.
     SCENARIO_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     write_json(SCENARIO_CATALOG_JSON, generated)
     write_json(SCENARIO_OUTPUT_DIR / "scenario_a.base.json", scenario_a)

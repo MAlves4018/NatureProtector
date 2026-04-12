@@ -1,10 +1,19 @@
-#Para executar correr na raiz do projeto o comando comando:
-#.\infra\scripts\down.ps1
+<#
+.SYNOPSIS
+Desliga a baseline local arrancada por Docker Compose.
 
-# Move para a raiz do projeto
+.DESCRIPTION
+O script muda para a raiz do repositório e executa `docker compose down`.
+
+.NOTES
+- Útil para fechar a infraestrutura no fim de uma sessão de desenvolvimento ou
+  demonstração.
+#>
+
+# Move para a raiz do projeto.
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Resolve-Path (Join-Path $ScriptDir "..\..")
 Set-Location $ProjectRoot
 
-# Desce os serviços
+# Desliga os serviços containerizados da baseline local.
 docker compose down

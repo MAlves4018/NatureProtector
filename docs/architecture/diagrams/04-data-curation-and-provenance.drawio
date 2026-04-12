@@ -1,0 +1,133 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="04-data-curation-and-provenance" name="Page-1">
+    <mxGraphModel dx="221" dy="127" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1700" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f4e78;strokeColor=#0b2e4f;fontColor=#ffffff;fontSize=24;fontStyle=1;" value="Preparação de dados e proveniência" vertex="1">
+          <mxGeometry height="70" width="1580" x="60" y="88" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=15;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Fontes externas" vertex="1">
+          <mxGeometry height="550" width="280" x="60" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=14;" value="Território&#xa;CAOP, COS, ICNF, LNEG" vertex="1">
+          <mxGeometry height="76.15384615384616" width="210" x="35" y="67.6923076923077" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=14;" value="Meteorologia&#xa;IPMA, Open-Meteo, ERA5-Land" vertex="1">
+          <mxGeometry height="76.15384615384616" width="210" x="35" y="194.6153846153846" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=14;" value="Historico de fogo&#xa;PT-FireSprd, ICNF, FIRMS, EFFIS" vertex="1">
+          <mxGeometry height="76.15384615384616" width="210" x="35" y="321.53846153846155" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=15;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Aquisição e harmonização" vertex="1">
+          <mxGeometry height="550" width="390" x="400" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=14;" value="data/external&#xa;inputs brutos, downloads e caches" vertex="1">
+          <mxGeometry height="76.15384615384615" width="280" x="55" y="67.6923076923077" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;" value="scripts/data&#xa;preparação, enriquecimento,&#xa;agregação e geração de ficheiros de definição" vertex="1">
+          <mxGeometry height="93.07692307692307" width="280" x="55" y="203.07692307692307" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=14;" value="Regras de harmonização&#xa;CRS canonico, chaves por area,&#xa;schema por artefacto, idempotencia" vertex="1">
+          <mxGeometry height="84.6153846153846" width="280" x="55" y="363.8461538461538" as="geometry" />
+        </mxCell>
+        <mxCell id="30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=15;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Artefactos preparados e metadados" vertex="1">
+          <mxGeometry height="550" width="790" x="850" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="31" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef8ee;strokeColor=#82b366;fontSize=14;" value="data/baseline/areas/proenca-a-nova&#xa;area, grid_1km, cells_attributes, fire_history,&#xa;weather_reference, weather_daily_reference, scenario_candidates" vertex="1">
+          <mxGeometry height="118.46153846153847" width="320" x="40" y="59.23076923076923" as="geometry" />
+        </mxCell>
+        <mxCell id="32" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef8ee;strokeColor=#82b366;fontSize=14;" value="data/manifests/datasets&#xa;dataset plan, estados, bloqueios,&#xa;fontes e caminhos relativos" vertex="1">
+          <mxGeometry height="93.07692307692308" width="300" x="420" y="59.23076923076923" as="geometry" />
+        </mxCell>
+        <mxCell id="33" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef8ee;strokeColor=#82b366;fontSize=14;" value="data/manifests/scenarios&#xa;catálogo de cenários e manifests executáveis" vertex="1">
+          <mxGeometry height="76.15384615384615" width="300" x="50" y="212.3846153846154" as="geometry" />
+        </mxCell>
+        <mxCell id="34" parent="30" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#eef8ee;strokeColor=#82b366;fontSize=14;" value="Schema control em PostgreSQL&#xa;dataset_artifacts&#xa;scenario_dataset_bindings" vertex="1">
+          <mxGeometry height="93.07692307692308" width="260" x="458" y="409.54076923076923" as="geometry" />
+        </mxCell>
+        <mxCell id="35" parent="30" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#eef8ee;strokeColor=#82b366;fontSize=14;" value="simulation_runs&#xa;rastreio da execução para artefactos e cenários" vertex="1">
+          <mxGeometry height="84.61538461538461" width="260" x="62" y="418.0007692307692" as="geometry" />
+        </mxCell>
+        <mxCell id="40" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d6b656;strokeWidth=2;" target="21" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="380" y="283" />
+              <mxPoint x="380" y="283" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="41" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d6b656;strokeWidth=2;" target="21" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="343" />
+              <mxPoint x="364" y="343" />
+              <mxPoint x="364" y="283" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="42" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d6b656;strokeWidth=2;" target="21" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="473" />
+              <mxPoint x="364" y="473" />
+              <mxPoint x="364" y="283" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="43" edge="1" parent="1" source="21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="22" value="curar e harmonizar">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="44" edge="1" parent="1" source="22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="23" value="aplicar schema canonico">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="45" edge="1" parent="1" source="23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="31" value="produzir baseline">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="820" y="582" />
+              <mxPoint x="820" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="46" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="32" value="catalogar">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="311" />
+              <mxPoint x="1240" y="278" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="47" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="33" value="ligar a cenários">
+          <mxGeometry relative="1" x="-0.2063" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1228" y="341" />
+              <mxPoint x="1228" y="431" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="48" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="34" value="persistir metadados">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1420" y="419" />
+              <mxPoint x="1420" y="419" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="49" edge="1" parent="1" source="33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="35" value="referenciar em execução">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1002" y="533" />
+              <mxPoint x="1033" y="533" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="50" edge="1" parent="1" source="34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;strokeColor=#82b366;strokeWidth=1.5;" target="35" value="versionar e rastrear">
+          <mxGeometry relative="1" x="-0.119" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

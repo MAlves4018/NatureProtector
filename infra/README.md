@@ -7,7 +7,7 @@ Esta pasta contém a baseline local de infraestrutura e os scripts operacionais 
 - RabbitMQ
   - broker de mensagens usado para o transporte de eventos
 - PostgreSQL
-  - reservado para o plano de controlo e persistência relacional futura
+  - plano de controlo, inbox durável, logs operacionais e projeções persistidas
 - InfluxDB
   - armazenamento de telemetria, avaliações de risco e snapshots operacionais
 - Grafana
@@ -56,12 +56,14 @@ Para desligar tudo, devemos executar:
 
 ## O que ainda não está totalmente fechado
 
-- [postgres/init/01-init.sql](postgres/init/01-init.sql) existe, mas está vazio. Isto significa que a presença de PostgreSQL na baseline ainda não corresponde a um plano de controlo operacional.
+- [postgres/init/01-init.sql](postgres/init/01-init.sql) existe, mas está vazio. Isso já não é um bloqueio funcional: o schema real é criado por migrations e o seed do plano de controlo é feito pelo bootstrap [../scripts/postgres/bootstrap-control-plane.ps1](../scripts/postgres/bootstrap-control-plane.ps1).
 - O dashboard atual em [grafana/dashboards/natureprotector-overview.json](grafana/dashboards/natureprotector-overview.json) é, neste momento, sobretudo um checklist de setup.
-- O datasource de Grafana em [grafana/provisioning/datasources/influxdb.yml](grafana/provisioning/datasources/influxdb.yml) assume que o token de InfluxDB já existe e foi configurado. Esse passo ainda exige atenção manual.
+- O datasource de Grafana em [grafana/provisioning/datasources/influxdb.yml](grafana/provisioning/datasources/influxdb.yml) assume que o token de InfluxDB já existe em `.env`. Com a baseline local por omissão isso costuma ficar resolvido, mas continua a ser um ponto sensível se o `.env` for alterado manualmente.
 
 ## Relação com o código
 
 - O [../src/NatureProtector.Simulator.Host/README.md](../src/NatureProtector.Simulator.Host/README.md) publica eventos para RabbitMQ.
-- O [../src/NatureProtector.Prevention.Host/README.md](../src/NatureProtector.Prevention.Host/README.md) consome do RabbitMQ e escreve em InfluxDB.
-- PostgreSQL já está pronto do ponto de vista de baseline, mas ainda não é usado pelos projetos `.NET`.
+- O [../src/NatureProtector.Prevention.Host/README.md](../src/NatureProtector.Prevention.Host/README.md) consome do RabbitMQ, escreve em InfluxDB e usa PostgreSQL para inbox e projeções duráveis.
+- O [../src/NatureProtector.Backoffice.Api/README.md](../src/NatureProtector.Backoffice.Api/README.md) lê `control` e `projection` por HTTP.
+- O [../src/NatureProtector.Postgres.Bootstrap/README.md](../src/NatureProtector.Postgres.Bootstrap/README.md) materializa o seed inicial em PostgreSQL.
+- O detalhe consolidado desta camada está em [../docs/architecture/postgresql-architecture.md](../docs/architecture/postgresql-architecture.md).

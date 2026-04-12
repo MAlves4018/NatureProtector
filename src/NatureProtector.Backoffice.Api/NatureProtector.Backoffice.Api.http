@@ -1,6 +1,36 @@
 @NatureProtector.Backoffice.Api_HostAddress = http://localhost:5254
 
-GET {{NatureProtector.Backoffice.Api_HostAddress}}/weatherforecast/
+GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/configurations/active
+Accept: application/json
+
+###
+
+GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/areas
+Accept: application/json
+
+###
+
+GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/areas/proenca-a-nova/scenarios
+Accept: application/json
+
+###
+# Pode devolver 404 antes de existir estado operacional persistido para a área.
+GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/areas/proenca-a-nova/operational-state
+Accept: application/json
+
+###
+
+GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/areas/proenca-a-nova/cells/operational-state
+Accept: application/json
+
+###
+
+GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/areas/proenca-a-nova/alerts/active
+Accept: application/json
+
+###
+
+GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/simulation-runs?areaCode=proenca-a-nova
 Accept: application/json
 
 ###

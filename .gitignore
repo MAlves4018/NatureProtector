@@ -5,9 +5,13 @@ riderModule.iml
 /_ReSharper.Caches/
 /.venv-data/
 /.venv-data312/
+/.nuget/packages/
 /data/external/**
 !/data/external/**/.gitkeep
 /data/runtime/**
 !/data/runtime/**/.gitkeep
 **/TestResults/
 /coveragereport_core/
+/.config/AppData/
+/.config/dotnet/
+*.diag.log

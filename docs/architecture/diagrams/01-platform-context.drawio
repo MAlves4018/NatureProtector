@@ -1,0 +1,111 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36">
+  <diagram name="Page-1" id="1I_rnoZ9m3-cXLw2p5Hx">
+    <mxGraphModel dx="1414" dy="819" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="NatureProtectorBoundary" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=34;rounded=0;strokeWidth=2;fontSize=14;fontStyle=1;horizontal=0;rotation=90;" value="Nature Protector" vertex="1">
+          <mxGeometry height="783.75" width="556.87" x="665" y="9.3" as="geometry" />
+        </mxCell>
+        <mxCell id="PreventionModule" parent="NatureProtectorBoundary" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#fff2cc;" value="Módulo de Prevenção&#xa;configuração, simulação, risco, alertas, visualização" vertex="1">
+          <mxGeometry height="150" width="320" x="-29.700000000000003" y="326.7" as="geometry" />
+        </mxCell>
+        <mxCell id="GeoInterface" parent="NatureProtectorBoundary" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#d5e8d4;" value="Interface geográfica" vertex="1">
+          <mxGeometry height="80" width="250" x="403" y="267" as="geometry" />
+        </mxCell>
+        <mxCell id="Dashboards" parent="NatureProtectorBoundary" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#dae8fc;" value="Dashboards / Grafana" vertex="1">
+          <mxGeometry height="80" width="250" x="403" y="367" as="geometry" />
+        </mxCell>
+        <mxCell id="HistoryEvidence" parent="NatureProtectorBoundary" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#e1d5e7;" value="Histórico e evidência operacional" vertex="1">
+          <mxGeometry height="80" width="250" x="403" y="463" as="geometry" />
+        </mxCell>
+        <mxCell id="Legend" parent="NatureProtectorBoundary" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=14;align=left;verticalAlign=middle;fillColor=#ffffff;" value="Legenda&#xa;Linha contínua = núcleo atual&#xa;Linha tracejada = opcional / evolução futura" vertex="1">
+          <mxGeometry height="82" width="320" x="333" y="558.75" as="geometry" />
+        </mxCell>
+        <mxCell id="EdgeModuleToGeo" edge="1" parent="NatureProtectorBoundary" source="PreventionModule" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;" target="GeoInterface" value="disponibiliza&amp;nbsp;&lt;div&gt;estado,&amp;nbsp;&lt;div&gt;risco e alertas&lt;/div&gt;&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.3204" y="-20" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="325" y="368" />
+              <mxPoint x="325" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EdgeModuleToDashboards" edge="1" parent="NatureProtectorBoundary" source="PreventionModule" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;exitX=0.998;exitY=0.563;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="Dashboards" value="expõe métricas&amp;nbsp;&lt;div&gt;e histórico&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.055" y="-1" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="339" y="411" />
+              <mxPoint x="339" y="407" />
+            </Array>
+            <mxPoint x="253.5" y="408.75222222222203" as="sourcePoint" />
+            <mxPoint x="402.9999999999998" y="408.75222222222203" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EdgeModuleToHistory" edge="1" parent="NatureProtectorBoundary" source="PreventionModule" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;" target="HistoryEvidence" value="regista e&amp;nbsp;&lt;div&gt;disponibiliza&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.1597" y="2" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="332" y="447" />
+              <mxPoint x="332" y="509" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="FutureScopeNote" parent="NatureProtectorBoundary" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;dashed=1;fontSize=14;align=center;verticalAlign=middle;fillColor=#f5f5f5;" value="Deteção e combate&#xa;evolução futura, fora do escopo atual" vertex="1">
+          <mxGeometry height="80" width="300" x="353" y="171" as="geometry" />
+        </mxCell>
+        <mxCell id="Administrator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#f8cecc;" value="«actor»&#xa;Administrador" vertex="1">
+          <mxGeometry height="75" width="180" x="361" y="158" as="geometry" />
+        </mxCell>
+        <mxCell id="Operator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#f8cecc;" value="«actor»&#xa;Operador" vertex="1">
+          <mxGeometry height="75" width="180" x="361" y="244" as="geometry" />
+        </mxCell>
+        <mxCell id="Analyst" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#f8cecc;" value="«actor»&#xa;Analista" vertex="1">
+          <mxGeometry height="75" width="180" x="361" y="332" as="geometry" />
+        </mxCell>
+        <mxCell id="WeatherSource" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;dashed=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#fff2cc;" value="Fonte meteorológica externa&#xa;Opcional" vertex="1">
+          <mxGeometry height="75" width="180" x="361" y="476" as="geometry" />
+        </mxCell>
+        <mxCell id="RealSensorAdapter" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;dashed=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#fff2cc;" value="Sensor real / adaptador real&#xa;Opcional" vertex="1">
+          <mxGeometry height="75" width="180" x="361" y="581" as="geometry" />
+        </mxCell>
+        <mxCell id="EdgeAdminToModule" edge="1" parent="1" source="Administrator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" target="PreventionModule" value="configura">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EdgeOperatorToModule" edge="1" parent="1" source="Operator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="PreventionModule" value="ativa cenário e&amp;nbsp;&lt;div&gt;acompanha execução&lt;/div&gt;">
+          <mxGeometry relative="1" x="0.3003" y="6" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="795" y="275" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EdgeAnalystToModule" edge="1" parent="1" source="Analyst" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;entryX=0.25;entryY=0;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="PreventionModule" value="consulta histórico&amp;nbsp;&lt;div&gt;e analisa resultados&lt;/div&gt;">
+          <mxGeometry relative="1" x="0.1079" y="1" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="569" y="370" />
+              <mxPoint x="569" y="314" />
+              <mxPoint x="715" y="314" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EdgeWeatherToModule" edge="1" parent="1" source="WeatherSource" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=2;fontSize=14;entryX=0.25;entryY=1;entryDx=0;entryDy=0;" target="PreventionModule" value="fornece dados opcionais">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="715" y="518" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EdgeRealSensorToModule" edge="1" parent="1" source="RealSensorAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=2;fontSize=14;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="PreventionModule" value="fornece leituras opcionais">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="795" y="619" />
+              <mxPoint x="795" y="486" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

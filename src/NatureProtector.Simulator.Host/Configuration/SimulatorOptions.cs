@@ -46,6 +46,22 @@ public sealed class SimulatorOptions
     public string? ScenarioManifestScenarioKey { get; set; }
 
     /// <summary>
+    /// Enables loading the scenario baseline and sensor topology from the
+    /// PostgreSQL control plane instead of using only appsettings/manifest data.
+    /// </summary>
+    public bool ControlPlaneEnabled { get; set; }
+
+    /// <summary>
+    /// Optional area code used when resolving the pilot area from the control plane.
+    /// </summary>
+    public string? ControlPlaneAreaCode { get; set; }
+
+    /// <summary>
+    /// Optional scenario code used when resolving the scenario from the control plane.
+    /// </summary>
+    public string? ControlPlaneScenarioCode { get; set; }
+
+    /// <summary>
     /// Number of simulation cycles to execute before stopping.
     /// </summary>
     public int NumberOfCycles { get; set; } = 12;

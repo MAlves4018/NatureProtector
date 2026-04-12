@@ -2,7 +2,9 @@ using System.Reflection;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NatureProtector.Prevention.Host.Configuration;
 using NatureProtector.Prevention.Host.Persistence;
+using NatureProtector.Prevention.Host.Projection;
 using NatureProtector.Prevention.Host.Processing;
 using NatureProtector.Prevention.Host.Tests.Fakes;
 using NatureProtector.Prevention.Host.Tests.Helpers;
@@ -26,11 +28,13 @@ public sealed class PreventionWorkerTests
         var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
         var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
         var influxWriteService = new FakeInfluxWriteService();
+        var inbox = new InMemoryReadingEventInbox();
         var worker = CreateWorker(CreatePipeline(
             acceptedReadingRepository,
             riskAssessmentRepository,
             areaRiskSnapshotRepository,
-            influxWriteService));
+            influxWriteService),
+            inbox);
         var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
         var envelope = EnvelopeFactory.Create(
             metricType: SensorMetricType.Temperature,
@@ -44,19 +48,23 @@ public sealed class PreventionWorkerTests
             CancellationToken.None);
 
         Assert.Single(await acceptedReadingRepository.GetAllAsync(CancellationToken.None));
-        Assert.Single(recorder.Invocations.Where(x => x.MethodName == "BasicAck"));
+        Assert.Single(recorder.Invocations, x => x.MethodName == "BasicAck");
         Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
         Assert.Single(influxWriteService.AcceptedReadings);
+        Assert.Single(inbox.Events);
+        Assert.Equal(NatureProtector.Infrastructure.Postgres.Pipeline.InboxEventStatus.Processed, inbox.Events.Single().Status);
     }
 
     [Fact]
     public async Task HandleReceivedAsync_AcknowledgesNullEnvelopeBodies()
     {
+        var inbox = new InMemoryReadingEventInbox();
         var worker = CreateWorker(CreatePipeline(
             new InMemoryAcceptedReadingRepository(),
             new InMemoryRiskAssessmentRepository(),
             new InMemoryAreaRiskSnapshotRepository(),
-            new FakeInfluxWriteService()));
+            new FakeInfluxWriteService()),
+            inbox);
         var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
 
         await InvokeHandleReceivedAsync(
@@ -65,18 +73,22 @@ public sealed class PreventionWorkerTests
             CreateEventArgs(Encoding.UTF8.GetBytes("null"), 12),
             CancellationToken.None);
 
-        Assert.Single(recorder.Invocations.Where(x => x.MethodName == "BasicAck"));
+        Assert.Single(recorder.Invocations, x => x.MethodName == "BasicAck");
         Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
+        Assert.Single(inbox.Rejections);
+        Assert.Equal("null_envelope", inbox.Rejections.Single().RejectionCode);
     }
 
     [Fact]
-    public async Task HandleReceivedAsync_NacksInvalidJson()
+    public async Task HandleReceivedAsync_AcknowledgesInvalidJson_AndStoresRejection()
     {
+        var inbox = new InMemoryReadingEventInbox();
         var worker = CreateWorker(CreatePipeline(
             new InMemoryAcceptedReadingRepository(),
             new InMemoryRiskAssessmentRepository(),
             new InMemoryAreaRiskSnapshotRepository(),
-            new FakeInfluxWriteService()));
+            new FakeInfluxWriteService()),
+            inbox);
         var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
 
         await InvokeHandleReceivedAsync(
@@ -85,20 +97,23 @@ public sealed class PreventionWorkerTests
             CreateEventArgs(Encoding.UTF8.GetBytes("{ invalid"), 13),
             CancellationToken.None);
 
-        var nack = Assert.Single(recorder.Invocations.Where(x => x.MethodName == "BasicNack"));
-        Assert.Equal(13UL, Assert.IsType<ulong>(nack.Arguments[0]));
-        Assert.False(Assert.IsType<bool>(nack.Arguments[1]));
-        Assert.False(Assert.IsType<bool>(nack.Arguments[2]));
+        var ack = Assert.Single(recorder.Invocations, x => x.MethodName == "BasicAck");
+        Assert.Equal(13UL, Assert.IsType<ulong>(ack.Arguments[0]));
+        Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
+        Assert.Single(inbox.Rejections);
+        Assert.Equal("invalid_json", inbox.Rejections.Single().RejectionCode);
     }
 
     [Fact]
-    public async Task HandleReceivedAsync_Nacks_WhenPipelineThrows()
+    public async Task HandleReceivedAsync_AcknowledgesAndSchedulesRetry_WhenTransientFailureHappensAfterInboxCommit()
     {
+        var inbox = new InMemoryReadingEventInbox();
         var worker = CreateWorker(CreatePipeline(
-            new ThrowingAcceptedReadingRepository(),
+            new TimeoutThrowingAcceptedReadingRepository(),
             new InMemoryRiskAssessmentRepository(),
             new InMemoryAreaRiskSnapshotRepository(),
-            new FakeInfluxWriteService()));
+            new FakeInfluxWriteService()),
+            inbox);
         var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
         var envelope = EnvelopeFactory.Create();
 
@@ -108,8 +123,45 @@ public sealed class PreventionWorkerTests
             CreateEventArgs(JsonEventSerializer.SerializeToUtf8Bytes(envelope), 14),
             CancellationToken.None);
 
-        Assert.Single(recorder.Invocations.Where(x => x.MethodName == "BasicNack"));
-        Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicAck");
+        Assert.Single(recorder.Invocations, x => x.MethodName == "BasicAck");
+        Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
+        var storedEvent = Assert.Single(inbox.Events);
+        Assert.Equal(NatureProtector.Infrastructure.Postgres.Pipeline.InboxEventStatus.RetryPending, storedEvent.Status);
+        Assert.Equal("timeout", storedEvent.LastErrorCode);
+        Assert.Single(inbox.Attempts);
+        Assert.Equal(
+            NatureProtector.Infrastructure.Postgres.Pipeline.ProcessingAttemptOutcome.RetryScheduled,
+            inbox.Attempts.Single().Outcome);
+        Assert.Empty(inbox.Quarantines);
+    }
+
+    [Fact]
+    public async Task HandleReceivedAsync_AcknowledgesDuplicateEvent_WithoutReprocessing()
+    {
+        var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
+        var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
+        var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
+        var influxWriteService = new FakeInfluxWriteService();
+        var inbox = new InMemoryReadingEventInbox();
+        var worker = CreateWorker(CreatePipeline(
+            acceptedReadingRepository,
+            riskAssessmentRepository,
+            areaRiskSnapshotRepository,
+            influxWriteService),
+            inbox);
+        var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
+        var eventId = Guid.NewGuid();
+        var envelope = EnvelopeFactory.Create(eventId: eventId);
+        var payload = JsonEventSerializer.SerializeToUtf8Bytes(envelope);
+
+        await InvokeHandleReceivedAsync(worker, channel, CreateEventArgs(payload, 21), CancellationToken.None);
+        await InvokeHandleReceivedAsync(worker, channel, CreateEventArgs(payload, 22), CancellationToken.None);
+
+        Assert.Equal(2, recorder.Invocations.Count(x => x.MethodName == "BasicAck"));
+        Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
+        Assert.Single(await acceptedReadingRepository.GetAllAsync(CancellationToken.None));
+        Assert.Single(inbox.Events);
+        Assert.Single(inbox.Attempts);
     }
 
     [Fact]
@@ -123,7 +175,7 @@ public sealed class PreventionWorkerTests
 
         method.Invoke(null, [channel]);
 
-        var exchangeDeclare = Assert.Single(recorder.Invocations.Where(x => x.MethodName == "ExchangeDeclare"));
+        var exchangeDeclare = Assert.Single(recorder.Invocations, x => x.MethodName == "ExchangeDeclare");
         Assert.Equal(NatureProtectorRabbitMqTopology.ExchangeName, Assert.IsType<string>(exchangeDeclare.Arguments[0]));
         Assert.Equal(NatureProtectorRabbitMqTopology.ExchangeType, Assert.IsType<string>(exchangeDeclare.Arguments[1]));
 
@@ -132,8 +184,22 @@ public sealed class PreventionWorkerTests
         Assert.Equal(NatureProtectorRabbitMqTopology.Bindings.Count(), recorder.Invocations.Count(x => x.MethodName == "QueueBind"));
     }
 
-    private static PreventionWorker CreateWorker(ReadingRiskPipeline pipeline)
+    private static PreventionWorker CreateWorker(ReadingRiskPipeline pipeline, IReadingEventInbox inbox)
     {
+        var preventionOptions = Options.Create(new PreventionHostOptions
+        {
+            PipelinePersistenceEnabled = false,
+            MaxProcessingAttempts = 3,
+            RetryDelaySeconds = [0, 0],
+            RetryPollingIntervalSeconds = 1
+        });
+        var processingService = new ReadingEventProcessingService(
+            NullLogger<ReadingEventProcessingService>.Instance,
+            preventionOptions,
+            pipeline,
+            inbox,
+            new DefaultProcessingFailureClassifier());
+
         return new PreventionWorker(
             NullLogger<PreventionWorker>.Instance,
             Options.Create(new RabbitMqOptions
@@ -144,7 +210,8 @@ public sealed class PreventionWorkerTests
                 Password = "pass",
                 ExchangeName = NatureProtectorRabbitMqTopology.ExchangeName
             }),
-            pipeline);
+            inbox,
+            processingService);
     }
 
     private static ReadingRiskPipeline CreatePipeline(
@@ -159,6 +226,7 @@ public sealed class PreventionWorkerTests
             riskAssessmentRepository,
             new AreaRiskSnapshotService(),
             areaRiskSnapshotRepository,
+            new InMemoryAreaOperationalProjectionStore(),
             influxWriteService,
             NullLogger<ReadingRiskPipeline>.Instance);
     }
@@ -189,13 +257,13 @@ public sealed class PreventionWorkerTests
         };
     }
 
-    private sealed class ThrowingAcceptedReadingRepository : IAcceptedReadingRepository
+    private sealed class TimeoutThrowingAcceptedReadingRepository : IAcceptedReadingRepository
     {
         public Task AddAsync(
             EventEnvelope<SensorReadingProducedPayload> envelope,
             CancellationToken cancellationToken)
         {
-            throw new InvalidOperationException("boom");
+            throw new TimeoutException("boom");
         }
 
         public Task<IReadOnlyCollection<EventEnvelope<SensorReadingProducedPayload>>> GetAllAsync(

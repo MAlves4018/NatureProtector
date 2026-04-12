@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NatureProtector.Core\NatureProtector.Core.csproj" />
+    <ProjectReference Include="..\NatureProtector.Infrastructure.Postgres\NatureProtector.Infrastructure.Postgres.csproj" />
     <ProjectReference Include="..\NatureProtector.Shared\NatureProtector.Shared.csproj" />
   </ItemGroup>
 

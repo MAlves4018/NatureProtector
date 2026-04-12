@@ -32,6 +32,11 @@ public sealed class SimulationContext
     public Scenario Scenario { get; }
 
     /// <summary>
+    /// Optional scenario code when the context originates from the control plane.
+    /// </summary>
+    public string? ScenarioCode { get; }
+
+    /// <summary>
     /// Sensors that participate in the current simulation.
     /// </summary>
     public IReadOnlyCollection<Sensor> Sensors { get; }
@@ -45,6 +50,11 @@ public sealed class SimulationContext
     /// Logical interval between simulation cycles.
     /// </summary>
     public TimeSpan Interval { get; }
+
+    /// <summary>
+    /// Optional configuration version used when the context originates from the control plane.
+    /// </summary>
+    public Guid? ConfigurationVersionId { get; }
 
     /// <summary>
     /// Number of cycles the simulator should execute.
@@ -78,7 +88,9 @@ public sealed class SimulationContext
         IReadOnlyCollection<Sensor> sensors,
         DateTimeOffset startTimestamp,
         TimeSpan interval,
-        int numberOfCycles)
+        int numberOfCycles,
+        Guid? configurationVersionId = null,
+        string? scenarioCode = null)
     {
         if (areaId == Guid.Empty)
         {
@@ -104,6 +116,7 @@ public sealed class SimulationContext
         }
 
         Scenario = scenario ?? throw new ArgumentNullException(nameof(scenario));
+        ScenarioCode = string.IsNullOrWhiteSpace(scenarioCode) ? null : scenarioCode.Trim();
         Sensors = sensors ?? throw new ArgumentNullException(nameof(sensors));
 
         if (Sensors.Count == 0)
@@ -117,5 +130,6 @@ public sealed class SimulationContext
         StartTimestamp = startTimestamp;
         Interval = interval;
         NumberOfCycles = numberOfCycles;
+        ConfigurationVersionId = configurationVersionId;
     }
 }

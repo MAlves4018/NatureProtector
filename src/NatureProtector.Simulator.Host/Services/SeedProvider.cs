@@ -1,16 +1,17 @@
 /*
- * This service resolves the pseudo-random seed used by the simulator host.
+ * Este serviço resolve a seed pseudoaleatória usada pelo simulador.
  *
  * Rationale:
- * - A simulation that cannot be reproduced is harder to debug and validate.
- * - Centralizing seed resolution ensures that the whole host uses a single,
- *   explicit deterministic source of pseudo-randomness.
+ * - Uma simulação que não possa ser reproduzida é mais difícil de validar,
+ *   depurar e comparar.
+ * - Centralizar a resolução da seed garante que todo o host usa a mesma origem
+ *   determinística de pseudoaleatoriedade.
  *
  * Design considerations:
- * - If a seed is configured, it is used as-is.
- * - If no seed is configured, a new one is generated once at startup.
- * - The service is intentionally small because its responsibility is purely
- *   deterministic seed selection, not random number generation itself.
+ * - Se existir seed configurada, ela é usada tal como foi definida.
+ * - Se não existir seed configurada, é gerada uma única vez no arranque.
+ * - O serviço é deliberadamente pequeno porque a sua responsabilidade é apenas
+ *   escolher a seed, não gerar leituras.
  */
 
 namespace NatureProtector.Simulator.Host.Services;
@@ -18,13 +19,13 @@ namespace NatureProtector.Simulator.Host.Services;
 public sealed class SeedProvider
 {
     /// <summary>
-    /// Resolves the effective seed to use for the current simulator execution.
+    /// Resolve a seed efetiva a usar na execução atual do simulador.
     /// </summary>
     /// <param name="configuredSeed">
-    /// Optional seed supplied through configuration.
+    /// Seed opcional fornecida por configuração.
     /// </param>
     /// <returns>
-    /// A non-zero integer seed suitable for constructing Random.
+    /// Seed inteira não nula adequada para construir <see cref="Random" />.
     /// </returns>
     public int ResolveSeed(int? configuredSeed)
     {
@@ -39,13 +40,13 @@ public sealed class SeedProvider
     }
 
     /// <summary>
-    /// Creates a Random instance using the resolved seed.
+    /// Cria uma instância de <see cref="Random" /> com a seed já resolvida.
     /// </summary>
     /// <param name="seed">
-    /// Seed previously resolved for the current execution.
+    /// Seed anteriormente resolvida para a execução atual.
     /// </param>
     /// <returns>
-    /// Deterministic Random instance.
+    /// Instância determinística de <see cref="Random" />.
     /// </returns>
     public Random CreateRandom(int seed)
     {

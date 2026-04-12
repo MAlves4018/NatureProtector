@@ -1,0 +1,186 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36" version="29.6.3">
+  <diagram name="Page-1" id="6pWwGU2yGvxI_aGRMwlB">
+    <mxGraphModel dx="1203" dy="929" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ModuleBoundary" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=34;rounded=0;strokeWidth=3;fontSize=18;fontStyle=1;horizontal=0;rotation=90;" value="Módulo de Prevenção, fluxo operacional principal" vertex="1">
+          <mxGeometry height="1131" width="651" x="740" y="-42" as="geometry" />
+        </mxCell>
+        <mxCell id="ConfigStore" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;strokeWidth=2;fontSize=14;fontStyle=1;fillColor=#d5e8d4;" value="Persistência 1: configuração&#xa;fora do fluxo runtime principal" vertex="1">
+          <mxGeometry height="100" width="170" x="905" y="252" as="geometry" />
+        </mxCell>
+        <mxCell id="ProducedReading" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=15;fontStyle=1;fillColor=#e1d5e7;" value="Leitura produzida" vertex="1">
+          <mxGeometry height="70" width="150" x="510" y="282" as="geometry" />
+        </mxCell>
+        <mxCell id="RabbitMQ" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=15;fontStyle=1;fillColor=#ffe6cc;" value="RabbitMQ" vertex="1">
+          <mxGeometry height="80" width="150" x="739" y="277" as="geometry" />
+        </mxCell>
+        <mxCell id="Ingestion" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=15;fontStyle=1;fillColor=#dae8fc;" value="Ingestão, validação&#xa;e normalização" vertex="1">
+          <mxGeometry height="100" width="154" x="668" y="399" as="geometry" />
+        </mxCell>
+        <mxCell id="TelemetryStore" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;strokeWidth=2;fontSize=14;fontStyle=1;fillColor=#d5e8d4;" value="Persistência 2:&#xa;telemetria aceite" vertex="1">
+          <mxGeometry height="110" width="160" x="915" y="439" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskAssessment" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=15;fontStyle=1;fillColor=#fff2cc;" value="Avaliação de risco" vertex="1">
+          <mxGeometry height="80" width="180" x="1081" y="357" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskStore" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;strokeWidth=2;fontSize=14;fontStyle=1;fillColor=#d5e8d4;" value="Persistência 3:&#xa;avaliações de risco" vertex="1">
+          <mxGeometry height="110" width="160" x="1091" y="499" as="geometry" />
+        </mxCell>
+        <mxCell id="Alerts" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=15;fontStyle=1;fillColor=#f8cecc;" value="Alertas e recomendações" vertex="1">
+          <mxGeometry height="80" width="180" x="1407" y="362" as="geometry" />
+        </mxCell>
+        <mxCell id="AlertsStore" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;strokeWidth=2;fontSize=14;fontStyle=1;fillColor=#d5e8d4;" value="Persistência 4:&#xa;alertas e projeções" vertex="1">
+          <mxGeometry height="110" width="160" x="1450" y="508" as="geometry" />
+        </mxCell>
+        <mxCell id="RejectedReading" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=14;fontStyle=1;fillColor=#f5f5f5;" value="Leitura rejeitada" vertex="1">
+          <mxGeometry height="70" width="170" x="735" y="553" as="geometry" />
+        </mxCell>
+        <mxCell id="GeoInterface" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=15;fontStyle=1;fillColor=#dae8fc;" value="Interface geográfica" vertex="1">
+          <mxGeometry height="80" width="220" x="1171" y="632" as="geometry" />
+        </mxCell>
+        <mxCell id="DashboardsObs" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=15;fontStyle=1;fillColor=#ffe6cc;" value="Dashboards / observabilidade" vertex="1">
+          <mxGeometry height="105" width="240" x="1337" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="PersistenceLegend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=1;fontSize=13;align=left;verticalAlign=middle;fillColor=#ffffff;" value="Pontos de persistência&#xa;1. Configuração&#xa;2. Telemetria aceite&#xa;3. Avaliações de risco&#xa;4. Alertas e projeções" vertex="1">
+          <mxGeometry height="110" width="270" x="588" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="Legend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=1;fontSize=12;align=left;verticalAlign=middle;fillColor=#ffffff;" value="Legenda&#xa;Linha contínua = fluxo principal&#xa;Linha tracejada = fluxo alternativo, erro ou apoio" vertex="1">
+          <mxGeometry height="70" width="310" x="1271" y="282" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="ProducedReading" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=13;" target="RabbitMQ" value="leituras&amp;nbsp;&lt;div&gt;simuladas&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.1667" y="2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="RabbitMQ" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=13;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" target="Ingestion" value="publicação no broker">
+          <mxGeometry relative="1" x="0.132" y="-3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="Ingestion" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=13;" target="TelemetryStore" value="leituras aceites">
+          <mxGeometry relative="1" x="-0.145" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="TelemetryStore" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=13;" target="RiskAssessment" value="leituras normalizadas">
+          <mxGeometry relative="1" x="-0.5998" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1003" y="437" />
+              <mxPoint x="1003" y="412" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="RiskAssessment" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=13;" target="RiskStore" value="avaliações de risco">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="RiskStore" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=13;" target="Alerts" value="resultados de risco">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1309" y="532" />
+              <mxPoint x="1309" y="402" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="Alerts" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=13;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" value="alertas emitidos e&amp;nbsp;&lt;div&gt;projeções operacionais&lt;/div&gt;">
+          <mxGeometry relative="1" x="0.2477" y="4" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1452" y="475" />
+              <mxPoint x="1555" y="475" />
+            </Array>
+            <mxPoint x="1532" y="442" as="sourcePoint" />
+            <mxPoint x="1555.0000000000005" y="508" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="AlertsStore" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=13;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="GeoInterface" value="estado operacional,&amp;nbsp;&lt;div&gt;alertas e projeções&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.1576" y="10" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1508" y="636" />
+              <mxPoint x="1435" y="636" />
+              <mxPoint x="1435" y="672" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="AlertsStore" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=13;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" target="DashboardsObs" value="histórico e evidência">
+          <mxGeometry relative="1" x="0.3027" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1517" y="662" />
+              <mxPoint x="1517" y="662" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="Ingestion" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=3;fontSize=13;" target="RejectedReading" value="leituras rejeitadas">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="RejectedReading" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=3;fontSize=13;" target="DashboardsObs" value="logs e rejeições">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="892" y="781" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="ProducedReading" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=3;fontSize=13;" target="DashboardsObs" value="falhas simuladas">
+          <mxGeometry relative="1" x="-0.36" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="609" y="662" />
+              <mxPoint x="876" y="662" />
+              <mxPoint x="876" y="799" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="ProducedReading" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=3;fontSize=13;exitX=0.75;exitY=1;exitDx=0;exitDy=0;" target="GeoInterface" value="estado degradado">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="623" y="647" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="1" source="RiskStore" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=3;fontSize=13;entryX=0.615;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="GeoInterface" value="avaliações de risco">
+          <mxGeometry relative="1" x="-0.0729" y="15" as="geometry">
+            <mxPoint x="-10" y="-14" as="offset" />
+            <Array as="points">
+              <mxPoint x="1306" y="568" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="RiskStore" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=3;fontSize=13;" target="DashboardsObs" value="histórico de risco">
+          <mxGeometry relative="1" x="0.1739" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1147" y="741" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e16" edge="1" parent="1" source="TelemetryStore" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=3;fontSize=13;" target="DashboardsObs" value="telemetria histórica">
+          <mxGeometry relative="1" x="0.0639" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1015" y="759" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="ConfigStore" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=3;fontSize=13;" target="RiskAssessment" value="contexto configurado">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" edge="1" parent="1" source="Alerts" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=3;fontSize=13;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" target="GeoInterface" value="alertas ativos">
+          <mxGeometry relative="1" x="0.273" y="-3" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1421" y="598" />
+              <mxPoint x="1336" y="598" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uv2ePeqIRk-XHdgEJcMU-2" edge="1" parent="1" source="RabbitMQ" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="RabbitMQ">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

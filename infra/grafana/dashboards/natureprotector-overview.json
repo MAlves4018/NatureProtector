@@ -15,7 +15,7 @@
       },
       "id": 1,
       "options": {
-        "content": "# NatureProtector Overview\n\nDatasource esperado: `NatureProtectorInfinity`\n\nEndpoint esperado por painel:\n\n```text\n/api/v3/query_sql?db=np_telemetry&q=<SQL>&format=csv\n```\n\nAntes de usar este dashboard:\n\n1. Arranca o InfluxDB e cria um token.\n2. Atualiza `INFLUXDB_TOKEN` no ficheiro `.env`.\n3. Reinicia o Grafana.\n4. Valida primeiro a query `SHOW TABLES`.",
+        "content": "# NatureProtector Overview\n\nDatasource esperada: `NatureProtectorInfinityJson`\n\nConfiguração base do painel:\n\n```text\nType   = JSON\nMethod = GET\nURL    = /api/v3/query_sql\n```\n\nParâmetros recomendados:\n\n```text\ndb     = np_telemetry\nformat = json\nq      = SHOW TABLES\n```\n\nRegras importantes:\n\n1. Não repetir `db`, `format` e `q` ao mesmo tempo na URL e nos query params.\n2. Não usar `http://localhost:8181/...` no campo URL do painel.\n3. Validar primeiro `SHOW TABLES` e só depois queries mais específicas.\n4. Ver o guia `docs/architecture/grafana-influx-dashboard-guide.md` para o processo completo.",
         "mode": "markdown"
       },
       "pluginVersion": "12.1.0",
@@ -40,5 +40,5 @@
   "timezone": "browser",
   "title": "NatureProtector Overview",
   "uid": "natureprotector-overview",
-  "version": 1
+  "version": 2
 }

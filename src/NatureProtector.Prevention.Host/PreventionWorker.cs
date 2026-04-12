@@ -9,13 +9,34 @@ using System.Text;
 
 namespace NatureProtector.Prevention.Host;
 
+/*
+ * Este worker consome eventos do broker e entrega-os ao fluxo de prevenção.
+ *
+ * Rationale:
+ * - O consumidor RabbitMQ precisa de ficar separado do processamento de risco
+ *   para manter a fronteira entre transporte e negócio.
+ * - O worker também é responsável por decidir quando um evento deve ser
+ *   rejeitado logo à entrada e quando deve seguir para o inbox.
+ *
+ * Design considerations:
+ * - A fila é consumida com ack manual para controlar melhor o momento em que o
+ *   broker considera o evento tratado.
+ * - Mensagens inválidas são registadas como rejeitadas antes do ack.
+ * - O ack só é enviado depois de o evento ficar materializado no inbox, o que
+ *   reduz o risco de perda entre broker e processamento operacional.
+ */
+
 public sealed class PreventionWorker(
     ILogger<PreventionWorker> logger,
     IOptions<RabbitMqOptions> rabbitMqOptions,
-    ReadingRiskPipeline readingRiskPipeline) : BackgroundService
+    IReadingEventInbox readingEventInbox,
+    ReadingEventProcessingService processingService) : BackgroundService
 {
     private readonly RabbitMqOptions _options = rabbitMqOptions.Value;
 
+    /// <summary>
+    /// Mantém ativo o consumidor RabbitMQ durante a vida do host.
+    /// </summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("Prevention worker started at: {Time}", DateTimeOffset.Now);
@@ -54,6 +75,9 @@ public sealed class PreventionWorker(
         connection.Dispose();
     }
 
+    /// <summary>
+    /// Declara a topologia mínima exigida pelo fluxo de prevenção.
+    /// </summary>
     private static void DeclareTopology(IModel channel)
     {
         channel.ExchangeDeclare(
@@ -88,15 +112,44 @@ public sealed class PreventionWorker(
         BasicDeliverEventArgs ea,
         CancellationToken stoppingToken)
     {
+        var ackSent = false;
+
         try
         {
-            var envelope = JsonEventSerializer.Deserialize<EventEnvelope<SensorReadingProducedPayload>>(ea.Body);
+            EventEnvelope<SensorReadingProducedPayload>? envelope;
+
+            try
+            {
+                envelope = JsonEventSerializer.Deserialize<EventEnvelope<SensorReadingProducedPayload>>(ea.Body);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(
+                    ex,
+                    "Received invalid JSON payload. DeliveryTag={DeliveryTag}",
+                    ea.DeliveryTag);
+
+                await readingEventInbox.StoreRejectedAsync(
+                    ea.Body,
+                    "invalid_json",
+                    "The message body could not be deserialized into a sensor reading envelope.",
+                    stoppingToken);
+
+                channel.BasicAck(ea.DeliveryTag, multiple: false);
+                return;
+            }
 
             if (envelope is null)
             {
                 logger.LogWarning(
                     "Received null or invalid message body. DeliveryTag={DeliveryTag}",
                     ea.DeliveryTag);
+
+                await readingEventInbox.StoreRejectedAsync(
+                    ea.Body,
+                    "null_envelope",
+                    "The message body deserialized to a null envelope.",
+                    stoppingToken);
 
                 channel.BasicAck(ea.DeliveryTag, multiple: false);
                 return;
@@ -112,21 +165,46 @@ public sealed class PreventionWorker(
                 envelope.Payload.Value,
                 envelope.EventTime);
 
-            await readingRiskPipeline.ProcessAcceptedReadingAsync(
+            var storeResult = await readingEventInbox.StoreIncomingAsync(
                 envelope,
+                ea.Body,
+                "reading_risk_pipeline",
                 stoppingToken);
 
+            // O broker só recebe ack depois de o evento ficar materializado no
+            // inbox, para que o fluxo operacional consiga retomar trabalho em caso de falha.
             channel.BasicAck(ea.DeliveryTag, multiple: false);
+            ackSent = true;
+
+            if (!storeResult.ShouldProcessNow || storeResult.Lease is null)
+            {
+                logger.LogInformation(
+                    "Skipping duplicate inbox event | EventId={EventId} | InboxEventId={InboxEventId} | Status={Status}",
+                    envelope.EventId,
+                    storeResult.InboxEventId,
+                    storeResult.Status);
+                return;
+            }
+
+            await processingService.ProcessAsync(
+                envelope,
+                storeResult.Lease,
+                stoppingToken);
         }
         catch (Exception ex)
         {
             logger.LogError(
                 ex,
-                "Failed to consume message. DeliveryTag={DeliveryTag} Body={Body}",
+                ackSent
+                    ? "Failed after broker ack while dispatching to inbox processing. DeliveryTag={DeliveryTag} Body={Body}"
+                    : "Failed to consume message. DeliveryTag={DeliveryTag} Body={Body}",
                 ea.DeliveryTag,
                 Encoding.UTF8.GetString(ea.Body.ToArray()));
 
-            channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: false);
+            if (!ackSent)
+            {
+                channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: false);
+            }
         }
     }
 }

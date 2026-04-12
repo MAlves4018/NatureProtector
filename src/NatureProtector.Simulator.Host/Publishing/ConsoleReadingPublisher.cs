@@ -3,20 +3,18 @@ using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
 
 /*
- * This publisher writes generated reading envelopes to the application logs
- * and to the console.
+ * Este publisher escreve os envelopes gerados nos logs e na consola.
  *
  * Rationale:
- * - For Day 4, a console publisher is the simplest way to validate that the
- *   simulator is generating plausible structured events.
- * - It allows the simulation pipeline to be exercised end-to-end without yet
- *   requiring a broker-specific publisher implementation.
+ * - É a forma mais simples de validar localmente que o simulador está a gerar
+ *   eventos estruturados plausíveis.
+ * - Permite observar o payload sem depender logo do broker.
  *
  * Design considerations:
- * - The publisher logs a compact summary and also emits the serialized JSON
- *   payload for inspection.
- * - The implementation is intentionally simple and side-effect free apart from
- *   console and logging output.
+ * - O publisher escreve um resumo compacto nos logs e também o JSON completo na
+ *   consola.
+ * - A implementação é deliberadamente simples e sem efeitos laterais além da
+ *   saída textual.
  */
 
 namespace NatureProtector.Simulator.Host.Publishing;
@@ -25,14 +23,14 @@ public sealed class ConsoleReadingPublisher(
     ILogger<ConsoleReadingPublisher> logger) : IReadingPublisher
 {
     /// <summary>
-    /// Publishes one reading envelope by writing a summary and the serialized
-    /// JSON payload to the console.
+    /// Publica um envelope de leitura escrevendo um resumo e o respetivo JSON na
+    /// consola.
     /// </summary>
     /// <param name="envelope">
-    /// Envelope to publish.
+    /// Envelope a publicar.
     /// </param>
     /// <param name="cancellationToken">
-    /// Cancellation token for cooperative shutdown.
+    /// Token de cancelamento para encerramento cooperativo.
     /// </param>
     public Task PublishAsync(
         EventEnvelope<SensorReadingProducedPayload> envelope,

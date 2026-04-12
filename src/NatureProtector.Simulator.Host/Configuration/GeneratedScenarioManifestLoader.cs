@@ -2,10 +2,30 @@ using System.Globalization;
 using System.Text.Json;
 using NatureProtector.Core.Scenarios;
 
+/*
+ * Este helper aplica ao simulador as opções derivadas de um manifesto de
+ * cenário previamente gerado.
+ *
+ * Rationale:
+ * - Os cenários construídos offline devem poder alimentar o simulador sem
+ *   obrigar a duplicar parâmetros no appsettings.
+ * - A resolução do manifesto fica isolada da composição do host para manter o
+ *   arranque simples.
+ *
+ * Design considerations:
+ * - O ficheiro pode representar um único cenário ou um catálogo com vários.
+ * - Os valores do manifesto são lidos de forma tolerante para acomodar dados
+ *   vindos dos scripts de geração.
+ * - Este mecanismo não é suportado quando o simulador usa o control plane.
+ */
+
 namespace NatureProtector.Simulator.Host.Configuration;
 
 internal static class GeneratedScenarioManifestLoader
 {
+    /// <summary>
+    /// Aplica as opções de um manifesto gerado quando a configuração o pede.
+    /// </summary>
     public static void ApplyIfConfigured(SimulatorOptions options, string contentRootPath)
     {
         ArgumentNullException.ThrowIfNull(options);

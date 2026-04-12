@@ -16,22 +16,22 @@ Não substitui o roadmap global. Funciona como um mapa operacional do estado atu
 ### O que já ficou validado
 
 - os pontos de entrada principais do simulador, da prevenção e da persistência já estão mapeados;
-- a estrutura de dados para `Proença-a-Nova` já existe e já produz artefactos curados;
+- a estrutura de dados para `Proença-a-Nova` já existe e já produz artefactos preparados;
 - a baseline meteorológica já foi agregada e enriquecida com referência diária de índices;
 - os `scenario_candidates` já estão limpos e enriquecidos;
 - os cenários `A/B/C` já existem como manifestos executáveis;
-- o `Simulator.Host` já consegue ler manifestos de cenário gerados;
-- a validação local do `dotnet build` continua dependente do ambiente .NET instalado nesta máquina, por isso este documento evita tratar esse ponto como facto permanente.
+- o `Simulator.Host` já consegue ler manifestos de cenário gerados e o plano de controlo em PostgreSQL;
+- o `Prevention.Host` já trabalha com inbox durável, retries internos e quarentena persistida;
+- o `Backoffice.Api` já expõe a primeira superfície real do plano de controlo e do estado operacional;
+- o `dotnet build` e o `dotnet test` da solution já passam localmente.
 
 ### Leitura de progresso face ao roadmap
 
 - `Fase 0`: parcial. Já existe documentação de navegação e leitura técnica, mas ainda faltam alguns artefactos-base, como o catálogo formal de eventos e a especificação consolidada da simulação.
-- `Fase 1`: em aberto. A modularização alvo ainda não foi executada e continuam a existir resíduos de uma pipeline antiga dentro do `Simulator.Host`.
-- `Fase 2`: em aberto. `PostgreSQL` ainda não é fonte de verdade em runtime.
+- `Fase 1`: parcialmente fechada. A limpeza do legado mais problemático do simulador já foi feita, mas a modularização alvo ainda não foi executada.
+- `Fase 2`: materialmente adiantada. `PostgreSQL` já serve o plano de controlo, a inbox durável e a primeira vaga de projeções operacionais.
 - `Fase 3`: materialmente adiantada. A baseline de dados, os manifests e os cenários executáveis já existem no sistema de ficheiros.
-- `Fase 4`: parcialmente adiantada. O simulador já trabalha com seed determinística e manifests, mas ainda não está separado nas três camadas pedidas pela investigação.
-
-Isto confirma um estado misto: a frente de dados e cenários avançou antes de a frente arquitetural ficar fechada. O desvio fez sentido porque ajudou a clarificar tabelas, artefactos e necessidades reais da simulação, mas deve agora ser consolidado.
+- `Fase 4`: parcialmente adiantada. O simulador já trabalha com seed determinística, manifests e plano de controlo, mas ainda não está separado nas três camadas pedidas pela investigação.
 
 ### Artefactos-chave já existentes
 
@@ -54,22 +54,20 @@ Isto confirma um estado misto: a frente de dados e cenários avançou antes de a
 
 ## Problemas Iniciais da Pipeline e Estado Atual
 
-- leituras inválidas ainda podem entrar no caminho de risco, porque a distinção entre `accepted`, `rejected` e leituras apenas armazenadas continua em aberto;
-- continuam a existir riscos de perda de mensagens por ausência de inbox durável, retry sério e `DLQ`;
+- leituras inválidas ainda não têm o fecho semântico completo entre `accepted`, `rejected`, `normalized` e `accepted-for-storage-but-excluded-from-risk`;
+- a topologia de filas ainda não fecha o ciclo operacional completo com DLQ externa explícita;
 - configuração e segredos continuam frágeis;
-- a topologia de filas ainda não fecha o ciclo operacional;
-- a persistência de estado crítico continua em memória;
-- a API/backoffice continua esqueleto;
-- a frente de dados e cenários avançou, mas a ligação formal ao plano de controlo e ao simulador em camadas continua por fechar.
+- o estado operacional já é persistido, mas os alertas continuam simples e sem ciclo de vida rico;
+- a frente de dados e cenários avançou, mas a ligação formal entre datasets, sensores, verdade física e simulador em camadas continua por fechar.
 
 ## O Que Falta e Podemos Fazer Já
 
 ### Bloco A. Fechar a baseline técnica e o plano de controlo
 
 - congelar o catálogo formal de eventos;
-- fechar a lista mínima de tabelas `control` e `execution`;
+- fechar a lista mínima de tabelas `control`, `pipeline` e `projection`;
 - fechar a ligação entre datasets, cenários e runs;
-- implementar `PostgreSQL` como fonte de verdade do plano de controlo.
+- enriquecer a superfície HTTP do plano de controlo com operações mais fortes de backoffice.
 
 ### Bloco B. Fechar a ponte entre baseline, cenários e simulador
 
@@ -82,13 +80,13 @@ Isto confirma um estado misto: a frente de dados e cenários avançou antes de a
 
 - distinguir estrutural / domínio / transitório;
 - emitir `accepted`, `rejected` e `normalized`;
-- implementar inbox durável, idempotência por `event_id`, retry e `DLQ`.
+- completar a estratégia de retry, DLQ e replay operacional.
 
 ### Bloco D. Fechar risco, alertas e projeções
 
 - consumir apenas leituras aceites e normalizadas;
 - separar warning, alarm e recommendation como estágios explícitos;
-- persistir projeções operacionais para UI e API.
+- enriquecer o ciclo de vida dos alertas e as consultas agregadas operacionais.
 
 ### Bloco E. Fechar produto demonstrável
 
@@ -108,21 +106,19 @@ Isto confirma um estado misto: a frente de dados e cenários avançou antes de a
 ## Ordem Recomendada dos Próximos Passos
 
 1. fechar a baseline técnica: catálogo de eventos, tabelas base e ligação dataset-cenário-run;
-2. implementar `PostgreSQL` do plano de controlo com base nos artefactos já curados;
-3. gerar rede de sensores e refatorar o simulador para três camadas;
-4. fechar ingestão: validação, inbox, idempotência, retry e `DLQ`;
-5. fechar risco, alertas e projeções;
-6. fechar API, dashboards e testes.
+2. gerar rede de sensores e refatorar o simulador para três camadas;
+3. fechar ingestão: validação, estados semânticos, retry, DLQ e replay;
+4. fechar risco, alertas e projeções;
+5. fechar API, dashboards e testes.
 
 ## Regra Prática Final
 
 Se a pergunta for "o que fazemos já a seguir?", a resposta é:
 
-1. fechar a baseline técnica e o desenho das tabelas;
-2. implementar `PostgreSQL` do plano de controlo;
-3. fechar rede de sensores e simulador em camadas;
-4. fechar ingestão durável;
-5. fechar risco, alertas e projeções.
+1. fechar rede de sensores e o input canónico do simulador;
+2. separar o simulador em verdade física, erro de sensor e falha de transporte;
+3. fechar a semântica `accepted/rejected/normalized`;
+4. enriquecer alertas, projeções e backoffice.
 
 Se a pergunta for "o que continua bloqueado de fora?", a resposta é:
 

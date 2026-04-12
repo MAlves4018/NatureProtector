@@ -1,0 +1,331 @@
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
+using NatureProtector.Backoffice.Api.ControlPlane.Services;
+
+namespace NatureProtector.Backoffice.Api.Tests;
+
+public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureAppConfiguration((_, configurationBuilder) =>
+        {
+            configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["BackofficeApi:ControlPlaneEnabled"] = "false"
+            });
+        });
+
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IControlPlaneService>();
+            services.AddSingleton<IControlPlaneService, FakeControlPlaneService>();
+        });
+    }
+
+    private sealed class FakeControlPlaneService : IControlPlaneService
+    {
+        private readonly List<ConfigurationVersionResponse> _configurations =
+        [
+            new(1, true, "Pilot configuration v1", new DateTimeOffset(2026, 4, 7, 18, 0, 0, TimeSpan.Zero), "phase-05-tests", 1, 2, 2, 2, 1),
+            new(2, false, "Pilot configuration v2", new DateTimeOffset(2026, 4, 7, 19, 0, 0, TimeSpan.Zero), "phase-05-tests", 1, 1, 0, 1, 0)
+        ];
+
+        private readonly AreaDetailResponse _activeArea = new(
+            "proenca-a-nova",
+            "Proenca-a-Nova",
+            "PT",
+            1,
+            "{\"type\":\"Polygon\",\"coordinates\":[]}",
+            "{\"source\":\"tests\"}",
+            new AreaContextResponse("Mixed forest", 0.73, 0.24, 0.11, "summer_peak"),
+            2,
+            2,
+            2);
+
+        private readonly IReadOnlyList<GridCellResponse> _gridCells =
+        [
+            new("PRO-001", 1, 39.75, -7.90, 340, 7.5, 125, "forest", null, null, null, "high", null, 1),
+            new("PRO-002", 1, 39.76, -7.89, 355, 11.2, 210, "shrubs", null, null, null, "medium", null, 1)
+        ];
+
+        private readonly IReadOnlyList<SensorNodeResponse> _sensorNodes =
+        [
+            new(Guid.Parse("70000000-0000-0000-0000-000000000001"), "pro-temp-001", "Temperature", 1, "PRO-001", "pilot-temperature-profile", "pilot", "proenca-a-nova-pilot-network", 39.75, -7.90, 340, true, "field-pilot"),
+            new(Guid.Parse("70000000-0000-0000-0000-000000000002"), "pro-hum-002", "Humidity", 1, "PRO-002", "pilot-humidity-profile", "pilot", "proenca-a-nova-pilot-network", 39.76, -7.89, 355, true, "field-pilot")
+        ];
+
+        private readonly IReadOnlyList<ScenarioResponse> _scenarios =
+        [
+            new(Guid.Parse("80000000-0000-0000-0000-000000000001"), "scenario_a", "Scenario A - Base", "Base", 1, "Moderate summer day", null, 1),
+            new(Guid.Parse("80000000-0000-0000-0000-000000000002"), "scenario_b", "Scenario B - High Risk", "HighRisk", 1, "Critical fire-weather context", null, 2)
+        ];
+
+        private readonly IReadOnlyList<SimulationRunResponse> _simulationRuns =
+        [
+            new(
+                Guid.Parse("90000000-0000-0000-0000-000000000001"),
+                "proenca-a-nova",
+                "scenario_b",
+                "Scenario B - High Risk",
+                "Completed",
+                1,
+                new DateTimeOffset(2026, 4, 7, 20, 0, 0, TimeSpan.Zero),
+                new DateTimeOffset(2026, 4, 7, 20, 1, 0, TimeSpan.Zero),
+                new DateTimeOffset(2026, 4, 7, 20, 15, 0, TimeSpan.Zero),
+                new DateTimeOffset(2020, 9, 13, 11, 0, 0, TimeSpan.Zero),
+                300,
+                36,
+                42,
+                "{\"source\":\"tests\"}")
+        ];
+
+        private readonly AreaOperationalStateResponse _areaOperationalState = new(
+            "proenca-a-nova",
+            1,
+            new DateTimeOffset(2026, 4, 7, 20, 14, 0, TimeSpan.Zero),
+            0.78,
+            "VeryHigh",
+            "Critical",
+            "Aggregated from 12 assessments; 8 at High or above.",
+            12,
+            new DateTimeOffset(2026, 4, 7, 20, 14, 30, TimeSpan.Zero));
+
+        private readonly IReadOnlyList<CellOperationalStateResponse> _cellOperationalStates =
+        [
+            new(
+                "proenca-a-nova",
+                "PRO-001",
+                1,
+                new DateTimeOffset(2026, 4, 7, 20, 13, 0, TimeSpan.Zero),
+                0.72,
+                "High",
+                "High",
+                "Area=... Sensor=... Event=... Metric=Temperature; Value=34.50; Score=0.72.",
+                Guid.Parse("70000000-0000-0000-0000-000000000001"),
+                "pro-temp-001",
+                new DateTimeOffset(2026, 4, 7, 20, 13, 30, TimeSpan.Zero)),
+            new(
+                "proenca-a-nova",
+                "PRO-002",
+                1,
+                new DateTimeOffset(2026, 4, 7, 20, 14, 0, TimeSpan.Zero),
+                0.91,
+                "Extreme",
+                "Emergency",
+                "Area=... Sensor=... Event=... Metric=Humidity; Value=11.00; Score=0.91.",
+                Guid.Parse("70000000-0000-0000-0000-000000000002"),
+                "pro-hum-002",
+                new DateTimeOffset(2026, 4, 7, 20, 14, 30, TimeSpan.Zero))
+        ];
+
+        private readonly IReadOnlyList<AlertStateResponse> _activeAlerts =
+        [
+            new(
+                Guid.Parse("91000000-0000-0000-0000-000000000001"),
+                "proenca-a-nova",
+                1,
+                "area-risk-high",
+                "Critical",
+                "Open",
+                "Area risk is VeryHigh with score 0.78.",
+                new DateTimeOffset(2026, 4, 7, 20, 10, 0, TimeSpan.Zero),
+                new DateTimeOffset(2026, 4, 7, 20, 14, 30, TimeSpan.Zero),
+                null)
+        ];
+
+        public bool IsAvailable => true;
+
+        public string AvailabilityMessage => "Fake control plane available for API tests.";
+
+        public Task<IReadOnlyList<ConfigurationVersionResponse>> ListConfigurationsAsync(CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<ConfigurationVersionResponse>>(_configurations.OrderByDescending(entity => entity.VersionNumber).ToArray());
+
+        public Task<ConfigurationVersionResponse?> GetActiveConfigurationAsync(CancellationToken cancellationToken)
+            => Task.FromResult<ConfigurationVersionResponse?>(_configurations.SingleOrDefault(entity => entity.IsActive));
+
+        public Task<ConfigurationVersionResponse?> ActivateConfigurationAsync(int versionNumber, CancellationToken cancellationToken)
+        {
+            ConfigurationVersionResponse? activatedConfiguration = null;
+
+            for (var index = 0; index < _configurations.Count; index++)
+            {
+                var current = _configurations[index];
+                var isActive = current.VersionNumber == versionNumber;
+                _configurations[index] = current with { IsActive = isActive };
+
+                if (isActive)
+                {
+                    activatedConfiguration = _configurations[index];
+                }
+            }
+
+            return Task.FromResult(activatedConfiguration);
+        }
+
+        public Task<IReadOnlyList<AreaSummaryResponse>> ListAreasAsync(int? configurationVersion, CancellationToken cancellationToken)
+        {
+            if (configurationVersion.HasValue && configurationVersion.Value != 1)
+            {
+                return Task.FromResult<IReadOnlyList<AreaSummaryResponse>>([]);
+            }
+
+            return Task.FromResult<IReadOnlyList<AreaSummaryResponse>>(
+            [
+                new AreaSummaryResponse("proenca-a-nova", "Proenca-a-Nova", "PT", 1, 2, 2, 2)
+            ]);
+        }
+
+        public Task<AreaDetailResponse?> GetAreaAsync(string areaCode, int? configurationVersion, CancellationToken cancellationToken)
+        {
+            if (!string.Equals(areaCode, "proenca-a-nova", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<AreaDetailResponse?>(null);
+            }
+
+            if (configurationVersion.HasValue && configurationVersion.Value != 1)
+            {
+                return Task.FromResult<AreaDetailResponse?>(null);
+            }
+
+            return Task.FromResult<AreaDetailResponse?>(_activeArea);
+        }
+
+        public Task<IReadOnlyList<GridCellResponse>> ListGridCellsAsync(
+            string areaCode,
+            int? configurationVersion,
+            int skip,
+            int take,
+            CancellationToken cancellationToken)
+        {
+            if (!string.Equals(areaCode, "proenca-a-nova", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<IReadOnlyList<GridCellResponse>>([]);
+            }
+
+            return Task.FromResult<IReadOnlyList<GridCellResponse>>(_gridCells.Skip(skip).Take(take <= 0 ? 100 : take).ToArray());
+        }
+
+        public Task<IReadOnlyList<SensorNodeResponse>> ListSensorNodesAsync(
+            string areaCode,
+            int? configurationVersion,
+            int skip,
+            int take,
+            CancellationToken cancellationToken)
+        {
+            if (!string.Equals(areaCode, "proenca-a-nova", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<IReadOnlyList<SensorNodeResponse>>([]);
+            }
+
+            return Task.FromResult<IReadOnlyList<SensorNodeResponse>>(_sensorNodes.Skip(skip).Take(take <= 0 ? 100 : take).ToArray());
+        }
+
+        public Task<IReadOnlyList<ScenarioResponse>> ListScenariosAsync(
+            string areaCode,
+            int? configurationVersion,
+            CancellationToken cancellationToken)
+        {
+            if (!string.Equals(areaCode, "proenca-a-nova", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<IReadOnlyList<ScenarioResponse>>([]);
+            }
+
+            return Task.FromResult(_scenarios);
+        }
+
+        public Task<IReadOnlyList<SimulationRunResponse>> ListSimulationRunsAsync(
+            string? areaCode,
+            string? scenarioCode,
+            int? configurationVersion,
+            int skip,
+            int take,
+            CancellationToken cancellationToken)
+        {
+            var query = _simulationRuns.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(areaCode))
+            {
+                query = query.Where(entity => entity.AreaCode == areaCode);
+            }
+
+            if (!string.IsNullOrWhiteSpace(scenarioCode))
+            {
+                query = query.Where(entity => entity.ScenarioCode == scenarioCode);
+            }
+
+            if (configurationVersion.HasValue)
+            {
+                query = query.Where(entity => entity.ConfigurationVersionNumber == configurationVersion.Value);
+            }
+
+            return Task.FromResult<IReadOnlyList<SimulationRunResponse>>(query.Skip(skip).Take(take <= 0 ? 100 : take).ToArray());
+        }
+
+        public Task<SimulationRunResponse?> GetSimulationRunAsync(Guid runId, CancellationToken cancellationToken)
+            => Task.FromResult(_simulationRuns.SingleOrDefault(entity => entity.Id == runId));
+
+        public Task<AreaOperationalStateResponse?> GetAreaOperationalStateAsync(
+            string areaCode,
+            int? configurationVersion,
+            CancellationToken cancellationToken)
+        {
+            if (!string.Equals(areaCode, "proenca-a-nova", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<AreaOperationalStateResponse?>(null);
+            }
+
+            if (configurationVersion.HasValue && configurationVersion.Value != 1)
+            {
+                return Task.FromResult<AreaOperationalStateResponse?>(null);
+            }
+
+            return Task.FromResult<AreaOperationalStateResponse?>(_areaOperationalState);
+        }
+
+        public Task<IReadOnlyList<AlertStateResponse>> ListActiveAlertsAsync(
+            string? areaCode,
+            int? configurationVersion,
+            CancellationToken cancellationToken)
+        {
+            var query = _activeAlerts.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(areaCode))
+            {
+                query = query.Where(entity => entity.AreaCode == areaCode);
+            }
+
+            if (configurationVersion.HasValue)
+            {
+                query = query.Where(entity => entity.ConfigurationVersionNumber == configurationVersion.Value);
+            }
+
+            return Task.FromResult<IReadOnlyList<AlertStateResponse>>(query.ToArray());
+        }
+
+        public Task<IReadOnlyList<CellOperationalStateResponse>> ListCellOperationalStatesAsync(
+            string areaCode,
+            int? configurationVersion,
+            int skip,
+            int take,
+            CancellationToken cancellationToken)
+        {
+            if (!string.Equals(areaCode, "proenca-a-nova", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<IReadOnlyList<CellOperationalStateResponse>>([]);
+            }
+
+            if (configurationVersion.HasValue && configurationVersion.Value != 1)
+            {
+                return Task.FromResult<IReadOnlyList<CellOperationalStateResponse>>([]);
+            }
+
+            return Task.FromResult<IReadOnlyList<CellOperationalStateResponse>>(
+                _cellOperationalStates.Skip(skip).Take(take <= 0 ? 100 : take).ToArray());
+        }
+    }
+}

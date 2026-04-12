@@ -16,5 +16,6 @@
     <ProjectReference Include="..\NatureProtector.Prevention\NatureProtector.Prevention.csproj" />
     <ProjectReference Include="..\NatureProtector.Shared\NatureProtector.Shared.csproj" />
     <ProjectReference Include="..\NatureProtector.Infrastructure.Influx\NatureProtector.Infrastructure.Influx.csproj" />
+    <ProjectReference Include="..\NatureProtector.Infrastructure.Postgres\NatureProtector.Infrastructure.Postgres.csproj" />
   </ItemGroup>
 </Project>

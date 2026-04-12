@@ -87,7 +87,7 @@ Estas decisões devem agora ser tratadas como fixas, exceto se uma ADR deliberad
   - `src/NatureProtector.Shared/Configuration/RabbitMqOptions.cs`
 - esqueleto atual da API:
   - `src/NatureProtector.Backoffice.Api/Program.cs`
-- código residual atual do simulador que não deve permanecer no projeto do simulador:
+- código residual histórico do simulador que foi removido na limpeza do repositório:
   - `src/NatureProtector.Simulator.Host/ReadingIngestionWorker.cs`
   - `src/NatureProtector.Simulator.Host/Configuration/PreventionOptions.cs`
   - `src/NatureProtector.Simulator.Host/Presistence/*`
@@ -95,14 +95,14 @@ Estas decisões devem agora ser tratadas como fixas, exceto se uma ADR deliberad
 
 ### 4.3 Lacunas atuais face à fase alvo
 
-- ainda não existe integração de runtime com `PostgreSQL`;
-- já existe baseline curada em ficheiros e já existe documentação de datasets e manifests na codebase, mas ainda falta integrar formalmente esses metadados com `PostgreSQL` e com as `simulation_runs`;
-- ainda não existe inbox durável nem store de idempotência;
+- já existe integração de runtime com `PostgreSQL` para `control`, `pipeline` e uma vaga útil de `projection`;
+- já existe baseline preparada em ficheiros e já existe documentação de datasets e manifests na codebase, mas ainda falta integrar formalmente todos os metadados dos datasets com o plano de controlo e com as `simulation_runs`;
+- já existe inbox durável e store básica de idempotência, mas ainda falta fechar a semântica completa `accepted / rejected / normalized`;
 - ainda não existe fluxo `accepted / rejected / normalized` como estados independentes da pipeline;
-- a API continua a ser apenas uma shell ASP.NET;
+- a API já expõe a superfície principal do plano de controlo e do estado operacional básico, mas ainda não fecha o backoffice completo;
 - o simulador existe, mas ainda não está na forma em camadas exigida pela investigação;
-- a prevenção persiste estado crítico de runtime em memória;
-- os testes são fortes em `Core`, mas estão praticamente ausentes em `Prevention` e `Shared`.
+- a prevenção ainda combina persistência durável e alguns componentes auxiliares em memória;
+- os testes já cresceram para `Prevention`, `Backoffice.Api`, `Simulator.Host` e integração, embora continuem mais fortes no `Core`.
 
 ### 4.4 Estado atual face ao roadmap
 
@@ -110,8 +110,8 @@ Leitura honesta do estado do projeto:
 
 - `Fase 0`: parcial. Já existe uma camada documental útil para navegação e leitura técnica, mas ainda faltam alguns artefactos-base pedidos pelo roadmap.
 - `Fase 1`: em aberto. A modularização alvo ainda não foi executada.
-- `Fase 2`: em aberto. O plano de controlo em `PostgreSQL` ainda não existe em runtime.
-- `Fase 3`: materialmente adiantada. A área piloto, a baseline curada, os manifests e os cenários executáveis já existem.
+- `Fase 2`: materialmente adiantada. O plano de controlo em `PostgreSQL` já existe em runtime para configuração, `simulation_runs`, inbox durável e primeira vaga de projeções.
+- `Fase 3`: materialmente adiantada. A área piloto, a baseline preparada, os manifests e os cenários executáveis já existem.
 - `Fase 4`: parcialmente adiantada. O simulador já usa seed determinística e consegue consumir manifests, mas ainda não está separado por camadas.
 
 Isto significa que o projeto está num estado misto: as fases iniciais não ficaram totalmente fechadas, mas parte das fases de dados e cenários avançou antes do previsto. Esse desvio fez sentido na prática, porque ajudou a clarificar artefactos, cenários e a própria modelação das tabelas do plano de controlo.
@@ -127,7 +127,7 @@ O projeto só deve ser considerado concluído para esta fase quando todas as con
 5. a pipeline de execução é durável, auditável e tolerante à entrega duplicada;
 6. o risco é calculado a partir de dados aceites e normalizados, não diretamente a partir de mensagens raw;
 7. os alertas e as projeções são etapas explícitas, não efeitos secundários implícitos;
-8. o sistema expõe observabilidade suficiente para demonstrar o fluxo end to end.
+8. o sistema expõe observabilidade suficiente para demonstrar o fluxo end-to-end.
 
 ## 6. Regra de Ordenação do Trabalho
 
@@ -307,10 +307,10 @@ Mover para `NatureProtector.Simulation`:
 
 Mover para `NatureProtector.Pipeline` ou apagar após substituição:
 
-- `ReadingIngestionWorker.cs`
-- `Configuration/PreventionOptions.cs`
-- `Presistence/*`
-- `Validation/*`
+- `ReadingIngestionWorker.cs` `resolved`
+- `Configuration/PreventionOptions.cs` `resolved`
+- `Presistence/*` `resolved`
+- `Validation/*` `resolved`
 
 Manter em `NatureProtector.Simulator.Host`:
 
@@ -344,8 +344,8 @@ Manter e expandir:
 ### 8.3 Remover após migração
 
 - `src/NatureProtector.Shared` como projeto balde de longo prazo;
-- resíduo de ingestão do lado do simulador em `NatureProtector.Simulator.Host`;
-- pastas `Presistence` mal escritas após a migração.
+- resíduo de ingestão do lado do simulador em `NatureProtector.Simulator.Host` `resolved`;
+- pastas `Presistence` mal escritas após a migração `resolved`.
 
 ## 9. Estratégia de Armazenamento de Datasets
 
@@ -388,10 +388,10 @@ data/
 
 Regras:
 
-- `baseline/` armazena artefactos pequenos e curados que definem o input canónico da demonstração;
+- `baseline/` armazena artefactos pequenos e preparados que definem o input canónico da demonstração;
 - `external/` armazena inputs raw descarregados ou importados e deve, normalmente, estar em `.gitignore`;
 - `runtime/` armazena outputs gerados e deve estar em `.gitignore`;
-- cada dataset curado de área recebe um `manifest.json` com origem, versão, checksum e data.
+- cada dataset preparado de área recebe um `manifest.json` com origem, versão, checksum e data.
 
 ### 9.2 Camada de metadados em PostgreSQL
 
@@ -702,8 +702,8 @@ Em aberto. A estrutura alvo já está identificada, mas ainda não foi implement
   - `NatureProtector.Infrastructure.RabbitMq`
 - mover contratos e topologia `RabbitMQ` para fora de `NatureProtector.Shared`;
 - mover serviços de simulação para fora de `NatureProtector.Simulator.Host`;
-- remover código residual de ingestão do lado do simulador;
-- renomear pastas `Presistence` mal escritas para `Persistence`;
+- remover código residual de ingestão do lado do simulador `resolved`;
+- renomear pastas `Presistence` mal escritas para `Persistence` `resolved`;
 - reduzir os hosts a projetos apenas de composição.
 
 ### Critérios de saída
@@ -887,7 +887,7 @@ Tornar o sistema demonstrável, diagnosticável e testável.
 
 ### Critérios de saída
 
-- o projeto pode ser demonstrado end to end com evidência, não apenas com logs.
+- o projeto pode ser demonstrado end-to-end com evidência, não apenas com logs.
 
 ## 13. Backlog de Implementação Ordenado
 
@@ -980,7 +980,7 @@ O backlog abaixo mantém a ordem alvo. Vários itens da frente `DATA` já foram 
 - `TEST-02` Adicionar testes de `Simulation`.
 - `TEST-03` Adicionar testes de `Pipeline`.
 - `TEST-04` Preencher `Prevention.Tests`.
-- `TEST-05` Adicionar testes de integração end to end.
+- `TEST-05` Adicionar testes de integração end-to-end.
 
 ## 14. Primeiro Marco Recomendado
 
@@ -1007,4 +1007,4 @@ A fase está concluída quando o projeto consegue demonstrar:
 5. risco por célula e por área;
 6. warnings e alarms com justificação;
 7. projeções servidas à interface/API;
-8. dashboards e logs que provam o comportamento end to end.
+8. dashboards e logs que provam o comportamento end-to-end.

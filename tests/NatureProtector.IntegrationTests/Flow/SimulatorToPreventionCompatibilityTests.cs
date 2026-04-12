@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Processing;
+using NatureProtector.Prevention.Host.Projection;
 using NatureProtector.Prevention.Persistence;
 using NatureProtector.Prevention.Risk;
 using NatureProtector.IntegrationTests.TestData;
@@ -44,6 +45,7 @@ public sealed class SimulatorToPreventionCompatibilityTests
             riskAssessmentRepository,
             new AreaRiskSnapshotService(),
             areaRiskSnapshotRepository,
+            new InMemoryAreaOperationalProjectionStore(),
             influxWriteService,
             NullLogger<ReadingRiskPipeline>.Instance);
 
@@ -102,6 +104,7 @@ public sealed class SimulatorToPreventionCompatibilityTests
             riskAssessmentRepository,
             new AreaRiskSnapshotService(),
             areaRiskSnapshotRepository,
+            new InMemoryAreaOperationalProjectionStore(),
             influxWriteService,
             NullLogger<ReadingRiskPipeline>.Instance);
 

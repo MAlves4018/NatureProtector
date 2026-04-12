@@ -1,6 +1,6 @@
 # NatureProtector.Core
 
-Este projeto contém a linguagem comum do domínio. É aqui que definimos os conceitos que queremos preservar mesmo que a infraestrutura mude: áreas, limites, grelha de risco, sensores, leituras, cenários, snapshots meteorológicos, alertas e recomendações.
+Este projeto contém a linguagem comum do domínio. É aqui que definimos os conceitos que queremos preservar mesmo que a infraestrutura mude: áreas, limites, grelha territorial, grelha de risco, sensores, deployments, leituras, cenários, snapshots meteorológicos, alertas e recomendações.
 
 ## Papel do módulo
 
@@ -11,7 +11,7 @@ Este projeto contém a linguagem comum do domínio. É aqui que definimos os con
 ## O que existe aqui hoje
 
 - `Areas/`
-  - `Area` e `AreaContext`
+  - `Area`, `AreaContext` e `GridCell`
 - `Primitives/`
   - `Boundaries`, `Location`, `RiskLevel` e `Severity`
 - `Readings/`
@@ -21,7 +21,7 @@ Este projeto contém a linguagem comum do domínio. É aqui que definimos os con
 - `Scenarios/`
   - `Scenario`, `ScenarioParameters` e `SimulationRun`
 - `Sensors/`
-  - `Sensor`, `SensorProfile`, `SensorNetwork` e `SensorType`
+  - `Sensor`, `SensorProfile`, `SensorNetwork`, `SensorDeployment` e `SensorType`
 - `Weather/`
   - `WeatherSnapshot` e `WindVector`
 - `Communication/`
@@ -33,6 +33,8 @@ Este projeto contém a linguagem comum do domínio. É aqui que definimos os con
 - As validações de intervalo e consistência acontecem logo nos construtores.
 - O módulo trabalha com scores normalizados em `[0, 1]` e com níveis qualitativos derivados.
 - O desenho favorece objetos de domínio pequenos e reutilizáveis, em vez de entidades cheias de detalhes de infraestrutura.
+- A frente de PostgreSQL introduziu a distinção entre grelha territorial (`GridCell`) e grelha de risco (`RiskCell`).
+- Os deployments de sensores passaram a ser modelados fora da entidade `Sensor`, para preservar um domínio mais limpo e mais estável.
 
 ## O que este módulo não deve fazer
 
@@ -52,4 +54,4 @@ Este projeto contém a linguagem comum do domínio. É aqui que definimos os con
 Este é o projeto mais maduro da solução. A cobertura de testes existente em [../../tests/NatureProtector.Core.Tests](../../tests/NatureProtector.Core.Tests) confirma isso e faz dele a melhor porta de entrada para perceber o vocabulário do sistema.
 
 ## Nota
-Até o simulador, os datasets e o Postgres estarem fechados este modulo pode ser alvo de alterações.
+Até o simulador, os datasets e o PostgreSQL estarem fechados este módulo pode continuar a sofrer alterações estruturais controladas.

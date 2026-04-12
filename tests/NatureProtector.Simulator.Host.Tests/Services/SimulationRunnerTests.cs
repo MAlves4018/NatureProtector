@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NatureProtector.Core.Scenarios;
 using NatureProtector.Simulator.Host.Services;
 using NatureProtector.Simulator.Host.Tests.Fakes;
 using NatureProtector.Simulator.Host.Tests.Helpers;
@@ -70,16 +71,85 @@ public sealed class SimulationRunnerTests
         Assert.Single(publisher.Published);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_StoresActualRunLifecycle_TimestampsSeparatelyFromLogicalEventTimes()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.Sensors = [SimulatorOptionsMother.CreateSensorDefinition(name: "OnlySensor")];
+        options.NumberOfCycles = 1;
+        options.IntervalSeconds = 1;
+        options.StartTimestamp = new DateTimeOffset(2030, 1, 15, 8, 30, 0, TimeSpan.Zero);
+        var publisher = new CollectingReadingPublisher();
+        var runStore = new RecordingSimulationRunStore();
+        var runner = CreateRunner(options, publisher, runStore);
+        var logicalCompletedAt = options.StartTimestamp.Value.AddSeconds(options.IntervalSeconds * options.NumberOfCycles);
+        var before = DateTimeOffset.UtcNow;
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        var after = DateTimeOffset.UtcNow;
+
+        Assert.Equal(
+            new[]
+            {
+                SimulationRunStatus.Ready,
+                SimulationRunStatus.Running,
+                SimulationRunStatus.Completed
+            },
+            runStore.Upserts.Select(x => x.Status));
+
+        var running = runStore.Upserts[1];
+        var completed = runStore.Upserts[2];
+
+        Assert.NotNull(running.StartedAt);
+        Assert.InRange(running.StartedAt!.Value, before, after);
+        Assert.Equal(options.StartTimestamp, running.LogicalStartTimestamp);
+        Assert.NotEqual(options.StartTimestamp, running.StartedAt);
+
+        Assert.NotNull(completed.EndedAt);
+        Assert.InRange(completed.EndedAt!.Value, before, after);
+        Assert.Equal(options.StartTimestamp, completed.LogicalStartTimestamp);
+        Assert.NotEqual(logicalCompletedAt, completed.EndedAt);
+        Assert.True(completed.EndedAt >= completed.StartedAt);
+    }
+
     private static SimulationRunner CreateRunner(
         NatureProtector.Simulator.Host.Configuration.SimulatorOptions options,
-        CollectingReadingPublisher publisher)
+        CollectingReadingPublisher publisher,
+        ISimulationRunStore? simulationRunStore = null)
     {
         return new SimulationRunner(
             logger: NullLogger<SimulationRunner>.Instance,
             simulatorOptions: Options.Create(options),
             seedProvider: new SeedProvider(),
-            scenarioContextFactory: new ScenarioContextFactory(Options.Create(options)),
+            simulationContextSource: new ScenarioContextFactory(Options.Create(options)),
             readingGenerationService: new ReadingGenerationService(),
+            simulationRunStore: simulationRunStore ?? new NoOpSimulationRunStore(),
             readingPublisher: publisher);
     }
+
+    private sealed class RecordingSimulationRunStore : ISimulationRunStore
+    {
+        public List<RecordedRun> Upserts { get; } = [];
+
+        public Task UpsertAsync(
+            SimulationContext context,
+            SimulationRun run,
+            CancellationToken cancellationToken)
+        {
+            Upserts.Add(new RecordedRun(
+                run.Status,
+                run.StartedAt,
+                run.EndedAt,
+                context.StartTimestamp));
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed record RecordedRun(
+        SimulationRunStatus Status,
+        DateTimeOffset? StartedAt,
+        DateTimeOffset? EndedAt,
+        DateTimeOffset LogicalStartTimestamp);
 }

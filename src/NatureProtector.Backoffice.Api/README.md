@@ -1,37 +1,74 @@
 # NatureProtector.Backoffice.Api
 
-Este projeto representa a fronteira HTTP da solução, mas ainda está numa fase inicial. Hoje devemos lê-lo como um esqueleto de ASP.NET Core preparado para crescer, não como uma API já funcional do plano de controlo.
+Este projeto deixou de ser apenas um esqueleto ASP.NET Core e passou a expor a primeira superfície HTTP do plano de controlo.
+
+Ainda não fecha autenticação nem comandos ricos de backoffice, mas já consegue servir configurações, áreas, sensores, cenários, `simulation_runs` e a primeira leitura do estado operacional por área e por célula a partir dos schemas `control` e `projection`.
 
 ## O que existe hoje
 
 - `Program.cs`
-  - arranque base de uma aplicação ASP.NET Core
-- suporte a controladores
-- suporte a OpenAPI em desenvolvimento
-- um ficheiro HTTP de apoio:
-  - `NatureProtector.Backoffice.Api.http`
+  - arranque da API e ligação opcional ao `PostgreSQL`
+- `Configuration/BackofficeApiOptions.cs`
+- ativação da frente do plano de controlo via `BackofficeApi:ControlPlaneEnabled`
+- `ControlPlane/Contracts/`
+  - contratos HTTP desta fase
+- `ControlPlane/Services/IControlPlaneService.cs`
+  - fronteira interna de leitura e ativação
+- `ControlPlane/Services/PostgresControlPlaneService.cs`
+  - implementação real sobre `NatureProtectorControlDbContext`
+- `Controllers/`
+  - endpoints de configuração, áreas, estado operacional e runs
+- `NatureProtector.Backoffice.Api.http`
+  - exemplos para explorar a API manualmente
 
-## O que ainda não existe
+## Endpoints desta fase
 
-- controladores funcionais;
-- endpoints de configuração;
-- endpoints de cenários;
-- endpoints de consulta de risco, alertas ou projeções;
-- integração com PostgreSQL;
-- modelo de autenticação ou autorização digno de um backoffice real.
+### Configuração
 
-## Observações importantes
+- `GET /api/control/configurations`
+- `GET /api/control/configurations/active`
+- `POST /api/control/configurations/{versionNumber}/activate`
 
-- A pasta `Controllers/` existe, mas está vazia.
-- O ficheiro `NatureProtector.Backoffice.Api.http` continua a apontar para `/weatherforecast`, mas esse endpoint não existe no código atual. Deve ser lido como artefacto de arranque de template.
-- O projeto já referencia `NatureProtector.Core` e `NatureProtector.Shared`, o que mostra a intenção de o ligar ao domínio e aos contratos, mas essa ligação ainda não foi concretizada em endpoints.
+### Áreas e topologia
 
-## Como devemos posicionar este módulo
+- `GET /api/control/areas`
+- `GET /api/control/areas/{areaCode}`
+- `GET /api/control/areas/{areaCode}/grid-cells`
+- `GET /api/control/areas/{areaCode}/sensor-nodes`
+- `GET /api/control/areas/{areaCode}/scenarios`
+- `GET /api/control/areas/{areaCode}/operational-state`
+- `GET /api/control/areas/{areaCode}/cells/operational-state`
+- `GET /api/control/areas/{areaCode}/alerts/active`
 
-Hoje, este projeto serve sobretudo para:
+### Execução
 
-- reservar a fronteira HTTP do produto;
-- estabilizar a presença da API na solução;
-- evitar que toda a lógica de produto acabe embutida nos workers.
+- `GET /api/control/simulation-runs`
+- `GET /api/control/simulation-runs/{runId}`
 
-Para perceber a direção futura, devemos cruzar este projeto com [../../docs/planning/project-completion-roadmap.md](../../docs/planning/project-completion-roadmap.md).
+## Como funciona
+
+Quando `BackofficeApi:ControlPlaneEnabled = true`, a API:
+
+- resolve a ligação ao `PostgreSQL` a partir do `.env`;
+- regista `IDbContextFactory<NatureProtectorControlDbContext>`;
+- usa `PostgresControlPlaneService` para consultar os schemas `control` e `projection`.
+
+Quando `BackofficeApi:ControlPlaneEnabled = false`, a API continua a arrancar, mas devolve indisponibilidade controlada para estes endpoints.
+
+## O que este módulo já fecha
+
+- consulta da configuração ativa;
+- listagem de áreas da configuração ativa ou de uma versão pedida;
+- consulta da grelha, sensores e cenários por área;
+- consulta do estado operacional por área;
+- consulta do estado operacional por célula;
+- consulta de alertas ativos simples por área;
+- consulta das `simulation_runs`;
+- ativação mínima de `configuration_versions`.
+
+## O que ainda não fecha
+
+- cenário ativo por área;
+- alertas ricos com ciclo de vida completo;
+- inbox, novas tentativas e estado durável do fluxo operacional por HTTP;
+- autenticação e autorização de backoffice.

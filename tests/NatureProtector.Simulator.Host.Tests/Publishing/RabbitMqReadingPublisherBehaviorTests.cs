@@ -36,7 +36,7 @@ public sealed class RabbitMqReadingPublisherBehaviorTests
 
         await publisher.PublishAsync(envelope, CancellationToken.None);
 
-        var publish = Assert.Single(channelRecorder.Invocations.Where(x => x.MethodName == "BasicPublish"));
+        var publish = Assert.Single(channelRecorder.Invocations, x => x.MethodName == "BasicPublish");
         Assert.Equal(options.ExchangeName, Assert.IsType<string>(publish.Arguments[0]));
         Assert.Equal(RoutingKeys.SensorReadingProduced, Assert.IsType<string>(publish.Arguments[1]));
         Assert.True(Assert.IsType<bool>(propertiesRecorder.Properties["Persistent"]));
@@ -63,7 +63,7 @@ public sealed class RabbitMqReadingPublisherBehaviorTests
 
         InvokePrivateMethod(publisher, "DeclareTopology", channel);
 
-        var exchangeDeclare = Assert.Single(recorder.Invocations.Where(x => x.MethodName == "ExchangeDeclare"));
+        var exchangeDeclare = Assert.Single(recorder.Invocations, x => x.MethodName == "ExchangeDeclare");
         Assert.Equal("np.events", Assert.IsType<string>(exchangeDeclare.Arguments[0]));
         Assert.Equal(NatureProtectorRabbitMqTopology.ExchangeType, Assert.IsType<string>(exchangeDeclare.Arguments[1]));
 
@@ -95,8 +95,8 @@ public sealed class RabbitMqReadingPublisherBehaviorTests
         publisher.Dispose();
         publisher.Dispose();
 
-        Assert.Single(channelRecorder.Invocations.Where(x => x.MethodName == "Dispose"));
-        Assert.Single(connectionRecorder.Invocations.Where(x => x.MethodName == "Dispose"));
+        Assert.Single(channelRecorder.Invocations, x => x.MethodName == "Dispose");
+        Assert.Single(connectionRecorder.Invocations, x => x.MethodName == "Dispose");
     }
 
     private static RabbitMqReadingPublisher CreatePublisher(RabbitMqOptions options)

@@ -1,3 +1,22 @@
+<#
+.SYNOPSIS
+Cria a estrutura base de dados local para a área piloto de Proença-a-Nova.
+
+.DESCRIPTION
+O script cria a árvore de diretórios usada pelos datasets externos, baseline,
+manifests e artefactos de runtime. Opcionalmente descarrega também algumas
+referências públicas que servem de apoio metodológico.
+
+.PARAMETER DownloadPublicReferences
+Quando presente, descarrega os documentos públicos configurados no próprio
+script.
+
+.NOTES
+- Não produz a baseline tratada por si só; prepara apenas o espaço e as
+  referências iniciais.
+- É seguro correr várias vezes, porque a criação de diretórios é idempotente.
+#>
+
 param(
     [switch]$DownloadPublicReferences
 )
@@ -41,7 +60,7 @@ foreach ($directory in $directories) {
 }
 
 if (-not $DownloadPublicReferences) {
-    Write-Output "Estrutura base criada. Usa -DownloadPublicReferences para descarregar os documentos publicos diretos."
+    Write-Output "Estrutura base criada. Usa -DownloadPublicReferences para descarregar os documentos públicos diretos."
     exit 0
 }
 
@@ -60,8 +79,11 @@ foreach ($download in $downloads) {
     $targetPath = Join-Path $root $download.Target
     $targetDir = Split-Path -Parent $targetPath
     New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+
+    # Estas descargas são apenas referências públicas complementares; o script
+    # não depende delas para criar a estrutura base.
     Invoke-WebRequest -Uri $download.Url -OutFile $targetPath -UseBasicParsing
     Write-Output ("Downloaded " + $download.Target)
 }
 
-Write-Output "Downloads publicos concluidos."
+Write-Output "Downloads públicos concluídos."

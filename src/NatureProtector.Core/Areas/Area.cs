@@ -40,7 +40,13 @@ public sealed class Area
     /// </summary>
     public Boundaries Boundaries { get; }
 
+    private readonly List<GridCell> _gridCells = [];
     private readonly List<RiskCell> _riskCells = [];
+
+    /// <summary>
+    /// Read-only view over the territorial grid cells associated with this area.
+    /// </summary>
+    public IReadOnlyCollection<GridCell> GridCells => _gridCells.AsReadOnly();
 
     /// <summary>
     /// Read-only view over the risk cells associated with this area.
@@ -66,7 +72,8 @@ public sealed class Area
         Guid id,
         string name,
         Boundaries boundaries,
-        IEnumerable<RiskCell>? riskCells = null)
+        IEnumerable<RiskCell>? riskCells = null,
+        IEnumerable<GridCell>? gridCells = null)
     {
         if (id == Guid.Empty)
         {
@@ -86,6 +93,34 @@ public sealed class Area
 
         Id = id;
         Name = name.Trim();
+
+        if (gridCells is not null)
+        {
+            var gridCellList = gridCells.ToList();
+
+            if (gridCellList.Any(cell => cell.AreaId != id))
+            {
+                throw new ArgumentException(
+                    "All grid cells must belong to the same AreaId as the Area.",
+                    nameof(gridCells));
+            }
+
+            if (gridCellList.GroupBy(cell => cell.Id).Any(group => group.Count() > 1))
+            {
+                throw new ArgumentException(
+                    "Grid cells must not contain duplicate identifiers.",
+                    nameof(gridCells));
+            }
+
+            if (gridCellList.GroupBy(cell => cell.CellCode, StringComparer.OrdinalIgnoreCase).Any(group => group.Count() > 1))
+            {
+                throw new ArgumentException(
+                    "Grid cells must not contain duplicate cell codes.",
+                    nameof(gridCells));
+            }
+
+            _gridCells.AddRange(gridCellList);
+        }
 
         if (riskCells is null)
         {
@@ -109,6 +144,65 @@ public sealed class Area
         }
 
         _riskCells.AddRange(cells);
+    }
+
+    /// <summary>
+    /// Adds a single grid cell to the area if it is not already present.
+    /// </summary>
+    public void AddGridCell(GridCell gridCell)
+    {
+        ArgumentNullException.ThrowIfNull(gridCell);
+
+        if (gridCell.AreaId != Id)
+        {
+            throw new InvalidOperationException(
+                $"Grid cell {gridCell.Id} does not belong to area {Id}.");
+        }
+
+        if (_gridCells.Any(existing => existing.Id == gridCell.Id))
+        {
+            return;
+        }
+
+        _gridCells.Add(gridCell);
+    }
+
+    /// <summary>
+    /// Adds multiple grid cells to the area.
+    /// </summary>
+    public void AddGridCells(IEnumerable<GridCell> cells)
+    {
+        ArgumentNullException.ThrowIfNull(cells);
+
+        foreach (var cell in cells)
+        {
+            AddGridCell(cell);
+        }
+    }
+
+    /// <summary>
+    /// Removes a grid cell from the area by its identifier.
+    /// </summary>
+    public bool RemoveGridCell(Guid gridCellId)
+    {
+        var gridCell = _gridCells.FirstOrDefault(cell => cell.Id == gridCellId);
+        return gridCell is not null && _gridCells.Remove(gridCell);
+    }
+
+    /// <summary>
+    /// Returns the grid cell with the given identifier or throws if it is not found.
+    /// </summary>
+    public GridCell GetGridCellById(Guid gridCellId)
+    {
+        var cell = _gridCells.FirstOrDefault(candidate => candidate.Id == gridCellId);
+
+        if (cell is null)
+        {
+            throw new KeyNotFoundException(
+                $"Grid cell {gridCellId} was not found in area {Id}.");
+        }
+
+        return cell;
     }
 
     /// <summary>
@@ -288,7 +382,33 @@ public sealed class Area
             id: Id,
             name: Name,
             boundaries: Boundaries,
-            riskCells: cells);
+            riskCells: cells,
+            gridCells: _gridCells);
+    }
+
+    /// <summary>
+    /// Returns a new Area instance with the same identity and boundaries,
+    /// but with a replaced territorial grid.
+    /// </summary>
+    public Area WithUpdatedGridCells(IEnumerable<GridCell> newGridCells)
+    {
+        ArgumentNullException.ThrowIfNull(newGridCells);
+
+        var cells = newGridCells.ToList();
+
+        if (cells.Any(cell => cell.AreaId != Id))
+        {
+            throw new ArgumentException(
+                "All grid cells must belong to this area.",
+                nameof(newGridCells));
+        }
+
+        return new Area(
+            id: Id,
+            name: Name,
+            boundaries: Boundaries,
+            riskCells: _riskCells,
+            gridCells: cells);
     }
 
     /// <summary>

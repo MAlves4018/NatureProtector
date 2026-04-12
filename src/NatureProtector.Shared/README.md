@@ -43,7 +43,7 @@ Sem este projeto, o `Simulator.Host` e o `Prevention.Host` tenderiam a duplicar 
 ## Limitações e direção futura
 
 - O projeto mistura duas responsabilidades que a documentação de planeamento já distingue melhor: contratos partilhados e infraestrutura RabbitMQ.
-- O roadmap em [../../docs/planning/project-completion-roadmap.md](../../docs/planning/project-completion-roadmap.md) já aponta para uma futura separação entre um módulo de contratos e outro de infraestrutura de mensageria.
+- O roadmap em [../../docs/planning/project-completion-roadmap.md](../../docs/planning/project-completion-roadmap.md) já aponta para uma futura separação entre um módulo de contratos e outro de infraestrutura de mensagens.
 - O projeto de testes correspondente em [../../tests/NatureProtector.Shared.Tests](../../tests/NatureProtector.Shared.Tests) existe, mas ainda não tem testes substantivos.
 
 ## Relação com os hosts

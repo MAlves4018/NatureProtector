@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Constrói a referência meteorológica horária da área piloto via Open-Meteo.
+
+O script usa a estação IPMA mais próxima já identificada, pede ao Open-Meteo a
+série histórica horária e grava um snapshot estruturado em parquet e CSV para
+alimentar as etapas seguintes de preparação e seleção de cenários.
+"""
+
 import json
 from pathlib import Path
 
@@ -38,6 +45,7 @@ CRITICAL_HOURLY_VARIABLES = [
 
 
 def load_reference_station() -> pd.Series:
+    """Escolhe a estação IPMA mais próxima da área piloto."""
     stations = pd.read_csv(IPMA_NEARBY_STATIONS_CSV)
     if stations.empty:
         raise RuntimeError("No IPMA nearby stations were found.")
@@ -45,6 +53,7 @@ def load_reference_station() -> pd.Series:
 
 
 def build_params(station: pd.Series, model: str) -> dict[str, str]:
+    """Monta os parâmetros HTTP usados na chamada ao arquivo Open-Meteo."""
     return {
         "latitude": f"{station['station_lat']:.6f}",
         "longitude": f"{station['station_lon']:.6f}",
@@ -59,6 +68,7 @@ def build_params(station: pd.Series, model: str) -> dict[str, str]:
 
 
 def payload_has_critical_values(payload: dict) -> bool:
+    """Confirma se o payload contém variáveis críticas com dados utilizáveis."""
     hourly = payload.get("hourly") or {}
     for name in CRITICAL_HOURLY_VARIABLES:
         values = hourly.get(name)
@@ -68,12 +78,14 @@ def payload_has_critical_values(payload: dict) -> bool:
 
 
 def fetch_payload(session: requests.Session, station: pd.Series, model: str) -> dict:
+    """Executa a chamada HTTP ao arquivo Open-Meteo para o modelo pedido."""
     response = session.get(ARCHIVE_API_URL, params=build_params(station, model), timeout=180)
     response.raise_for_status()
     return response.json()
 
 
 def main() -> None:
+    """Descarrega, normaliza e persiste a referência meteorológica horária."""
     if not IPMA_NEARBY_STATIONS_CSV.exists():
         raise FileNotFoundError(f"IPMA nearby stations csv not found: {IPMA_NEARBY_STATIONS_CSV}")
 
@@ -83,6 +95,9 @@ def main() -> None:
     with requests.Session() as session:
         payload = fetch_payload(session, station, PRIMARY_MODEL)
         source_model = PRIMARY_MODEL
+
+        # Alguns modelos devolvem blocos vazios em variáveis críticas; neste caso
+        # o script troca explicitamente para o fallback configurado.
         if not payload_has_critical_values(payload):
             payload = fetch_payload(session, station, FALLBACK_MODEL)
             source_model = FALLBACK_MODEL
@@ -96,6 +111,9 @@ def main() -> None:
 
     frame = pd.DataFrame(hourly)
     frame["time_local"] = pd.to_datetime(frame["time"])
+
+# A etapa posterior do fluxo precisa de timestamps UTC normalizados, mas também de
+    # preservar a leitura local usada na interpretação meteorológica.
     frame["time_utc"] = (
         frame["time_local"]
         .dt.tz_localize(TIMEZONE, ambiguous="NaT", nonexistent="shift_forward")

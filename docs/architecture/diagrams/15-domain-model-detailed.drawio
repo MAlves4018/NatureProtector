@@ -1,0 +1,779 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36">
+  <diagram name="Page-1" id="nzb5QMzCXMZPBsHqy7UK">
+    <mxGraphModel dx="3984" dy="910" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pkgGeo" parent="1" style="swimlane;fontStyle=1;align=left;verticalAlign=top;horizontal=1;startSize=28;rounded=0;strokeWidth=2;fontSize=16;fillColor=#f5f5f5;html=1;" value="Estrutura geográfica e espacial" vertex="1">
+          <mxGeometry height="438" width="936" x="-2143" y="651" as="geometry" />
+        </mxCell>
+        <mxCell id="AreaContext" parent="pkgGeo" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="AreaContext" vertex="1">
+          <mxGeometry height="156" width="290" x="637" y="101" as="geometry" />
+        </mxCell>
+        <mxCell id="AreaContext-a1" parent="AreaContext" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ VegetationType: string" vertex="1">
+          <mxGeometry height="26" width="290" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="AreaContext-a2" parent="AreaContext" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ VegetationDensity: double" vertex="1">
+          <mxGeometry height="26" width="290" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="AreaContext-a3" parent="AreaContext" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ PopulationExposure: double" vertex="1">
+          <mxGeometry height="26" width="290" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="AreaContext-a4" parent="AreaContext" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ CríticalInfrastructureExposure: double" vertex="1">
+          <mxGeometry height="26" width="290" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="AreaContext-a5" parent="AreaContext" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Seasonality: string" vertex="1">
+          <mxGeometry height="26" width="290" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="Boundaries" parent="pkgGeo" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="Boundaries" vertex="1">
+          <mxGeometry height="164" width="260" x="22" y="37" as="geometry">
+            <mxRectangle height="29" width="106" x="22" y="37" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Boundaries-a1" parent="Boundaries" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ MinLatitude: double" vertex="1">
+          <mxGeometry height="26" width="260" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="Boundaries-a2" parent="Boundaries" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ MaxLatitude: double" vertex="1">
+          <mxGeometry height="26" width="260" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="Boundaries-a3" parent="Boundaries" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ MinLongitude: double" vertex="1">
+          <mxGeometry height="26" width="260" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="Boundaries-a4" parent="Boundaries" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ MaxLongitude: double" vertex="1">
+          <mxGeometry height="26" width="260" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="Boundaries-sep" parent="Boundaries" style="line;strokeWidth=3;fillColor=none;align=left;verticalAlign=middle;rotatable=0;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="260" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="Boundaries-o1" parent="Boundaries" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Contains(location: Location): bool" vertex="1">
+          <mxGeometry height="26" width="260" y="138" as="geometry" />
+        </mxCell>
+        <mxCell id="Area" parent="pkgGeo" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="Area" vertex="1">
+          <mxGeometry height="180" width="330" x="299" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="Area-a1" parent="Area" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="330" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="Area-a2" parent="Area" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Name: string" vertex="1">
+          <mxGeometry height="26" width="330" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="Area-a3" parent="Area" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Boundaries: Boundaries" vertex="1">
+          <mxGeometry height="26" width="330" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="Area-sep" parent="Area" style="line;strokeWidth=3;fillColor=none;align=left;verticalAlign=middle;rotatable=0;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="330" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="Area-o1" parent="Area" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ ContainsLocation(location: Location): bool" vertex="1">
+          <mxGeometry height="26" width="330" y="112" as="geometry" />
+        </mxCell>
+        <mxCell id="Area-o2" parent="Area" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ GetRiskCellForLocation(location: Location): RiskCell?" vertex="1">
+          <mxGeometry height="42" width="330" y="138" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="pkgGeo" source="Area" style="startArrow=diamond;startFill=1;endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="Boundaries" value="boundaries 1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="144" y="215" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="pkgGeo" source="Area" style="startArrow=diamond;startFill=1;endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="AreaContext" value="context 1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="580" y="36" />
+              <mxPoint x="836" y="36" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="RiskCell" parent="pkgGeo" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="RiskCell" vertex="1">
+          <mxGeometry height="138" width="330" x="408" y="281" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskCell-a1" parent="RiskCell" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="330" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskCell-a2" parent="RiskCell" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ CellId: string?" vertex="1">
+          <mxGeometry height="26" width="330" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskCell-a3" parent="RiskCell" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Location: Location" vertex="1">
+          <mxGeometry height="26" width="330" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskCell-sep" parent="RiskCell" style="line;strokeWidth=3;fillColor=none;align=left;verticalAlign=middle;rotatable=0;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="330" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskCell-o1" parent="RiskCell" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Contains(location: Location): bool" vertex="1">
+          <mxGeometry height="26" width="330" y="112" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="pkgGeo" source="Area-o2" style="startArrow=diamond;startFill=1;endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;exitX=0.054;exitY=1.047;exitDx=0;exitDy=0;exitPerimeter=0;" target="RiskCell" value="contains 0..*">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="317" y="273" />
+              <mxPoint x="529" y="273" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Location" parent="pkgGeo" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="Location" vertex="1">
+          <mxGeometry height="138" width="270" x="22" y="266" as="geometry" />
+        </mxCell>
+        <mxCell id="Location-a1" parent="Location" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Latitude: double" vertex="1">
+          <mxGeometry height="26" width="270" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="Location-a2" parent="Location" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Longitude: double" vertex="1">
+          <mxGeometry height="26" width="270" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="Location-a3" parent="Location" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Altitude: double?" vertex="1">
+          <mxGeometry height="26" width="270" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="Location-sep" parent="Location" style="line;strokeWidth=3;fillColor=none;align=left;verticalAlign=middle;rotatable=0;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="270" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="Location-o1" parent="Location" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ DistanceTo(other: Location): double" vertex="1">
+          <mxGeometry height="26" width="270" y="112" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="pkgGeo" source="RiskCell" style="startArrow=diamond;startFill=1;endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="Location" value="location 1">
+          <mxGeometry relative="1" x="0.1828" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pkgScenario" parent="1" style="swimlane;fontStyle=1;align=left;verticalAlign=top;horizontal=1;startSize=28;rounded=0;strokeWidth=2;fontSize=16;fillColor=#f5f5f5;html=1;" value="Configuração, cenários e execução" vertex="1">
+          <mxGeometry height="444" width="602" x="-2143" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRun" parent="pkgScenario" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="SimulationRun" vertex="1">
+          <mxGeometry height="190" width="280" x="306" y="187" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRun-a1" parent="SimulationRun" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="280" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRun-a2" parent="SimulationRun" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ StartedAt: DateTimeOffset?" vertex="1">
+          <mxGeometry height="26" width="280" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRun-a3" parent="SimulationRun" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ EndedAt: DateTimeOffset?" vertex="1">
+          <mxGeometry height="26" width="280" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRun-a4" parent="SimulationRun" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Status: SimulationRunStatus" vertex="1">
+          <mxGeometry height="26" width="280" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRun-a5" parent="SimulationRun" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ ExecutionSeed: int?" vertex="1">
+          <mxGeometry height="26" width="280" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRun-sep" parent="SimulationRun" style="line;strokeWidth=3;fillColor=none;align=left;verticalAlign=middle;rotatable=0;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="280" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRun-o1" parent="SimulationRun" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Start(): void" vertex="1">
+          <mxGeometry height="26" width="280" y="164" as="geometry" />
+        </mxCell>
+        <mxCell id="Scenario" parent="pkgScenario" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="Scenario" vertex="1">
+          <mxGeometry height="164" width="250" x="7" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="Scenario-a1" parent="Scenario" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="250" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="Scenario-a2" parent="Scenario" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Name: string" vertex="1">
+          <mxGeometry height="26" width="250" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="Scenario-a3" parent="Scenario" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Description: string?" vertex="1">
+          <mxGeometry height="26" width="250" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="Scenario-a4" parent="Scenario" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Category: ScenarioCategory" vertex="1">
+          <mxGeometry height="26" width="250" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="Scenario-sep" parent="Scenario" style="line;strokeWidth=3;fillColor=none;align=left;verticalAlign=middle;rotatable=0;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="250" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="Scenario-o1" parent="Scenario" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ CreateRun(): SimulationRun" vertex="1">
+          <mxGeometry height="26" width="250" y="138" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="pkgScenario" source="Scenario" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="SimulationRun" value="originates 0..*">
+          <mxGeometry relative="1" x="-0.1369" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="541" y="168" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ScenarioParameters" parent="pkgScenario" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="ScenarioParameters" vertex="1">
+          <mxGeometry height="182" width="220" x="7" y="257" as="geometry" />
+        </mxCell>
+        <mxCell id="ScenarioParameters-a1" parent="ScenarioParameters" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ BaseTemperature: double?" vertex="1">
+          <mxGeometry height="26" width="220" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="ScenarioParameters-a2" parent="ScenarioParameters" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ BaseHumidity: double?" vertex="1">
+          <mxGeometry height="26" width="220" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="ScenarioParameters-a3" parent="ScenarioParameters" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ BaseWindSpeed: double?" vertex="1">
+          <mxGeometry height="26" width="220" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="ScenarioParameters-a4" parent="ScenarioParameters" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ FailureRate: double" vertex="1">
+          <mxGeometry height="26" width="220" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="ScenarioParameters-a5" parent="ScenarioParameters" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ NoiseLevel: double" vertex="1">
+          <mxGeometry height="26" width="220" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="ScenarioParameters-a6" parent="ScenarioParameters" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ TimeAcceleration: double" vertex="1">
+          <mxGeometry height="26" width="220" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="pkgScenario" source="Scenario" style="startArrow=diamond;startFill=1;endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="ScenarioParameters" value="parameters 1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="237" />
+              <mxPoint x="43" y="237" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pkgEnums" parent="1" style="swimlane;fontStyle=1;align=left;verticalAlign=top;horizontal=1;startSize=28;rounded=0;strokeWidth=2;fontSize=16;fillColor=#f5f5f5;html=1;" value="Enums" vertex="1">
+          <mxGeometry height="389" width="581" x="-797" y="791" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskLevel" parent="pkgEnums" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="«enum» RiskLevel" vertex="1">
+          <mxGeometry height="208" width="160" x="403.5" y="175" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskLevel-1" parent="RiskLevel" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Unknown" vertex="1">
+          <mxGeometry height="26" width="160" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskLevel-2" parent="RiskLevel" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ VeryLow" vertex="1">
+          <mxGeometry height="26" width="160" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskLevel-3" parent="RiskLevel" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Low" vertex="1">
+          <mxGeometry height="26" width="160" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskLevel-4" parent="RiskLevel" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Moderate" vertex="1">
+          <mxGeometry height="26" width="160" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskLevel-5" parent="RiskLevel" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ High" vertex="1">
+          <mxGeometry height="26" width="160" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskLevel-6" parent="RiskLevel" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ VeryHigh" vertex="1">
+          <mxGeometry height="26" width="160" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskLevel-7" parent="RiskLevel" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Extreme" vertex="1">
+          <mxGeometry height="26" width="160" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRunStatus" parent="pkgEnums" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="«enum» SimulationRunStatus" vertex="1">
+          <mxGeometry height="182" width="222" x="7" y="35" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRunStatus-1" parent="SimulationRunStatus" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Defined" vertex="1">
+          <mxGeometry height="26" width="222" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRunStatus-2" parent="SimulationRunStatus" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Ready" vertex="1">
+          <mxGeometry height="26" width="222" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRunStatus-3" parent="SimulationRunStatus" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Running" vertex="1">
+          <mxGeometry height="26" width="222" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRunStatus-4" parent="SimulationRunStatus" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Completed" vertex="1">
+          <mxGeometry height="26" width="222" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRunStatus-5" parent="SimulationRunStatus" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Failed" vertex="1">
+          <mxGeometry height="26" width="222" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="SimulationRunStatus-6" parent="SimulationRunStatus" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Cancelled" vertex="1">
+          <mxGeometry height="26" width="222" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="Severity" parent="pkgEnums" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="«enum» Severity" vertex="1">
+          <mxGeometry height="182" width="149" x="237" y="35" as="geometry" />
+        </mxCell>
+        <mxCell id="Severity-1" parent="Severity" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Info" vertex="1">
+          <mxGeometry height="26" width="149" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="Severity-2" parent="Severity" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Low" vertex="1">
+          <mxGeometry height="26" width="149" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="Severity-3" parent="Severity" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Medium" vertex="1">
+          <mxGeometry height="26" width="149" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="Severity-4" parent="Severity" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ High" vertex="1">
+          <mxGeometry height="26" width="149" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="Severity-5" parent="Severity" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Crítical" vertex="1">
+          <mxGeometry height="26" width="149" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="Severity-6" parent="Severity" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Emergency" vertex="1">
+          <mxGeometry height="26" width="149" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorType" parent="pkgEnums" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="«enum» SensorType" vertex="1">
+          <mxGeometry height="156" width="160" x="226" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorType-1" parent="SensorType" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Temperature" vertex="1">
+          <mxGeometry height="26" width="160" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorType-2" parent="SensorType" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Humidity" vertex="1">
+          <mxGeometry height="26" width="160" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorType-3" parent="SensorType" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Wind" vertex="1">
+          <mxGeometry height="26" width="160" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorType-4" parent="SensorType" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ WeatherStation" vertex="1">
+          <mxGeometry height="26" width="160" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorType-5" parent="SensorType" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Composite" vertex="1">
+          <mxGeometry height="26" width="160" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="ScenarioCategory" parent="pkgEnums" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="«enum» ScenarioCategory" vertex="1">
+          <mxGeometry height="130" width="183" x="392" y="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ScenarioCategory-1" parent="ScenarioCategory" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Base" vertex="1">
+          <mxGeometry height="26" width="183" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="ScenarioCategory-2" parent="ScenarioCategory" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ HighRisk" vertex="1">
+          <mxGeometry height="26" width="183" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="ScenarioCategory-3" parent="ScenarioCategory" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Failure" vertex="1">
+          <mxGeometry height="26" width="183" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="ScenarioCategory-4" parent="ScenarioCategory" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Exercise" vertex="1">
+          <mxGeometry height="26" width="183" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="pkgSensors" parent="1" style="swimlane;fontStyle=1;align=left;verticalAlign=top;horizontal=1;startSize=28;rounded=0;strokeWidth=2;fontSize=16;fillColor=#f5f5f5;html=1;" value="Sensores e observação" vertex="1">
+          <mxGeometry height="430" width="1151" x="-2143" y="1100" as="geometry" />
+        </mxCell>
+        <mxCell id="Sensor" parent="pkgSensors" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="Sensor" vertex="1">
+          <mxGeometry height="216" width="280" x="534" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="Sensor-a1" parent="Sensor" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="280" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="Sensor-a2" parent="Sensor" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Name: string" vertex="1">
+          <mxGeometry height="26" width="280" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="Sensor-a3" parent="Sensor" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Type: SensorType" vertex="1">
+          <mxGeometry height="26" width="280" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="Sensor-a4" parent="Sensor" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Location: Location" vertex="1">
+          <mxGeometry height="26" width="280" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="Sensor-a5" parent="Sensor" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ IsActive: bool" vertex="1">
+          <mxGeometry height="26" width="280" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="Sensor-sep" parent="Sensor" style="line;strokeWidth=3;fillColor=none;align=left;verticalAlign=middle;rotatable=0;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="280" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="Sensor-o1" parent="Sensor" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Activate(): void" vertex="1">
+          <mxGeometry height="26" width="280" y="164" as="geometry" />
+        </mxCell>
+        <mxCell id="Sensor-o2" parent="Sensor" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Deactivate(): void" vertex="1">
+          <mxGeometry height="26" width="280" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorNetwork" parent="pkgSensors" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="SensorNetwork" vertex="1">
+          <mxGeometry height="78" width="240" x="267" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorNetwork-a1" parent="SensorNetwork" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="240" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorNetwork-a2" parent="SensorNetwork" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Name: string" vertex="1">
+          <mxGeometry height="26" width="240" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="pkgSensors" source="SensorNetwork" style="startArrow=diamond;startFill=1;endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="Sensor" value="sensors 0..*">
+          <mxGeometry relative="1" x="-0.0008" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="296" y="147" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SensorProfile" parent="pkgSensors" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="SensorProfile" vertex="1">
+          <mxGeometry height="182" width="260" x="263" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorProfile-a1" parent="SensorProfile" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="260" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorProfile-a2" parent="SensorProfile" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ SamplingInterval: TimeSpan" vertex="1">
+          <mxGeometry height="26" width="260" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorProfile-a3" parent="SensorProfile" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ CommunicationMode: string" vertex="1">
+          <mxGeometry height="26" width="260" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorProfile-a4" parent="SensorProfile" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ NoiseLevel: double" vertex="1">
+          <mxGeometry height="26" width="260" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorProfile-a5" parent="SensorProfile" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ LatencyProfile: string" vertex="1">
+          <mxGeometry height="26" width="260" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="SensorProfile-a6" parent="SensorProfile" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ FailureProfile: string" vertex="1">
+          <mxGeometry height="26" width="260" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="pkgSensors" source="Sensor" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="SensorProfile" value="profile 1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="602" y="186" />
+              <mxPoint x="602" y="294" />
+              <mxPoint x="528" y="294" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Reading" parent="pkgSensors" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="Reading" vertex="1">
+          <mxGeometry height="164" width="280" x="841" y="46" as="geometry" />
+        </mxCell>
+        <mxCell id="Reading-a1" parent="Reading" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="280" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="Reading-a2" parent="Reading" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Timestamp: DateTimeOffset" vertex="1">
+          <mxGeometry height="26" width="280" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="Reading-a3" parent="Reading" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Location: Location" vertex="1">
+          <mxGeometry height="26" width="280" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="Reading-a4" parent="Reading" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Values: ReadingValues" vertex="1">
+          <mxGeometry height="26" width="280" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="Reading-sep" parent="Reading" style="line;strokeWidth=3;fillColor=none;align=left;verticalAlign=middle;rotatable=0;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="280" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="Reading-o1" parent="Reading" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ IsSuitableForRiskModel(): bool" vertex="1">
+          <mxGeometry height="26" width="280" y="138" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="pkgSensors" source="Sensor" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="Reading" value="produces 0..*">
+          <mxGeometry relative="1" x="-0.0007" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="973" y="231" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ReadingValues" parent="pkgSensors" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="ReadingValues" vertex="1">
+          <mxGeometry height="156" width="300" x="708" y="266" as="geometry" />
+        </mxCell>
+        <mxCell id="ReadingValues-a1" parent="ReadingValues" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ TemperatureCelsius: double?" vertex="1">
+          <mxGeometry height="26" width="300" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="ReadingValues-a2" parent="ReadingValues" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ RelativeHumidityPercent: double?" vertex="1">
+          <mxGeometry height="26" width="300" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="ReadingValues-a3" parent="ReadingValues" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ WindSpeedMetersPerSecond: double?" vertex="1">
+          <mxGeometry height="26" width="300" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="ReadingValues-a4" parent="ReadingValues" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ WindDirectionDegrees: double?" vertex="1">
+          <mxGeometry height="26" width="300" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="ReadingValues-a5" parent="ReadingValues" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ PrecipitationMillimetresPerHour: double?" vertex="1">
+          <mxGeometry height="26" width="300" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="pkgSensors" source="Reading" style="startArrow=diamond;startFill=1;endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="ReadingValues" value="values 1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1039" y="344" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="WeatherSnapshot" parent="pkgSensors" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="WeatherSnapshot" vertex="1">
+          <mxGeometry height="182" width="240" x="15" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="WeatherSnapshot-a1" parent="WeatherSnapshot" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="240" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="WeatherSnapshot-a2" parent="WeatherSnapshot" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Timestamp: DateTimeOffset" vertex="1">
+          <mxGeometry height="26" width="240" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="WeatherSnapshot-a3" parent="WeatherSnapshot" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Location: Location?" vertex="1">
+          <mxGeometry height="26" width="240" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="WeatherSnapshot-a4" parent="WeatherSnapshot" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ TemperatureCelsius: double?" vertex="1">
+          <mxGeometry height="26" width="240" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="WeatherSnapshot-a5" parent="WeatherSnapshot" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ RelativeHumidityPercent: double?" vertex="1">
+          <mxGeometry height="26" width="240" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="WeatherSnapshot-a6" parent="WeatherSnapshot" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Wind: WindVector?" vertex="1">
+          <mxGeometry height="26" width="240" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="WindVector" parent="pkgSensors" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="WindVector" vertex="1">
+          <mxGeometry height="78" width="230" x="20" y="274" as="geometry" />
+        </mxCell>
+        <mxCell id="WindVector-a1" parent="WindVector" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ SpeedMetersPerSecond: double" vertex="1">
+          <mxGeometry height="26" width="230" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="WindVector-a2" parent="WindVector" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ DirectionDegrees: double" vertex="1">
+          <mxGeometry height="26" width="230" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" edge="1" parent="pkgSensors" source="WeatherSnapshot" style="startArrow=diamond;startFill=1;endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="WindVector" value="wind 0..1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pkgComm" parent="1" style="swimlane;fontStyle=1;align=left;verticalAlign=top;horizontal=1;startSize=28;rounded=0;strokeWidth=2;fontSize=16;fillColor=#f5f5f5;html=1;" value="Comunicação operacional" vertex="1">
+          <mxGeometry height="237" width="931" x="-958" y="1233" as="geometry" />
+        </mxCell>
+        <mxCell id="Recommendation" parent="pkgComm" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="Recommendation" vertex="1">
+          <mxGeometry height="130" width="260" x="664" y="39" as="geometry" />
+        </mxCell>
+        <mxCell id="Recommendation-a1" parent="Recommendation" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="260" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="Recommendation-a2" parent="Recommendation" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Message: string" vertex="1">
+          <mxGeometry height="26" width="260" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="Recommendation-a3" parent="Recommendation" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Priority: int" vertex="1">
+          <mxGeometry height="26" width="260" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="Recommendation-a4" parent="Recommendation" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ CreatedAt: DateTimeOffset" vertex="1">
+          <mxGeometry height="26" width="260" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="Alert" parent="pkgComm" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="Alert" vertex="1">
+          <mxGeometry height="190" width="320" x="337" y="39" as="geometry" />
+        </mxCell>
+        <mxCell id="Alert-a1" parent="Alert" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="320" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="Alert-a2" parent="Alert" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Severity: Severity" vertex="1">
+          <mxGeometry height="26" width="320" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="Alert-a3" parent="Alert" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Message: string" vertex="1">
+          <mxGeometry height="26" width="320" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="Alert-a4" parent="Alert" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ CreatedAt: DateTimeOffset" vertex="1">
+          <mxGeometry height="26" width="320" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="Alert-a5" parent="Alert" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ IsAcknowledged: bool" vertex="1">
+          <mxGeometry height="26" width="320" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="Alert-sep" parent="Alert" style="line;strokeWidth=3;fillColor=none;align=left;verticalAlign=middle;rotatable=0;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="320" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="Alert-o1" parent="Alert" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Acknowledge(): void" vertex="1">
+          <mxGeometry height="26" width="320" y="164" as="geometry" />
+        </mxCell>
+        <mxCell id="e29" edge="1" parent="pkgComm" source="Alert" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;entryX=0.75;entryY=1;entryDx=0;entryDy=0;" target="Recommendation-a4" value="includes 0..*">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="878" y="203" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="AreaRiskSnapshot" parent="pkgComm" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="AreaRiskSnapshot" vertex="1">
+          <mxGeometry height="156" width="320" x="7" y="39" as="geometry" />
+        </mxCell>
+        <mxCell id="AreaRiskSnapshot-a1" parent="AreaRiskSnapshot" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="320" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="AreaRiskSnapshot-a2" parent="AreaRiskSnapshot" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Timestamp: DateTimeOffset" vertex="1">
+          <mxGeometry height="26" width="320" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="AreaRiskSnapshot-a3" parent="AreaRiskSnapshot" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ AggregateRiskLevel: RiskLevel" vertex="1">
+          <mxGeometry height="26" width="320" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="AreaRiskSnapshot-a4" parent="AreaRiskSnapshot" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ AggregateRiskScore: double" vertex="1">
+          <mxGeometry height="26" width="320" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="AreaRiskSnapshot-a5" parent="AreaRiskSnapshot" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Summary: string?" vertex="1">
+          <mxGeometry height="26" width="320" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="e28" edge="1" parent="pkgComm" source="AreaRiskSnapshot" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="Alert" value="may trigger 0..*">
+          <mxGeometry relative="1" x="-0.125" y="-2" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="166" y="195" />
+              <mxPoint x="166" y="217" />
+            </Array>
+            <mxPoint x="225" y="9" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="Area" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="Scenario" value="scenarios 0..*">
+          <mxGeometry relative="1" x="-0.2529" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-1830" y="596" />
+              <mxPoint x="-1879" y="596" />
+              <mxPoint x="-1879" y="384" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="SimulationRun" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="Area" value="">
+          <mxGeometry relative="1" x="0.008" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-1659" y="496" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zsd8FskSZXVKSK38foaT-20" connectable="0" parent="e8" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;area 1&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.0256" y="-6" as="geometry">
+            <mxPoint x="6" y="-41" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="Area" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="SensorNetwork" value="sensorNetworks 0..*">
+          <mxGeometry relative="1" x="-0.5096" y="4" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-2153" y="893" />
+              <mxPoint x="-2153" y="1094" />
+              <mxPoint x="-1820" y="1094" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="Sensor" style="startArrow=diamond;startFill=1;endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="Location" value="location 1">
+          <mxGeometry relative="1" x="-0.488" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-1584" y="1085" />
+              <mxPoint x="-1915" y="1085" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="Reading" style="startArrow=diamond;startFill=1;endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="Location" value="location 1">
+          <mxGeometry relative="1" x="-0.5408" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-1241" y="1076" />
+              <mxPoint x="-1860" y="1076" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e16" edge="1" parent="1" source="Area" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="WeatherSnapshot" value="weatherSnapshots 0..*">
+          <mxGeometry relative="1" x="-0.4027" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-2161" y="879" />
+              <mxPoint x="-2161" y="1176" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="WeatherSnapshot" style="startArrow=diamond;startFill=1;endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="Location" value="location 0..1">
+          <mxGeometry relative="1" x="0.6591" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-1941" y="1100" />
+              <mxPoint x="-1959" y="1100" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e19" edge="1" parent="1" source="SimulationRun" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="Reading" value="captures 0..*">
+          <mxGeometry relative="1" x="-0.7859" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-1154" y="512" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e20" edge="1" parent="1" source="Reading" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="RiskAssessment" value="contributes to 0..*">
+          <mxGeometry relative="1" x="-0.5747" y="-21" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-928" y="1154" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e21" edge="1" parent="1" source="RiskCell" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="RiskAssessment" value="assessments 0..*">
+          <mxGeometry relative="1" x="0.2813" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-1071" y="1049" />
+              <mxPoint x="-1071" y="916" />
+              <mxPoint x="-1021" y="916" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e24" edge="1" parent="1" source="Area" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="AreaRiskSnapshot" value="snapshots 0..*">
+          <mxGeometry relative="1" x="0.2437" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-1572" y="920" />
+              <mxPoint x="-1192" y="920" />
+              <mxPoint x="-1192" y="1090" />
+              <mxPoint x="-984" y="1090" />
+              <mxPoint x="-984" y="1409" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e25" edge="1" parent="1" source="SimulationRun" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="AreaRiskSnapshot" value="summarizes 0..*">
+          <mxGeometry relative="1" x="-0.869" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-1178" y="538" />
+              <mxPoint x="-1178" y="1073" />
+              <mxPoint x="-975" y="1073" />
+              <mxPoint x="-975" y="1367" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e26" edge="1" parent="1" source="AreaRiskSnapshot" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="RiskAssessment" value="aggregates 0..*">
+          <mxGeometry relative="1" x="0.0128" y="19" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-965" y="1338" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e27" edge="1" parent="1" source="RiskAssessment" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;entryX=0.106;entryY=-0.002;entryDx=0;entryDy=0;entryPerimeter=0;" target="Alert" value="may trigger 0..*">
+          <mxGeometry relative="1" x="0.3233" y="2" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-849" y="1225" />
+              <mxPoint x="-587" y="1225" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pkgPreventive" parent="1" style="swimlane;fontStyle=1;align=left;verticalAlign=top;horizontal=1;startSize=28;rounded=0;strokeWidth=2;fontSize=16;fillColor=#f5f5f5;html=1;" value="Avaliação preventiva" vertex="1">
+          <mxGeometry height="237" width="702" x="-1130" y="462" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskAssessment" parent="pkgPreventive" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="RiskAssessment" vertex="1">
+          <mxGeometry height="190" width="330" x="11" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskAssessment-a1" parent="RiskAssessment" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="330" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskAssessment-a2" parent="RiskAssessment" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Timestamp: DateTimeOffset" vertex="1">
+          <mxGeometry height="26" width="330" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskAssessment-a3" parent="RiskAssessment" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ RiskScore: double" vertex="1">
+          <mxGeometry height="26" width="330" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskAssessment-a4" parent="RiskAssessment" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ RiskLevel: RiskLevel" vertex="1">
+          <mxGeometry height="26" width="330" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskAssessment-a5" parent="RiskAssessment" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ ExplanationSummary: string?" vertex="1">
+          <mxGeometry height="26" width="330" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskAssessment-sep" parent="RiskAssessment" style="line;strokeWidth=3;fillColor=none;align=left;verticalAlign=middle;rotatable=0;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="330" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="RiskAssessment-o1" parent="RiskAssessment" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ CalculateLevel(): RiskLevel" vertex="1">
+          <mxGeometry height="26" width="330" y="164" as="geometry" />
+        </mxCell>
+        <mxCell id="RuleSet" parent="pkgPreventive" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="RuleSet" vertex="1">
+          <mxGeometry height="182" width="260" x="431" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="RuleSet-a1" parent="RuleSet" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Id: Guid" vertex="1">
+          <mxGeometry height="26" width="260" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="RuleSet-a2" parent="RuleSet" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ Version: string" vertex="1">
+          <mxGeometry height="26" width="260" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="RuleSet-a3" parent="RuleSet" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ TemperatureWeight: double" vertex="1">
+          <mxGeometry height="26" width="260" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="RuleSet-a4" parent="RuleSet" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ HumidityWeight: double" vertex="1">
+          <mxGeometry height="26" width="260" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="RuleSet-a5" parent="RuleSet" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ WindWeight: double" vertex="1">
+          <mxGeometry height="26" width="260" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="RuleSet-a6" parent="RuleSet" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;strokeWidth=3;fontSize=14;" value="+ VegetationWeight: double" vertex="1">
+          <mxGeometry height="26" width="260" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" edge="1" parent="pkgPreventive" source="RuleSet" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="RiskAssessment" value="used by 0..*">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e22" edge="1" parent="1" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;" target="RiskAssessment" value="includes 0..*">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-1557" y="451" />
+              <mxPoint x="-954" y="451" />
+            </Array>
+            <mxPoint x="-1557" y="451" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zsd8FskSZXVKSK38foaT-26" edge="1" parent="1" source="AreaContext" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;fontSize=14;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" target="RiskAssessment-a2" value="">
+          <mxGeometry relative="1" x="-0.7859" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-1288" y="591" />
+              <mxPoint x="-1288" y="591" />
+              <mxPoint x="-1288" y="552" />
+            </Array>
+            <mxPoint x="-1426" y="591" as="sourcePoint" />
+            <mxPoint x="-1023" y="1225" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zsd8FskSZXVKSK38foaT-27" connectable="0" parent="zsd8FskSZXVKSK38foaT-26" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;contributes to 0..*&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.4132" as="geometry">
+            <mxPoint x="-16" y="4" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

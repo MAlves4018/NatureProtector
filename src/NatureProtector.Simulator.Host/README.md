@@ -8,11 +8,14 @@ O caminho hoje ligado pelo `Program.cs` é este:
 
 1. O host lê `RabbitMq` e `Simulator` de `appsettings.json`.
 2. `GeneratedScenarioManifestLoader` pode sobrepor a configuração base quando `ScenarioManifestPath` está definido.
-3. `ScenarioContextFactory` transforma a configuração em `Scenario`, `Sensor`, `SensorProfile` e `SimulationContext`.
-4. `SeedProvider` fixa a seed efetiva da execução.
-5. `SimulationRunner` percorre os ciclos configurados.
-6. `ReadingGenerationService` gera um envelope por sensor e por ciclo.
-7. `IReadingPublisher` publica cada envelope.
+3. Se `ControlPlaneEnabled = false`, `ScenarioContextFactory` transforma a configuração em `Scenario`, `Sensor`, `SensorProfile` e `SimulationContext`.
+4. Se `ControlPlaneEnabled = true`, `PostgresSimulationContextSource` lê área, cenário e sensores ativos do schema `control`.
+5. `SeedProvider` fixa a seed efetiva da execução.
+6. `SimulationRunner` percorre os ciclos configurados.
+7. `ReadingGenerationService` gera um envelope por sensor e por ciclo.
+8. `IReadingPublisher` publica cada envelope.
+9. Quando o plano de controlo está ativo, `PostgresSimulationRunStore` persiste o ciclo de vida da run em `control.simulation_runs`.
+10. Os envelopes continuam a usar tempo lógico (`event_time` a partir de `StartTimestamp`), enquanto `SimulationRun.StartedAt` e `EndedAt` passam a refletir o tempo real da execução.
 
 ## Ficheiros principais
 
@@ -21,9 +24,11 @@ O caminho hoje ligado pelo `Program.cs` é este:
 - `Configuration/SimulatorOptions.cs`
   - contrato principal de configuração do simulador
 - `Configuration/GeneratedScenarioManifestLoader.cs`
-  - leitura de manifestos gerados em `data/manifests/scenarios`
+  - leitura de ficheiros de definição gerados em `data/manifests/scenarios`
 - `Context/ScenarioContextFactory.cs`
 - `Context/SimulationContext.cs`
+- `Services/PostgresSimulationContextSource.cs`
+- `Services/PostgresSimulationRunStore.cs`
 - `Services/SeedProvider.cs`
 - `Services/ReadingGenerationService.cs`
 - `Services/SimulationRunner.cs`
@@ -43,20 +48,40 @@ Inclui, entre outros:
 - valores base de temperatura, humidade e vento;
 - taxa de falha e ruído;
 - lista de sensores;
-- `ScenarioManifestPath` e `ScenarioManifestScenarioKey`.
+- `ScenarioManifestPath` e `ScenarioManifestScenarioKey`;
+- `ControlPlaneEnabled`, `ControlPlaneAreaCode` e `ControlPlaneScenarioCode`.
 
-### Secção `Prevention`
+### Ficheiros de definição de cenário
 
-O `appsettings.json` deste projeto ainda contém uma secção `Prevention`, mas o `Program.cs` atual não a usa. Devemos lê-la como configuração residual de uma fase intermédia do projeto, não como parte do fluxo ativo do simulador.
-
-### Manifestos de cenário
-
-O host já consegue ler os ficheiros gerados na pipeline de dados, por exemplo:
+O host já consegue ler os ficheiros gerados na cadeia de preparação de dados, por exemplo:
 
 - [../../data/manifests/scenarios/proenca-a-nova-scenarios.generated.json](../../data/manifests/scenarios/proenca-a-nova-scenarios.generated.json)
 - [../../data/manifests/scenarios/proenca-a-nova/scenario_b.high-risk.json](../../data/manifests/scenarios/proenca-a-nova/scenario_b.high-risk.json)
 
-Na prática, o loader consome o bloco `simulator_options` e sobrepõe os campos que existem em `SimulatorOptions`. Campos extra do manifesto podem continuar no ficheiro sem serem ainda usados pelo host.
+Na prática, o loader consome o bloco `simulator_options` e sobrepõe os campos que existem em `SimulatorOptions`. Campos extra do ficheiro de definição podem continuar no ficheiro sem serem ainda usados pelo host.
+
+### Plano de controlo em PostgreSQL
+
+Quando `ControlPlaneEnabled = true`, o host deixa de depender só de `appsettings` e de ficheiros de definição soltos para a topologia da simulação.
+
+Nesse modo ele:
+
+- resolve a área por `AreaId` ou `ControlPlaneAreaCode`;
+- resolve o cenário por `ScenarioId` ou `ControlPlaneScenarioCode`;
+- lê os `sensor_nodes` ativos e os respetivos `sensor_profiles`;
+- usa `simulation_runs` para persistir o estado da execução.
+
+Esse é o perfil local suportado por defeito do repositório. Quando o plano de controlo está ativo, o host deve ser tratado como dependente da baseline bootstrapada em PostgreSQL; o `ScenarioManifestPath` e a lista local de `Sensors` deixam de ser a fonte de verdade operacional.
+
+## Tempo lógico vs. tempo real
+
+O simulador trabalha hoje com duas linhas temporais diferentes e complementares:
+
+- `event_time` em cada envelope representa o tempo lógico do cenário, calculado a partir de `StartTimestamp` e `IntervalSeconds`;
+- `SimulationRun.StartedAt` e `SimulationRun.EndedAt` representam o tempo real em que a execução correu no host;
+- `control.simulation_runs.logical_start_timestamp` guarda o instante lógico inicial usado para gerar os eventos.
+
+Isto evita misturar o relógio do cenário com o relógio da máquina quando a run é consultada no plano de controlo.
 
 ## Sensores e métricas suportados hoje
 
@@ -86,21 +111,11 @@ Contudo, o `SimulationRunner` recebe uma única implementação de `IReadingPubl
 - Execução determinística baseada em seed.
 - Geração de envelopes comuns com `schema_version`, `event_id`, `correlation_id` e `event_time`.
 - Publicação para RabbitMQ com mensagens persistentes.
-- Integração com os cenários gerados na pipeline de dados.
-
-## Código residual que ainda existe aqui
-
-Este projeto ainda contém ficheiros de ingestão, persistência e validação que não pertencem ao caminho ativo atual:
-
-- `ReadingIngestionWorker.cs`
-- `Configuration/PreventionOptions.cs`
-- `Presistence/*`
-- `Validation/*`
-
-Além disso, esses ficheiros usam o namespace `NatureProtector.Prevention.Host`, o que confirma que devem ser lidos como resíduo de uma fase anterior ou intermédia de refatoração.
+- Integração com os cenários gerados na cadeia de preparação de dados.
+- Integração opcional com o plano de controlo em PostgreSQL.
 
 ## Relação com o resto da solução
 
 - Usa `NatureProtector.Core` para o modelo de cenário, sensores e runs.
-- Usa `NatureProtector.Shared` para contratos e mensageria.
+- Usa `NatureProtector.Shared` para contratos e infraestrutura de mensagens.
 - Produz os eventos que o [../NatureProtector.Prevention.Host/README.md](../NatureProtector.Prevention.Host/README.md) consome.

@@ -1,0 +1,108 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="11-persistence-views" name="Page-1">
+    <mxGraphModel dx="3565" dy="2048" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1750" pageHeight="980" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f4e78;strokeColor=#0b2e4f;fontColor=#ffffff;fontSize=24;fontStyle=1;" value="Persistência, contratos e vistas operacionais" vertex="1">
+          <mxGeometry height="70" width="1512" x="118" y="103" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=15;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Contrato comum" vertex="1">
+          <mxGeometry height="710" width="280" x="116" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff5f4;strokeColor=#b85450;fontSize=14;" value="EventEnvelope&#xa;schema_version&#xa;event_id&#xa;correlation_id&#xa;producer&#xa;event_type&#xa;area_id&#xa;event_time&#xa;ingest_time&#xa;payload" vertex="1">
+          <mxGeometry height="260" width="200" x="43" y="253" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=15;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;PostgreSQL" vertex="1">
+          <mxGeometry height="710" width="940" x="410" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef8ee;strokeColor=#82b366;fontStyle=1;fontSize=14;" value="control" vertex="1">
+          <mxGeometry height="60" width="250" x="35" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef8ee;strokeColor=#82b366;fontSize=13;" value="areas, grid_cells, sensor_profiles,&#xa;sensor_nodes, scenario_definitions,&#xa;dataset_artifacts, scenario_dataset_bindings, simulation_runs" vertex="1">
+          <mxGeometry height="170" width="250" x="35" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="pipeline" vertex="1">
+          <mxGeometry height="60" width="250" x="345" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="24" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="event_inbox&#xa;processing_attempts&#xa;rejected_events&#xa;quarantined_events" vertex="1">
+          <mxGeometry height="150" width="250" x="345" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="25" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=14;" value="projection" vertex="1">
+          <mxGeometry height="60" width="250" x="655" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="26" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="accepted_reading_log&#xa;risk_assessment_log&#xa;area_risk_snapshot_log&#xa;cell_operational_state&#xa;area_operational_state&#xa;alert_state" vertex="1">
+          <mxGeometry height="190" width="250" x="655" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="27" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=14;" value="Semantica temporal" vertex="1">
+          <mxGeometry height="60" width="450" x="235" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="28" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" value="event_time = tempo do fenomeno&#xa;ingest_time = entrada na pipeline&#xa;processing attempts = tempo de decisão operacional" vertex="1">
+          <mxGeometry height="100" width="450" x="235" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=15;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;InfluxDB" vertex="1">
+          <mxGeometry height="710" width="280" x="1359" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="31" parent="30" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=14;" value="accepted_readings" vertex="1">
+          <mxGeometry height="70" width="180" x="45" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="32" parent="30" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=14;" value="risk_assessments" vertex="1">
+          <mxGeometry height="70" width="180" x="52" y="246" as="geometry" />
+        </mxCell>
+        <mxCell id="33" parent="30" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=14;" value="area_risk_snapshots" vertex="1">
+          <mxGeometry height="70" width="180" x="45" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="40" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#b85450;" target="24" value="payload e semantica temporal">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="880" y="564" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="41" edge="1" parent="1" source="22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#82b366;" target="24" value="liga configuração, datasets e runs">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="570" y="529" />
+              <mxPoint x="809" y="529" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="42" edge="1" parent="1" source="24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#6c8ebf;" target="26" value="materializa estado operacional">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="916" y="575" />
+              <mxPoint x="1162" y="575" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="43" edge="1" parent="1" source="26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#6c8ebf;" target="31" value="telemetria aceite">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1385" y="387" />
+              <mxPoint x="1385" y="345" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="44" edge="1" parent="1" source="26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#6c8ebf;" target="32" value="avaliações de risco">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1385" y="421" />
+              <mxPoint x="1385" y="410" />
+              <mxPoint x="1491" y="410" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="45" edge="1" parent="1" source="26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#6c8ebf;" target="33" value="snapshots de area">
+          <mxGeometry relative="1" x="0.2132" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1382" y="503" />
+              <mxPoint x="1382" y="533" />
+              <mxPoint x="1500" y="533" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

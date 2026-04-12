@@ -1,23 +1,25 @@
 using Microsoft.Extensions.Options;
+using NatureProtector.Core.Scenarios;
 using NatureProtector.Simulator.Host.Configuration;
 using NatureProtector.Simulator.Host.Publishing;
 
 /*
- * This hosted service orchestrates the full simulation execution lifecycle.
+ * Este hosted service orquestra o ciclo de vida completo de uma execução de
+ * simulação.
  *
  * Rationale:
- * - The runner owns the simulation loop, timing, seed resolution, context
- *   creation, reading generation and publication.
- * - This replaces the previous all-in-one worker with a cleaner orchestration
- *   layer that delegates specialized work to dedicated services.
+ * - O runner controla o loop principal, a temporização, a seed, a resolução do
+ *   contexto, a geração das leituras e a publicação.
+ * - Esta camada substitui a antiga abordagem monolítica por uma orquestração
+ *   mais clara, apoiada em serviços especializados.
  *
  * Design considerations:
- * - A single seed is resolved once per execution to guarantee deterministic
- *   pseudo-random behaviour.
- * - A Scenario-derived SimulationRun is created and its lifecycle is updated
- *   in the correct temporal order.
- * - The loop publishes one batch per cycle and waits for the configured interval
- *   between cycles.
+ * - A seed é resolvida uma única vez por execução para garantir comportamento
+ *   determinístico.
+ * - O objeto SimulationRun é atualizado pela ordem temporal correta para
+ *   manter o estado observável no control plane.
+ * - O loop publica um lote por ciclo e espera o intervalo lógico configurado
+ *   entre ciclos.
  */
 
 namespace NatureProtector.Simulator.Host.Services;
@@ -26,18 +28,19 @@ public sealed class SimulationRunner(
     ILogger<SimulationRunner> logger,
     IOptions<SimulatorOptions> simulatorOptions,
     SeedProvider seedProvider,
-    ScenarioContextFactory scenarioContextFactory,
+    ISimulationContextSource simulationContextSource,
     ReadingGenerationService readingGenerationService,
+    ISimulationRunStore simulationRunStore,
     IReadingPublisher readingPublisher) : BackgroundService
 {
     private readonly SimulatorOptions _options = simulatorOptions.Value;
 
     /// <summary>
-    /// Executes the simulation loop until the configured number of cycles is
-    /// completed or the host is cancelled.
+    /// Executa o loop de simulação até terminar o número configurado de ciclos
+    /// ou até o host ser cancelado.
     /// </summary>
     /// <param name="stoppingToken">
-    /// Cancellation token triggered during host shutdown.
+    /// Token de cancelamento disparado durante o encerramento do host.
     /// </param>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -45,7 +48,7 @@ public sealed class SimulationRunner(
             "Simulation runner starting at {Time}.",
             DateTimeOffset.UtcNow);
 
-        var context = scenarioContextFactory.Create();
+        var context = await simulationContextSource.CreateAsync(stoppingToken);
         var seed = seedProvider.ResolveSeed(_options.Seed);
         var random = seedProvider.CreateRandom(seed);
 
@@ -58,8 +61,20 @@ public sealed class SimulationRunner(
             context.NumberOfCycles,
             context.Interval.TotalSeconds);
 
+        // O registo é persistido logo em Ready e depois em Running para tornar
+        // explícita a transição de estado observável da execução.
         var run = context.Scenario.CreateRun(seed);
-        run.Start(context.StartTimestamp);
+        run.MarkReady();
+        await simulationRunStore.UpsertAsync(context, run, stoppingToken);
+        var actualStartedAt = DateTimeOffset.UtcNow;
+        run.Start(actualStartedAt);
+        await simulationRunStore.UpsertAsync(context, run, stoppingToken);
+
+        logger.LogInformation(
+            "Simulation run started | SimulationRunId={SimulationRunId} | StartedAt={StartedAt} | LogicalStartTimestamp={LogicalStartTimestamp}",
+            run.Id,
+            actualStartedAt,
+            context.StartTimestamp);
 
         try
         {
@@ -94,20 +109,39 @@ public sealed class SimulationRunner(
                 }
             }
 
-            var completedAt = context.StartTimestamp + TimeSpan.FromTicks(
+            var logicalCompletedAt = context.StartTimestamp + TimeSpan.FromTicks(
                 context.Interval.Ticks * context.NumberOfCycles);
+            var actualCompletedAt = DateTimeOffset.UtcNow;
 
-            run.Complete(completedAt);
+            run.Complete(actualCompletedAt);
+            await simulationRunStore.UpsertAsync(context, run, stoppingToken);
 
             logger.LogInformation(
-                "Simulation completed successfully | SimulationRunId={SimulationRunId} | CompletedAt={CompletedAt}.",
+                "Simulation completed successfully | SimulationRunId={SimulationRunId} | CompletedAt={CompletedAt} | LogicalCompletedAt={LogicalCompletedAt}.",
                 run.Id,
-                completedAt);
+                actualCompletedAt,
+                logicalCompletedAt);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
+            if (run.Status is SimulationRunStatus.Ready or SimulationRunStatus.Running)
+            {
+                run.Cancel(DateTimeOffset.UtcNow);
+                await simulationRunStore.UpsertAsync(context, run, CancellationToken.None);
+            }
+
             logger.LogInformation(
                 "Simulation runner cancellation requested. Execution is stopping gracefully.");
+        }
+        catch
+        {
+            if (run.Status is SimulationRunStatus.Running)
+            {
+                run.Fail(DateTimeOffset.UtcNow);
+                await simulationRunStore.UpsertAsync(context, run, CancellationToken.None);
+            }
+
+            throw;
         }
     }
 }

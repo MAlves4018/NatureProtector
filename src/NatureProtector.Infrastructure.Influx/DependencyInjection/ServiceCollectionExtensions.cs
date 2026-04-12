@@ -5,14 +5,29 @@ using NatureProtector.Infrastructure.Influx.Services;
 
 namespace NatureProtector.Infrastructure.Influx.DependencyInjection;
 
+/*
+ * Estas extensões centralizam o registo da escrita em InfluxDB.
+ *
+ * Rationale:
+ * - A pipeline de prevenção precisa de publicar métricas de observabilidade sem
+ *   duplicar configuração em cada host.
+ * - O fallback para `.env` deve ficar encapsulado numa única composição.
+ */
+
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Regista a configuração e o serviço de escrita em InfluxDB.
+    /// </summary>
     public static IServiceCollection AddInfluxPersistence(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        string basePath)
     {
-        services.Configure<InfluxDbOptions>(
-            configuration.GetSection(InfluxDbOptions.SectionName));
+        services.AddOptions<InfluxDbOptions>()
+            .Bind(configuration.GetSection(InfluxDbOptions.SectionName));
+        services.PostConfigure<InfluxDbOptions>(
+            options => InfluxDbSettingsLoader.ApplyEnvironmentOrDotEnvFallbacks(options, basePath));
 
         services.AddSingleton<IInfluxWriteService, InfluxWriteService>();
 

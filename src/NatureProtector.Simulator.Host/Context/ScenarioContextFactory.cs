@@ -24,7 +24,7 @@ using NatureProtector.Simulator.Host.Configuration;
 
 namespace NatureProtector.Simulator.Host.Services;
 
-public sealed class ScenarioContextFactory
+public sealed class ScenarioContextFactory : ISimulationContextSource
 {
     private readonly SimulatorOptions _options;
 
@@ -76,10 +76,17 @@ public sealed class ScenarioContextFactory
         return new SimulationContext(
             areaId: _options.AreaId,
             scenario: scenario,
+            scenarioCode: null,
             sensors: sensors,
             startTimestamp: startTimestamp,
             interval: interval,
             numberOfCycles: _options.NumberOfCycles);
+    }
+
+    public Task<SimulationContext> CreateAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(Create());
     }
 
     /// <summary>

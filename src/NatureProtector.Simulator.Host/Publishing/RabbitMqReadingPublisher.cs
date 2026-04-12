@@ -5,21 +5,20 @@ using NatureProtector.Shared.Messaging;
 using RabbitMQ.Client;
 
 /*
- * This publisher is responsible for sending generated reading events to RabbitMQ.
+ * Este publisher envia os eventos de leitura gerados para RabbitMQ.
  *
  * Rationale:
- * - The simulation host should not contain broker-specific publication logic
- *   inside the orchestration layer.
- * - By isolating RabbitMQ publication in a dedicated publisher, the execution
- *   flow remains cleaner and easier to evolve.
+ * - O simulador não deve conter lógica específica do broker na camada de
+ *   orquestração.
+ * - Isolar a publicação em RabbitMQ mantém o fluxo de execução mais limpo e
+ *   mais fácil de evoluir.
  *
  * Design considerations:
- * - The publisher keeps a connection and a channel for reuse across the host lifetime.
- * - Topology is declared when the channel is created, ensuring the required exchange,
- *   queues and bindings exist before publication starts.
- * - The implementation is intentionally synchronous internally because the RabbitMQ
- *   client used here exposes synchronous publishing primitives, but the public
- *   contract remains asynchronous for consistency with the rest of the host.
+ * - O publisher mantém ligação e canal reutilizáveis ao longo da vida do host.
+ * - A topologia é declarada quando o canal é criado, garantindo que exchange,
+ *   filas e bindings existem antes da publicação.
+ * - A implementação é síncrona internamente porque o cliente usado expõe essas
+ *   primitivas, mas o contrato público mantém-se assíncrono por consistência.
  */
 
 namespace NatureProtector.Simulator.Host.Publishing;
@@ -36,13 +35,13 @@ public sealed class RabbitMqReadingPublisher(
     private bool _disposed;
 
     /// <summary>
-    /// Publishes one generated reading envelope to RabbitMQ.
+    /// Publica um envelope de leitura gerado em RabbitMQ.
     /// </summary>
     /// <param name="envelope">
-    /// Event envelope containing the generated sensor reading payload.
+    /// Envelope de evento com o payload da leitura simulada.
     /// </param>
     /// <param name="cancellationToken">
-    /// Cancellation token used for graceful shutdown.
+    /// Token de cancelamento usado para encerramento gracioso.
     /// </param>
     public Task PublishAsync(
         EventEnvelope<SensorReadingProducedPayload> envelope,
@@ -84,7 +83,7 @@ public sealed class RabbitMqReadingPublisher(
     }
 
     /// <summary>
-    /// Ensures that a valid RabbitMQ connection and channel are available.
+    /// Garante que existe uma ligação e um canal RabbitMQ válidos.
     /// </summary>
     private void EnsureChannel()
     {
@@ -149,10 +148,10 @@ public sealed class RabbitMqReadingPublisher(
     }
 
     /// <summary>
-    /// Declares the exchange, queues and bindings required by the platform.
+    /// Declara o exchange, as filas e as bindings necessárias à plataforma.
     /// </summary>
     /// <param name="channel">
-    /// RabbitMQ channel used to declare topology.
+    /// Canal RabbitMQ usado para declarar a topologia.
     /// </param>
     private void DeclareTopology(IModel channel)
     {
@@ -184,7 +183,7 @@ public sealed class RabbitMqReadingPublisher(
     }
 
     /// <summary>
-    /// Disposes the currently open channel and connection, if any.
+    /// Liberta o canal e a ligação atualmente abertos, se existirem.
     /// </summary>
     private void DisposeConnectionObjects()
     {
@@ -208,7 +207,7 @@ public sealed class RabbitMqReadingPublisher(
     }
 
     /// <summary>
-    /// Releases RabbitMQ resources owned by this publisher.
+    /// Liberta os recursos RabbitMQ detidos por este publisher.
     /// </summary>
     public void Dispose()
     {

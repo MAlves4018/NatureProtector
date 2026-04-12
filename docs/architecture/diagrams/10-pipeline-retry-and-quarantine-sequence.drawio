@@ -1,0 +1,115 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="10-pipeline-retry-and-quarantine-sequence" name="Page-1">
+    <mxGraphModel dx="1426" dy="819" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1750" pageHeight="980" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f4e78;strokeColor=#0b2e4f;fontColor=#ffffff;fontSize=24;fontStyle=1;" value="Nova tentativa e quarentena no fluxo operacional" vertex="1">
+          <mxGeometry height="70" width="1256" x="60" y="62" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=14;" value="RabbitMQ" vertex="1">
+          <mxGeometry height="70" width="150" x="60" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="PreventionWorker" vertex="1">
+          <mxGeometry height="70" width="180" x="229" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=14;" value="PostgresReadingEventInbox" vertex="1">
+          <mxGeometry height="70" width="230" x="455" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="ReadingEventProcessingService" vertex="1">
+          <mxGeometry height="70" width="240" x="709" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=14;" value="InboxRetryWorker" vertex="1">
+          <mxGeometry height="70" width="180" x="964" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=14;" value="rejected_events / quarantined_events" vertex="1">
+          <mxGeometry height="70" width="150" x="1159" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="20" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#6c8ebf;" target="11" value="1. consumir mensagem">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="141" y="158" />
+              <mxPoint x="302" y="158" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#82b366;" target="12" value="2. validar envelope minimo e persistir inbox">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="331" y="162" />
+              <mxPoint x="578" y="162" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="22" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;strokeWidth=1.5;strokeColor=#6c8ebf;" target="11" value="3. ack so depois do registo durável">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="532" y="270" />
+              <mxPoint x="343" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="23" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#9673a6;" target="13" value="4. processar evento">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="606" y="160" />
+              <mxPoint x="827" y="160" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="24" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#b85450;" value="5a. falha transitória =&gt; retry pending">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="869" y="273" />
+              <mxPoint x="1056" y="273" />
+            </Array>
+            <mxPoint x="869" y="250" as="sourcePoint" />
+            <mxPoint x="1056.0000000000002" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="25" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#666666;" target="15" value="5b. falha permanente =&gt; rejeitar ou enviar para quarentena">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="869" y="152" />
+              <mxPoint x="1254" y="152" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="26" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#b85450;" target="12" value="6. retomar tentativas já devidas">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1067" y="289" />
+              <mxPoint x="608" y="289" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="27" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#b85450;" target="13" value="7. reprocessar ou esgotar tentativas">
+          <mxGeometry relative="1" x="-0.0014" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="626" y="271" />
+              <mxPoint x="823" y="271" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#d6d6d6;fontStyle=1;fontSize=14;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Estados persistidos" vertex="1">
+          <mxGeometry height="192" width="1253" x="60" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="31" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6d6d6;fontSize=14;" value="pipeline.event_inbox&#xa;payload bruto, estado de processamento, first_seen" vertex="1">
+          <mxGeometry height="90" width="260" x="95" y="357" as="geometry" />
+        </mxCell>
+        <mxCell id="32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6d6d6;fontSize=14;" value="pipeline.processing_attempts&#xa;attempt number, stage, result, error" vertex="1">
+          <mxGeometry height="90" width="260" x="417" y="357" as="geometry" />
+        </mxCell>
+        <mxCell id="33" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6d6d6;fontSize=14;" value="pipeline.rejected_events&#xa;falhas estruturais ou permanentes" vertex="1">
+          <mxGeometry height="90" width="240" x="748" y="357" as="geometry" />
+        </mxCell>
+        <mxCell id="34" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6d6d6;fontSize=14;" value="pipeline.quarantined_events&#xa;falhas esgotadas ou não resolvidas" vertex="1">
+          <mxGeometry height="90" width="240" x="1048" y="357" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

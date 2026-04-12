@@ -4,23 +4,22 @@ using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
 
 /*
- * This service is responsible for generating plausible simulated sensor readings
- * for the current simulation cycle.
+ * Este serviço gera leituras simuladas plausíveis para o ciclo atual.
  *
  * Rationale:
- * - Reading generation should be isolated from orchestration and publication.
- * - This makes the simulation pipeline easier to reason about, easier to test
- *   and easier to extend later with richer behaviour.
+ * - A geração de leituras não deve ficar misturada com a orquestração nem com
+ *   a publicação.
+ * - Este isolamento torna a pipeline de simulação mais testável e mais simples
+ *   de evoluir.
  *
  * Design considerations:
- * - The service uses scenario baseline values plus bounded pseudo-random noise
- *   to generate plausible values.
- * - Sensor type determines both the generated metric and the measurement unit.
- * - The implementation is aligned with the current shared contracts actually
- *   available in the solution, avoiding assumptions about non-existent enum members.
- * - For the current phase, only Temperature, Humidity and Wind are published as
- *   event metrics. If Composite sensors exist in configuration, they should not
- *   be used until the shared contracts expose a dedicated metric and unit for them.
+ * - Os valores são gerados a partir da baseline do cenário e de ruído
+ *   pseudoaleatório limitado.
+ * - O tipo de sensor determina tanto a métrica emitida como a unidade.
+ * - A implementação está alinhada com os contratos de leitura hoje existentes,
+ *   sem assumir métricas que ainda não estão modeladas.
+ * - Nesta fase, apenas Temperature, Humidity e Wind são publicados como
+ *   leituras; sensores compostos continuam fora de âmbito.
  */
 
 namespace NatureProtector.Simulator.Host.Services;
@@ -31,25 +30,25 @@ public sealed class ReadingGenerationService
     private const string SchemaVersion = "1.0";
 
     /// <summary>
-    /// Generates one batch of readings, one per configured sensor.
+    /// Gera um lote de leituras, uma por sensor configurado no contexto.
     /// </summary>
     /// <param name="context">
-    /// In-memory simulation context for the current execution.
+    /// Contexto de simulação em memória da execução atual.
     /// </param>
     /// <param name="simulationRunId">
-    /// Identifier of the current simulation run.
+    /// Identificador da execução de simulação atual.
     /// </param>
     /// <param name="cycleIndex">
-    /// Zero-based cycle index used to evolve generated values over time.
+    /// Índice do ciclo usado para introduzir evolução temporal nos valores.
     /// </param>
     /// <param name="eventTime">
-    /// Logical timestamp associated with this cycle.
+    /// Timestamp lógico associado a este ciclo.
     /// </param>
     /// <param name="random">
-    /// Pseudo-random generator created from the resolved simulation seed.
+    /// Gerador pseudoaleatório criado a partir da seed resolvida.
     /// </param>
     /// <returns>
-    /// Collection of envelopes ready to be published.
+    /// Coleção de envelopes prontos a publicar.
     /// </returns>
     public IReadOnlyCollection<EventEnvelope<SensorReadingProducedPayload>> GenerateBatch(
         SimulationContext context,
@@ -80,28 +79,28 @@ public sealed class ReadingGenerationService
     }
 
     /// <summary>
-    /// Generates one simulated reading envelope for one sensor.
+    /// Gera um envelope de leitura simulada para um sensor concreto.
     /// </summary>
     /// <param name="context">
-    /// In-memory simulation context.
+    /// Contexto de simulação em memória.
     /// </param>
     /// <param name="simulationRunId">
-    /// Identifier of the simulation run.
+    /// Identificador da execução de simulação.
     /// </param>
     /// <param name="sensor">
-    /// Sensor for which the reading is generated.
+    /// Sensor para o qual a leitura é gerada.
     /// </param>
     /// <param name="cycleIndex">
-    /// Current cycle index.
+    /// Índice do ciclo atual.
     /// </param>
     /// <param name="eventTime">
-    /// Logical timestamp for the reading.
+    /// Timestamp lógico associado à leitura.
     /// </param>
     /// <param name="random">
-    /// Deterministic pseudo-random generator.
+    /// Gerador pseudoaleatório determinístico.
     /// </param>
     /// <returns>
-    /// Fully constructed event envelope ready for publication.
+    /// Envelope de evento totalmente construído e pronto a publicar.
     /// </returns>
     public EventEnvelope<SensorReadingProducedPayload> GenerateReading(
         SimulationContext context,
@@ -125,6 +124,8 @@ public sealed class ReadingGenerationService
 
         if (!isAvailable)
         {
+            // Na implementação atual, sensores indisponíveis continuam a emitir
+            // um evento marcado como inválido para exercitar a pipeline.
             value = 0.0;
         }
         else
@@ -164,22 +165,23 @@ public sealed class ReadingGenerationService
     }
 
     /// <summary>
-    /// Generates a plausible numeric value based on scenario baseline and sensor type.
+    /// Gera um valor plausível a partir da baseline do cenário e do tipo de
+    /// sensor.
     /// </summary>
     /// <param name="context">
-    /// Simulation context containing the scenario baseline.
+    /// Contexto de simulação com os parâmetros base do cenário.
     /// </param>
     /// <param name="sensor">
-    /// Sensor whose type determines the metric generation logic.
+    /// Sensor cujo tipo determina a lógica de geração.
     /// </param>
     /// <param name="cycleIndex">
-    /// Current cycle index used to introduce a smooth temporal variation.
+    /// Índice do ciclo usado para introduzir variação temporal suave.
     /// </param>
     /// <param name="random">
-    /// Deterministic pseudo-random generator.
+    /// Gerador pseudoaleatório determinístico.
     /// </param>
     /// <returns>
-    /// Generated numeric value for the selected sensor metric.
+    /// Valor numérico gerado para a métrica do sensor.
     /// </returns>
     private static double GenerateMetricValue(
         SimulationContext context,
@@ -243,13 +245,14 @@ public sealed class ReadingGenerationService
     }
 
     /// <summary>
-    /// Maps a SensorType to the event contract metric type.
+    /// Mapeia um <see cref="SensorType" /> para a métrica do contrato de
+    /// eventos.
     /// </summary>
     /// <param name="sensorType">
-    /// Sensor type from the Core domain.
+    /// Tipo de sensor proveniente do domínio Core.
     /// </param>
     /// <returns>
-    /// Metric type used in the published payload.
+    /// Tipo de métrica usado no payload publicado.
     /// </returns>
     private static SensorMetricType ResolveMetricType(SensorType sensorType)
     {
@@ -266,13 +269,14 @@ public sealed class ReadingGenerationService
     }
 
     /// <summary>
-    /// Maps a SensorType to the corresponding measurement unit.
+    /// Mapeia um <see cref="SensorType" /> para a unidade de medição
+    /// correspondente.
     /// </summary>
     /// <param name="sensorType">
-    /// Sensor type from the Core domain.
+    /// Tipo de sensor proveniente do domínio Core.
     /// </param>
     /// <returns>
-    /// Unit used in the published payload.
+    /// Unidade usada no payload publicado.
     /// </returns>
     private static MeasurementUnit ResolveMeasurementUnit(SensorType sensorType)
     {
@@ -289,16 +293,16 @@ public sealed class ReadingGenerationService
     }
 
     /// <summary>
-    /// Validates that a nullable numeric scenario parameter is present.
+    /// Garante que um parâmetro numérico opcional do cenário está presente.
     /// </summary>
     /// <param name="value">
-    /// Nullable value to validate.
+    /// Valor opcional a validar.
     /// </param>
     /// <param name="name">
-    /// Parameter name used for error reporting.
+    /// Nome do parâmetro usado na mensagem de erro.
     /// </param>
     /// <returns>
-    /// The non-null numeric value.
+    /// Valor numérico não nulo.
     /// </returns>
     private static double RequireValue(double? value, string name)
     {
@@ -307,19 +311,19 @@ public sealed class ReadingGenerationService
     }
 
     /// <summary>
-    /// Generates zero-centered bounded noise.
+    /// Gera ruído limitado centrado em zero.
     /// </summary>
     /// <param name="random">
-    /// Pseudo-random generator.
+    /// Gerador pseudoaleatório.
     /// </param>
     /// <param name="noiseLevel">
-    /// Noise level factor.
+    /// Fator de intensidade do ruído.
     /// </param>
     /// <param name="amplitude">
-    /// Maximum absolute impact of the noise.
+    /// Impacto absoluto máximo do ruído.
     /// </param>
     /// <returns>
-    /// Signed bounded random value.
+    /// Valor aleatório assinado e limitado.
     /// </returns>
     private static double NextCenteredNoise(Random random, double noiseLevel, double amplitude)
     {
@@ -328,19 +332,19 @@ public sealed class ReadingGenerationService
     }
 
     /// <summary>
-    /// Clamps a numeric value to a closed interval.
+    /// Limita um valor numérico a um intervalo fechado.
     /// </summary>
     /// <param name="value">
-    /// Value to clamp.
+    /// Valor a limitar.
     /// </param>
     /// <param name="min">
-    /// Minimum allowed value.
+    /// Valor mínimo permitido.
     /// </param>
     /// <param name="max">
-    /// Maximum allowed value.
+    /// Valor máximo permitido.
     /// </param>
     /// <returns>
-    /// Clamped value.
+    /// Valor já limitado ao intervalo.
     /// </returns>
     private static double Clamp(double value, double min, double max)
     {

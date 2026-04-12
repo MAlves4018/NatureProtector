@@ -1,0 +1,75 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="08-simulation-sequence-happy-path" name="Page-1">
+    <mxGraphModel dx="1426" dy="819" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1700" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f4e78;strokeColor=#0b2e4f;fontColor=#ffffff;fontSize=24;fontStyle=1;" value="Sequencia nominal da simulação" vertex="1">
+          <mxGeometry height="70" width="1114" x="175" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=14;" value="Ficheiro de definição ou plano de controlo" vertex="1">
+          <mxGeometry height="70" width="220" x="173" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="SimulationRunner" vertex="1">
+          <mxGeometry height="70" width="220" x="420" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=14;" value="ReadingGenerationService" vertex="1">
+          <mxGeometry height="70" width="240" x="652" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="RabbitMqReadingPublisher" vertex="1">
+          <mxGeometry height="70" width="240" x="909" y="172" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=14;" value="RabbitMQ" vertex="1">
+          <mxGeometry height="70" width="120" x="1162" y="172" as="geometry" />
+        </mxCell>
+        <mxCell id="20" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#6c8ebf;" target="11" value="1. resolver contexto, seed e SimulationRun">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="281" y="147" />
+              <mxPoint x="530" y="147" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#82b366;" target="12" value="2. pedir batch de leituras para o ciclo">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="530" y="259" />
+              <mxPoint x="747" y="259" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="22" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#82b366;" target="11" value="3. devolver leituras + event_time + payload">
+          <mxGeometry relative="1" x="0.0006" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="778" y="281" />
+              <mxPoint x="473" y="281" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="23" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#9673a6;" target="13" value="4. serializar envelope e publicar">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="592" y="148" />
+              <mxPoint x="966" y="148" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="24" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#b85450;" target="14" value="5. enviar para np.events / simulation.reading.produced">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="952" y="269" />
+              <mxPoint x="1244" y="269" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#d6d6d6;fontStyle=1;fontSize=14;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="Detalhes observaveis do caminho nominal" vertex="1">
+          <mxGeometry height="182" width="1048" x="191" y="294" as="geometry" />
+        </mxCell>
+        <mxCell id="31" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6d6d6;fontSize=14;align=left;verticalAlign=top;spacingTop=10;spacingLeft=10;" value="- o contexto pode vir de um ficheiro de definição ou do plano de controlo&#xa;- o relógio lógico deriva de StartTimestamp + ciclo * intervalo&#xa;- cada leitura sai em EventEnvelope com correlation_id e event_time&#xa;- o publisher efetivo na runtime atual é RabbitMqReadingPublisher" vertex="1">
+          <mxGeometry height="116.47999999999999" width="1000.7218045112783" x="23.639097744360903" y="36.4" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
