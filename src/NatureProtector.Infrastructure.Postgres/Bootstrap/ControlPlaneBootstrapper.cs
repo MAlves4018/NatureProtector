@@ -393,7 +393,17 @@ public sealed class ControlPlaneBootstrapper
         var existingNodes = await _dbContext.SensorNodes
             .Where(entity => entity.AreaId == areaId && entity.ConfigurationVersionId == configurationVersionId)
             .ToDictionaryAsync(entity => entity.Name, cancellationToken);
-
+        
+        var desiredSensorNames = selectedCells
+            .SelectMany(GetPilotSensorTemplates)
+            .Select(template => template.Name)
+            .ToHashSet(StringComparer.Ordinal);
+        
+        foreach (var existingNode in existingNodes.Values.Where(existingNode => !desiredSensorNames.Contains(existingNode.Name)))
+        {
+            existingNode.IsActive = false;
+        }
+        
         foreach (var cell in selectedCells)
         {
             foreach (var sensorTemplate in GetPilotSensorTemplates(cell))
@@ -755,7 +765,7 @@ public sealed class ControlPlaneBootstrapper
             .OrderBy(entity => entity.CellCode)
             .ToListAsync(cancellationToken);
 
-        const int targetStationCount = 24;
+        const int targetStationCount = 2;
         if (cells.Count <= targetStationCount)
         {
             return cells;

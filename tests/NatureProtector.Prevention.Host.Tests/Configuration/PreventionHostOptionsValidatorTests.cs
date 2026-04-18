@@ -12,6 +12,7 @@ public sealed class PreventionHostOptionsValidatorTests
         var options = new PreventionHostOptions
         {
             PipelinePersistenceEnabled = true,
+            ConsumerPrefetchCount = 1,
             MaxProcessingAttempts = 3,
             RetryDelaySeconds = [5, 30],
             RetryPollingIntervalSeconds = 5
@@ -27,6 +28,7 @@ public sealed class PreventionHostOptionsValidatorTests
     {
         var options = new PreventionHostOptions
         {
+            ConsumerPrefetchCount = 0,
             MaxProcessingAttempts = 0,
             RetryDelaySeconds = [5, -1],
             RetryPollingIntervalSeconds = 0
@@ -35,6 +37,9 @@ public sealed class PreventionHostOptionsValidatorTests
         var result = _validator.Validate(name: null, options);
 
         Assert.True(result.Failed);
+        Assert.Contains(
+            "PreventionHost:ConsumerPrefetchCount must be greater than zero.",
+            result.Failures);
         Assert.Contains(
             "PreventionHost:MaxProcessingAttempts must be greater than zero.",
             result.Failures);

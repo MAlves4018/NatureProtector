@@ -52,8 +52,8 @@
         "FailureRate": 0.02,
         "NoiseLevel": 0.08,
         "TimeAcceleration": 1.0,
-        "NumberOfCycles": 288,
-        "IntervalSeconds": 5,
+        "NumberOfCycles": 20,
+        "IntervalSeconds": 30,
         "LogicalStepMinutes": 5
       }
     },
@@ -100,8 +100,8 @@
         "FailureRate": 0.05,
         "NoiseLevel": 0.1,
         "TimeAcceleration": 1.0,
-        "NumberOfCycles": 288,
-        "IntervalSeconds": 5,
+        "NumberOfCycles": 20,
+        "IntervalSeconds": 30,
         "LogicalStepMinutes": 5
       }
     },
@@ -148,8 +148,8 @@
         "FailureRate": 0.18,
         "NoiseLevel": 0.16,
         "TimeAcceleration": 1.0,
-        "NumberOfCycles": 288,
-        "IntervalSeconds": 5,
+        "NumberOfCycles": 20,
+        "IntervalSeconds": 30,
         "LogicalStepMinutes": 5
       },
       "base_scenario_id": "6034251c-b502-5f7b-a557-7187178cfb04",

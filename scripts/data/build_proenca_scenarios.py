@@ -171,8 +171,8 @@ def build_simulator_options(
         "FailureRate": round(failure_rate, 3),
         "NoiseLevel": round(noise_level, 3),
         "TimeAcceleration": round(time_acceleration, 3),
-        "NumberOfCycles": 288,
-        "IntervalSeconds": 5,
+        "NumberOfCycles": 20,
+        "IntervalSeconds": 30,
         "LogicalStepMinutes": 5,
     }
 

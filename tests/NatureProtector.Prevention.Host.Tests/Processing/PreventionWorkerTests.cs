@@ -105,6 +105,60 @@ public sealed class PreventionWorkerTests
     }
 
     [Fact]
+    public async Task HandleReceivedAsync_AcknowledgesSemanticInvalidEnvelope_AndRejectsBeforeInbox()
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var worker = CreateWorker(CreatePipeline(
+            new InMemoryAcceptedReadingRepository(),
+            new InMemoryRiskAssessmentRepository(),
+            new InMemoryAreaRiskSnapshotRepository(),
+            new FakeInfluxWriteService()),
+            inbox);
+        var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
+        var envelope = EnvelopeFactory.Create(operationalState: SensorOperationalState.Invalid);
+
+        await InvokeHandleReceivedAsync(
+            worker,
+            channel,
+            CreateEventArgs(JsonEventSerializer.SerializeToUtf8Bytes(envelope), 15),
+            CancellationToken.None);
+
+        var ack = Assert.Single(recorder.Invocations, x => x.MethodName == "BasicAck");
+        Assert.Equal(15UL, Assert.IsType<ulong>(ack.Arguments[0]));
+        Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
+        Assert.Empty(inbox.Events);
+        Assert.Single(inbox.Rejections);
+        Assert.Equal("invalid_operational_state", inbox.Rejections.Single().RejectionCode);
+    }
+
+    [Fact]
+    public async Task HandleReceivedAsync_AcknowledgesUnsupportedEventType_AndRejectsBeforeInbox()
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var worker = CreateWorker(CreatePipeline(
+            new InMemoryAcceptedReadingRepository(),
+            new InMemoryRiskAssessmentRepository(),
+            new InMemoryAreaRiskSnapshotRepository(),
+            new FakeInfluxWriteService()),
+            inbox);
+        var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
+        var envelope = EnvelopeFactory.Create() with { EventType = EventTypes.ReadingAccepted };
+
+        await InvokeHandleReceivedAsync(
+            worker,
+            channel,
+            CreateEventArgs(JsonEventSerializer.SerializeToUtf8Bytes(envelope), 16),
+            CancellationToken.None);
+
+        var ack = Assert.Single(recorder.Invocations, x => x.MethodName == "BasicAck");
+        Assert.Equal(16UL, Assert.IsType<ulong>(ack.Arguments[0]));
+        Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
+        Assert.Empty(inbox.Events);
+        Assert.Single(inbox.Rejections);
+        Assert.Equal("unsupported_event_type", inbox.Rejections.Single().RejectionCode);
+    }
+
+    [Fact]
     public async Task HandleReceivedAsync_AcknowledgesAndSchedulesRetry_WhenTransientFailureHappensAfterInboxCommit()
     {
         var inbox = new InMemoryReadingEventInbox();
@@ -189,6 +243,7 @@ public sealed class PreventionWorkerTests
         var preventionOptions = Options.Create(new PreventionHostOptions
         {
             PipelinePersistenceEnabled = false,
+            ConsumerPrefetchCount = 1,
             MaxProcessingAttempts = 3,
             RetryDelaySeconds = [0, 0],
             RetryPollingIntervalSeconds = 1
@@ -210,6 +265,7 @@ public sealed class PreventionWorkerTests
                 Password = "pass",
                 ExchangeName = NatureProtectorRabbitMqTopology.ExchangeName
             }),
+            preventionOptions,
             inbox,
             processingService);
     }

@@ -15,6 +15,11 @@ public sealed class PreventionHostOptionsValidator : IValidateOptions<Prevention
             failures.Add("PreventionHost:MaxProcessingAttempts must be greater than zero.");
         }
 
+        if (options.ConsumerPrefetchCount == 0)
+        {
+            failures.Add("PreventionHost:ConsumerPrefetchCount must be greater than zero.");
+        }
+
         if (options.RetryDelaySeconds is null)
         {
             failures.Add("PreventionHost:RetryDelaySeconds must not be null.");

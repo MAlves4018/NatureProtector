@@ -90,8 +90,7 @@ public sealed class InboxRetryWorkerTests
         public TaskCompletionSource<bool> SecondPollReached { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public Task<InboxStoreResult> StoreIncomingAsync(
-            EventEnvelope<SensorReadingProducedPayload> envelope,
+        public Task<InboxStoreResult> StoreIncomingAsync(EventEnvelope<SensorReadingProducedPayload> envelope,
             ReadOnlyMemory<byte> rawBody,
             string stage,
             CancellationToken cancellationToken)
@@ -99,10 +98,10 @@ public sealed class InboxRetryWorkerTests
             throw new NotSupportedException();
         }
 
-        public Task StoreRejectedAsync(
-            ReadOnlyMemory<byte> rawBody,
+        public Task StoreRejectedAsync(ReadOnlyMemory<byte> rawBody,
             string rejectionCode,
             string rejectionReason,
+            RejectedEventMetadata? metadata,
             CancellationToken cancellationToken)
         {
             throw new NotSupportedException();

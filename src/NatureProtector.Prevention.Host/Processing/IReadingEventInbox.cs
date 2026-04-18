@@ -15,6 +15,7 @@ public interface IReadingEventInbox
         ReadOnlyMemory<byte> rawBody,
         string rejectionCode,
         string rejectionReason,
+        RejectedEventMetadata? metadata,
         CancellationToken cancellationToken);
 
     Task CompleteProcessingAsync(
@@ -40,3 +41,17 @@ public interface IReadingEventInbox
         string quarantineReason,
         CancellationToken cancellationToken);
 }
+
+public sealed record RejectedEventMetadata(
+    Guid? EventId,
+    string? CorrelationId,
+    string? Producer,
+    string? EventType,
+    Guid? AreaId,
+    string? SchemaVersion,
+    Guid? SensorId,
+    string? SensorName,
+    string? MetricType,
+    string? OperationalState,
+    string? Stage,
+    ulong? DeliveryTag);

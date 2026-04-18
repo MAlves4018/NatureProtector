@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using NatureProtector.Prevention.Host.Configuration;
 using NatureProtector.Prevention.Host.Processing;
 using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Contracts.Readings;
@@ -29,10 +30,14 @@ namespace NatureProtector.Prevention.Host;
 public sealed class PreventionWorker(
     ILogger<PreventionWorker> logger,
     IOptions<RabbitMqOptions> rabbitMqOptions,
+    IOptions<PreventionHostOptions> preventionHostOptions,
     IReadingEventInbox readingEventInbox,
     ReadingEventProcessingService processingService) : BackgroundService
 {
+    private const string SupportedSchemaVersion = "1.0";
+
     private readonly RabbitMqOptions _options = rabbitMqOptions.Value;
+    private readonly PreventionHostOptions _preventionHostOptions = preventionHostOptions.Value;
 
     /// <summary>
     /// Mantém ativo o consumidor RabbitMQ durante a vida do host.
@@ -54,6 +59,13 @@ public sealed class PreventionWorker(
         var channel = connection.CreateModel();
 
         DeclareTopology(channel);
+
+        // Um prefetch baixo limita o backlog invisivel de mensagens por
+        // materializar quando o inbox ou a base de dados abrandam.
+        channel.BasicQos(
+            prefetchSize: 0,
+            prefetchCount: _preventionHostOptions.ConsumerPrefetchCount,
+            global: false);
 
         var consumer = new AsyncEventingBasicConsumer(channel);
 
@@ -116,7 +128,7 @@ public sealed class PreventionWorker(
 
         try
         {
-            EventEnvelope<SensorReadingProducedPayload>? envelope;
+            EventEnvelope<SensorReadingProducedPayload>? envelope = null;
 
             try
             {
@@ -133,6 +145,7 @@ public sealed class PreventionWorker(
                     ea.Body,
                     "invalid_json",
                     "The message body could not be deserialized into a sensor reading envelope.",
+                    null,
                     stoppingToken);
 
                 channel.BasicAck(ea.DeliveryTag, multiple: false);
@@ -141,28 +154,37 @@ public sealed class PreventionWorker(
 
             if (envelope is null)
             {
-                logger.LogWarning(
-                    "Received null or invalid message body. DeliveryTag={DeliveryTag}",
-                    ea.DeliveryTag);
-
-                await readingEventInbox.StoreRejectedAsync(
-                    ea.Body,
-                    "null_envelope",
-                    "The message body deserialized to a null envelope.",
+                await RejectBeforeInboxAsync(
+                    channel,
+                    ea,
+                    rejectionCode: "null_envelope",
+                    rejectionReason: "The message body deserialized to a null envelope.",
                     stoppingToken);
+                return;
+            }
 
-                channel.BasicAck(ea.DeliveryTag, multiple: false);
+            if (!TryValidateEnvelope(envelope, out var validationFailure))
+            {
+                await RejectBeforeInboxAsync(
+                    channel,
+                    ea,
+                    validationFailure.Code,
+                    validationFailure.Reason,
+                    stoppingToken,
+                    envelope);
                 return;
             }
 
             logger.LogInformation(
-                "Consumed {EventType} | EventId={EventId} | CorrelationId={CorrelationId} | Sensor={SensorName} | Metric={MetricType} | Value={Value} | EventTime={EventTime}",
-                envelope.EventType,
+                "Accepted event contract | EventId={EventId} | EventType={EventType} | SchemaVersion={SchemaVersion} | CorrelationId={CorrelationId} | Sensor={SensorName} | Metric={MetricType} | Value={Value} | OperationalState={OperationalState} | EventTime={EventTime}",
                 envelope.EventId,
+                envelope.EventType,
+                envelope.SchemaVersion,
                 envelope.CorrelationId,
                 envelope.Payload.SensorName,
                 envelope.Payload.MetricType,
                 envelope.Payload.Value,
+                envelope.Payload.OperationalState,
                 envelope.EventTime);
 
             var storeResult = await readingEventInbox.StoreIncomingAsync(
@@ -206,5 +228,159 @@ public sealed class PreventionWorker(
                 channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: false);
             }
         }
+    }
+
+    private async Task RejectBeforeInboxAsync(
+        IModel channel,
+        BasicDeliverEventArgs ea,
+        string rejectionCode,
+        string rejectionReason,
+        CancellationToken stoppingToken,
+        EventEnvelope<SensorReadingProducedPayload>? envelope = null)
+    {
+        logger.LogWarning(
+            "Rejected event before inbox materialization | DeliveryTag={DeliveryTag} | RejectionCode={RejectionCode} | Reason={Reason} | EventId={EventId} | EventType={EventType} | SchemaVersion={SchemaVersion} | AreaId={AreaId} | SensorId={SensorId}",
+            ea.DeliveryTag,
+            rejectionCode,
+            rejectionReason,
+            envelope?.EventId,
+            envelope?.EventType,
+            envelope?.SchemaVersion,
+            envelope?.AreaId,
+            envelope?.Payload.SensorId);
+
+        await readingEventInbox.StoreRejectedAsync(
+            ea.Body,
+            rejectionCode,
+            rejectionReason,
+            envelope is null
+                ? null
+                : new RejectedEventMetadata(
+                    EventId: envelope.EventId,
+                    CorrelationId: envelope.CorrelationId,
+                    Producer: envelope.Producer,
+                    EventType: envelope.EventType,
+                    AreaId: envelope.AreaId,
+                    SchemaVersion: envelope.SchemaVersion,
+                    SensorId: envelope.Payload.SensorId,
+                    SensorName: envelope.Payload.SensorName,
+                    MetricType: envelope.Payload.MetricType.ToString(),
+                    OperationalState: envelope.Payload.OperationalState.ToString(),
+                    Stage: "pre_inbox_validation",
+                    DeliveryTag: ea.DeliveryTag),
+            stoppingToken);
+
+        channel.BasicAck(ea.DeliveryTag, multiple: false);
+    }
+
+    private static bool TryValidateEnvelope(
+        EventEnvelope<SensorReadingProducedPayload> envelope,
+        out EnvelopeValidationFailure failure)
+    {
+        if (envelope.EventId == Guid.Empty)
+        {
+            failure = new EnvelopeValidationFailure(
+                "invalid_event_id",
+                "EventId must not be an empty GUID.");
+            return false;
+        }
+
+        if (!string.Equals(envelope.SchemaVersion, SupportedSchemaVersion, StringComparison.Ordinal))
+        {
+            failure = new EnvelopeValidationFailure(
+                "unsupported_schema_version",
+                $"SchemaVersion '{envelope.SchemaVersion}' is not supported.");
+            return false;
+        }
+
+        if (!string.Equals(envelope.EventType, EventTypes.SensorReadingProduced, StringComparison.Ordinal))
+        {
+            failure = new EnvelopeValidationFailure(
+                "unsupported_event_type",
+                $"EventType '{envelope.EventType}' is not supported by the prevention consumer.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(envelope.CorrelationId))
+        {
+            failure = new EnvelopeValidationFailure(
+                "missing_correlation_id",
+                "CorrelationId is required.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(envelope.Producer))
+        {
+            failure = new EnvelopeValidationFailure(
+                "missing_producer",
+                "Producer is required.");
+            return false;
+        }
+
+        if (envelope.AreaId == Guid.Empty)
+        {
+            failure = new EnvelopeValidationFailure(
+                "invalid_area_id",
+                "AreaId must not be an empty GUID.");
+            return false;
+        }
+
+        if (envelope.EventTime == default)
+        {
+            failure = new EnvelopeValidationFailure(
+                "invalid_event_time",
+                "EventTime is required.");
+            return false;
+        }
+
+        var payload = envelope.Payload;
+
+        if (payload.SimulationRunId == Guid.Empty)
+        {
+            failure = new EnvelopeValidationFailure(
+                "missing_simulation_run_id",
+                "SimulationRunId must not be an empty GUID.");
+            return false;
+        }
+
+        if (payload.SensorId == Guid.Empty)
+        {
+            failure = new EnvelopeValidationFailure(
+                "missing_sensor_id",
+                "SensorId must not be an empty GUID.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(payload.SensorName))
+        {
+            failure = new EnvelopeValidationFailure(
+                "missing_sensor_name",
+                "SensorName is required.");
+            return false;
+        }
+
+        if (payload.Latitude is < -90 or > 90 || payload.Longitude is < -180 or > 180)
+        {
+            failure = new EnvelopeValidationFailure(
+                "invalid_coordinates",
+                "Latitude or Longitude is outside the supported range.");
+            return false;
+        }
+
+        if (payload.OperationalState == SensorOperationalState.Invalid)
+        {
+            failure = new EnvelopeValidationFailure(
+                "invalid_operational_state",
+                "OperationalState 'Invalid' is rejected before the accepted-risk pipeline.");
+            return false;
+        }
+
+        failure = EnvelopeValidationFailure.None;
+        return true;
+    }
+
+    private sealed record EnvelopeValidationFailure(string Code, string Reason)
+    {
+        public static readonly EnvelopeValidationFailure None = new(string.Empty, string.Empty);
     }
 }

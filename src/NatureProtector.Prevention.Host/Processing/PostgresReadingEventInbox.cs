@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Pipeline;
@@ -45,6 +47,7 @@ public sealed class PostgresReadingEventInbox(
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
+        var storeIncomingStopwatch = Stopwatch.StartNew();
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var now = DateTimeOffset.UtcNow;
         var envelopeJson = JsonEventSerializer.SerializeToString(envelope);
@@ -72,9 +75,12 @@ public sealed class PostgresReadingEventInbox(
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
 
+            storeIncomingStopwatch.Stop();
             logger.LogInformation(
-                "Inbox duplicate detected | EventId={EventId} | InboxEventId={InboxEventId} | Status={Status}",
+                "inbox_store_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | InboxEventId={InboxEventId} | Status={Status} | Outcome=duplicate",
+                storeIncomingStopwatch.ElapsedMilliseconds,
                 envelope.EventId,
+                envelope.CorrelationId,
                 existing.Id,
                 existing.Status);
 
@@ -120,6 +126,15 @@ public sealed class PostgresReadingEventInbox(
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        storeIncomingStopwatch.Stop();
+
+        logger.LogInformation(
+            "inbox_store_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | InboxEventId={InboxEventId} | Attempt={AttemptNumber} | Outcome=stored",
+            storeIncomingStopwatch.ElapsedMilliseconds,
+            envelope.EventId,
+            envelope.CorrelationId,
+            inboxEventId,
+            attemptNumber);
 
         return new InboxStoreResult(
             inboxEventId,
@@ -136,6 +151,7 @@ public sealed class PostgresReadingEventInbox(
         ReadOnlyMemory<byte> rawBody,
         string rejectionCode,
         string rejectionReason,
+        RejectedEventMetadata? metadata,
         CancellationToken cancellationToken)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -146,7 +162,8 @@ public sealed class PostgresReadingEventInbox(
             RejectionCode = rejectionCode,
             RejectionReason = rejectionReason,
             RejectedAt = DateTimeOffset.UtcNow,
-            RawBodyUtf8 = Encoding.UTF8.GetString(rawBody.Span)
+            RawBodyUtf8 = Encoding.UTF8.GetString(rawBody.Span),
+            MetadataJson = metadata is null ? null : JsonSerializer.Serialize(metadata)
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);

@@ -4,6 +4,7 @@ using NatureProtector.Infrastructure.Influx.Configuration;
 using NatureProtector.Infrastructure.Influx.Services;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace NatureProtector.Infrastructure.Influx.Tests.Services;
 
@@ -78,7 +79,8 @@ public sealed class InfluxWriteServiceExecutionTests
             Token = "token",
             Organization = "org",
             Bucket = "bucket"
-        }));
+        }),
+        NullLogger<InfluxWriteService>.Instance);
     }
 
     private static EventEnvelope<SensorReadingProducedPayload> CreateEnvelope()

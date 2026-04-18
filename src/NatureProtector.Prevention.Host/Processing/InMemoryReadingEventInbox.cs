@@ -91,7 +91,20 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
                         "duplicate_payload_mismatch",
                         "Received a duplicate event id with a different payload.",
                         DateTimeOffset.UtcNow,
-                        Encoding.UTF8.GetString(rawBody.Span)));
+                        Encoding.UTF8.GetString(rawBody.Span),
+                        new RejectedEventMetadata(
+                            EventId: envelope.EventId,
+                            CorrelationId: envelope.CorrelationId,
+                            Producer: envelope.Producer,
+                            EventType: envelope.EventType,
+                            AreaId: envelope.AreaId,
+                            SchemaVersion: envelope.SchemaVersion,
+                            SensorId: envelope.Payload.SensorId,
+                            SensorName: envelope.Payload.SensorName,
+                            MetricType: envelope.Payload.MetricType.ToString(),
+                            OperationalState: envelope.Payload.OperationalState.ToString(),
+                            Stage: stage,
+                            DeliveryTag: null)));
                 }
 
                 return Task.FromResult(new InboxStoreResult(
@@ -105,7 +118,7 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
             var receivedAt = DateTimeOffset.UtcNow;
             var inboxEventId = Guid.NewGuid();
             var attemptId = Guid.NewGuid();
-            var attemptNumber = 1;
+            const int attemptNumber = 1;
             var envelopeJson = JsonEventSerializer.SerializeToString(envelope);
 
             var inboxEvent = new InMemoryInboxEvent(
@@ -147,10 +160,10 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
         }
     }
 
-    public Task StoreRejectedAsync(
-        ReadOnlyMemory<byte> rawBody,
+    public Task StoreRejectedAsync(ReadOnlyMemory<byte> rawBody,
         string rejectionCode,
         string rejectionReason,
+        RejectedEventMetadata? metadata,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -160,11 +173,12 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
             _rejections.Add(new InMemoryRejectedEvent(
                 Guid.NewGuid(),
                 null,
-                null,
+                metadata?.EventId,
                 rejectionCode,
                 rejectionReason,
                 DateTimeOffset.UtcNow,
-                Encoding.UTF8.GetString(rawBody.Span)));
+                Encoding.UTF8.GetString(rawBody.Span),
+                metadata));
         }
 
         return Task.CompletedTask;
@@ -419,7 +433,8 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
         string RejectionCode,
         string RejectionReason,
         DateTimeOffset RejectedAt,
-        string RawBodyUtf8);
+        string RawBodyUtf8,
+        RejectedEventMetadata? Metadata);
 
     public sealed record InMemoryQuarantinedEvent(
         Guid QuarantineId,

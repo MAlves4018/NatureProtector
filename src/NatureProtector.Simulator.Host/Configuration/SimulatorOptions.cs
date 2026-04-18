@@ -69,7 +69,7 @@ public sealed class SimulatorOptions
     /// <summary>
     /// Time interval, in seconds, between generated reading batches.
     /// </summary>
-    public int IntervalSeconds { get; set; } = 5;
+    public int IntervalSeconds { get; set; } = 15;
 
     /// <summary>
     /// Optional fixed logical start timestamp for deterministic runs.
@@ -185,7 +185,7 @@ public sealed class SensorDefinitionOptions
     /// <summary>
     /// Sampling interval, in seconds, associated with the sensor profile.
     /// </summary>
-    public int SamplingIntervalSeconds { get; set; } = 5;
+    public int SamplingIntervalSeconds { get; set; } = 15;
 
     /// <summary>
     /// Communication mode label used in the synthetic sensor profile.

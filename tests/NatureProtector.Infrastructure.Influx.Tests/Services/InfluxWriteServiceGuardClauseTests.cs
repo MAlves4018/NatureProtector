@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NatureProtector.Core.Risk;
 using NatureProtector.Infrastructure.Influx.Configuration;
@@ -64,6 +65,7 @@ public sealed class InfluxWriteServiceGuardClauseTests
             Token = "token",
             Organization = "org",
             Bucket = "bucket"
-        }));
+        }),
+        NullLogger<InfluxWriteService>.Instance);
     }
 }

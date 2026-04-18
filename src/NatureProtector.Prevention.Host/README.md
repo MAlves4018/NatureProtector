@@ -6,32 +6,33 @@ Este projeto é o host de execução do módulo de prevenção. Ele já não é 
 
 O caminho hoje ligado pelo `Program.cs` é este:
 
-1. `PreventionWorker` cria ligação a RabbitMQ e declara a topologia base.
+1. `PreventionWorker` cria ligação a RabbitMQ, declara a topologia base e aplica `prefetch` no canal do consumidor.
 2. O worker consome da fila `np.ingestion.readings`.
-3. Se o payload não for um envelope válido, o host regista uma rejeição em `pipeline.rejected_events` e faz `ack`.
-4. Se o envelope for válido, `IReadingEventInbox` persiste o evento em `pipeline.event_inbox`, cria a tentativa inicial em `pipeline.processing_attempts` e só depois disso o worker faz `ack`.
-5. Se o evento for novo, o host delega o trabalho ao `ReadingEventProcessingService`.
-6. Se o processamento terminar bem, a tentativa é marcada como concluída e o inbox passa a `Processed`.
-7. Se o processamento falhar com erro retryable, o evento passa a `RetryPending`, fica com `NextAttemptNotBefore` e será retomado por `InboxRetryWorker`.
-8. Se o processamento falhar com erro permanente ou esgotar a política de novas tentativas, o evento passa a `Quarantined` e fica registado em `pipeline.quarantined_events`.
-9. Cada assessment também atualiza `projection.cell_operational_state` para a célula do sensor que originou a leitura.
-10. Depois de cada `AreaRiskSnapshot`, o host atualiza `projection.area_operational_state` e um alerta ativo simples por área.
-11. A fotografia operacional da área é calculada a partir do último assessment conhecido por sensor, não do histórico completo da área.
+3. O ponto de entrada só aceita hoje `SchemaVersion = 1.0`, `EventType = SensorReadingProduced`, envelope coerente e `OperationalState != Invalid`.
+4. Se o payload não passar esta validação, o host regista uma rejeição em `pipeline.rejected_events`, faz `ack` e o evento não entra no fluxo aceite.
+5. Se o envelope passar a validação, `IReadingEventInbox` persiste o evento em `pipeline.event_inbox`, cria a tentativa inicial em `pipeline.processing_attempts` e só depois disso o worker faz `ack`.
+6. Se o evento for novo, o host delega o trabalho ao `ReadingEventProcessingService`.
+7. Se o processamento terminar bem, a tentativa é marcada como concluída e o inbox passa a `Processed`.
+8. Se o processamento falhar com erro retryable, o evento passa a `RetryPending`, fica com `NextAttemptNotBefore` e será retomado por `InboxRetryWorker`.
+9. Se o processamento falhar com erro permanente ou esgotar a política de novas tentativas, o evento passa a `Quarantined` e fica registado em `pipeline.quarantined_events`.
+10. Cada assessment também atualiza `projection.cell_operational_state` para a célula do sensor que originou a leitura.
+11. Depois de cada `AreaRiskSnapshot`, o host atualiza `projection.area_operational_state` e um alerta ativo simples por área.
+12. A fotografia operacional da área é calculada a partir do último assessment conhecido por sensor, não do histórico completo da área.
 
 ## Ficheiros principais
 
 - `Program.cs`
   - composição do host, configuração e escolha da inbox
 - `Configuration/PreventionHostOptions.cs`
-  - ativa ou desativa a persistência durável da inbox
+  - configuração da inbox durável, retries e `prefetch` do consumidor
 - `PreventionWorker.cs`
-  - consumo de RabbitMQ, `ack` e ligação à inbox
+  - consumo de RabbitMQ, validação de entrada, `ack` e ligação à inbox
 - `Processing/ReadingEventProcessingService.cs`
-- execução do fluxo operacional com política de nova tentativa e quarentena
+  - execução do fluxo operacional com política de nova tentativa e quarentena
 - `Processing/InboxRetryWorker.cs`
   - retoma tentativas já devidas e reprocessa eventos a partir da inbox
 - `Processing/ReadingRiskPipeline.cs`
-- fluxo ativo de cálculo, escrita e atualização das projeções por área e por célula
+  - fluxo ativo de cálculo, escrita e atualização das projeções por área e por célula
 - `Projection/IAreaOperationalProjectionStore.cs`
   - fronteira da projeção operacional
 - `Projection/PostgresAreaOperationalProjectionStore.cs`
@@ -61,12 +62,36 @@ O caminho hoje ligado pelo `Program.cs` é este:
   - URL, token, organização e bucket
 - secção `PreventionHost`
   - `PipelinePersistenceEnabled`
+  - `ConsumerPrefetchCount`
   - `MaxProcessingAttempts`
   - `RetryDelaySeconds`
   - `RetryPollingIntervalSeconds`
 
 Quando `PipelinePersistenceEnabled = true`, o host usa o PostgreSQL como inbox durável, store dos logs operacionais e store das projeções operacionais.
 Quando `PipelinePersistenceEnabled = false`, o host continua a arrancar com inbox, persistência operacional e projeções em memória.
+`ConsumerPrefetchCount` limita quantas mensagens podem ficar em voo no canal RabbitMQ antes de materialização mínima no inbox. O valor por defeito fica baixo para priorizar estabilidade e tornar o backlog observável.
+
+## Observabilidade operacional mínima
+
+O host passa a emitir timings curtos e estruturados para o caminho do evento aceite, sem alterar a semântica do fluxo:
+
+- `inbox_store_ms`
+  - mede o custo da materialização mínima no inbox antes do `ack`
+- `processing_total_ms`
+  - mede o custo total de uma tentativa de processamento depois do inbox
+- `accepted_reading_persist_ms`
+- `accepted_reading_influx_ms`
+- `risk_assessment_persist_ms`
+- `save_cell_projection_ms`
+- `risk_assessment_influx_ms`
+- `get_latest_by_area_ms`
+- `build_snapshot_ms`
+- `snapshot_persist_ms`
+- `snapshot_influx_ms`
+- `save_area_projection_ms`
+- `pipeline_total_ms`
+
+Estes logs incluem `EventId` e `CorrelationId` para permitir correlação entre consumo, inbox, retries e pipeline de risco. O objetivo é tornar visível onde o tempo por evento está a ser gasto antes de qualquer otimização adicional.
 
 No perfil local do repositório, os valores de `InfluxDb` podem vir da secção `InfluxDb` em `appsettings.json` ou do `.env` na raiz do workspace, seguindo o mesmo princípio já usado para a ligação PostgreSQL.
 
@@ -78,6 +103,7 @@ O perfil local suportado por defeito do repositório usa `PipelinePersistenceEna
 - declaração de topologia RabbitMQ suficiente para o fluxo atual;
 - commit durável do evento antes do `ack` do broker;
 - registo de tentativas de processamento e rejeições técnicas;
+- rejeição semântica precoce para `SchemaVersion` e `EventType` fora do contrato suportado e para leituras com `OperationalState = Invalid`;
 - retries internos a partir da inbox;
 - quarentena persistida para falhas permanentes ou exaustão de retries;
 - persistência durável das leituras aceites, assessments e snapshots;
@@ -90,7 +116,7 @@ O perfil local suportado por defeito do repositório usa `PipelinePersistenceEna
 
 ## O que ainda não fecha
 
-- validação semântica rica antes da prevenção;
+- validação cruzada precoce entre `AreaId` do envelope e o sensor do plano de controlo;
 - publicação de `ReadingAccepted`, `ReadingRejected` ou `ReadingNormalized`;
 - replay manual ou assistido de eventos em quarentena;
 - alertas ricos com histerese, cooldown e acknowledgement.

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using NatureProtector.Infrastructure.Influx.Configuration;
 using NatureProtector.Infrastructure.Influx.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace NatureProtector.Infrastructure.Influx.Tests.Services;
 
@@ -9,7 +10,7 @@ public sealed class InfluxWriteServiceConstructorTests
     [Fact]
     public void Ctor_Throws_WhenOptionsArgumentIsNull()
     {
-        var ex = Assert.Throws<ArgumentNullException>(() => new InfluxWriteService(null!));
+        var ex = Assert.Throws<ArgumentNullException>(() => new InfluxWriteService(null!,NullLogger<InfluxWriteService>.Instance));
 
         Assert.Equal("options", ex.ParamName);
     }
@@ -34,7 +35,7 @@ public sealed class InfluxWriteServiceConstructorTests
             Bucket = bucket
         });
 
-        var ex = Assert.Throws<InvalidOperationException>(() => new InfluxWriteService(options));
+        var ex = Assert.Throws<InvalidOperationException>(() => new InfluxWriteService(options,NullLogger<InfluxWriteService>.Instance));
 
         Assert.Equal(expectedMessage, ex.Message);
     }

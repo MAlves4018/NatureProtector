@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using InfluxDB.Client;
 using InfluxDB.Client.Api.Domain;
 using InfluxDB.Client.Writes;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Risk;
@@ -10,35 +12,20 @@ using NatureProtector.Shared.Messaging;
 
 namespace NatureProtector.Infrastructure.Influx.Services;
 
-/*
- * Este serviço escreve em InfluxDB as medições de observabilidade produzidas
- * pela pipeline de prevenção.
- *
- * Rationale:
- * - O projeto precisa de séries temporais prontas para consulta em dashboards e
- *   exploração rápida.
- * - A pipeline não deve conhecer o detalhe do cliente Influx nem o esquema das
- *   medições.
- *
- * Design considerations:
- * - Leituras aceites, avaliações de risco e snapshots agregados são escritos em
- *   medições separadas.
- * - Tags e fields foram escolhidos para suportar filtros por área, sensor e
- *   severidade sem reprocessamento.
- */
-
 public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
 {
     private readonly InfluxDBClient _client;
     private readonly InfluxDbOptions _options;
+    private readonly ILogger<InfluxWriteService> _logger;
 
-    /// <summary>
-    /// Inicializa o cliente de escrita em InfluxDB com a configuração resolvida.
-    /// </summary>
-    public InfluxWriteService(IOptions<InfluxDbOptions> options)
+    public InfluxWriteService(
+        IOptions<InfluxDbOptions> options,
+        ILogger<InfluxWriteService> logger)
     {
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(logger);
 
+        _logger = logger;
         _options = options.Value ?? throw new ArgumentNullException(nameof(options));
 
         if (string.IsNullOrWhiteSpace(_options.Url))
@@ -56,9 +43,6 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
         _client = InfluxDBClientFactory.Create(_options.Url, _options.Token);
     }
 
-    /// <summary>
-    /// Escreve em InfluxDB uma leitura aceite pela pipeline.
-    /// </summary>
     public async Task WriteAcceptedReadingAsync(
         EventEnvelope<SensorReadingProducedPayload> envelope,
         CancellationToken cancellationToken)
@@ -78,14 +62,22 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
             .Field("longitude", envelope.Payload.Longitude)
             .Timestamp(envelope.EventTime.UtcDateTime, WritePrecision.Ns);
 
+        var stopwatch = Stopwatch.StartNew();
+
         await _client
             .GetWriteApiAsync()
             .WritePointAsync(point, _options.Bucket, _options.Organization, cancellationToken);
+
+        stopwatch.Stop();
+
+        _logger.LogInformation(
+            "influx_write_ms={ElapsedMs} | Measurement={Measurement} | AreaId={AreaId} | SensorId={SensorId}",
+            stopwatch.ElapsedMilliseconds,
+            "accepted_readings",
+            envelope.AreaId,
+            envelope.Payload.SensorId);
     }
 
-    /// <summary>
-    /// Escreve em InfluxDB uma avaliação de risco individual.
-    /// </summary>
     public async Task WriteRiskAssessmentAsync(
         Guid areaId,
         Guid sensorId,
@@ -107,14 +99,22 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
             point = point.Field("has_explanation", 1);
         }
 
+        var stopwatch = Stopwatch.StartNew();
+
         await _client
             .GetWriteApiAsync()
             .WritePointAsync(point, _options.Bucket, _options.Organization, cancellationToken);
+
+        stopwatch.Stop();
+
+        _logger.LogInformation(
+            "influx_write_ms={ElapsedMs} | Measurement={Measurement} | AreaId={AreaId} | SensorId={SensorId}",
+            stopwatch.ElapsedMilliseconds,
+            "risk_assessments",
+            areaId,
+            sensorId);
     }
 
-    /// <summary>
-    /// Escreve em InfluxDB um snapshot agregado de risco por área.
-    /// </summary>
     public async Task WriteAreaRiskSnapshotAsync(
         Guid areaId,
         int assessmentCount,
@@ -134,14 +134,22 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
             .Field("assessment_count", assessmentCount)
             .Timestamp(snapshot.Timestamp.UtcDateTime, WritePrecision.Ns);
 
+        var stopwatch = Stopwatch.StartNew();
+
         await _client
             .GetWriteApiAsync()
             .WritePointAsync(point, _options.Bucket, _options.Organization, cancellationToken);
+
+        stopwatch.Stop();
+
+        _logger.LogInformation(
+            "influx_write_ms={ElapsedMs} | Measurement={Measurement} | AreaId={AreaId} | AssessmentCount={AssessmentCount}",
+            stopwatch.ElapsedMilliseconds,
+            "area_risk_snapshots",
+            areaId,
+            assessmentCount);
     }
 
-    /// <summary>
-    /// Liberta o cliente InfluxDB mantido por este serviço.
-    /// </summary>
     public void Dispose()
     {
         _client.Dispose();
