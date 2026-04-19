@@ -1,0 +1,605 @@
+%/////////////////////////////////////////////////////////////////////
+%
+% LaTeX definitions:     Ph.D. Dissertation
+%                        Nuno Leite
+%                        september 2015
+%
+%/////////////////////////////////////////////////////////////////////
+
+
+\documentclass[12pt, a4paper, openright, twoside]{report}
+
+
+
+%////////////
+% Acronyms
+% Load the package with the acronym option. Omit the dot at the end of each description
+\usepackage[acronym,nomain,toc,nopostdot]{glossaries}
+% Suppress acronym bold font
+\renewcommand*{\glsnamefont}[1]{\textmd{#1}}
+
+% For resetting acronyms at the beginning of each chapter
+\usepackage{etoolbox}
+\preto\chapter\glsresetall
+
+%
+\usepackage{glossaries-extra}
+\renewcommand{\glsfirstlongdefaultfont}[1]{\emph{#1}}
+\setabbreviationstyle[acronym]{long-short}
+%
+
+% Redefining indentation in the List of acronyms
+\newglossarystyle{super3colleft}{%
+  \renewenvironment{theglossary}%
+    {\tablehead{}\tabletail{}%
+     \begin{supertabular}{@{}>{\bfseries}lp{\glsdescwidth}p{\glspagelistwidth}}}%
+    {\end{supertabular}}%
+  \renewcommand*{\glossaryheader}{}%
+  \renewcommand*{\glsgroupheading}[1]{}%
+  \renewcommand*{\glossaryentryfield}[5]{%
+    \glsentryitem{##1}\glstarget{##1}{##2} & ##3 & ##5\\}%
+  \renewcommand*{\glossarysubentryfield}[6]{%
+     &
+     \glssubentryitem{##2}%
+     \glstarget{##2}{\strut}##4 & ##6\\}%
+  \renewcommand*{\glsgroupskip}{ & &\\}%
+}
+
+
+
+\newlength{\acronymlabelwidth}
+\setlength{\acronymlabelwidth}{0.25\textwidth}
+%////////////
+
+% Chapter style
+\usepackage[Lenny]{fncychap}
+
+% Chapter minitoc
+\usepackage{minitoc}
+
+% English language
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+%\usepackage[latin1]{inputenc}
+\usepackage[utf8]{inputenc}
+
+% Times New Roman typeface
+%\usepackage{textcomp}
+\renewcommand{\rmdefault}{ptm} % set Times as the default text font
+% If AMS-LaTeX is used, it can be loaded before or after mtpro2
+\usepackage{amsmath}		
+%% The following loads mtpro and defines some common MTPro options 
+%\usepackage[subscriptcorrection, slantedGreek, nofontinfo]{mtpro2}
+
+% My styles
+\usepackage{myStyles}
+
+
+% Graphics package
+%\usepackage[dvips]{graphicx}
+\usepackage{graphicx}
+
+% Other packages
+\usepackage{epsfig}
+\usepackage[nottoc]{tocbibind} % To include bibliography in TOC
+\usepackage{latexsym}
+% Fancy headers
+\usepackage{fancyhdr}
+
+
+
+
+%////////////// ADDED PACKAGES //////////////////
+%\usepackage{natbib,hyperref} % For numerical format
+\usepackage[natbibapa]{apacite} % For APA format
+\usepackage{hyperref}
+\usepackage{graphics} % resizebox command
+\usepackage[toc,page]{appendix} % For defining appendices
+\PassOptionsToPackage{hyphens}{url} % For processing correctly underscores in URL
+\usepackage{subfigure}
+\usepackage{calc}
+%\usepackage{amssymb} % MTPro2 fonts contain all of the symbols provided by amssymb. 
+% The amsthm package provides extended theorem environments
+% \usepackage{amsthm}
+\usepackage{amstext}
+\usepackage{amsmath}
+\usepackage{textcomp} % degree symbol 
+\usepackage{graphicx}
+%///
+% Algorithm package
+\usepackage[chapter]{algorithm}
+%\usepackage{algorithmicx}
+\usepackage{algpseudocode} % Typesetting using the algorithmicx package
+% Algorithm numbering
+\renewcommand{\thealgorithm}{\arabic{chapter}.\arabic{algorithm}} 
+%///
+
+\usepackage{lineno} % linenomath
+
+% Allow break in align math environment
+\allowdisplaybreaks
+
+\usepackage{eqparbox,array}
+
+\newcommand\LONGCOMMENT[1]{%
+	\hfill$\triangleright$ \begin{minipage}[t]{15\eqboxwidth{algorithmiccomment}}#1\strut\end{minipage}%
+}
+
+\newcommand\LONGCOMMENTONE[1]{%
+	\hfill$\triangleright$ \begin{minipage}[t]{14\eqboxwidth{algorithmiccomment}}#1\strut\end{minipage}%
+}
+
+\newcommand\LONGCOMMENTTWO[1]{%
+	\hfill$\triangleright$ \begin{minipage}[t]{17\eqboxwidth{algorithmiccomment}}#1\strut\end{minipage}%
+}
+
+% For floating point columns
+\usepackage{etoolbox} 
+\usepackage[tight-spacing=true]{siunitx}
+\robustify\bfseries
+% For bold cells using siunitx
+\newcommand{\be}[2]{%
+	\multicolumn{1}{S[table-format=#1,
+		mode=text,
+		text-rm=\fontseries{b}\selectfont
+		]}{#2}}
+
+% For bold cells using siunitx
+\newcommand{\beIt}[2]{%
+	\multicolumn{1}{S[table-format=#1,
+		mode=text,
+		text-rm=\fontseries{b}\fontshape{it}\selectfont
+		]}{#2}}
+
+% For bold cells using siunitx
+\newcommand{\beSci}[1]{%
+	\multicolumn{1}{
+		S[table-format =1.2e4,%    
+%		S[exponent-product = \cdot,
+%		round-mode = figures,
+%		round-precision = 3,
+		detect-weight=true, 
+		detect-family=true,
+		mode=text,
+		text-rm=\fontseries{b}\selectfont
+		]}{#1}}
+
+%\usepackage[tight-spacing=true]{siunitx}
+
+\usepackage{booktabs} % Professional tables
+% Use in coloured tables
+\usepackage{cancel}
+\usepackage[pdftex, table]{xcolor}  % Coloured text etc.
+%To tweak the space between columns (LaTeX will by default choose very tight columns), one can alter the column separation: \setlength{\tabcolsep}{5pt}. The default value is 6pt.
+\setlength{\tabcolsep}{5pt}
+%\setlength{\tabcolsep}{1.7pt}
+\usepackage{todonotes}
+\usepackage{multirow}
+\usepackage{pdflscape}
+\usepackage{enumerate}
+\usepackage{stfloats} % TA plots
+\usepackage{adjustbox}
+\usepackage{longtable} % For long tables spanning multiple pages
+
+% For removing underfull \hbox warning in the bibliography
+\apptocmd{\sloppy}{\hbadness 10000\relax}{}{}
+% Alternatively
+%\usepackage{etoolbox}
+%\apptocmd{\thebibliography}{\raggedright}{}{}
+
+\usepackage{float}
+\floatstyle{plaintop}
+\restylefloat{table}
+
+%\newcommandx{\info}[2][1=]{\todo[linecolor=OliveGreen,backgroundcolor=OliveGreen!25,bordercolor=OliveGreen,#1]{#2}}
+
+\newif\ifboldnumber
+\newcommand{\boldnext}{\global\boldnumbertrue}
+
+% Default definition is \footnotesize#1:
+\algrenewcommand\alglinenumber[1]{%
+	\footnotesize\ifboldnumber\bfseries\fi\global\boldnumberfalse#1:}
+
+\usepackage{verbatimbox}
+
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+
+\usepackage{doi}
+\renewcommand\doitext{} % Remove duplicate "doi:" prefix
+% For placing figures and tables in the next page
+\usepackage{afterpage}
+\usepackage{flafter}
+% siunitx EN language floating point separator
+\sisetup{group-separator = {,}}
+
+% For reducing \hbox warnings
+\sloppy
+
+%////////////////////////////////////////////////
+
+
+\usepackage{setspace}
+\onehalfspacing % or \doublespacing
+
+% Line spacing
+%\linespread{1.25} %// LAST
+%\linespread{1.35}
+%\linespread{1.4}
+
+% Page dimensions - equivalent to 15 cm x 23 cm
+\usepackage[left=3.5cm,right=2.5cm,top=3cm,bottom=3.7cm]{geometry}
+
+%\usepackage[headheight=14pt, text={15cm,23cm}, twoside, bindingoffset=1cm]{geometry}
+
+%\usepackage[headheight=14pt, text={15cm,23cm}, top=2cm, left=2.5cm, right=2.5cm, bottom=2.5cm, twoside, bindingoffset=1cm, includefoot, includehead]{geometry}
+
+% Page dimensions
+%\pagestyle{plain}
+%\setlength{\oddsidemargin}{0.5cm} 
+%\setlength{\evensidemargin}{-0.5cm}
+%\setlength{\topmargin}{-1cm} 
+%\setlength{\textheight}{23cm}
+%\setlength{\textwidth}{16cm}
+%
+
+
+
+%-
+% //////// Changing default figure captions ///////
+%-
+%\setlength{\abovecaptionskip}{10pt}
+\setlength{\belowcaptionskip}{5px}
+
+
+%\makeatletter % Allow the use of @ in command names
+%\long\def\@makecaption#1#2{%
+%\vskip\abovecaptionskip
+%\sbox\@tempboxa{ \textbf{#1} \hspace{0.5em} #2}%
+%\ifdim \wd\@tempboxa >\hsize
+%{ \textbf{#1} \hspace{0.5em}  #2\par}
+%\else
+%\hbox to\hsize{\hfil\box\@tempboxa\hfil}%
+%\fi
+%\vskip\belowcaptionskip}
+%\makeatother % Cancel the effect of \makeatletter 
+%% ////////////////////////////
+%
+%% //// Use 'Computer Modern' typewriter font, not 'Lucida Typewriter' ////
+%\renewcommand{\ttdefault}{cmtt}%
+%% //// Estilo adoptado para trocos de codigo no texto ////
+%\newcommand{\code}[1]{{\tt #1}}
+
+
+
+% ///// Fancy headers ////////
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+
+\renewcommand{\chaptermark}[1]{%
+  \markboth{\chaptername \ \thechapter \hspace{0.5em} \emph{#1}}{}}
+
+\renewcommand{\sectionmark}[1]{%
+  \markright{\thesection \hspace{0.5em} #1}{}}
+     
+\renewcommand{\headrulewidth}{0pt}
+
+\fancypagestyle{plain}{%
+\fancyhf{} % clear all header and footer fields
+\fancyfoot[C]{\small\thepage} % except the center
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}}
+% /////////////////////////////////
+
+
+% Load acronym definitions
+\loadglsentries[\acronymtype]{Acronyms/Acronyms}
+
+% Generate the glossary
+\makeglossaries
+
+
+\usepackage{silence}
+
+\WarningFilter{minitoc(hints)}{W0023}
+\WarningFilter{minitoc(hints)}{W0028}
+\WarningFilter{minitoc(hints)}{W0030}
+
+\WarningFilter{blindtext}{} % this takes care of the `blindtext` messages
+
+
+
+
+%//////////////////////////
+%
+% Main matter
+%
+%//////////////////////////
+\begin{document}
+
+% Environment for displaying examples
+%\theoremstyle{definition}
+\newtheorem{exmp}{Example}[section]
+
+
+% Commands
+\renewcommand\bibname{References}
+
+
+% Document cover
+\include{FrontCover/provisoryFrontCover} 
+
+\clearpage
+\thispagestyle{empty}
+\cleardoublepage
+
+
+
+% Begin with roman numbering at page 3 (provisory document)
+\pagenumbering{roman} \setcounter{page}{3}
+%\pagenumbering{roman} \setcounter{page}{5}
+
+
+
+% Fancy Header configuration
+
+% Formato da pagina esquerda (par): <Pagina><Capitulo nr Nome>
+\fancyhead[LE]{\small\thepage\hspace{3em}\nouppercase{\small\leftmark}}
+\fancyhead[RE,LO]{}
+% Formato da pagina direita (impar): <Numero da Seccao> <Nome da seccao> <Pagina>
+\fancyhead[RO]{\nouppercase{\small\rightmark}\hspace{3em}\small\thepage}
+
+\setlength{\headheight}{13.60pt}
+
+
+% //////// ORIENTACAO DA TESE //////////////
+%\typeout{}
+%\include{../Orientation/Orientation}
+%
+%\newpage \mbox{}    % Blank page.
+% //////////////////////////////////////////
+
+
+% English Abstract
+\typeout{Abstract}
+\include{Abstract/Abstract}
+%\newpage \mbox{}    % Blank page.
+
+
+% Portuguese Abstract
+%\typeout{Resumo}
+%\include{Abstract/AbstractPort}
+%\newpage \mbox{}    % Blank page.
+
+
+% Acknowlegdments
+%\typeout{Acknowledgements}
+%\include{Acknowledgments/Acknowledgments}
+%\newpage \mbox{}    % Blank page.
+%
+%
+%% //////// Dedication //////////////
+%\typeout{}
+%\include{Dedication/Dedication}
+%\newpage \mbox{}    % Blank page.
+% //////////////////////////////////////////
+
+
+%% //////// List of Acronyms and Abbreviations //////////////
+%%\printglossary[type=\acronymtype,nonumberlist=true]
+%{\typeout{List of Acronyms and Abbreviations} 
+%\include{Other/Acronyms}}
+%
+%\newpage \mbox{}    % Blank page.
+%% //////////////////////////////////////////
+
+% List of Acronyms with no page numbers
+%\printglossary[title=List of Acronyms,toctitle=List of Acronyms,nonumberlist=true]
+
+% List of Acronyms with no page numbers and custom indentation between acronym and description
+\printglossary[title=List of Acronyms,toctitle=List of Acronyms,nonumberlist=true,type=\acronymtype,style=super]
+
+
+\cleardoublepage
+
+
+%
+%% //////// Notational Conventions //////////////
+%{\typeout{Notational Conventions}
+%\include{Other/Notation}} % Blank page.
+%% //////////////////////////////////////////
+%
+%
+%% //////// List of Symbolss //////////////
+%{\typeout{List of Symbols}
+%\include{Other/ListOfSymbols}} % Blank page.
+%% //////////////////////////////////////////
+%
+
+
+
+%///////////////////////////////////////////////
+%
+% Contents
+% List of Figures
+% List of Tables
+% List of Algorithms
+%
+%///////////////////////////////////////////////
+\dominitoc
+\tableofcontents 
+\listoffigures 
+%\listoftables   
+%\listofalgorithms \addcontentsline{toc}{chapter}{List of Algorithms} 
+
+\cleardoublepage
+
+% Arabic numbering
+\pagenumbering{arabic}
+
+
+
+
+%////////////////////////////////////////////////////////////////////////
+%   Chapter 1
+%
+%   Introduction
+%////////////////////////////////////////////////////////////////////////
+% Se contiver Resumo e Abstract
+\setcounter{mtc}{3} % First page containing the minitoc
+
+% Se contiver Abstract apenas
+%\setcounter{mtc}{6} % First page containing the minitoc
+
+
+
+\include{Chapter1/Chapter1}
+
+
+
+
+%////////////////////////////////////////////////////////////////////////
+%   Chapter 2 
+%
+%   State of the Art
+%////////////////////////////////////////////////////////////////////////
+\include{Chapter2/Chapter2}
+
+
+%////////////////////////////////////////////////////////////////////////
+%   Chapter 3
+%
+%   
+%////////////////////////////////////////////////////////////////////////
+\include{Chapter3/Chapter3}
+
+
+%////////////////////////////////////////////////////////////////////////
+%   Chapter 4
+%
+%   
+%
+%////////////////////////////////////////////////////////////////////////
+\include{Chapter4/Chapter4}
+
+
+%/////////////////////////////////////////////////////////////
+%   Chapter 5
+%
+%    Timetabling
+%
+%/////////////////////////////////////////////////////////////
+\include{Chapter5/Chapter5}
+
+
+%/////////////////////////////////////////////////////////////
+%   Chapter 6
+%
+%   
+%
+%/////////////////////////////////////////////////////////////
+%\include{Chapter6/Chapter6}
+
+
+
+%////////////////////////////////////////////////////////////////////////
+%   Chapter 7
+%
+%   
+%////////////////////////////////////////////////////////////////////////
+%\include{Chapter7/Chapter7}
+
+
+%/////////////////////////////////////////////////////////////
+%   Chapter 8
+%
+%   Conclusions and Future Work
+%
+%/////////////////////////////////////////////////////////////
+\include{Chapter8/Chapter8}
+
+
+
+
+% ///////////////////////////////////////////////////////
+% Configuracao do header para apendices e referencias
+% ///////////////////////////////////////////////////////
+
+% Formato da pagina esquerda (par): <Pagina><Capitulo nr Nome>
+\fancyhead[LE]{\small\thepage\hspace{3em}\nouppercase{\small\leftmark}}
+\fancyhead[RE,LO]{}
+% Formato da pagina direita (impar): <Numero da Seccao> <Nome da seccao> <Pagina>
+\fancyhead[RO]{\nouppercase{\small\rightmark}\hspace{3em}\small\thepage}
+
+
+%% The Appendices part is started with the command \appendix;
+%% appendix sections are then done as normal sections
+%% \appendix
+
+%% \section{}
+%% \label{}
+
+%\appendix
+%
+%\renewcommand\thesection{\Alph{section}}
+
+\renewcommand\chaptername{Appendix}
+
+% Use:
+%\appendix
+%
+% Or use:
+\begin{appendices}
+
+%\adjustmtc
+
+%/////////////////////////////////////////////////////////////
+%   Appendix A
+% 
+%   
+%
+%/////////////////////////////////////////////////////////////
+\include{AppendixA/AppendixA}
+
+
+%/////////////////////////////////////////////////////////////
+%   Appendix B
+% 
+%   
+%
+%/////////////////////////////////////////////////////////////
+%\include{AppendixB/AppendixB}
+
+
+%/////////////////////////////////////////////////////////////
+%   Appendix C
+% 
+%   
+%
+%/////////////////////////////////////////////////////////////
+%\include{AppendixC/AppendixC}
+
+
+\end{appendices}
+
+
+% -------------------------------------------------------------
+%   Bibliography
+% -------------------------------------------------------------
+%% Numbered
+%\bibliographystyle{elsarticle-num} % Elsevier template (See Elsevier sample file)
+
+%% APA style
+\bibliographystyle{model5-names}
+
+\bibliography{References/References}
+
+
+
+\cleardoublepage
+
+
+\end{document}
+
+

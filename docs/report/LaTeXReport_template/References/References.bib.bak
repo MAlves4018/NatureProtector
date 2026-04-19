@@ -1,0 +1,177 @@
+% Encoding: UTF-8
+
+@Online{xamarinenhance,
+  author = {HUSSAIN N. ABBASI},
+  title  = {Enhance Your Xamarin.Forms App’s User Experience With Polly},
+  year   = {2018},
+  date   = {2019-05-08},
+  url    = {https://intelliabb.com/2018/07/20/enhance-your-xamarin-forms-apps-user-experience-with-polly/},
+}
+
+@Online{localnotificationsplugin,
+  author = {Paul Datsiuk},
+  title  = {Local Notifications Plugin},
+  year   = {2018},
+  date   = {2019-05-08},
+  url    = {https://ci.appveyor.com/project/edsnider/localnotificationsplugin/build/3.0.1-pr43-build28/artifacts},
+}
+
+@Online{npgsqlgettingstarted,
+  author = {The Npgsql Development Team},
+  title  = {Getting Started},
+  year   = {2018},
+  date   = {2018-11-29},
+  url    = {https://www.npgsql.org/doc/index.html},
+}
+
+@Online{aspnetcorelogging,
+  author = {OneCode Team},
+  title  = {How to implement logging to sql database in ASP.NET Core},
+  year   = {2017},
+  date   = {2019-05-12},
+  url    = {https://code.msdn.microsoft.com/How-to-implement-logging-4cbcfc64#content},
+}
+
+@Online{aspneterrorhandle,
+  author = {Chris Sainty},
+  title  = {Global Error Handling in ASP.NET Core MVC},
+  year   = {2018},
+  date   = {2019-05-13},
+  url    = {https://chrissainty.com/global-error-handling-aspnet-core-mvc/},
+}
+
+@Online{eventplanningsoftware1,
+  author = {Whova},
+  title  = {8 Event Management and Planning Software That Will Make You a Rockstar},
+  year   = {2019},
+  date   = {2019-03-29},
+  url    = {https://whova.com/blog/free-event-planning-software-make-you-rockstar/},
+}
+
+@Online{eventbrite,
+  author = {Eventbrite},
+  title  = {Eventbrite},
+  year   = {2019},
+  date   = {2019-04-24},
+  url    = {https://www.eventbrite.com/},
+}
+
+@Online{eventbritealternatives,
+  author = {Finances Online},
+  title  = {Top 10 Alternatives to Eventbrite: Leading Event Management Software Solutions},
+  year   = {2019},
+  date   = {2019-04-25},
+  url    = {https://financesonline.com/top-10-alternatives-eventbrite-leading-event-management-software-solutions/},
+}
+
+@Online{mbway,
+  author = {MBWAY},
+  title  = {Developers - MB WAY},
+  year   = {2019},
+  date   = {2019-02-25},
+  url    = {https://www.mbway.pt/developers/?redirect_to=/developers/inicio/},
+}
+
+@Online{gs1pt,
+  author = {GS1},
+  title  = {GS1 Portugal},
+  year   = {2019},
+  date   = {2019-02-25},
+  url    = {http://www.gs1pt.org/sincronizacao-de-dados-sync-pt/},
+}
+
+@Online{xamarinandroidgetstarted,
+  author = {Craig Dunn, Mark McLemore, Tom Opgenorth, donpro2009, Brad Umbaugh},
+  title  = {Hello, Android: Quickstart},
+  date   = {2019-02-11},
+  url    = {https://docs.microsoft.com/en-us/xamarin/android/get-started/hello-android/hello-android-quickstart?pivots=windows},
+}
+
+@Online{facebook,
+  author = {Facebook},
+  title  = {Facebook},
+  year   = {2019},
+  date   = {2019-02-25},
+  url    = {https://www.facebook.com/},
+}
+
+@Online{29bestappsplanning,
+  author = {Jessica Bowler},
+  title  = {29 of the best apps to use for event planning},
+  date   = {2019-02-11},
+  url    = {https://blog.printsome.com/event-planning-apps/},
+}
+
+@Online{asana,
+  author = {Asana},
+  title  = {Use a Asana para gerenciar trabalhos, projetos e tarefas da sua equipe on-line},
+  year   = {2019},
+  date   = {2019-02-25},
+  url    = {https://asana.com/pt},
+}
+
+@Online{superplanner,
+  author = {Super Planner},
+  title  = {Super Planner - Event Planning on the App Store},
+  year   = {2019},
+  date   = {2019-02-25},
+  url    = {https://itunes.apple.com/us/app/super-planner-event-planning/id383727111?mt=8},
+}
+
+@Online{spotifywebapidoc,
+  author = {Spotify},
+  title  = {Web API | Spotify for Developers},
+  year   = {2019},
+  date   = {2019-02-25},
+  url    = {https://developer.spotify.com/documentation/web-api/},
+}
+
+@Online{applemusicapidoc,
+  author = {Apple},
+  title  = {Apple Music API | Apple Developer Documentation},
+  year   = {2019},
+  date   = {2019-02-25},
+  url    = {https://developer.apple.com/documentation/applemusicapi},
+}
+
+@Online{napsterapidoc,
+  author = {Napster},
+  title  = {Welcome - Napster API},
+  year   = {2019},
+  date   = {2019-02-25},
+  url    = {https://developer.napster.com/},
+}
+
+@Online{azuredevops,
+	author = {Microsoft},
+	title  = {Azure DevOps Services | Microsoft Azure},
+	year   = {2019},
+	date   = {2019-01-24},
+	url    = {https://azure.microsoft.com/en-in/services/devops/},
+}
+
+@Online{elephantsql,
+	author = {ElephantSQL},
+	title  = {ElephantSQL - PostgreSQL as a Service},
+	year   = {2019},
+	date   = {2019-05-19},
+	url    = {https://www.elephantsql.com/},
+}
+
+@Online{xingevents,
+	author = {XING Events},
+	title  = {Platform for attendee generation and management | XING Events},
+	year   = {2019},
+	date   = {2019-04-10},
+	url    = {https://www.xing-events.com/en/},
+}
+
+@Online{cvent,
+  author = {Cvent},
+  title  = {Event Management Software \& Hospitality Solutions},
+  year   = {2019},
+  date   = {2019-04-10},
+  url    = {https://www.cvent.com/},
+}
+
+@Comment{jabref-meta: databaseType:biblatex;}

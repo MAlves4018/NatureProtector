@@ -1,0 +1,176 @@
+
+
+%
+% Hyphenation
+%
+%\hyphenation{sub-sis-te-ma}
+
+%\hyphenation{pré-condições}
+
+
+
+% ---------- Page formating ----------
+%\renewcommand{\baselinestretch}{1.25}
+%\setlength{\itemsep}{-10mm}
+%
+%\setlength{\textwidth}{15cm}
+%\setlength{\textheight}{23cm}
+%\setlength{\topmargin}{-1cm}
+%
+%% 25mm margins
+%\setlength{\oddsidemargin}{9.6mm}
+%\setlength{\evensidemargin}{-0.4mm}
+%
+%\setlength{\footskip}{1.5cm}
+
+
+% Line spacing
+%\linespread{1.25}
+% ------------------------------------
+
+
+% Creating 'Examples'
+\newtheorem{example}{Exemplo}[chapter]
+
+
+% Preface section
+\def\prefacesection#1{%
+    \chapter*{#1}
+    \addcontentsline{toc}{chapter}{#1}}
+
+
+
+
+
+
+%-
+% Code environment using fancy verbatim
+%-
+\RequirePackage{fancyvrb}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% package float -- permite maior controle sobre posicionamento de
+%%% floats (posicionador [H]), além de criação de novos tipos de
+%%% floats.  Neste documento é criado o float ``codigo''.
+\RequirePackage{float}
+
+\floatstyle{plaintop}  %%% tipos: plain, plaintop, boxed, ruled
+%\floatstyle{ruled}  %%% tipos: plain, plaintop, boxed, ruled
+
+\newfloat{codigo}{tbp}{lol}[chapter]  %%% numera os captions com
+                                       %%% número de capítulo.                                       
+\floatname{codigo}{Listagem}
+
+%%% nome para ser usado no sumário
+\newcommand{\listofcodename}{Lista de Listagens}
+
+
+\newcommand{\CodeListing}[3]{
+  \small
+  \VerbatimInput[frame=lines, numbers=left, numbersep=-4pt]{#1}
+  \caption{#2}
+  \label{#3}
+}
+
+
+\newcommand{\CodeListingTen}[3]{
+  \small
+  \VerbatimInput[frame=lines, numbers=left, numbersep=-8pt]{#1}
+  \caption{#2}
+  \label{#3}
+}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Listagens - Configurações para as listagens
+%
+%
+%\RequirePackage{listings}
+%\RequirePackage{color}
+%
+%
+%% Cores usadas nas listagens
+%\definecolor{lstBackground}{rgb}{0.95,0.95,0.95}				% cor de fundo (Gray)
+%\definecolor{lstKeywordsColor}{rgb}{0.49,0.0,0.33}				% cor das palavras reservadas (Brown)				
+%\definecolor{lstCommentsColor}{rgb}{0.24,0.50,0.37}  % cor de comentários (Green)
+%\definecolor{lstStringColor}{rgb}{0.16,0.0,1.0}		% cor dos identificadores (Blue)
+
+
+
+
+%\newcommand{\code}[1]{\mbox{\lstinline[basicstyle=\small\tt,%
+%\newcommand{\code}[1]{\mbox{\lstinline[basicstyle=\tt,%
+%						keywordstyle=\color{lstKeywordsColor}\bfseries,%
+% 						commentstyle=\color{lstCommentsColor},%
+% 						stringstyle=\color{lstStringColor},% 		
+%						language=Java]|#1|}
+%}
+
+
+%% Listagens
+%\newcommand{\lst}[3]{%
+%%	\noindent\rule[-1ex]{\textwidth}{0.3mm}\vspace{-1ex}
+%	\lstinputlisting[caption={#2},%
+%	label={#3},%
+%	captionpos=b,%
+%	abovecaptionskip=\medskipamount,%
+%	aboveskip=20pt,%
+%	showstringspaces=false,%
+%%	frame=tb,%
+%% frame=single,%	
+%	extendedchars=true,%
+%	inputencoding=latin1,																% para suportar acentos 		
+%%	basicstyle=\footnotesize\tt,%
+%	basicstyle=\small\tt,%
+%	keywordstyle=\color{lstKeywordsColor}\bfseries,%
+% 	commentstyle=\color{lstCommentsColor}\textit,%
+% 	stringstyle=\color{lstStringColor},% 	
+%	language=Java,
+%	breaklines=true]{#1}%
+%	\vspace{1ex}%
+%}
+%
+
+
+
+%
+%% Listagens com números
+%\newcommand{\numberedlst}[3]{%
+%%	\noindent\rule[-1ex]{\textwidth}{0.3mm}\vspace{-1ex}
+%	\lstinputlisting[caption={#2},%
+%	label={lst:#3},%
+%	showstringspaces=false,%
+%%	frame=tb,%
+%	frame=single,%
+%	numbers=left,%
+%	stepnumber=1,%
+%	numberstyle=\tiny,%
+%	extendedchars=true,%
+%	inputencoding=latin1,																			% para suportar acentos 		
+%%	basicstyle=\footnotesize\tt,%
+%	basicstyle=\tt,%
+%	keywordstyle=\color{lstKeywordsColor}\bfseries,%
+% 	commentstyle=\color{lstCommentsColor},%
+% 	stringstyle=\color{lstStringColor},% 		
+%	language=Java,
+%	breaklines=true]{#1}%
+%	\vspace{1ex}%
+%}
+
+
+			 
+
+
+%
+% Definição de estilos: com números, sem números e simples (sem cor de fundo, numeros, etc)
+%
+%\lstdefinestyle{numbers}				{numbers=left, stepnumber=1, numberstyle=\tiny, numbersep=10pt}
+%\lstdefinestyle{nonumbers}			{numbers=none}
+%\lstdefinestyle{simple}					{numbers=none, frame=single, backgroundcolor=\color{white}}
+%\lstdefinestyle{simpleNumbers}	{numbers=left, stepnumber=1, numberstyle=\tiny, numbersep=10pt, frame=single,backgroundcolor=\color{white}}
+%\lstdefinestyle{xml}						{style=simple }
+
+
+

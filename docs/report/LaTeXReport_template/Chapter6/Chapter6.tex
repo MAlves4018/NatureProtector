@@ -1,0 +1,1670 @@
+\chapter{A Cellular Memetic Algorithm for Examination Timetabling} 
+\label{ch:Chapter6}
+\vfill \minitoc \newpage
+
+
+In the previous chapter we have presented two single-objective memetic algorithms proposed for solving the \gls{etp}. This chapter is dedicated to a third memetic algorithm which is based on the \gls{cma} for solving the \gls{etp}. The proposed approach comprises the hybridisation of the \gls{cea} with the \gls{ta} algorithm. In cellular evolutionary algorithms, the individuals are organised in a special structure that promotes the population genetic diversity, thus reducing the premature convergence observed in non-cellular evolutionary algorithms. 
+
+Section~\ref{sec:Chapter6_cMA} describes the \gls{cma} structure. Section~\ref{sec:Chapter6_ApplicationToBenchmarkSets} describes the \gls{cma} components (chromosome representation, construction of initial solutions, crossover, mutation and local search operator) for the Toronto and \gls{itc2007} benchmark sets, respectively. Section~\ref{sec:Chapter6_ExperimentalResults} reports the experimental evaluation of \gls{cma} on the Toronto and \gls{itc2007} benchmark sets. The chapter ends in Section~\ref{sec:Chapter6_Conclusion} with conclusions and future developments.
+ 
+
+
+
+%//////////////////////////////////////////////////
+%
+% Section 
+%
+%//////////////////////////////////////////////////
+\section{Cellular memetic algorithm}
+\label{sec:Chapter6_cMA}
+
+The cellular evolutionary algorithm used to solve the ETP relies on the cellular model. In this model, the populations are organised in a special structure defined as a connected graph, in which each vertex is a solution that communicates with its neighbours~\citep{Alba2005a}. More specifically, individuals are set in a toroidal mesh and are only allowed to recombine with the closest neighbours (Figure~\ref{fig:ParalellModelsEA}). The population structure in cellular evolutionary algorithms, in addition to the inherent parallelism, promotes the population genetic diversity~\citep{Alba2005a}, thus alleviating the premature convergence observed in non-cellular evolutionary algorithms. 
+
+
+\begin{figure}[!ht]
+	\centering
+	\scalebox{1.2}{\includegraphics{./Chapter6/Figures/cMA/cellularMemeticGA_crop.pdf}}
+	\caption{The cellular model for evolutionary algorithms. The figure illustrates the application of the L5 neighbourhood type, also known as the von Neumann neighbourhood.}
+	\label{fig:ParalellModelsEA}
+\end{figure}
+
+
+Algorithm~\ref{alg:cMA} describes the proposed cellular memetic algorithm. The cMA uses a tournament selection method of size two (binary tournament), as suggested in~\citep{Alba2008}. The binary tournament has the property that any member of the population, besides the absolute worst, has a chance of getting to the next generation, but better ones have a better chance. Thus, the binary tournament has a lower selective pressure compared to other types of tournament. 
+
+\begin{algorithm}[!ht]
+	\begin{algorithmic}[1]
+		\Procedure{cMA}{}
+		\State Pop $\leftarrow$ GenerateInitialPopulation
+		\State Evaluation(Pop)
+		\While {stopping condition is not true}
+		\State AuxPop $\leftarrow$ $\varnothing$ 
+		\For{indiv = 1 \textbf{to} $|$Pop$|$}
+		\State neighs $\leftarrow$ GetNeighbours(indiv, Pop)
+		\State parents $\leftarrow$ Selection(neighs)
+		\State offspring $\leftarrow$ Recombination(parents)
+		\State offspring $\leftarrow$ Mutation(offspring)
+		\State offspring $\leftarrow$ LocalSearch(offspring)
+		\State Evaluation(offspring)
+		\State NewIndiv $\leftarrow$ Best(indiv, offspring, Pop)
+		\State AuxPop $\leftarrow$ AuxPop $\cup \ \{ \text{NewIndiv} \}$
+		\EndFor
+		\State Pop $\leftarrow$ AuxPop
+		\EndWhile
+		\EndProcedure
+	\end{algorithmic}
+	\caption{Pseudo-code of the canonical cMA.}
+	\label{alg:cMA}
+\end{algorithm}
+
+We now explain how the offspring are generated. For each generation (see Algorithm~\ref{alg:cMA}), we obtain the neighbours of the individual $i$ ($i = 1, \ldots, \mu$,
+where $\mu$ is the population size). In our implementation, we use the L5 neighbourhood (comprising the immediate neighbours located in the north, south, west, and east positions). With this set of neighbours, we perform a binary tournament, i.e., we choose randomly two
+parents from the neighbourhood set and return the one with the best fitness as the first offspring. The second offspring is simply individual $i$. Then, we perform recombination (crossover) with probability $P_c$, mutation with probability $P_m$ and local search with probability $P_{ls}$ over these two offspring, and the best of the two is selected and compared with the original individual $i$. The best between the offspring and individual $i$ is finally kept for the next generation.
+
+There are two possible implementations of the cEA~\citep{Alba2008}: \textit{synchronous} and \textit{asynchronous}. If the cycle is applied to all the individuals simultaneously, the cEA is said to be synchronous, since the individuals in the next generation are all created concurrently. Otherwise, the cEA is said to be asynchronous. In this work, the synchronous algorithm was implemented.
+
+
+
+
+%//////////////////////////////////////////////////
+%
+% Section 
+%
+%//////////////////////////////////////////////////
+\section{Local Search and Kempe Chain Neighbourhood}
+\label{sec:Chapter6_TA}
+
+As mentioned in the introduction, the \gls{ta}~\citep{Dueck1990} metaheuristic is used as the local search step. The \gls{ta} is similar to the \gls{sa}~\citep{Kirkpatrick1983} metaheuristic
+but, instead of using a probabilistic acceptance criterion, a deterministic one is used. Let $f$ be the objective function to be minimised on a set $X$ of feasible solutions, and denote by $N(s)$ the neighbourhood of each solution $s$ in $X$. Let $L$ be the state-space graph induced by $X$ and by the definition of $N(s)$. The \gls{ta} is an iterative algorithm that starts from an initial feasible solution and attempts to improve it by moving step by step in $L$. In each step, a neighbour solution $s'$ of the current solution $s$ is generated; the algorithm then moves to the neighbour solution $s'$, even if $f(s') > f(s)$, as long as $f(s') - f(s)$ is less than or equal to the current threshold $Q$. The threshold is reduced gradually, according to a predefined cooling schedule. The steps of the \gls{ta} metaheuristic are described in Algorithm~\ref{alg:TA}.
+
+%-
+% ALGORITHM 1
+%-
+\begin{algorithm}[!ht]
+	\textbf{Input:} Threshold annealing $Q_{max}$
+	\begin{algorithmic}[1]
+		\State $s \leftarrow s_0$ \Comment Generation of the initial solution
+		\State  $Q \leftarrow Q_{max}$ \Comment Starting threshold
+		\Repeat
+		\Repeat \Comment At a fixed threshold
+		\State Generate a random neighbour $s' \in N(s)$
+		\State $E \leftarrow f(s') - f(s)$ \label{alglineTA:acceptanceRuleBegin}
+		\If{ $E \leq Q$} {$s \leftarrow s'$} \EndIf \label{alglineTA:acceptanceRuleEnd} \Comment Accept the neighbour solution 
+		\Until Equilibrium condition \LONGCOMMENT{e.g., a given number of iterations executed at each threshold $Q$}			
+		\State $Q \leftarrow g(Q)$ \Comment Threshold update
+		\Until Stopping criteria satisfied \Comment e.g., $Q \leq Q_{min}$
+		\State \textbf{Output:} Best solution found.
+	\end{algorithmic}
+	\caption{Template of the \textit{threshold acceptance} algorithm.}
+	\label{alg:TA}
+\end{algorithm}
+
+
+In this work, we use the cooling schedule introduced in Section~\ref{subsec:Chapter5_SA}. The threshold $Q$ is updated by simulating the exponentially-decreasing temperature over time, as used in the metal annealing process. This is achieved by the function $T(t)$:
+\begin{equation}
+T(t) = Q_{max} \cdot \exp(- R \: t) ,	\label{eq:TATempDecreasingFunction}
+\end{equation}
+where $R$ is the threshold decreasing rate and $Q_{max}$ is the initial threshold ($Q_{max}$ should have a large value as compared to $R$). Function $T(t)$ allows for a slow decreasing cooling schedule to be defined, given that a small value of parameter $R$ is defined.
+
+In the proposed technique, the \textit{Kempe chain}~\citep{Thompson1998} neighbourhood is used. Only feasible Kempe chain moves are considered. The Kempe chain heuristic is described in Section~\ref{subsec:Chapter2_KempeChainNeighbourhood}.
+
+
+
+
+%//////////////////////////////////////////////////
+%
+% Section 
+%
+%//////////////////////////////////////////////////
+\section{Application to Benchmark Sets}
+\label{sec:Chapter6_ApplicationToBenchmarkSets}
+
+In this section the \gls{cma} components (chromosome representation, construction of initial solutions, crossover, mutation and local search operator) for the Toronto and \gls{itc2007} benchmark sets are presented. The \gls{cma}'s components for the Toronto set are common to the ones introduced in Chapter~\ref{ch:Chapter5}.
+
+The implementation of the crossover (Toronto case) and Kempe chain operators (in both Toronto and \gls{itc2007}) allows for solutions to be evaluated incrementally. In incremental (also called \textit{delta}) evaluation~\cite{Corne1994}, only the exam edges that are updated by the operator are evaluated, allowing for a substantial increase in the operator's performance.
+
+
+
+% Subsection
+\subsection{Toronto Data Set}
+\label{sec:Chapter6_ApplicationToToronto}
+
+\subsubsection{Chromosome Representation and Fitness Function}
+
+The adopted chromosome representation for the Toronto benchmark set is described in Section~\ref{subsubsec:Chapter5_SolutionRepresentationAndFitnessFunctionToronto}.
+
+
+\subsubsection{Construction of Initial Feasible Timetables}
+
+The initial solution population for the Toronto benchmark set is constructed by applying an initialisation procedure, that is based on the \gls{sd} graph colouring heuristic, on each solution. The devised procedure is described in Section~\ref{subsubsec:Chapter5_ConstructionOfInitialFeasibleTimetablesToronto}.
+
+
+\subsubsection{Neighbourhood Operator}
+
+The Kempe chain neighbourhood was used for the Toronto benchmark set, as described in Section~\ref{subsubsec:Chapter5_neighbourhoodOperatorToronto}.
+
+
+\subsubsection{Recombination and Mutation Operators}
+\label{sec:RecombinationMutationOperatorsToronto}
+
+The proposed recombination (crossover) operator, used in the case of the Toronto benchmark set, is described in Section~\ref{subsubsec:Chapter5_RecombinationOperatorToronto}.
+
+Concerning the mutation operator, a randomly selected exam is moved to a different feasible period using a Kempe chain-based neighbourhood operator, described in Section~\ref{subsubsec:Chapter5_neighbourhoodOperatorToronto}.
+
+
+
+
+
+% Subsection
+\subsection{ITC 2007 Benchmark Set}
+\label{subsec:Chapter6_ApplicationToITC2007}
+
+In this section, we describe the \gls{cma} components for the \gls{itc2007} case. The \gls{itc2007} benchmark set is introduced in Section~\ref{sec:Chapter2_ITC2007Dataset}.
+
+
+\subsubsection{Chromosome Representation and Fitness Function}
+\label{sec:Chapter6_ChromosomeRepresentation}
+
+
+\begin{figure}[!ht]
+	\centering
+	\scalebox{1.1}{\includegraphics{Chapter6/Figures/cMA/CapacitatedChromRepresentation_crop.pdf}}
+	\caption{Chromosome representation for the ITC 2007 benchmark set (capacitated problem).}
+	\label{fig:EncodingSchemeITC2007} 
+\end{figure}
+
+
+Since the \gls{itc2007} benchmark set is capacitated, we have to consider the rooms. The generic representation of a chromosome in this case is given in Figure~\ref{fig:EncodingSchemeITC2007}. For example, exam $e_{3}$ is allocated in time slot $t_1$ and room $r_{1}$, and exams $e_{2}$ and $e_{5}$ are allocated in time slot $t_2$ and room $r_{2}$. In terms of software implementation, the chromosome was implemented differently than what is shown in Figure~\ref{fig:EncodingSchemeITC2007}. The chromosome is encoded as a matrix, say $A$, having in the row index the exam index, and in the column index the period number. $A_{ij}$ is for exam $i$ and period $j$ and contains the room index if it is assigned to that period, otherwise it is -1. This implementation provides for nuclear operations (exam allocation to period and room, room change, period change) to be performed in constant time.
+
+The fitness function used in this work is the same as the one used in~\cite{McCollum2012}.
+
+
+\subsubsection{Construction of Initial Feasible Timetables}
+
+For the \gls{itc2007} case, the initial solution population is constructed using a variant of the \gls{sd} graph colouring heuristic. In our approach, for performance reasons, the number of available periods for each exam is computed by considering only the \textit{No Conflicts} (or clash) hard constraint, instead of considering all hard constraints. The remaining hard constraints are satisfied when the exam is scheduled.
+
+In order to schedule the more constrained exams first, we initially sort the exams by their number of \textit{After} hard constraints. The exams that must take place before others (involved in an \textit{After} constraint) have fewer available periods, and are thus more difficult to schedule. The other types of period related hard constraints (\textit{Exam Coincidence} and \textit{Period Exclusion}) are not considered in the initial exam sorting.
+
+We start by setting the initial priority (number of available periods) of each exam equal to the total number of periods. Then, all the exams that must be scheduled before another exam have their number of feasible periods decremented by one. This is done for each \textit{After} hard constraint in which they are involved. For instance, if an exam $e_i$ must be scheduled \textit{before} exam $e_j$ (an \textit{After} constraint exists between $e_j$ and $e_i$), then the number of available periods for $e_i$ is equal to the total number of periods minus one. 
+
+The construction algorithm proceeds in two phases:
+\begin{description}
+	\item[Phase 1] Extract an exam from the exam priority queue and, if all hard constraints are met, schedule the exam in the selected period and room, and update the priorities (number of available periods) of exams in the queue, considering only the \textit{No Conflicts} hard constraint. Then, repeat the same process for the next maximum  priority exam in the queue. If a given exam cannot be scheduled, then go to Phase 2. 
+	
+	\item[Phase 2] If a selected exam cannot be assigned due to violations of hard constraints, the conflicting exams are unscheduled and the selected exam is scheduled. The conflicting exams are again inserted in the exam priority queue, with priority equal to \textit{zero} (maximum priority). Then, we take the next exam from the queue and we restart Phase 2. The construction phase ends when all exams are scheduled. 
+	
+	In order to prevent repetitive assignments of variables (exams) to the same values (period and room), the \gls{cbs}~\citep{Muller2009} data structure is used. \gls{cbs} stores hard conflicts which have occurred during the search, together with their frequency, and the assignments that caused them. In the (period, room) value selection, the value which corresponds to the lowest sum over weighted hard conflicts is chosen. Each hard conflict is weighted by its frequency, i.e., by the number of times the conflicting variable was unassigned due to the selected assignment~\citep{Muller2009}.
+\end{description}
+
+Future work will address the issue of computing the real priority of each unassigned exam in Phase 2 of the algorithm, instead of setting the priority to zero. For all exams that are unscheduled due to conflicts with the exam that is currently scheduled, the real priority will be computed as the number of available periods in the timetable. In addition, it is necessary to also update the priority of the other exams remaining in the queue, in order to take into account the exams removed from the timetable.
+
+
+
+\subsubsection{Recombination and Mutation Operators}
+\label{sec:RecombinationMutationOperatorITC2007}
+
+Due to its implementation complexity, no recombination operator was implemented for the \gls{itc2007} benchmark set. Concerning the mutation operator, a randomly selected exam is moved to a different feasible period and room using the \textit{Slot-Room} move, described in the next section.
+
+
+
+\subsubsection{Neighbourhood Operators}
+\label{sec:neighbourhoodOperatorITC2007}
+
+Two neighbourhood operators, based on the Kempe chain neighbourhood, were implemented:
+\begin{description}
+	\item[Room move] -- An exam, chosen randomly, is scheduled in a different room for the same period. The destination room is chosen in a random fashion.
+	
+	\item[Slot-Room move] -- A random exam is scheduled in a different period and room, both chosen randomly.
+\end{description}
+
+
+The \textit{Room move} operator was included for two reasons. The first, for completeness, i.e., it is desirable to have a set of operators that could move an exam to any place (period and room). The second was justified by the need to have an operator that could be used to minimise the room specific (\textit{Mixed Durations} and \textit{Room Penalty}) soft constraints violations.
+
+Figure~\ref{fig:ITC2007KempeChain} illustrates the use of the \textit{Slot-Room move} operator on an example ITC 2007 solution. In this example, the Kempe chain involving exam $e_2$, to be moved from time slot $t_2$ and room $r_2$ to time slot $t_5$ and room $r_1$, is given by $K_1 = \{ e_2, e_3, e_4, e_5, e_7, e_9 \}$ (Algorithm~\ref{alg:Chapter2_kempeChainTorontoPseudoCode}). Time slots $t_i$ and $t_j$ in Algorithm~\ref{alg:Chapter2_kempeChainTorontoPseudoCode} are set to $t_2$ and $t_5$, respectively, with initial contents given by $t_2 = \{ e_2, e_3, e_4, e_5, e_6 \}$ and $t_5 = \{ e_1, e_7, e_9, e_{10}, e_{19}, e_{22} \}$. Then, $t_2$ is updated with $(t_2 \setminus K_1) \cup (t_5 \cap K_1) = \{ e_6, e_7, e_9 \}$ and $t_5$ is updated with $(t_5 \setminus K_1) \cup (t_2 \cap K_1) = \{ e_1, e_2, e_3, e_4, e_5,  e_{10}, e_{19}, e_{22} \}$.
+
+
+
+\begin{figure}[!ht]
+	\centering
+	\subfigure[before]{
+		\label{subfig:kempeChainBefore}
+		\scalebox{1.5}{\includegraphics{Chapter6/Figures/cMA/itc2007kempeChain1_crop}}
+	}
+	\subfigure[after]{
+		\label{subfig:kempeChainAfter}
+		\scalebox{1.5}{\includegraphics{./Chapter6/Figures/cMA/itc2007kempeChain2_crop}}
+	}
+	
+	\caption{An example of the Kempe chain heuristic. There are two Kempe chains in the figure, with lines connecting conflicting exams. In the first Kempe chain, a move of exam $e_2$ from time slot $t_2$ and room $r_2$ to time slot $t_5$ and room $r_1$ requires repair moves to maintain feasibility. Exam $e_9$ has to be moved to time slot $t_2$ and room $r_2$, and exam $e_5$ (due to the \textit{Exam Coincidence} (EC) constraint), $e_3$, and $e_4$, have to be moved to time slot $t_5$ and rooms $r_1$, $r_3$, and $r_4$, respectively. Consequently, exam $e_7$ has to be moved from time slot $t_5$ and room $r_4$ to time slot $t_2$ and room $r_4$ due to the \textit{Room Exclusion} (RE) constraint.}
+	\label{fig:ITC2007KempeChain}
+\end{figure}
+
+
+The \textit{Room} and \textit{Slot-Room} move operators may yield infeasible neighbour solutions for the \gls{itc2007} data set. If it is not possible to apply the move, then the move is set to be infeasible and ignored by the upper level operator (mutation operator or local search neighbourhood move operator). In this case, the solution is not evaluated and the local search move acceptance rule (lines~\ref{alglineTA:acceptanceRuleBegin}--\ref{alglineTA:acceptanceRuleEnd} in Algorithm~\ref{alg:TA}) is skipped. Hence, the generated infeasible neighbour is not accepted.
+
+In the \textit{Slot-Room} move, the \textit{After} and \textit{Period Utilisation} hard constraints are only tested after the move is completed. These hard constraints are checked for the exams scheduled in the affected time slots $t_i$ and $t_j$, and the neighbour solution is set to be infeasible if they are violated. 
+
+
+
+
+
+
+%//////////////////////////////////////////////////
+%
+% Section 
+%
+%//////////////////////////////////////////////////
+\section{Experimental Results and Discussion}
+\label{sec:Chapter6_ExperimentalResults}
+
+This section presents the experiments conducted to test the proposed method on the examination timetabling problem. Section~\ref{sec:Settings} describes the parameter settings of the algorithm. The impact of the local search cooling schedule on the optimisation is analysed in Section~\ref{sec:Chapter6_LocalSearchEffect}. Section~\ref{sec:Comparison_cEA_TA_cEAHybrid} presents a comparison between \gls{cea} (cellular evolutionary algorithm without local search), \gls{ta} (local search only), and \gls{cma} (hybrid algorithm). The \gls{cma} comparison with the state-of-the-art approaches is done in Sections~\ref{sec:ComparisonToronto} and~\ref{sec:ComparisonITC2007} for the Toronto and ITC 2007 benchmark sets, respectively.
+
+
+\subsection{Settings}
+\label{sec:Settings}
+
+The algorithm was programmed in the C++ language and was based on the ParadisEO framework~\cite{ParadisEO-Cahon2004}. The experiments were conducted on an Intel Core i7-2630QM (CPU @ 2.00 GHz with 8 GB RAM) PC running Ubuntu 14.04 LTS -- 64 bit OS. The Linux kernel used was 3.13.0-49-generic. The compiler used was the GCC v. 4.8.2. In the experiments, all the statistical tests were performed with a 95\% confidence level. For each algorithm configuration, ten executions were made on each Toronto and ITC 2007 problem instance. We assessed the statistical significance of our results using the Friedman test, as suggested in~\cite{Garcia2008}. The results of the statistical tests were produced using the Java tool in~\cite{Garcia2008}. 
+
+
+
+\begin{table}[!ht]
+	\setlength{\tabcolsep}{3.0pt}
+	\centering
+	\caption{Parameter settings. Legend: $G$ -- Grid size, $N$ -- Neighbourhood type, $P_c$ -- crossover probability, $P_m$ -- mutation probability, $P_{ls}$ -- local search probability, $Q_{max}$ -- initial threshold,  $r$ -- decreasing rate, $k$ -- \# iterations at each threshold, and $Q_{min}$ -- final threshold. The parameter values in the second and third rows that differ from the first row are underlined. \vspace{0.3em}}
+	
+	\label{tab:Chapter6_ParameterSettings}
+	
+	\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math,detect-shape=true, detect-mode=true}
+	\begin{tabular}{%
+			l                  % Dataset   
+			l% Grid size
+			l% Neighbourhood
+			S[table-format=3.2]% Crossover prob.
+			S[table-format=3.2]% Mutation prob.   
+			S[table-format=3.2]% Improve prob.
+			% Cooling schedule
+			S[table-format=3.2]% Q_max
+			S[table-format=3.2]% r
+			S[table-format=3.2]% k
+			S[table-format=3.2]% Q_min
+		}
+		
+		\toprule
+		Data set
+		& \multicolumn{1}{c}{$G$}	 
+		& \multicolumn{1}{c}{$N$}	
+		& \multicolumn{1}{c}{$P_c$}	
+		& \multicolumn{1}{c}{$P_m$}
+		& \multicolumn{1}{c}{$P_{ls}$}	
+		& \multicolumn{4}{c}{TA Cooling schedule} \\%
+		\cmidrule{7-10}
+		% Dataset
+		& % G
+		& % N
+		& % Cp
+		& % Mp
+		& % Ip
+		& \multicolumn{1}{c}{$Q_{max}$}
+		& \multicolumn{1}{c}{$r$}
+		& \multicolumn{1}{c}{$k$}
+		& \multicolumn{1}{c}{$Q_{min}$} \\%
+		\midrule
+		\multirow{2}{*}{Toronto}
+		& \multirow{2}{*}{4 $\times$ 4}
+		& \multirow{2}{*}{L5}
+		& {\multirow{2}{*}{0.4}} % Braces in order for siunitx to recognise multirow
+		& {\multirow{2}{*}{0.1}}
+		& {\multirow{2}{*}{0.1}}
+		& 0.1
+		& \num{1e-3}
+		& 5
+		& \num{2e-5} \\%
+		  % Dataset
+		& % G
+		& % N
+		& % Cp
+		& % Mp
+		& % Ip
+		& 0.1
+		& \underline{\num{1e-6}}
+		& 5
+		& \num{2e-5} \\%
+		\cmidrule{1-1} \cmidrule{7-10} 
+		ITC 2007
+		& 4 $\times$ 4
+		& L5                  
+		& \underline{0}    
+		& 0.1
+		& 0.1
+		& \underline{10}
+		& \num{1e-3}
+		& 5
+		& \underline{\num{2e-4}} \\%
+		
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+
+
+The parameter settings are specified in Table~\ref{tab:Chapter6_ParameterSettings}. Two different cooling schedules were used in the \gls{ta} algorithm when solving the Toronto instances: a \textit{light} cooling schedule, with a decreasing rate $r = \num{1e-3}$, and an \textit{intensive} cooling schedule, with a decreasing rate $r = \num{1e-6}$. With the light cooling schedule, each \gls{ta} execution computes \num{42590} solution fitness evaluations, whereas \num{42585970} evaluations are computed by each \gls{ta} execution with the intensive cooling schedule. The light cooling schedule was mostly used in the experiments presented in Section~\ref{sec:Comparison_cEA_TA_cEAHybrid}, whereas the intensive cooling schedule was used to generate the final timetables for the Toronto data set. 
+
+The parameter settings for the ITC 2007 instances were the same as the ones determined empirically for the Toronto set, with two differences: only the mutation operator was used (no crossover operator was implemented, as mentioned in Section~\ref{subsec:Chapter6_ApplicationToITC2007}) and the cooling schedule was specifically tuned for the ITC 2007 case (particularly, the threshold used, see Table~\ref{tab:Chapter6_ParameterSettings}). With this cooling schedule, a total of \num{54100} evaluations were computed by each \gls{ta} execution. All executions of \gls{cma} were time limited. For the Toronto benchmark set, the algorithm was stopped after 24 hours of computation for the smaller, and after 48 hours for the largest instances (car92, car91, uta92, and pur93). These limits were found to be adequate given our problem type.
+
+For the ITC 2007 benchmark set, the algorithm was stopped after 276 seconds of computation. The ITC 2007 rules enforce a limit on the computation time of the candidate algorithms. This limit depends on the particular machine used and was determined by running a benchmarking tool on our machine (available from the ITC 2007 site).
+
+All obtained solutions were validated using the validator tool of~\cite{Qu2009} (for the Toronto benchmark set) and the ITC 2007's online validator tool (for the ITC 2007 benchmark set).
+
+For each examination timetabling benchmark set, the source code, the resulting solution files for each instance/run, and the produced statistics, are publicly available in the following Git repositories: 
+\begin{description}
+	\item[$\bullet$] Toronto solver -- \url{https://github.com/nunocsleite/cMA-ETP-Toronto};
+	\item[$\bullet$] ITC 2007 solver -- \url{https://github.com/nunocsleite/cMA-ETP-ITC2007}.
+\end{description}
+
+
+%
+% Justification of the chosen parameter settings
+%
+\subsubsection{cMA Parameter Values Selection Criterion}
+
+All parameter values were selected by following commonly used guidelines presented in the literature, and then by performing empirical tuning studies, taking into account a reasonable balance between solution quality and computation time. With respect to the \gls{cea} parameters \textit{Grid size} $G=4 \times 4$ and \textit{neighbourhood pattern} $N$ = L5, it is reported in~\cite{Alba2005a} that the square and rectangular grids show better performance than narrow grids on some combinatorial optimisation problems, while the use of smaller local neighbourhoods, such as L5, promotes a lower selection intensity, thus increasing diversity in the population. Due to the relatively high computing cost for generating feasible solutions, especially in the case of the more constrained ITC 2007 data sets, we chose a relatively small population of 16 individuals. The use of local search served to intensify the search around promising regions. 
+
+
+Tested values for the mutation probability $P_m$ and the crossover probability $P_c$ were selected from the sets $\{0.01, 0.05, 0.1\}$ and $\{0.4, 0.6, 0.8\}$, respectively. It was found that $P_m=0.1$ and $P_c=0.4$ led to the best results. For the local search probability, a low value was chosen in order not to degrade diversity in the population and also to prevent the algorithm from slowing down too much.
+
+The cooling schedule values were chosen empirically in order to initially accept a reasonable number of non-improving solutions and to have a reasonable exploitation intensity. The justification is given in the next section.
+
+
+
+\subsection{Effect of the local search cooling schedule}
+\label{sec:Chapter6_LocalSearchEffect}
+
+In this section, we study the impact of the cooling schedule on the algorithm performance. Using a more intensive local search, one can achieve better results than using a light local search~\cite{Dowsland2012}. But some relevant questions can be asked: what is the effect of local search on the organisation of exams in the timetable? How are the exams moved as the temperature varies in SA based algorithms? The study undertaken here provides some answers to those questions. Figures~\ref{fig:LocalSearchStudyCar92}, \ref{fig:LocalSearchStudyYor83}, and~\ref{fig:yor83HardExams} illustrate the evolution of accepted exam movements (using the Kempe chain neighbourhood) as the \gls{ta} threshold varies. In these figures, the x-axis value range is divided into ten \textit{threshold bins}. A \textit{threshold bin} corresponds to a threshold interval and is represented by vertical grid lines in the figures. The threshold bins were calculated in order to have 1/10 of the total number of evaluations in each bin. The colour codes for each bin, and for each exam on the y-axis, represent the number of accepted movements for the corresponding exam. The total number of exams' accepted moves per bin is generally lower than the number of evaluations performed in that bin, because not all exams are part of an accepted move in each local search move. Some exams do not move because the fitness difference violates the \gls{ta} acceptance criterion, or are not selected by the neighbourhood operator. The exams are ordered decreasingly by the number of conflicts they have with other events (\textit{largest degree} heuristic).
+
+
+\afterpage{%
+	%	\clearpage% Flush earlier floats
+\begin{figure}[H]
+	\centering
+	\subfigure[car92 instance optimised with the \textit{light} cooling schedule. Obtained cost: \num{4.57}]{ %\label{fig:subfigA}
+		\centering
+		\scalebox{0.75}{\includegraphics{./Chapter6/Figures/cMA/car92Cool1Eminus3_crop.pdf}}
+	} 
+	\subfigure[car92 instance optimised with the \textit{intensive} cooling schedule. Obtained cost: \num{3.77}]{ %\label{fig:subfigB}
+		\centering
+		\scalebox{0.75}{\includegraphics{./Chapter6/Figures/cMA/car92Cool1Eminus6_crop.pdf}}
+	}
+	\caption{Study of the effect of applying \textit{light} and \textit{intensive} cooling schedules in the \gls{ta} algorithm. Each figure above shows the evolution of the number of accepted exam moves, for each exam in the y-axis and for each threshold bin in the x-axis. The exams in the y-axis are ordered decreasingly by the number of conflicts they have with other events (\textit{largest degree} heuristic). The x-axis value range is divided into ten threshold bins, each with an equal number of evaluations. The long ticks along the x-axis represent the bins' limits.}
+	
+	\label{fig:LocalSearchStudyCar92} 
+\end{figure}
+	%\clearpage% Flush page
+}
+
+
+
+\afterpage{%
+	%	\clearpage% Flush earlier floats
+\begin{figure}[H]
+	\centering
+	\subfigure[yor83 instance optimised with the \textit{light} cooling schedule. Obtained cost: \num{39.41}]{ \label{fig:LocalSearchStudyYor83FigA}
+		\centering
+		\scalebox{0.75}{\includegraphics{./Chapter6/Figures/cMA/yor83Cool1Eminus3_crop.pdf}}
+	}  
+	\subfigure[yor83 instance optimised with the \textit{intensive} cooling schedule. Obtained cost: \num{35.35}]{ \label{fig:LocalSearchStudyYor83FigB}
+		\centering
+		\scalebox{0.75}{\includegraphics{./Chapter6/Figures/cMA/yor83Cool1Eminus6_crop.pdf}}
+	}
+	\caption{Study of the effect of applying \textit{light} and \textit{intensive} cooling schedules in the TA algorithm (continued).}
+	
+	\label{fig:LocalSearchStudyYor83} 
+\end{figure}
+	%\clearpage% Flush page
+}
+
+
+
+\afterpage{%
+	%	\clearpage% Flush earlier floats
+\begin{figure}[H]
+	\centering
+	\subfigure[yor83 instance optimised with the \textit{light} cooling schedule. The number of accepted exams' movements for the 100 most difficult exams of Figure~\ref{fig:LocalSearchStudyYor83FigA} is shown.]{ \label{fig:yor83HardExamsFigA}
+		\centering
+		\scalebox{0.75}{\includegraphics{./Chapter6/Figures/cMA/yor83Cool1Eminus3_HardExams_crop.pdf}}
+	}  
+	\subfigure[yor83 instance optimised with the \textit{intensive} cooling schedule. The number of accepted exams' movements for the 100 most difficult exams of Figure~\ref{fig:LocalSearchStudyYor83FigB}  is shown.]{ \label{fig:yor83HardExamsFigB}
+		\centering
+		\scalebox{0.75}{\includegraphics{./Chapter6/Figures/cMA/yor83Cool1Eminus6_HardExams_crop.pdf}}
+	}
+	\caption{Study of the effect of applying \textit{light} and \textit{intensive} cooling schedules in the TA algorithm for the yor83 instance. The figures show the number of accepted exams' movements for the 100 most difficult exams of Figures~\ref{fig:LocalSearchStudyYor83FigA} and~\ref{fig:LocalSearchStudyYor83FigB}, respectively.} 
+	
+	\label{fig:yor83HardExams} 
+\end{figure}
+	%\clearpage% Flush page
+}
+
+
+It can be observed that the more difficult exams (the ones with lower indices) only move (i.e. the move is accepted by the \gls{ta}) when higher thresholds are applied, being gradually fixed at their definitive place. As can be seen from the top and bottom plots of Figures~\ref{fig:LocalSearchStudyCar92} and~\ref{fig:LocalSearchStudyYor83}, it is essential that the difficult exams be well placed, in an optimal or near optimal position, for the easier exams to be placed in an optimal or near optimal position. If a light cooling schedule is used, the algorithm cannot find the best places for the difficult exams and so the easier exams are also placed in a suboptimal way. Figure~\ref{fig:yor83HardExams} provides a detailed view of the movement count of the top-100 high degree exams represented in Figure~\ref{fig:LocalSearchStudyYor83}. In Figure~\ref{fig:yor83HardExams}, we can observe that the use of the intensive cooling (Figure~\ref{fig:yor83HardExamsFigB}) allows the top-100 high degree exams to move more, as compared to the light cooling schedule (Figure~\ref{fig:yor83HardExamsFigA}). This is supported by the numbers shown in the colour bar (right of the figure) which are much larger for the intensive cooling (Figure~\ref{fig:yor83HardExamsFigB}) than for the light cooling schedule (Figure~\ref{fig:yor83HardExamsFigA}).
+
+
+\subsubsection{Cooling schedule selection}
+
+It is known that the number of non-improving solutions is directly proportional to the number of accepted exam moves, as a percentage of the accepted exams are non-improving moves. Thus, we have selected an initial threshold value that allows for the great majority of exams to be moved several times, in order to better explore the search space. Graphically, we know that this effect is achieved by having the first threshold bin practically filled in Figures~\ref{fig:LocalSearchStudyCar92} and~\ref{fig:LocalSearchStudyYor83}. After several experiments we have determined that the values $Q_{max}=0.1$ and $Q_{max}=10$ (see Table~\ref{tab:Chapter6_ParameterSettings}), for the Toronto and ITC 2007 benchmark sets, respectively, were reasonable values. The remaining parameters of the cooling schedule ($r$, $k$, and $Q_{min}$) were set in order to have two distinct rates (parameter $r$), one light and one intensive, a low number of iterations at a fixed threshold (parameter $k$) since the intensification is mainly controlled by the rate parameter, and a sufficiently low threshold ($Q_{min}$ parameter), that is, a value from which non-improving moves are practically never accepted.
+
+
+
+
+%/////////////////////////////////////////////////////////////////////////
+%
+% Subsection
+%
+\subsection{Comparison between cEA, TA, and cMA}
+\label{sec:Comparison_cEA_TA_cEAHybrid}
+
+This section presents three series of experiments, which are:
+\begin{enumerate}[i.]
+	
+	\item Study of the hybridisation in \gls{cma}. The \gls{cma} evolution is studied for two example instances of the Toronto data set.
+	
+	\item Comparison between \gls{cea}, \gls{ta}, and \gls{cma}, for the Toronto and ITC 2007 benchmark sets.
+	
+	\item Sensitivity study. \gls{cma} and \gls{cea} using larger populations are studied for the complete Toronto data set.
+	
+\end{enumerate}
+
+
+
+
+%
+% Subsubsection
+%
+\subsubsection{Study of the Combined Effect of the cMA}
+\label{sec:cMACombinedEffect}
+
+In this section, an investigation of the hybrid \gls{cma} is carried out. It is shown empirically that \gls{cma} improves over \gls{ta} alone. Two Toronto instances were used to illustrate the operation of the hybrid algorithm: car92 (a large size instance) and yor83 (a small size instance). The \emph{light} cooling schedule was used in the experiments. The other parameter values reported in Table~\ref{tab:Chapter6_ParameterSettings} were kept. Figure~\ref{fig:ProximityCostEvolution} illustrates the evolution of the timeslot proximity cost (see Equation \eqref{eq:Chapter2_Toronto_eq1}) in the population, more precisely the maximum, average and minimum values. In this experiment, instead of limiting the computation time, the number of generations was set based on two criteria: (a) the number of generations should be larger than what is required for all individuals to reach the same baseline fitness; in this way, it is possible to observe the evolution from that point on, and (b) the number of generations should be set to a value that allows the memetic algorithm to reach a stationary phase. After preliminary tests, the number of generations was set to $\num{1000}$.
+
+
+\begin{figure}[!ht]
+	\centering
+	\subfigure[]{ %\label{fig:subfigA}
+		\centering
+		\scalebox{1.1}{\includegraphics{./Chapter6/Figures/cMA/car92Plot_crop.pdf}}
+	}  \qquad 
+	\subfigure[]{ %\label{fig:subfigB}
+		\centering
+		\scalebox{1.1}{\includegraphics{./Chapter6/Figures/cMA/yor83Plot_crop.pdf}}
+	}
+	\caption{Evolution of the population maximum, average and minimum proximity cost for (a) car92 and (b) yor83 instances using the \emph{light} cooling schedule. The number of generations was set to \num{1000}.}
+	\label{fig:ProximityCostEvolution} 
+\end{figure}
+
+
+As observed in Figure~\ref{fig:ProximityCostEvolution}, the evolution of the minimum cost in the population improves with the number of generations. Due to the local search operator, a relatively good minimum cost is achieved in the first generations, but this cost is further improved due to the combined effect of crossover, mutation and local search. Indeed, crossover and mutation are able to produce different starting points in the solution space that are optimised by the local search operator. With the local search probability $P_{ls} = 0.1$, at least ten generations are needed in order for all the solutions to approach the same fitness baseline; from this point on, the algorithm is able to improve the best fitness in the population beyond this baseline, even if the population diversity is very low. The same conclusion was reached by running similar experiments on the other instances of the Toronto benchmark set.
+
+
+%
+% Subsubsection
+%
+\subsubsection{Comparison of cEA, TA, and cMA, on the Toronto and ITC 2007 Sets}
+\label{sec:cEA_TA_cMA_comparison_Toronto_ITC2007}
+
+In this section, the results of \gls{cea}, \gls{ta} and \gls{cma}, for both the Toronto and ITC 2007 benchmark sets, are presented and compared. Statistical significance of the results is also presented. The settings used in the experiments are the same as those found in Table~\ref{tab:Chapter6_ParameterSettings}. The statistical analysis was carried out according to the methodology suggested in~\cite{Garcia2008}. For the statistical analysis, the Friedman test was first applied, followed by the Holm and Hochberg's tests as post-hoc methods (if significant differences are detected) to obtain the adjusted \textit{p}-values for each comparison between the control algorithm (the best-performing one) and the other algorithms.
+
+
+
+%///////////////////////////////////////////////////////////////////////////////
+%
+% Comparison of cEA alone vs. TA alone vs. cEA with TA - Toronto benchmark set - use of light cooling schedule
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{landscape}
+		\begin{table}[H]
+			\setlength{\tabcolsep}{1.7pt}
+			\centering
+			\caption{Results of cEA, TA, and cMA on the Toronto benchmark set. The best values are shown in bold. The cEA and the cMA were run for a fixed time limit. \vspace{0.3em}}
+			
+			\label{tab:Comparison_cEA_TA_Hybrid_cEA_Toronto}
+			
+			\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math,detect-shape=true, detect-mode=true}
+			
+			% Resize table to fit page
+			%	\begin{adjustbox}{width=1.4\textwidth,center}
+			\begin{tabular}{%
+					l%
+					l%-- cEA alone 
+					S[table-format=3.2]%    
+					S[table-format=3.2]%    
+					S[table-format=3.2]%  
+					S[table-format=3.2]%		
+					S[table-format=2.2]%--  TA alone
+					S[table-format=3.2]%    
+					S[table-format=3.2]%    
+					S[table-format=3.2]%
+					S[table-format=3.3]%		 
+					l%-- cEA with TA 
+					S[table-format=4.2]%    
+					S[table-format=3.2]%    
+					S[table-format=3.2]%
+					S[table-format=3.2]%		   
+				}
+				
+				\toprule
+				
+				&
+				\multicolumn{5}{c}{cEA} &  
+				\multicolumn{5}{c}{TA} &
+				\multicolumn{5}{c}{cMA} \\%
+				\cmidrule{2-6}    \cmidrule{7-11} \cmidrule{12-16}
+				
+				Inst. &
+				\multicolumn{1}{c}{Max time} &  
+				\multicolumn{1}{c}{$f_{min}$} &
+				\multicolumn{1}{c}{$f_{max}$} &
+				\multicolumn{1}{c}{$f_{avg}$} & 
+				\multicolumn{1}{c}{$\sigma$} &
+				\multicolumn{1}{c}{Avg. time (s)} &  
+				\multicolumn{1}{c}{$f_{min}$} &
+				\multicolumn{1}{c}{$f_{max}$} &
+				\multicolumn{1}{c}{$f_{avg}$} & 
+				\multicolumn{1}{c}{$\sigma$} &
+				\multicolumn{1}{c}{Max time} &  
+				\multicolumn{1}{c}{$f_{min}$} &
+				\multicolumn{1}{c}{$f_{max}$} &
+				\multicolumn{1}{c}{$f_{avg}$} & 
+				\multicolumn{1}{c}{$\sigma$} \\%
+				
+				\midrule
+				
+				%4x4 cp 0_4 mp 0_1 ip 0 - cEA alone                                              TA alone                                        4x4 cp 0_4 mp 0_1 ip 0_1 - cEA with TA                          
+				%Inst.   & MaxTime &   fmin    &   fmax    &   favg    &   std  & Avg.Time(s)&   fmin    &   fmax    &   favg    &   std     &   Max time    &   fmin    &   fmax    &   favg    &   std     \\
+				car91   & \hspace{1em}20 s    &   7.39    &   7.81    &   7.65    &   0.12 &   \be{2.2}{9.00}     &   5.65    &   6.05    &   5.84    &   0.13    &   1 h 10 min  &    \be{4.2}{5.31}    &    \be{3.2}{5.57}    &    \be{3.2}{5.46}    &   0.07    \\
+				car92   & \hspace{1em}20 s    &   6.00    &   6.62    &   6.27    &   0.21 &   \be{2.2}{6.80}     &   4.57    &   4.81    &   4.65    &   0.07    &   1 h 10 min  &   \be{4.2}{4.27}    &   \be{3.2}{4.45}    &   \be{3.2}{4.37}    &   0.05    \\
+				ear83   & \hspace{1em}10 s    &   44.17   &   49.08   &   46.27   &   1.50 &   \be{2.2}{1.60}     &   35.25   &   38.71   &   37.61   &   1.00    &   35 min      &    \be{4.2}{33.21}   &    \be{3.2}{34.46}   &    \be{3.2}{33.81}   &   0.38    \\
+				hec92   & \hspace{1em}3 s     &   12.42   &   14.03   &   13.34   &   0.51 &   \be{2.2}{0.60}     &   10.27   &   11.38   &   10.91   &   0.27    &   20 min      &    \be{4.2}{10.11}   &    \be{3.2}{10.37}   &    \be{3.2}{10.20}   &   0.09    \\
+				kfu93   & \hspace{1em}20 s    &   19.87   &   21.05   &   20.64   &   0.42 &   \be{2.2}{2.00}     &   13.79   &   14.97   &   14.40   &   0.37    &   40 min      &    \be{4.2}{13.34}   &    \be{3.2}{13.54}   &    \be{3.2}{13.42}   &   0.06    \\
+				lse91   & \hspace{1em}10 s    &   15.14   &   18.19   &   16.65   &   0.83 &   \be{2.2}{1.90}     &   10.63   &   12.06   &   11.45   &   0.38    &   25 min      &    \be{4.2}{10.22}   &    \be{3.2}{10.82}   &    \be{3.2}{10.45}   &   0.22    \\
+				pur93   & \hspace{1em}3 min   &   8.88    &   9.11    &   8.97    &   0.06 &   \be{2.2}{32.50}    &   6.38    &   6.58    &   6.46    &   0.06    &   5 h         &   \be{4.2}{6.17}    &   \be{3.2}{6.30}    &   \be{3.2}{6.24}    &   0.05    \\
+				rye92   & \hspace{1em}30 s    &   14.60   &   16.07   &   15.62   &   0.50 &   \be{2.2}{3.60}     &   8.95    &   9.59    &   9.25    &   0.21    &   30 min      &    \be{4.2}{8.65}    &    \be{3.2}{8.79}    &    \be{3.2}{8.72}    &   0.05    \\
+				sta83   & \hspace{1em}5 s     &   158.12  &   161.34  &   159.42  &   1.14 &   \be{2.2}{0.50}     &   157.03  &   157.43  &   157.16  &   0.11    &   1 min 20 s  &    \be{4.2}{157.03}  &    \be{3.2}{157.03}  &    \be{3.2}{157.03}  &   0    \\
+				tre92   & \hspace{1em}10 s    &   10.48   &   11.22   &   10.94   &   0.23 &   \be{2.2}{2.20}     &   8.70    &   9.21    &   8.89    &   0.16    &   30 min      &    \be{4.2}{8.30}    &    \be{3.2}{8.43}    &    \be{3.2}{8.36}    &   0.04    \\
+				uta92   & \hspace{1em}30 s    &   4.78    &   4.98    &   4.87    &   0.08 &   \be{2.2}{8.10}     &   3.69    &   3.88    &   3.78    &   0.07    &   1 h 15 min  &    \be{4.2}{3.59}    &    \be{3.2}{3.70}    &    \be{3.2}{3.64}    &   0.03    \\
+				ute92   & \hspace{1em}10 s    &   32.50   &   34.49   &   33.44   &   0.62 &   \be{2.2}{1.10}     &   25.01   &   26.24   &   25.41   &   0.45    &   17 min      &    \be{4.2}{24.84}   &    \be{3.2}{24.93}   &    \be{3.2}{24.87}   &   0.03    \\
+				yor83   & \hspace{1em}10 s    &   43.93   &   46.09   &   45.35   &   0.60 &   \be{2.2}{2.00}     &   37.46   &   40.02   &   39.08   &   0.78    &   30 min      &    \be{4.2}{35.49}   &    \be{3.2}{37.33}   &    \be{3.2}{36.38}   &   0.49    \\
+				
+				
+				\bottomrule
+			\end{tabular}
+			%	\end{adjustbox}
+		\end{table}
+	\end{landscape}
+	%\clearpage% Flush page
+}
+
+
+
+
+
+Table~\ref{tab:Comparison_cEA_TA_Hybrid_cEA_Toronto} presents the results of \gls{cea}, \gls{ta}, and \gls{cma} on the Toronto benchmark set. \gls{cea} and \gls{cma} were executed for a fixed time limit (Max time), determined empirically as the time required for the algorithm to reach a stationary state. Then $f_{min}$ is the best solution value (minimum penalty) over ten executions, $f_{avg}$ is the average and $f_{max}$ the worst solution value, while $\sigma$ is the standard deviation. Table~\ref{tab:Ranking_Toronto_hybridcEA_vs_cEA_TA} in Appendix~\ref{app:AppendixA} summarises the ranks obtained by the Friedman test. The \textit{p}-value computed by the Friedman test is \num{2.26e-6}, which is below the significance interval of 95 \% ($\alpha = 0.05$). This value indicates that there is a significant difference among the observed results. Table~\ref{tab:AdjustedPValues_Toronto_hybridcEA_vs_cEA_TA} shows the adjusted \textit{p}-values for the post-hoc Holm and Hochberg's tests on the \gls{cma} algorithm, revealing significant differences when using \gls{cma} as the control algorithm. Both procedures confirm that \gls{cma} is better than \gls{ta} and \gls{cea} with $\alpha = 0.05$.
+
+
+
+%/////////////////////////////////////////////////////////////////////////
+%
+% Comparison cEA with TA - Toronto benchmark set - use of light vs. intensive cooling schedule
+%
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{landscape}
+		\begin{table}[H]
+			%\setlength{\tabcolsep}{1.7pt}
+			\setlength{\tabcolsep}{3.7pt}
+			\centering
+			
+			\caption{Comparison of two cMA approaches on the Toronto benchmark set using a \textit{light} and an \textit{intensive} cooling schedule. The best results are shown in bold. \vspace{0.3em}}
+			
+			\label{tab:Comparison_Hybrid_cEA_LightVsIntensive_Toronto}
+			
+			\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math,detect-shape=true, detect-mode=true}
+			
+			%	\begin{adjustbox}{width=1\textwidth,center}
+			\begin{tabular}{%
+					l%
+					l%-- cEA with TA - light cooling schedule
+					S[table-format=3.2]%    
+					S[table-format=3.2]%    
+					S[table-format=3.2]%  
+					S[table-format=2.3]%		
+					l%-- cEA with TA - intensive cooling schedule
+					S[table-format=3.2]%    
+					S[table-format=3.2]%    
+					S[table-format=3.2]%
+					S[table-format=2.3]%		   
+				}
+				
+				\toprule
+				
+				&
+				\multicolumn{5}{c}{Light cooling schedule} &  
+				\multicolumn{5}{c}{Intensive cooling schedule} \\%
+				\cmidrule{2-6}    \cmidrule{7-11}
+				
+				Inst. &
+				\multicolumn{1}{c}{Max time} &  
+				\multicolumn{1}{c}{$f_{min}$} &
+				\multicolumn{1}{c}{$f_{max}$} &
+				\multicolumn{1}{c}{$f_{avg}$} & 
+				\multicolumn{1}{c}{$\sigma$} &
+				\multicolumn{1}{c}{Max time} &  
+				\multicolumn{1}{c}{$f_{min}$} &
+				\multicolumn{1}{c}{$f_{max}$} &
+				\multicolumn{1}{c}{$f_{avg}$} & 
+				\multicolumn{1}{c}{$\sigma$} \\%
+				
+				\midrule
+				
+				%4x4 cp 0_4 mp 0_1 ip 0_1 - cEA with TA                                  4x4 cp 0_4 mp 0_1 ip 0_1 - cEA with TA - CoolSch(0.1, 1e-6, 5, 2e-5)                        
+				%Instance    &   Max time        &   fmin    &   fmax    &   favg    &   std &   Max time    &   fmin    &   fmax    &   favg    &   std \\
+				car91 & \textbf{1 h 10 min} & 5.31                    & 5.57                    & 5.46                    & 0.07 & \hspace{1em}48 h & \be{3.2}{4.31}   & \be{3.2}{4.42}   & \be{3.2}{4.39}   & 0.03 \\
+				car92 & \textbf{1 h 10 min} & 4.27                    & 4.45                    & 4.37                    & 0.05 & \hspace{1em}48 h & \be{3.2}{3.68}   & \be{3.2}{3.75}   & \be{3.2}{3.72}   & 0.02 \\
+				ear83 & \textbf{35 min}     & 33.21                   & 34.46                   & 33.81                   & 0.38 & \hspace{1em}24 h & \be{3.2}{32.48}  & \be{3.2}{32.76}  & \be{3.2}{32.61}  & 0.08 \\
+				hec92 & \textbf{20 min}     & 10.11                   & 10.37                   & 10.20                   & 0.09 & \hspace{1em}24 h & \be{3.2}{10.03}  & \be{3.2}{10.07}  & \be{3.2}{10.05}  & 0.01 \\
+				kfu93 & \textbf{40 min}     & 13.34                   & 13.54                   & 13.42                   & 0.06 & \hspace{1em}24 h & \be{3.2}{12.81}  & \be{3.2}{12.85}  & \be{3.2}{12.83}  & 0.01 \\
+				lse91 & \textbf{25 min}     & 10.22                   & 10.82                   & 10.45                   & 0.22 & \hspace{1em}24 h & \be{3.2}{9.78}   & \be{3.2}{9.84}   & \be{3.2}{9.81}   & 0.02 \\
+				pur93 & \textbf{5 h}        & 6.17                    & 6.30                    & 6.24                    & 0.05 & \hspace{1em}48 h & \be{3.2}{4.14}   & \be{3.2}{4.21}   & \be{3.2}{4.18}   & 0.02 \\
+				rye92 & \textbf{30 min}     & 8.65                    & 8.79                    & 8.72                    & 0.05 & \hspace{1em}24 h & \be{3.2}{7.89}   & \be{3.2}{7.97}   & \be{3.2}{7.93}   & 0.03 \\
+				sta83 & \textbf{1 min 20 s} & \be{3.2}{157.03} & \be{3.2}{157.03} & \be{3.2}{157.03} & 0    & \hspace{1em}24 h & \be{3.2}{157.03} & \be{3.2}{157.03} & \be{3.2}{157.03} & 0    \\
+				tre92 & \textbf{30 min}     & 8.30                    & 8.43                    & 8.36                    & 0.04 & \hspace{1em}24 h & \be{3.2}{7.66}   & \be{3.2}{7.75}   & \be{3.2}{7.70}   & 0.03 \\
+				uta92 & \textbf{1 h 15 min} & 3.59                    & 3.70                    & 3.64                    & 0.03 & \hspace{1em}48 h & \be{3.2}{3.01}   & \be{3.2}{3.05}   & \be{3.2}{3.04}   & 0.01 \\
+				ute92 & \textbf{17 min}     & 24.84                   & 24.93                   & 24.87                   & 0.03 & \hspace{1em}24 h & \be{3.2}{24.80}  & \be{3.2}{24.85}  & \be{3.2}{24.83}  & 0.02 \\
+				yor83 & \textbf{30 min}     & 35.49                   & 37.33                   & 36.38                   & 0.49 & \hspace{1em}24 h & \be{3.2}{34.45}  & \be{3.2}{34.74}  & \be{3.2}{34.63}  & 0.08 \\
+				
+				\bottomrule
+			\end{tabular}
+			%	\end{adjustbox}
+		\end{table}
+	\end{landscape}
+	%\clearpage% Flush page
+}
+
+
+Table~\ref{tab:Comparison_Hybrid_cEA_LightVsIntensive_Toronto} presents  the results of \gls{cma} on the Toronto benchmark set using the light and intensive cooling schedules. Table~\ref{tab:Ranking_Toronto_hybridcEA_light_vs_intensive} summarises the ranks obtained by the Friedman test, with a \textit{p}-value of \num{8.74e-4} (which is below the significance interval of 95\%).
+
+
+Table~\ref{tab:AdjustedPValues_Toronto_hybridcEA_light_vs_intensive} shows the adjusted \textit{p}-values obtained by the post-hoc Holm and Hochberg's tests on the \gls{cma}-intensive algorithm. These procedures reveal significant differences when using \gls{cma}-intensive as the control algorithm, confirming that \gls{cma}-intensive is better than \gls{cma}-light with $\alpha = 0.05$. 
+
+Table~\ref{tab:Comparison_cEA_TA_Hybrid_cEA_ITC2007} presents the results of \gls{cea}, \gls{ta}, and \gls{cma} on the ITC 2007 benchmark set. \gls{cea} and \gls{cma} were executed for a fixed time limit which corresponds to the ITC 2007 time limit. Table~\ref{tab:Ranking_ITC2007_cEA_TA_Hybrid_cEA} summarises the ranks obtained with the Friedman test. The \textit{p}-value computed by the Friedman test is \num{8.84E-05}, which is below the significance interval of 95\% ($\alpha = 0.05$). Table~\ref{tab:AdjustedPValues_ITC2007_cEA_TA_Hybrid_cEA} shows the adjusted \textit{p}-values obtained by the post-hoc Holm and Hochberg's tests on the \gls{cma} algorithm. Holm and Hochberg's procedures reveal significant differences when using \gls{cma} as the control algorithm, confirming that \gls{cma} is better than \gls{ta} and \gls{cea} with $\alpha = 0.05$. 
+
+
+
+%///////////////////////////////////////////////////////////////////////////////
+%
+% Comparison of cEA alone vs. TA alone vs. cMA - ITC 2007 benchmark set 
+%
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{landscape}
+		\begin{table}[H]
+			\setlength{\tabcolsep}{1.7pt}
+			\centering
+			\caption{Results of cEA, TA, and cMA on the ITC 2007 benchmark set. The best values are shown in bold. The time limit for cEA and cMA corresponds to the ITC 2007 time limit.	\vspace{0.3em}}
+			
+			\label{tab:Comparison_cEA_TA_Hybrid_cEA_ITC2007}
+			
+			\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math,detect-shape=true, detect-mode=true}
+			
+			% Resize table to fit page
+			\begin{adjustbox}{width=1.5\textwidth,center}
+				\begin{tabular}{%
+						l%
+						l%-- cEA alone 
+						S[table-format=6.0]%    
+						S[table-format=6.0]%    
+						S[table-format=6.2]%  
+						S[table-format=5.2]%		
+						S[table-format=2.2]%--  TA alone
+						S[table-format=6.0]%    
+						S[table-format=6.0]%    
+						S[table-format=6.2]%
+						S[table-format=5.3]%		 
+						l%-- cEA with TA 
+						S[table-format=6.0]%    
+						S[table-format=6.0]%    
+						S[table-format=6.2]%
+						S[table-format=5.2]%		   
+					}
+					
+					\toprule
+					
+					&
+					\multicolumn{5}{c}{cEA} &  
+					\multicolumn{5}{c}{TA} &
+					\multicolumn{5}{c}{cMA} \\%
+					\cmidrule{2-6}    \cmidrule{7-11} \cmidrule{12-16}
+					
+					Inst. &
+					\multicolumn{1}{c}{Max} &  
+					\multicolumn{1}{c}{$f_{min}$} &
+					\multicolumn{1}{c}{$f_{max}$} &
+					\multicolumn{1}{c}{$f_{avg}$} & 
+					\multicolumn{1}{c}{$\sigma$} &
+					\multicolumn{1}{c}{Avg.} &  
+					\multicolumn{1}{c}{$f_{min}$} &
+					\multicolumn{1}{c}{$f_{max}$} &
+					\multicolumn{1}{c}{$f_{avg}$} & 
+					\multicolumn{1}{c}{$\sigma$} &
+					\multicolumn{1}{c}{Max} &  
+					\multicolumn{1}{c}{$f_{min}$} &
+					\multicolumn{1}{c}{$f_{max}$} &
+					\multicolumn{1}{c}{$f_{avg}$} & 
+					\multicolumn{1}{c}{$\sigma$} \\%
+					
+					&
+					\multicolumn{1}{c}{time} &  
+					&
+					&
+					& 
+					&
+					\multicolumn{1}{c}{time (s)} &  
+					&
+					&
+					& 
+					&
+					\multicolumn{1}{c}{time} &  
+					&
+					&
+					& 
+					\\%
+					
+					
+					\midrule
+					
+					
+					%4x4 mut 0_1                                     TA alone                                        4x4 cp 0 mp 0_1 ip 0_1 - cEA with TA                            
+					%Instance    &   Max time    &   fmin    &   fmax    &   favg    &   std &   Avg. time (sec.)    &   fmin    &   fmax    &   favg    &   std &   Max time    &   fmin    &   fmax    &   favg    &   std \\
+					1   & \multirow{12}{2.2em}{276 s} &   7996    &   8698    &   8320.90  &   209.74  &   \be{2.2}{1.30}    &   8234    &   8912    &   8663.40  &   228.41  & \multirow{12}{2.2em}{276 s} &   \be{6.0}{6207}    &   \be{6.0}{6617}    &   \be{6.2}{6478.20}  &   121.97  \\
+					2   &       &   811     &   1139    &   942.10   &   90.05   &   \be{2.2}{1.10}    &   814     &   1014    &   908.40   &   76.04   &       &   \be{6.0}{535}     &   \be{6.0}{604}     &   \be{6.2}{572.90}   &   17.66   \\
+					3   &       &   17281   &   19139   &   18238.10 &   575.60  &   \be{2.2}{1.90}    &   17778   &   21186   &   19117.00 &   1184.32 &       &   \be{6.0}{13022}   &   \be{6.0}{14180}   &   \be{6.2}{13680.50} &   423.68  \\
+					4   &       &   17092   &   19856   &   18619.80 &   991.90  &   \be{2.2}{1.80}    &   16653   &   21115   &   18409.40 &   1536.55 &       &   \be{6.0}{14302}   &   \be{6.0}{16423}   &   \be{6.2}{15493.70} &   673.28  \\
+					5   &       &   5853    &   10498   &   6913.60  &   1332.09 &   \be{2.2}{2.40}    &   5712    &   7955    &   6644.30  &   773.44  &       &   \be{6.0}{3829}    &   \be{6.0}{4351}    &   \be{6.2}{4155.60}  &   170.25  \\
+					6   &       &   27905   &   29665   &   28539.50 &   673.78  &   \be{2.2}{0.90}    &   28245   &   29905   &   29055.00 &   489.26  &       &   \be{6.0}{26710}   &   \be{6.0}{27230}   &   \be{6.2}{26873.00} &   183.38  \\
+					7   &       &   10086   &   10960   &   10664.20 &   299.37  &   \be{2.2}{1.40}    &   8287    &   8938    &   8611.90  &   231.15  &       &   \be{6.0}{5508}    &   \be{6.0}{6064}    &   \be{6.2}{5844.40}  &   178.62  \\
+					8   &       &   11519   &   11974   &   11711.80 &   138.98  &   \be{2.2}{0.80}    &   11470   &   12071   &   11791.40 &   185.99  &       &   \be{6.0}{8716}    &   \be{6.0}{9106}    &   \be{6.2}{8942.30}  &   113.00  \\
+					9   &       &   1338    &   1552    &   1395.30  &   66.31   &   \be{2.2}{0.40}    &   1369    &   1608    &   1459.80  &   90.54   &       &   \be{6.0}{1030}    &   \be{6.0}{1150}    &   \be{6.2}{1080.30}  &   42.72   \\
+					10  &       &   15678   &   19793   &   16562.00 &   1241.51 &   \be{2.2}{0.20}    &   15806   &   22646   &   18842.70 &   2641.72 &       &   \be{6.0}{13894}   &   \be{6.0}{14625}   &   \be{6.2}{14208.70} &   211.16  \\
+					11  &       &   48931   &   57581   &   52332.50 &   2843.47 &   \be{2.2}{3.00}    &   51649   &   59939   &   56152.10 &   3141.53 &       &   \be{6.0}{39783}   &   \be{6.0}{48061}   &   \be{6.2}{43585.80} &   2779.85 \\
+					12  &       &   5484    &   5932    &   5668.20  &   150.37  &   \be{2.2}{0.50}    &   5450    &   5899    &   5660.50  &   153.97  &       &   \be{6.0}{5142}    &   \be{6.0}{5360}    &   \be{6.2}{5249.00}  &   81.08   \\
+					
+					
+					\bottomrule
+				\end{tabular}
+			\end{adjustbox}
+		\end{table}
+	\end{landscape}
+	%\clearpage% Flush page
+}
+
+
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{table}[!ht]
+		\setlength{\tabcolsep}{1.7pt}
+		\centering
+		\caption{cMA results on the Toronto benchmark set using a squared cell grid of dimension $8 \times 8$ to structure the population. The crossover, mutation and local search probabilities were set to 0.4, 0.1, and 0.1, respectively; the \textit{light} cooling schedule was used. In the last row, the \textit{total penalty} -- TP (sum of individual costs) for the complete set of instances is indicated. \vspace{0.3em}}
+		
+		\label{tab:algorithm_LightCoolSchedule}
+		
+		\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math,detect-shape=true, detect-mode=true}
+		\begin{tabular}{%
+				l%
+				S[table-format=3.2]%    
+				c%
+				c%
+				S[table-format=3.2]%    
+				S[table-format=3.2]%    
+				S[table-format=3.2]%    
+				c%
+			}
+			
+			\toprule
+			&   \multicolumn{2}{c}{Initial solution} &  & \multicolumn{4}{c}{Optimised solution}  \\%
+			& \multicolumn{2}{c}{($f_{min}$)} & \\%
+			\cmidrule{2-3}    \cmidrule{5-8}    
+			Instance    &   \multicolumn{1}{c}{Cost}   &   \multicolumn{1}{c}{Time limit}    &  & $f_{min}$    &   $f_{avg}$  & $\sigma$ & \multicolumn{1}{c}{Time limit}  \\
+			
+			\midrule
+			
+			%Instance    &   Initial solution    &   Initial solution generation time    &   &   fmin    &   favg    &   std &   time1(min)  \\
+			car91   &   5.58    &   4 min.  &   &   5.30    &   5.36    &   0.04    &   7h00    \\
+			car92   &   4.51    &   3 min.  &   &   4.30    &   4.32    &   0.02    &   7h00    \\
+			ear83   &   36.74   &   1 min.  &   &   32.82   &   33.14   &   0.28    &   3h00    \\
+			hec92   &   10.52   &   10 sec. &   &   10.06   &   10.12   &   0.05    &   30 min. \\
+			kfu93   &   13.73   &   35 sec. &   &   13.22   &   13.32   &   0.07    &   1h30    \\
+			lse91   &   11.12   &   1 min.  &   &   10.22   &   10.32   &   0.07    &   2h00    \\
+			pur93   &   6.27    &   10 min. &   &   6.11    &   6.17    &   0.04    &   5h30    \\
+			rye92   &   8.81    &   1 min.  &   &   8.54    &   8.59    &   0.04    &   2h00    \\
+			sta83   &   157.03  &   10 sec. &   &   157.03  &   157.03  &   0.00    &   5 min.  \\
+			tre92   &   8.53    &   40 sec. &   &   8.19    &   8.24    &   0.04    &   2h00    \\
+			uta92   &   3.70    &   2 min.  &   &   3.58    &   3.62    &   0.02    &   3h00    \\
+			ute92   &   25.07   &   15 sec. &   &   24.81   &   24.85   &   0.02    &   1h30    \\
+			yor83   &   37.23   &   20 sec. &   &   34.85   &   35.32   &   0.47    &   5h30    \\
+			
+			\midrule
+			TP      & \text{--} & \text{--} &   &   319.03	&	320.42  & \text{--}           &  \text{--}     \\ 
+			
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	%\clearpage% Flush page
+}
+
+
+
+
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{table}[!ht]
+		\centering
+		\caption{cEA results on the Toronto benchmark set using a squared cell grid of dimension $50 \times 50$ to structure the population. The other cEA parameters from Table~\ref{tab:Chapter6_ParameterSettings} ($N$, $P_c$, $P_m$) were kept unchanged. In the last row, the \textit{total penalty} -- TP (sum of individual costs) for the complete set of instances is indicated. \vspace{0.3em}}
+		\label{tab:Algorithm_WithouLocalSearch}
+		
+		\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math}
+		\begin{tabular}{%
+				l%
+				S[table-format=4.2]%
+				S[table-format=4.2]%    
+				S[table-format=4.2]% 
+				r%
+			}
+			
+			\toprule
+			
+			Instance    
+			&   \multicolumn{1}{c}{$f_{min}$}    
+			&   \multicolumn{1}{c}{$f_{avg}$}    
+			&   \multicolumn{1}{c}{$\sigma$}   
+			&   \multicolumn{1}{c}{Time limit}   \\%
+			
+			\midrule     	
+			
+			%50x50									
+			%Instance	&	fmin	&	favg	&	stdev & time1(min)	\\
+			car91	&	5.38	&	5.53	&	0.08	&	2 h 30 min \\
+			car92	&	4.29	&	4.46	&	0.08	&	2 h 30 min \\
+			ear83	&	35.07	&	36.26	&	0.72	&	10 min	   \\
+			hec92	&	10.49	&	10.87	&	0.20	&	2 min	   \\
+			kfu93	&	13.67	&	14.03	&	0.28	&	40 min	   \\
+			lse91	&	10.83	&	11.21	&	0.29	&	30 min	   \\
+			pur93	& 	6.09	&	6.33	&	0.16	&	4 h	       \\
+			rye92	&	8.93	&	9.21	&	0.22	&	50 min	   \\
+			sta83	&	157.03	&	157.08	&	0.04	&	2 min	   \\
+			tre92	&	8.55	&	8.76	&	0.12	&	30 min	   \\
+			uta92	&	3.57	&	3.65	&	0.06	&	2 h	       \\
+			ute92	&	25.08	&	25.43	&	0.21	&	5 min	   \\
+			yor83	&	37.37	&	38.40	&	0.56	&	10 min	   \\
+			
+			\midrule
+			TP      &  326.35	&	331.22  & \text{--} &  \text{--}  \\ 
+			
+			
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	%\clearpage% Flush page
+}
+
+
+
+%
+% Subsubsection
+%
+\subsubsection{Parameter Sensitivity Study}
+\label{sec:ParameterSensitivityStudy}
+
+In this section, two experiments were conducted with the objective of testing different parameter sets. In the first experiment, the performance of \gls{cma} with a larger population ($8 \times 8$ instead of $4 \times 4$), is studied for the Toronto data set. This experiment complements the study undertaken earlier in this chapter, regarding the hybrid \gls{cma}. In the second experiment, the performance of \gls{cea} is studied, also with a larger population ($50 \times 50$). Both studies are done using the Toronto data set. 
+
+In Table~\ref{tab:algorithm_LightCoolSchedule}, results are reported for \gls{cma} using a squared cell grid of dimension $8 \times 8$ to structure the population. The \textit{light} cooling schedule was used, while the other parameters remained the same. The execution time limit was fixed a priori for each instance, as specified in Table~\ref{tab:algorithm_LightCoolSchedule}. Based on preliminary experiments, when the specified time limits are reached, the algorithm stagnates and only a few improvements occur from this point on.
+
+In Table~\ref{tab:Algorithm_WithouLocalSearch}, the \gls{cea} results are reported, using a $50 \times 50$ squared cell grid in order to cope with the absence of local search, and to guarantee a reasonable diversity in the population. \gls{cea} was able to attain results comparable to the \gls{cma}'s initial solution in Table~\ref{tab:algorithm_LightCoolSchedule}, but required a much longer time. A similar behaviour was verified experimentally on the ITC 2007 benchmark set.
+
+
+\subsubsection{Discussion}
+
+In this subsection, a discussion of the results presented in the previous three subsections is carried out. From the experimental results reported previously, the following key conclusions are drawn:
+
+
+\begin{itemize}
+	\item \textit{algorithm's components comparison} -- from Table~\ref{tab:Comparison_cEA_TA_Hybrid_cEA_Toronto} (\gls{cea} vs. \gls{ta} vs. \gls{cma} on the Toronto set) we can observe that \gls{cea} obtains poor results when compared to \gls{ta} and \gls{cma}; this behaviour can be attributed to the use of a small population and to the power of the variation operators (crossover and mutation). With a small population, \gls{cea} tends to stagnate faster.
+	
+	From Table~\ref{tab:Comparison_cEA_TA_Hybrid_cEA_ITC2007} (\gls{cea} vs. \gls{ta} vs. \gls{cma} on the ITC 2007 set) we can observe that \gls{cea} obtains results that are competitive with \gls{ta} but inferior to \gls{cma}; \gls{cea} did not stagnate as fast on the ITC 2007 set as it did on the Toronto set due to the power of the mutation operator and the nature of the ITC 2007 instances themselves. Even if both mutation operators are based on the Kempe chain neighbourhood, they are different and the operator used in the ITC 2007 is able to explore more efficiently the solution space. This may be due to the variability of the ITC 2007 operator which moves both exams and rooms.
+	
+	From the analysis made earlier in this section, \gls{cma} is better than the \gls{cea} and the \gls{ta} algorithms for both the Toronto and ITC 2007 benchmark sets. Furthermore, the reported results are statistically significant;
+	
+	\item \textit{light vs. intensive cooling schedule} -- Table~\ref{tab:Comparison_Hybrid_cEA_LightVsIntensive_Toronto} shows that for some instances, e.g., hec92 and yor83 from the Toronto set, the light cooling schedule has a very satisfactory performance. For other instances, however, e.g., car91, car92, pur93, or uta92, a more intensive cooling schedule is needed in order to reach the best known solutions. This choice is justified by the analysis made in Section~\ref{sec:Chapter6_LocalSearchEffect}. We also demonstrate that the use of the intensive cooling schedule provides improvements over the light cooling schedule. The reported results are statistically significant;
+	
+	\item \textit{use of larger population size} -- when comparing \gls{cea} ($4 \times 4$) in Table~\ref{tab:Comparison_cEA_TA_Hybrid_cEA_Toronto} with \gls{cea} ($50 \times 50$) in Table~\ref{tab:Algorithm_WithouLocalSearch}, we can observe that the latter obtains better results (at the expense of more computation time). The same happens when we compare \gls{cma} ($4 \times 4$) in Table~\ref{tab:Comparison_cEA_TA_Hybrid_cEA_Toronto} with \gls{cma} ($8 \times 8$) in Table~\ref{tab:algorithm_LightCoolSchedule}. Thus, the use of a larger population is beneficial. In the case of \gls{cea}, a large number of solutions needs to be maintained in order to have satisfactory results. This is problematic for the ITC 2007 set, due to the large time required to construct a single solution. Hence, \gls{cea} is not of practical use on this benchmark set.
+	
+\end{itemize}
+
+
+
+%/////////////////////////////////////////////////////////////////////////
+%
+% Subsection
+%
+\subsection{Comparison with State-of-the-Art Approaches -- Toronto Data Set}
+\label{sec:ComparisonToronto}
+
+In this section, results for the complete Toronto benchmark set are presented and analysed. The parameter values are those shown in Table~\ref{tab:Chapter6_ParameterSettings}, and the \textit{intensive} cooling schedule was used. The existing solutions that are compared against our approach include:
+\begin{description}
+	\item[Car96] (\cite{Carter_Laporte_Lee_1996}) The authors propose several graph heuristics with clique initialisation and backtracking. 
+	
+	\item[Yan05] (\cite{Yang2005}) A \gls{hh} coupled with \textit{case-based reasoning} is used to choose graph heuristics for constructing a feasible initial solution. A \gls{gd} algorithm is then employed to improve the solution. \gls{hh} are generic optimisation methods that explore the search space of heuristics instead of searching for direct solutions.
+	
+	\item[Ele07] (\cite{Eley2007}) Ant Colony algorithm~\citep{Dorigo2010}.	
+	
+	\item[Car08] (\cite{Caramia2008}) Local search-based approach.
+	
+	\item[Bur08] (\cite{Burke2008}) Hill-climbing with late-acceptance strategy (see Section~\ref{sec:Chapter2_ETPApproaches}).
+	
+	\item[Bur10] (\cite{Burke2010}) Hybrid variable neighbourhood (see Section~\ref{sec:Chapter2_ETPApproaches}).	
+	
+	\item[Pil10] (\cite{Pillay2010}) Genetic algorithm (see Section~\ref{sec:Chapter2_ETPApproaches}).
+	
+	\item[Dem12] (\cite{Demeester2012}) A \gls{hh} is used to solve the Toronto and ITC 2007 benchmark sets, as well as a problem instance from KAHO Sint-Lieven (Ghent, Belgium). 	
+	
+	\item[Abd13] (\cite{Abdullah2013}) Hybrid bee algorithm.
+	
+	\item[Lei14] (\cite{Leite2016}) This is our previous algorithm (Section~\ref{sec:HybridSCE}).	Both \gls{cma} and Lei14 are memetic algorithms~\citep{Neri2012}. The algorithms have in common the use of structured populations: in the Lei14 approach, the \gls{sce} algorithm is used to organise the population into \textit{complexes}~\citep{Leite2016} which are sub-populations or islands where the local search is carried out. After the local search step is executed in each complex (island), the solutions are redistributed among the complexes in order to propagate the best solutions to the other complexes, implementing an exploration step. The local search used in the Lei14 algorithm is a variation of the \gls{gd} algorithm. The \gls{cea} also uses a structured population in which each cell corresponds to a complex. Each cell is only allowed to communicate with close neighbours, whereas the complexes in the \gls{sce} are groups of solutions that only communicate within that complex. The two algorithms adopt the decentralised model~\citep{Alba2008}.
+	
+	\item[Fon15] (\cite{Fong2015}) A hybrid swarm-based approach to university timetabling is proposed. Both the examination timetabling (tested on the Toronto benchmark set) and the course timetabling (tested on the Socha benchmark set) problems are addressed.
+	
+	\item[Alz15] (\cite{Alzaqebah2015}) In this study, a hybrid \gls{bco} algorithm is introduced. Two hybridisations are presented: (1) \gls{bco} hybridised with \textit{hill-climbing} using the \textit{late acceptance} strategy, (2) \gls{bco} hybridised with \gls{sa}. It is shown that the first hybrid attains the best results on the tested benchmarks (Toronto and ITC 2007).
+\end{description}
+
+
+
+
+
+\afterpage{%
+	%	\clearpage% Flush earlier floats
+	%// cMA comparison with state-of-the-art approaches - Toronto ///////
+	\begin{landscape}
+		\begin{table}[H]
+			\setlength{\tabcolsep}{1.7pt}
+			\centering
+			\caption{Results of cMA and comparison with a selection of the best algorithms from the literature. The best results are shown in bold. ``--'' indicates that the corresponding instance was not tested or no feasible solution was obtained. \vspace{0.3em}}
+			
+			\label{tab:algorithm_comparison}
+			
+			\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math,detect-shape=true, detect-mode=true}
+			
+			\begin{adjustbox}{width=1.42\textwidth,center}
+				\begin{tabular}{%
+						l%
+						S[table-format=3.2]%    
+						S[table-format=3.2]%    
+						S[table-format=3.2]%    
+						S[table-format=3.2]%    
+						S[table-format=3.2]%  
+						S[table-format=3.2]%
+						S[table-format=3.2]%    
+						S[table-format=3.2]%    
+						S[table-format=3.2]%    
+						S[table-format=3.2]%    
+						S[table-format=3.2]%  
+						S[table-format=3.2]%
+						S[table-format=3.2]%    
+						S[table-format=3.2]%
+						S[table-format=3.2]%			
+					}
+					
+					\toprule
+					
+					Instance
+					& \multicolumn{1}{c}{Car96}	 
+					& \multicolumn{1}{c}{Yan05}	
+					& \multicolumn{1}{c}{Ele07}	
+					& \multicolumn{1}{c}{Car08}
+					& \multicolumn{1}{c}{Bur08}	
+					& \multicolumn{1}{c}{Bur10} 
+					& \multicolumn{1}{c}{Pil10}	
+					& \multicolumn{1}{c}{Dem12} 	
+					& \multicolumn{1}{c}{Abd13}
+					& \multicolumn{1}{c}{Lei14}	
+					& \multicolumn{1}{c}{Fon15}
+					& \multicolumn{1}{c}{Alz15}
+					& \multicolumn{3}{c}{\textbf{cMA}}	\\%
+					\cmidrule{2-13} \cmidrule{14-16}
+					
+					& \multicolumn{12}{c}{$f_{min}$}
+					& $f_{min}$
+					& $f_{avg}$
+					& $\sigma$ \\%
+					
+					%Instance    &   (Carter et al.  &   (Yang and Petrovic  &   (Eley 2007) &   (Caramia et al.     &   (Burke and Bykov    &   (Burke et al.   \\
+					%        &   1996)   &   2005)   &       &    2008)  &   2008)   &   2010)   \\
+					%Instance    &   (Pillay et al.  &   (Demeester et al.   &   (Abdullah and   &   (Leite et al.   &   (Fong et al.    &   (Alzaqebah and  &   cMA &       &       \\
+					%    &   2010)   &   2012)   &   Alzaqebah 2013) &   2014)   &   2015)   &   Abdullah 2015)  &   fmin    &   fave    &   stdev   \\
+					
+					\midrule
+					
+					car91   &   7.10    &   4.50    &   5.20    &   6.60    &   4.58    &   4.90    &   4.92    &   4.52    &   4.76    &   4.41    &   4.79    &   4.38    &   \be{3.2}{4.31}    &   4.39    &   0.03    \\
+					
+					car92   &   6.20    &   3.93    &   4.30    &   6.00    &   3.81    &   4.10    &   4.22    &   3.78    &   3.94    &   3.75    &   3.89    &   3.88    &   \be{3.2}{3.68}    &   3.72    &   0.02    \\
+					
+					ear83   &   36.40   &   33.71   &   36.80   &   \be{3.2}{29.30}   &   32.65   &   33.20   &   35.87   &   32.49   &   33.61   &   32.62   &   33.43   &   33.34   &   32.48   &   32.61   &   0.08    \\
+					
+					hec92   &   10.80   &   10.83   &   11.10   &   \be{3.2}{9.20}    &   10.06   &   10.30   &   11.50   &   10.03   &   10.56   &   10.03   &   10.49   &   10.39   &   10.03   &   10.05   &   0.01    \\
+					
+					kfu93   &   14.00   &   13.82   &   14.50   &   13.80   &   \be{3.2}{12.81}   &   13.20   &   14.37   &   12.90   &   13.44   &   12.88   &   13.72   &   13.23   &   \be{3.2}{12.81}   &   12.83   &   0.01    \\
+					
+					lse91   &   10.50   &   10.35   &   11.30   &   \be{3.2}{9.60}    &   9.86    &   10.40   &   10.89   &   10.04   &   10.87   &   9.85    &   10.29   &   10.52   &   9.78    &   9.81    &   0.02    \\
+					
+					pur93   &   3.90    & \text{--} &   4.60    &   \be{3.2}{3.70}    &   4.53    &   \text{--}   &   4.65    &   5.67    &   \text{--}   &   4.10    &   \text{--}   &   \text{--}   &   4.14    &   4.18    &   0.02    \\
+					
+					rye92   &   7.30    &   8.53    &   9.80    &   \be{3.2}{6.80}    &   7.93    &   \text{--}   &   9.30    &   8.05    &   8.81    &   7.98    &   \text{--}   &   8.92    &   7.89    &   7.93    &   0.03    \\
+					
+					sta83   &   161.50  &   158.35  &   157.30  &   158.20  &   157.03  &   \be{3.2}{156.90}  &   157.81  &   157.03  &   157.09  &   157.03  &   157.07  &   157.06  &   157.03  &   157.03  &   0.00    \\
+					
+					tre92   &   9.60    &   7.92    &   8.60    &   9.40    &   7.72    &   8.30    &   8.38    &   7.69    &   7.94    &   7.75    &   7.86    &   7.89    &   \be{3.2}{7.66}    &   7.70    &   0.03    \\
+					
+					uta92   &   3.50    &   3.14    &   3.50    &   3.50    &   3.16    &   3.30    &   3.35    &   3.13    &   3.27    &   3.08    &   3.10    &   3.13    &   \be{3.2}{3.01}    &   3.04    &   0.01    \\
+					
+					ute92   &   25.80   &   25.39   &   26.40   &   \be{3.2}{24.40}   &   24.79   &   24.90   &   27.24   &   24.77   &   25.36   &   24.78   &   25.33   &   25.12   &   24.80   &   24.83   &   0.02    \\
+					
+					yor83   &   41.70   &   36.53   &   39.40   &   36.20   &   34.78   &   36.30   &   39.33   &   34.64   &   35.74   &   \be{3.2}{34.44}   &   36.12   &   35.49   &   34.45   &   34.63   &   0.08    \\
+					
+					\midrule
+					
+					TP (11) &   327.10  &   308.47  &   318.40  &   306.20  &   301.25  &   305.80  &   317.88  &   301.02  &   306.58  &   300.62  &   306.09  &   304.43  &   \be{3.2}{300.04}  &   300.65  &   \text{--}   \\
+					TP  &   338.30  &   \text{--}   &   332.80  &   316.70  &   313.71  &   \text{--} &   331.83  &   314.74  &   \text{--}   &   312.70  &   \text{--}   &   \text{--}   &   \be{3.2}{312.07}  &   312.76  &   \text{--}   \\
+					
+					\bottomrule
+				\end{tabular}
+			\end{adjustbox}
+		\end{table}
+	\end{landscape}
+	\clearpage% Flush page
+}
+
+
+The above algorithms were chosen using the following criteria: (i) best fitness value on some instances, (ii) solution validation, and (iii) approach heterogeneity. Pillay and Banzhaf (identified as Pil10) were the only authors to publish the solutions referred to in their paper. The results published by the authors Car96, Yan05, and Ele07, were validated in~\cite{Qu2009}. Table~\ref{tab:algorithm_comparison} presents a comparison between \gls{cma} and the selection of the best algorithms from the literature as listed above. In the columns that refer to the analysed algorithms, the minimum solution value is shown for each considered algorithm. For \gls{cma}, the minimum, average and standard deviation are shown over ten runs. In the last two rows of Table~\ref{tab:algorithm_comparison}, the \textit{total penalty} (TP) and the \textit{total penalty excluding the pur93 and rye92 instances} (TP (11)) are presented. For each approach, the TP and TP (11) values are computed by summing up the individual costs obtained by the algorithm on all instances (TP) and on 11 instances (TP (11)). 
+
+From Table~\ref{tab:algorithm_comparison}, one can verify that \gls{cma} attains competitive costs on the Toronto benchmark set. It attains the lowest TP and TP (11) values, proving the \gls{cma} efficiency.
+
+
+
+\subsubsection{Average Relative Deviation to the Best Solution -- Cost and Time Analysis}
+
+In this section, the average relative deviation of \gls{cma} to the best known solution is studied. The time performance of the analysed algorithms is also detailed. 
+
+Table~\ref{tab:algorithm_BKS} presents the previous best known solutions and the cost of the best solutions obtained by \gls{cma}. Table~\ref{tab:Algorithm_Ranking} presents the algorithms' rankings based on their average and best performance, for different \textit{number of instances solved} (NIS). NIS is the number of instances for which a feasible and optimised solution was obtained by all algorithms that are compared. 
+
+The rankings are computed as in~\cite{Demeester2012}. The algorithm that produces the best solution on a given instance gets the lowest value, while the worst algorithm gets the highest value. The same procedure is applied to the average values obtained after 10 runs on each instance. The final overall ranking is based on the average of the rankings over all instances. The algorithm with the overall lowest rank can be considered the best performing algorithm. \gls{cma} is in first position in all rankings shown in Table~\ref{tab:Algorithm_Ranking}.
+
+
+
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{table}[H]
+		\setlength{\tabcolsep}{3.3pt}
+		\centering
+		\caption{Previous best known solutions with corresponding authors and comparison with cMA's best solutions. Values in bold are equal or improved solutions produced by cMA. \vspace{0.3em} }
+		
+		\label{tab:algorithm_BKS}
+		
+		\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math,detect-shape=true, detect-mode=true}
+		% Resize table to fit page bounds
+		%\resizebox{0.97\textwidth}{!}{ 
+		\begin{tabular}{%
+				l% Instance
+				S[table-format=4.3]% Previous BKS
+				l% Authors
+				S[table-format=3.6]%  cMA fmin
+				S[table-format=6]%  cMA integer cost
+			}
+			
+			\toprule
+			
+			Inst.  & % 1st column 
+			\multicolumn{1}{l}{Previous best} & 
+			\multicolumn{1}{c}{Authors}       & 
+			\multicolumn{2}{c}{\textbf{cMA}}  \\%
+			& % 1st column 
+			\multicolumn{1}{l}{known} &
+			& % 3rd column 
+			$f_{min}$ &       
+			\multicolumn{1}{l}{Integer} \\%
+			& % 1st column 
+			\multicolumn{1}{l}{solution} &
+			& % 3rd column
+			& % 4th column
+			\multicolumn{1}{l}{cost} \\%
+			
+			\midrule
+			
+			%Inst.   &   Previous best   &   Author  &   cMA     &       \\
+			%        &   known solution  &           &   fmin    &   Integer cost    \\
+			car91   &   4.38    &   Alzaqebah and Abdullah, 2015 &   \be{3.6}{4.311078}    &   72965   \\
+			car92   &   3.75    &   Leite et al., 2014           &   \be{3.6}{3.682556}    &   67829   \\
+			ear83   &   29.30   &   Caramia et al., 2008         &   32.483556                    &   36544   \\
+			hec92   &   9.20    &   Caramia et al., 2008         &   10.033652                    &   28325   \\
+			kfu93   &   12.81   &   Burke and Bykov, 2008        &   \be{3.6}{12.806693}   &   68503   \\
+			lse91   &   9.60    &   Caramia et al., 2008         &   9.782832                     &   26668   \\
+			pur93   &   3.70    &   Caramia et al., 2008         &   4.144594                     &   124458  \\
+			rye92   &   6.80    &   Caramia et al., 2008         &   7.887834                     &   90576   \\
+			sta83   &   156.90  &   Burke et al., 2010           &   157.032733                   &   95947   \\
+			tre92   &   7.69    &   Demeester et al., 2012       &   \be{3.6}{7.657339}    &   33386   \\
+			uta92   &   3.08    &   Leite et al., 2014           &   \be{3.6}{3.013214}    &   64079   \\
+			ute92   &   24.40   &   Caramia et al., 2008         &   24.803929                    &   68186   \\
+			yor83   &   34.44   &   Leite et al., 2014           &   34.454835                    &   32422   \\
+			
+			\bottomrule
+			
+		\end{tabular} 
+		%}%\resizebox
+	\end{table}
+	%\clearpage% Flush page
+}
+
+
+
+
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{table}[!ht]
+		\centering
+		\caption{Ranking of the analysed algorithms according to their average and best performance on the complete Toronto data set (NIS $=13$) and on the Toronto data set but excluding the pur93 and rye92 instances (NIS $=11$). The lower the rank, the better the algorithm's performance. \vspace{0.3em}}
+		\label{tab:Algorithm_Ranking}
+		
+		\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math}
+		\begin{tabular}{%
+				l%
+				S[table-format=2.1]%
+				l%
+				S[table-format=2.1]%    
+				l%
+				S[table-format=2.1]%
+				l%
+				S[table-format=2.1]%    
+			}
+			
+			\toprule
+			
+			\multicolumn{8}{c}{NIS} \\%
+			\cmidrule{1-8}
+			\multicolumn{4}{c}{11}      & \multicolumn{4}{c}{13} \\%
+			\cmidrule{1-4} \cmidrule{4-8}
+			\multicolumn{2}{c}{Min} & \multicolumn{2}{c}{Avg} & \multicolumn{2}{c}{Min} & \multicolumn{2}{c}{Avg} \\%
+			\cmidrule{1-2} \cmidrule{3-4} \cmidrule{5-6} \cmidrule{7-8}
+			\multicolumn{1}{c}{Alg.} & \multicolumn{1}{c}{Rk} & \multicolumn{1}{c}{Alg.} & \multicolumn{1}{c}{Rk} & \multicolumn{1}{c}{Alg.} & \multicolumn{1}{c}{Rk} & \multicolumn{1}{c}{Alg.} & \multicolumn{1}{c}{Rk}\\%
+			
+			\midrule
+			
+			% NIS=11              NIS=11              NIS=13              NIS=13  
+			% Min             Avg             Min             Avg 
+			cMA    &   2.4 &    cMA    &   1.3 &    cMA    &   2.5 &    cMA    &   1.3 \\
+			Lei14  &   2.9 &    Lei14  &   2.1 &    Lei14  &   2.9 &    Lei14  &   2.1 \\
+			Dem12  &   3.3 &    Dem12  &   3.2 &    Dem12  &   3.5 &    Dem12  &   3.4 \\
+			Bur08  &   4.1 &    Bur08  &   3.7 &    Bur08  &   3.7 &    Bur08  &   3.5 \\
+			Alz15  &   6.0 &    Alz15  &   5.1 &    Car08  &   4.0 &    Pil10  &   5.2 \\
+			Fon15  &   6.7 &    Fon15  &   6.2 &    Car96  &   6.2 &    Ele07  &   5.5 \\
+			Bur10  &   7.0 &    Abd13  &   6.6 &    Pil10  &   6.3 &           &       \\
+			Car08  &   7.4 &    Pil10  &   8.1 &    Ele07  &   6.8 &           &       \\
+			Abd13  &   8.2 &    Ele07  &   8.7 &           &       &           &       \\
+			Yan05  &   8.5 &           &       &           &       &           &       \\
+			Pil10  &  11.1 &           &       &           &       &           &       \\
+			Car96  &  11.7 &           &       &           &       &           &       \\
+			Ele07  &  11.7 &           &       &           &       &           &       \\
+			
+			\bottomrule
+			
+		\end{tabular}
+	\end{table}
+	%\clearpage% Flush page
+}
+
+
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{table}[!ht]
+		\centering
+		\caption{Cost and time average relative deviations. \vspace{0.3em}}
+		\label{tab:Algorithms_ARD}
+		
+		\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math}
+		\begin{tabular}{%
+				l%  Alg.
+				S[table-format=2]%  NIS
+				S[table-format=2.2]% Cost
+				S[table-format=7.2]% Time
+				S[table-format=2.2]% Cost
+				S[table-format=8.2]% Time
+			}
+			
+			\toprule
+			
+			\multicolumn{1}{l}{Algorithm}  & \multicolumn{1}{l}{NIS} & \multicolumn{2}{c}{ARD (\%)}  & \multicolumn{2}{l}{cMA improvement} \\% 
+			\cmidrule{3-4} 	\cmidrule{5-6}
+			&                         & \multicolumn{1}{c}{Cost} & \multicolumn{1}{c}{Time} & \multicolumn{1}{c}{Cost} & \multicolumn{1}{c}{Time} \\%
+			
+			\midrule                              
+			
+			%Algorithm &   NIS &   ARD (%) &   ARD (%) &   cMA Improvement &   cMA Improvement \\
+			%          &       &   Cost    &   Time      &   Cost      &   Time       \\
+			
+			Lei14     &   13  &   4.69    &   384773.99 &   0.74      &   -47248.25   \\
+			Bur08     &   13  &   6.21    &   2487.30   &   2.26      &   -429534.94  \\
+			Fon15     &   11  &   6.70    &   83749.29  &   4.56      &   -422999.94  \\
+			Alz15     &   12  &   7.58    &   8279.84   &   4.28      &   -457824.88  \\
+			Bur10     &   11  &   7.93    &   7738.26   &   5.79      &   -499010.97  \\
+			Dem12     &   13  &   8.54    &   138450.84 &   4.58      &   -293571.40  \\
+			Yan05     &   12  &   8.66    &   5354.06   &   5.36      &   -460750.66  \\
+			Abd13     &   12  &   9.57    &   \text{--} &   6.28      &   \text{--}   \\
+			Car08     &   13  &   12.99   &   638.92    &   9.03      &   -431383.32  \\
+			Pil10     &   13  &   16.26   &   6720.17   &   12.31     &   -425302.07  \\
+			Ele07     &   13  &   18.04   &   30635.71  &   14.08     &   -401386.53  \\
+			Car96     &   13  &   21.35   &   217.01    &   17.40     &   -431805.23  \\
+			
+			\midrule
+			
+			\multirow{3}{*}{cMA} &   13  &   3.95    &   432022.24 &   \text{--} &   \text{--}   \\
+			&   12  &   3.29    &   466104.72 &   \text{--} &   \text{--}   \\
+			&   11  &   2.14    &   506749.23 &   \text{--} &   \text{--}   \\
+			
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	%\clearpage% Flush page
+}
+
+
+For each algorithm, we calculate the relative deviation $\text{RD} = 100 \cdot (\text{MSF}-\text{BKS}) / \text{BKS}$ for each instance, where BKS is the \textit{best known solution} and MSF is the \textit{minimum solution found}. BKS values were extracted from Table~\ref{tab:algorithm_BKS}. ARD denotes the average relative deviation over all instances. 
+
+Table~\ref{tab:Algorithms_ARD} shows the NIS and the ARD for the cost and computation time for all algorithms that are compared in Table~\ref{tab:algorithm_comparison}. In order to present the information in a concise way, we have included the highest NIS value available for each compared approach (except \gls{cma}); for comparing \gls{cma} with the other techniques, we have included NIS values equal to 11, 12, and 13. The running times of these algorithms are presented in Table~\ref{tab:AlgorithmRunningTimes} in Appendix~\ref{app:AppendixB}. The two rightmost columns (\gls{cma} improvement) present the ARD reduction in cost and time obtained by \gls{cma} with respect to each competitor. 
+
+As reported in Table~\ref{tab:Algorithms_ARD}, the ARD for \gls{cma} is only 3.95\% for the complete Toronto benchmark set. We can also see under \gls{cma} improvement that the ARD reduction is significant, yielding a large improvement in solution quality with respect to all other algorithms. However, this improvement comes at a computational cost, as indicated by the negative values in Table~\ref{tab:Algorithms_ARD}.
+
+
+
+
+
+
+%
+% Statistical analysis -- Toronto, NIS = 11, Average case
+%
+\subsubsection{Statistical Analysis}
+
+We now present a statistical analysis of the obtained average results for the Toronto benchmark set with NIS $= 11$, which involves a larger number of algorithms. Table~\ref{tab:Ranking_Toronto_NIS_11_AVG} summarises the ranks obtained by the Friedman test for this case. The \textit{p}-value computed with the Friedman test is \num{6.71E-11}, which is below the significance interval of 95\% ($\alpha = 0.05$), confirming that there is a significant difference among the observed results and that \gls{cma} is the best performing algorithm. Table~\ref{tab:AdjustedPValues_Toronto_NIS_11_AVG} shows the adjusted \textit{p}-values obtained by the post-hoc Holm and Hochberg's tests when considering \gls{cma} as the control algorithm. Holm and Hochberg's tests indicate that \gls{cma} is better than all algorithms except Bur08, Dem12, and Lei14, with $\alpha = 0.05$. 
+
+
+
+
+\subsubsection{Discussion}
+
+The algorithms' ARD (Table~\ref{tab:Algorithms_ARD}) and rankings (Tables~\ref{tab:Algorithm_Ranking} and~\ref{tab:Ranking_Toronto_NIS_11_AVG}) provide two different points of view for the tested algorithms. We can see that \gls{cma} is the best performing algorithm, but also the slowest. Lei14 is in second position. Regarding the analysis with NIS $=11$, Tables~\ref{tab:Algorithm_Ranking} and~\ref{tab:Algorithms_ARD} give the same ordering for all algorithms (\gls{cma}, Fon15 and Bur10). When considering NIS $=13$, the relative order of Bur08 and Dem12 is reversed in the rankings table. Also, Car96 appears before Pil10 and Ele07 in Table~\ref{tab:Algorithm_Ranking}, but is last in Table~\ref{tab:Algorithms_ARD}. Dem12 has a slightly better rank than Bur08 (Dem12 obtains eight better results compared to Bur08), but Bur08 has a lower TP penalty and also a lower ARD. Car96 has also two good results on instances pur93 and rye92 which improve its ranking. Regarding computation times (see columns `ARD (\%) -- Time' and `\gls{cma} improvement -- Time' in Table~\ref{tab:Algorithms_ARD}), it is worth mentioning that computation times were extracted from the authors' papers and correspond to different programming languages and hardware, with unknown levels of optimisation. We can observe that the evolutionary approaches (\gls{cma}, Lei14, Fon15, Alz15, Pil10, and Ele07) are among the slowest algorithms, although some of them attain top positions with regard to solution quality (\gls{cma} -- $1^{\text{st}}$, Lei14 -- $2^{\text{nd}}$, Fon15 -- $4^{\text{th}}$, Alz15 -- $5^{\text{th}}$). Local search and graph based algorithms (Bur08, Car08, and Car96) are the fastest algorithms. The fastest one, Car96, has a time ARD of 217.01\% (about four times slower than the best obtained times, on average), but also has the largest cost ARD; \gls{cma}, on the other hand has a time ARD of \num{432002.24}\% (about \num{8640.44} times slower than the best obtained times, on average), but also has the smallest cost ARD. \gls{cma} takes more time to execute but this additional computation time warrants the improvement in the results by providing the lowest cost ARD. The extra computation time is attributed to both the use of a population based algorithm and an intensive local search cooling schedule (the effect of using the intensive cooling schedule is analysed in Section~\ref{sec:Chapter6_LocalSearchEffect}). In general, single solution metaheuristics such as simulated annealing, threshold acceptance, tabu search, etc., are faster than population-based algorithms. The improvement in the results is attributed to the simultaneous use of a hybrid algorithm (\gls{cma}) and the use of an intensive cooling schedule in the threshold acceptance algorithm.
+
+
+
+
+%
+% Subsection
+%
+\subsection{Comparison with State-of-the-Art Methods -- ITC 2007 Data Set}
+\label{sec:ComparisonITC2007}
+
+
+
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{table}[H]
+		\setlength{\tabcolsep}{3.5pt}	
+		\centering
+		\caption{ITC 2007 results. The best solutions are indicated in bold. ``--'' indicates that the corresponding instance was not tested or a feasible solution was not obtained. The column `$f_{min}$' indicates the minimum penalty value per instance obtained among the compared algorithms. \vspace{0.3em}}
+		
+		\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math}
+		\begin{tabular}{%
+				S[table-figures-integer=2]%
+				S[table-format=5.2]%
+				S[table-format=5.2]%    
+				S[table-format=5.2]%    
+				S[table-format=5.2]%    
+				S[table-format=5.2]%    
+				S[table-format=5.2]%    
+			}
+			
+			\toprule
+			
+			\multicolumn{1}{l}{Inst.} & \multicolumn{1}{l}{Mul08} &	\multicolumn{1}{l}{Gog07} & \multicolumn{1}{l}{Ats07} & \multicolumn{1}{l}{Sme07} & \multicolumn{1}{l}{Pil07} & \multicolumn{1}{c}{$f_{min}$}\\
+			%		& \multicolumn{1}{l}{\cite{Muller2009}} & \multicolumn{1}{l}{\cite{Gogos2008}} & \multicolumn{1}{l}{\cite{McCollum2010}} & \multicolumn{1}{l}{\cite{McCollum2010}} & \multicolumn{1}{l}{\cite{McCollum2010}} & \multicolumn{1}{c}{$f_{min}$}\\
+			
+			\midrule
+			
+			%Dataset	&	Muller2009	&	GogosITC07	&	AtsutaITC07	&	SmetITC07	&	PillayITC07	&	Best ITC07	\\
+			1	&	\be{5.2}{4370}	&	5905	&	8006	&	6670	&	12035	&	4370	\\
+			2	&	\be{5.2}{400}	&	1008	&	3470	&	623	&	2886	&	400	\\
+			3	&	\be{5.2}{10049}	&	13771	&	17669	&	\text{--}	&	15917	&	10049	\\
+			4	&	\be{5.2}{18141}	&	18674	&	22559	&	\text{--}	&	23582	&	18141	\\
+			5	&	\be{5.2}{2988	}&	4139	&	4638	&	3847	&	6860	&	2988	\\
+			6	&	\be{5.2}{26585}	&	27640	&	29155	&	27815	&	32250	&	26585	\\
+			7	&	\be{5.2}{4213	}&	6572	&	10473	&	5420	&	17666	&	4213	\\
+			8	&	\be{5.2}{7742}	&	10521	&	14317	&	\text{--}	&	15592	&	7742	\\
+			9	&	\be{5.2}{1030	}&	1159	&	1737	&	1288	&	2055	&	1030	\\
+			10	&	16682	&	\text{--}	&	15085	&	\be{5.2}{14778}	&	17724	&	14778	\\
+			11	&	\be{5.2}{34129}	&	43888	&	\text{--}	&	\text{--}	&	40535	&	34129	\\
+			12	&	5535	&	\text{--}	&	\be{5.2}{5264	}&	\text{--}	&	6310	&	5264	\\
+			
+			
+			\bottomrule
+			
+		\end{tabular}
+		\label{tab:itc2007_competition_results}
+	\end{table}
+	%\clearpage% Flush page
+}
+
+
+Table~\ref{tab:itc2007_competition_results} presents the ITC 2007 results of the five finalists. The competition winner was~\cite{Muller2009}. Table~\ref{tab:itc2007_algorithm_comparison} presents the comparison of \gls{cma} with state-of-the-art approaches, while fulfilling the ITC 2007 rules. The reported comparison includes the recent approaches of Col09~\citep{McCollum2009}, Dem12~\citep{Demeester2012}, Gog12~\citep{Gogos2012}, Alz14~\citep{Alzaqebah2014}, and Alz15~\citep{Alzaqebah2015}. \gls{cma} is able to obtain competitive results compared to the other algorithms. We can observe that \gls{cma} attains the best performance on the smaller instances (instances 4, 9, 10 and 12). More iterations are needed for the other instances, as well as a more intensive cooling schedule, thus requiring a longer execution time. 
+
+
+\subsubsection{Average Relative Deviation to the Best Solution and Statistical Analysis}
+
+In this section, a further study of the \gls{cma} performance is carried out. Namely, the average relative deviation to the best known solution is studied, followed by the statistical analysis of the average case. No runtime analysis is done for the ITC 2007 case because all algorithms are run under the same time conditions, as specified by the ITC 2007 rules (see Appendix~\ref{app:AppendixB}).
+
+Table~\ref{tab:algorithm_BKS_ITC2007} reports the BKS for the analysed algorithms, which is compared with the \gls{cma} results.
+
+Table~\ref{tab:Algorithm_Ranking_ITC2007} presents the algorithms' ranking for different NIS. The ranking procedure is the same as the one used in Section~\ref{sec:ComparisonToronto}. Table~\ref{tab:Algorithms_ARD_ITC2007} reports the average relative deviation to the BKS for the analysed algorithms.
+
+
+
+
+
+
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{landscape}		
+		\begin{table}[!ht]
+			\setlength{\tabcolsep}{1.7pt}
+			\centering
+			\caption{Comparison of the best results obtained by cMA with the best solutions from the literature for the ITC 2007 benchmark set. The best solutions are indicated in bold. ``--'' indicates that the corresponding instance was not tested or a feasible solution was not obtained.\vspace{0.3em}}
+			
+			\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math}
+			
+			%	\begin{adjustbox}{width=1\textwidth,center}
+			\begin{tabular}{%
+					S[table-figures-integer=2]%
+					S[table-format=5.2]%
+					S[table-format=5.2]%    
+					S[table-format=5.2]%    
+					S[table-format=5.2]%    
+					S[table-format=5.2]%    
+					S[table-format=5.2]%    
+					S[table-format=5.2]%    
+					S[table-format=5.2]%
+					S[table-format=5.2]%
+				}
+				
+				\toprule
+				
+				\multicolumn{1}{l}{Inst.} 
+				& \multicolumn{1}{l}{ITC 2007} 
+				& \multicolumn{1}{l}{Col09} 
+				& \multicolumn{1}{l}{Dem12}  
+				& \multicolumn{1}{l}{Gog12} 
+				& \multicolumn{1}{l}{Alz14} 
+				& \multicolumn{1}{l}{Alz15}
+				& \multicolumn{3}{c}{\textbf{cMA}}	\\%
+				& \multicolumn{1}{l}{best}    
+				& 
+				& 
+				& 
+				& 
+				& \\%
+				\cmidrule{2-7} \cmidrule{8-10}
+				& \multicolumn{6}{c}{$f_{min}$}
+				& $f_{min}$
+				& $f_{avg}$
+				& $\sigma$ \\% 
+				
+				\midrule
+				
+				%	&		&		&		&		&		&		&	cMA	&		&		
+				%Dataset	&	Best ITC 2007	&	McCollum2009	&	Demeester2012	&	Gogos2012	&	Alzaqebah2014	&	Alzaqebah2015	&	Best	&	Avg	&	stdev	\\
+				1  & \be{5.2}{4370} & 4633                   & 6060      & 4775                   & 5328      & 5154      & 6207                   & 6478.20  & 121.97  \\
+				2  & 400                   & 405                    & 515       & \be{5.2}{385}   & 512       & 420       & 535                    & 572.90   & 17.66   \\
+				3  & 10049                 & 9064                   & 23580     & \be{5.2}{8996}  & 10178     & 10182     & 13022                  & 13680.50 & 423.68  \\
+				4  & 18141                 & 15663                  & \text{--} & 16204                  & 16465     & 15716     & \be{5.2}{14302} & 15493.70 & 673.28  \\
+				5  & 2988                  & 3042                   & 4855      & \be{5.2}{2929}  & 3624      & 3350      & 3829                   & 4155.60  & 170.25  \\
+				6  & 26585                 & 25880                  & 27605     & \be{5.2}{25740} & 26240     & 26160     & 26710                  & 26873.00 & 183.38  \\
+				7  & 4213                  & \be{5.2}{4037}  & 6065      & 4087                   & 4562      & 4271      & 5508                   & 5844.40  & 178.62  \\
+				8  & 7742                  & \be{5.2}{7461}  & 9038      & 7777                   & 8043      & 7922      & 8716                   & 8942.30  & 113.00  \\
+				9  & \be{5.2}{1030} & 1071                   & 1184      & \text{--}              & \text{--} & \text{--} & \be{5.2}{1030}  & 1080.30  & 42.72   \\
+				10 & 14778                 & 14374                  & 15561     & \text{--}              & \text{--} & \text{--} & \be{5.2}{13894} & 14208.70 & 211.16  \\
+				11 & 34129                 & \be{5.2}{29180} & \text{--} & \text{--}              & \text{--} & \text{--} & 39783                  & 43693.56 & 2926.24 \\
+				12 & 5264                  & 5693                   & 5483      & \text{--}              & \text{--} & \text{--} & \be{5.2}{5142}  & 5249.00  & 81.08   \\
+				
+				\bottomrule
+				
+			\end{tabular}
+			%	\end{adjustbox}
+			
+			\label{tab:itc2007_algorithm_comparison}
+		\end{table}
+	\end{landscape}		
+	%\clearpage% Flush page
+}
+
+
+
+
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{table}[H]
+		\setlength{\tabcolsep}{1.7pt}
+		\centering
+		\caption{Previous best known solutions with corresponding authors and comparison with cMA's best solutions. Values in bold represent equal or new best solutions. \vspace{0.3em}}
+		
+		\label{tab:algorithm_BKS_ITC2007}
+		
+		\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math,detect-shape=true, detect-mode=true}
+		\begin{tabular}{%
+				l% Instance
+				S[table-format=8]% Previous BKS
+				l% Authors
+				S[table-format=8]%  cMA fmin
+			}
+			
+			\toprule
+			
+			Inst.   & \multicolumn{1}{l}{Previous best}  & \multicolumn{1}{c}{Authors}  & \multicolumn{1}{c}{\textbf{cMA}}   \\%
+			& \multicolumn{1}{l}{known solution} &                              & $f_{min}$                          \\%
+			
+			\midrule
+			
+			%Instance    &   Previous best   &   Author  &   cMA   \\
+			%            &   known solution  &           &   fmin  \\
+			1   &   4370    &   M\"{u}ller, 2009      &   6207                   \\
+			2   &   385     &   Gogos et al., 2012    &   535                    \\
+			3   &   8996    &   Gogos et al., 2012    &   13022                  \\
+			4   &   15663   &   McCollum et al., 2009 &   \be{8}{14302}   \\
+			5   &   2929    &   Gogos et al., 2012    &   3829                   \\
+			6   &   25740   &   Gogos et al., 2012    &   26710                  \\
+			7   &   4037    &   McCollum et al., 2009 &   5508                   \\
+			8   &   7461    &   McCollum et al., 2009 &   8716                   \\
+			9   &   1030    &   M\"{u}ller, 2009      &   \be{8}{1030}    \\
+			10  &   14374   &   McCollum et al., 2009 &   \be{8}{13894}   \\
+			11  &   29180   &   McCollum et al., 2009 &   39783                  \\
+			12  &   5264    &   Atsuta et al., 2007   &   \be{8}{5142}    \\
+			
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	%\clearpage% Flush page
+}
+
+
+
+
+
+
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{table}[!ht]
+		\centering
+		\caption{Ranking of the analysed algorithms according to their average and best performance on the ITC 2007 benchmark set for NIS $= 7$ (instances 4, and 9 to 12 were excluded), NIS $= 8$ (instances 9 to 12 were excluded), and NIS $= 12$ (complete data set). The lower the rank, the better the algorithm's performance. \vspace{0.3em}}
+		\label{tab:Algorithm_Ranking_ITC2007}
+		
+		\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math}
+		\begin{tabular}{%
+				l%
+				S[table-format=0.1]%
+				l%
+				S[table-format=0.1]%    
+				l%
+				S[table-format=0.1]%
+				l%
+				S[table-format=0.1]%    
+				l%
+				S[table-format=0.1]%    
+			}
+			
+			\toprule
+			
+			\multicolumn{10}{c}{NIS} \\%
+			\cmidrule{1-10}
+			\multicolumn{4}{c}{7}   & \multicolumn{4}{c}{8} & \multicolumn{2}{c}{12} \\%
+			\cmidrule{1-10}
+			\multicolumn{2}{c}{Min} & \multicolumn{2}{c}{Avg} & \multicolumn{2}{c}{Min} & \multicolumn{2}{c}{Avg} & \multicolumn{2}{c}{Min} \\%
+			\cmidrule{1-10}
+			\multicolumn{1}{l}{Alg.} & \multicolumn{1}{l}{Rk} & \multicolumn{1}{l}{Alg.} & \multicolumn{1}{l}{Rk} & \multicolumn{1}{l}{Alg.} & \multicolumn{1}{l}{Rk} & \multicolumn{1}{l}{Alg.} & \multicolumn{1}{l}{Rk} & \multicolumn{1}{l}{Alg.} & \multicolumn{1}{l}{Rk}\\%
+			
+			\midrule
+			
+			%NIS=7               NIS=7               NIS=8             NIS=8               NIS=12  
+			%Min             Avg             Min                 Avg             Min 
+			Gog12  &  1.7 &  Gog12 & 1.3 &  Col09   &   2.0 &   Gog12 &   1.6 &   Col09  &   1.8 \\
+			Col09  &  2.0 &  Alz15 & 2.0 &  Gog12   &   2.0 &   Alz15 &   2.0 &   Mul09  &   1.8 \\
+			Mul09  &  2.6 &  Alz14 & 2.7 &  Mul09   &   3.0 &   Alz14 &   2.8 &   cMA    &   2.4 \\
+			Alz15  &  4.0 &  cMA   & 4.1 &  Alz15   &   3.9 &   cMA   &   3.6 &   Pil07  &   4.0 \\
+			Alz14  &  4.7 &  Dem12 & 4.9 &  Alz14   &   4.8 &         &       &          &       \\
+			cMA    &  6.4 &        &     &  cMA     &   5.5 &         &       &          &       \\
+			Gog07  &  7.4 &        &     &  Gog07   &   6.9 &         &       &          &       \\
+			Dem12  &  7.6 &        &     &  Ats07   &   8.3 &         &       &          &       \\
+			Ats07  &  9.0 &        &     &  Pil07   &   8.8 &         &       &          &       \\
+			Pil07  &  9.6 &        &     &          &       &         &       &          &       \\
+			
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	%\clearpage% Flush page
+}
+
+
+\afterpage{ %
+	%	\clearpage% Flush earlier floats
+	\begin{table}[!ht]
+		\centering
+		\caption{Average relative deviation to the BKS. Gog07 and Dem12 have both NIS $= 10$ (but they solved different instances), thus two corresponding ARD values for cMA were computed for comparison purposes. The NIS values are indicated as 10 and $10^{*}$. \vspace{0.3em}}
+		\label{tab:Algorithms_ARD_ITC2007}
+		
+		\sisetup{table-alignment=center,detect-weight=true,detect-inline-weight=math}
+		\begin{tabular}{%
+				l%
+				S[table-format=3, table-space-text-post = {***}]%
+				S[table-format=3.2]%
+				S[table-format=4.2]%    
+			}
+			
+			\toprule
+			
+			\multicolumn{1}{l}{Algorithm}  & \multicolumn{1}{l}{NIS} &  \multicolumn{1}{c}{ARD (\%)}  & \multicolumn{1}{l}{cMA improvement} \\%
+			
+			\midrule                                        
+			
+			%/////
+			%	Algorithm   &   NIS &   ARD (%) &   cMA \\
+			%	            &       &       &   Improvement \\
+			Gog12                &   8       &   3.51    &   -23.18  \\
+			Col09                &   12      &   3.67    &   -17.15  \\
+			Mul09                &   12      &   8.38    &   -12.44  \\
+			Alz15                &   8       &   9.76    &   -16.93  \\
+			Alz14                &   8       &   16.21   &   -10.48  \\
+			Sme07                &   7       &   31.36   &   9.66    \\
+			Dem12                &   10$^*$  &   41.25   &   19.90   \\
+			Gog07                &   10      &   49.60   &   24.62   \\
+			Ats07                &   11      &   131.01  &   111.61  \\
+			Pil07                &   12      &   146.80  &   125.98  \\
+			
+			\midrule                                        
+			
+			\multirow{3}{*}{cMA} &   12  &   20.82   & \text{--} \\
+			&   11      &   19.41   & \text{--} \\
+			&   10      &   24.98   & \text{--} \\
+			&   10$^*$  &   21.35   & \text{--} \\ % CMA 10A
+			&   8       &   26.69   & \text{--} \\
+			&   7       &   21.70   & \text{--} \\
+			
+			%	CMA 12  &   12  &   20,82   &       \\
+			%	CMA 11  &   11  &   19,41   &       \\
+			%	CMA 10  &   10  &   24,98   &       \\
+			%	CMA 10A &   10  &   21,35   &       \\
+			%	CMA 8   &   8   &   26,69   &       \\
+			%	CMA 7   &   7   &   21,70   &       \\
+			
+			
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	%\clearpage% Flush page
+}
+
+
+
+
+%
+% Statistical analysis -- ITC 2007, NIS = 7, Average case
+%
+
+We now present a statistical analysis of the obtained average results for the ITC 2007 benchmark set with NIS $= 7$, which involves a larger number of algorithms. Table~\ref{tab:Ranking_ITC2007_NIS_7_AVG} summarises the ranks obtained by the Friedman test in this case. The \textit{p}-value computed with the Friedman test is \num{6.13E-05}, which is below the significance interval of 95\% ($\alpha = 0.05$), confirming that there is a significant difference among the observed results. Gog12 is the best performing algorithm. Table~\ref{tab:AdjustedPValues_ITC2007_NIS_7_AVG} shows the adjusted \textit{p}-values obtained by the post-hoc Holm and Hochberg's tests considering Gog12 as the control algorithm. Holm and Hochberg's tests confirm that Gog12 is better than Dem12 and \gls{cma} with $\alpha = 0.05$.
+
+Table~\ref{tab:Pairwise_analysis_ITC2007_NIS_7_AVG} presents adjusted $p$-values as obtained with the procedures of Nemenyi, Holm, Shaffer and Bergmann, which are used to compare pairs of algorithms. The difference is significant with all procedures for the pairs $i = 1, 2, 3$ and with Bergmann's procedure only for the pairs $i = 4, 5$. These results are analysed in the next section.
+
+
+
+\subsubsection{Discussion}
+
+The key findings of these results are as follows. From the obtained ARD values and statistical ranking, \gls{cma} is positioned in the middle with an ARD between 19\% and 27\% from the BKS, for NIS $=11$ and NIS $=8$, respectively. The other competitors with better ARD are Gog12 (3.51), Col09 (3.67), Mul09 (8.38), Alz15 (9.76) and Alz14 (16.21). Thus, the best algorithm is Gog12. From this statistical analysis, we can conclude, with a significance level of 5\%, that Gog12 is better than Dem12 and \gls{cma}, and that Alz15 is better than Dem12; under Bergmann's procedure, we can also conclude that Alz14 is better than Dem12 and that Alz15 is better than \gls{cma}. The statistical analysis confirms some of the results obtained with the ranking (Table~\ref{tab:Algorithm_Ranking_ITC2007}) and ARD (Table~\ref{tab:Algorithms_ARD_ITC2007}). Thus, \gls{cma} can solve the small instances effectively, but additional time is required for the larger instances, due to the use of an evolutionary algorithm.
+
+
+
+
+%//////////////////////////////////////////////////
+%
+% Section 6
+%
+%//////////////////////////////////////////////////
+\section{Conclusions}
+\label{sec:Chapter6_Conclusion}
+
+
+In this work, a novel evolutionary approach for solving timetabling problems is described. The proposed algorithm is a cellular evolutionary algorithm (\gls{cma}) that promotes the population diversity by means of a smooth update of solutions through the population. The algorithm was augmented with variation and local search operators that maintain solution feasibility and is controlled by threshold acceptance. Incremental evaluation was implemented in order to improve the algorithm's execution time. A study of the impact of simulated annealing-based methods on the examination timetabling problem was carried out. This study shows that a low threshold decreasing rate is needed to obtain the best results, by assigning the difficult exams to better suited time slots, thus allowing the easy exams to be placed in good time slots as well.
+
+The performance of \gls{cma} was evaluated on the uncapacitated Toronto and capacitated ITC 2007 benchmark sets, and compared with state-of-the-art approaches. On the Toronto set, the presented solution method improves on four out of thirteen instances, and attains the lowest average relative deviation to the best known solutions. In order to achieve these results for the Toronto set, \gls{cma} requires more time than its competitors, about two to four times more than the slowest approaches on the largest instances (car91, car92, pur93, and uta92).
+
+On the ITC 2007 set, our approach improves on three out of twelve instances, for the same execution time than the competitors. In this benchmark set, \gls{cma} is in the mid positions with respect to the average relative deviation to the best known solutions. 
+
+Future work will focus on two research lines. The first one will extend the use of \gls{cma} to the remaining ITC 2007 tracks (course timetabling and post-enrolment course timetabling tracks). The second line of research will focus on a parallel implementation of \gls{cma}.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
