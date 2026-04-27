@@ -15,3 +15,5 @@ riderModule.iml
 /.config/AppData/
 /.config/dotnet/
 *.diag.log
+.env
+.env.example

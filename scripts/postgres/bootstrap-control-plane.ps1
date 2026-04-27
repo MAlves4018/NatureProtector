@@ -35,7 +35,7 @@ if (-not (Test-Path (Join-Path $repoRoot "NatureProtector.sln"))) {
     throw "Solution not found under $repoRoot"
 }
 
-$postgresReachable = Test-NetConnection -ComputerName "localhost" -Port 5432 -InformationLevel Quiet
+$postgresReachable = Test-NetConnection -ComputerName "localhost" -Port 5433 -InformationLevel Quiet
 
 if (-not $postgresReachable) {
     throw "PostgreSQL não está acessível em localhost:5432. Levanta primeiro o serviço 'postgres' no Docker Compose ou ajusta o .env para um endpoint válido."

@@ -9,4 +9,5 @@ public sealed record SensorReadingProducedPayload(
     double Value,
     double Latitude,
     double Longitude,
-    SensorOperationalState OperationalState);
+    SensorOperationalState OperationalState
+    );

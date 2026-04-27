@@ -134,6 +134,7 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             .Where(entity => entity.ConfigurationVersion!.VersionNumber == resolvedConfigurationVersion.Value)
             .OrderBy(entity => entity.Name)
             .Select(entity => new AreaSummaryResponse(
+                entity.Id,
                 entity.Code,
                 entity.Name,
                 entity.CountryCode,

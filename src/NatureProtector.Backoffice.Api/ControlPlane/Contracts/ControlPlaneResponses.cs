@@ -20,6 +20,7 @@ public sealed record AreaContextResponse(
     string Seasonality);
 
 public sealed record AreaSummaryResponse(
+    Guid Id,
     string Code,
     string Name,
     string? CountryCode,
