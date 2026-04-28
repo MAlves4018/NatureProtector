@@ -4,6 +4,30 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
+	ProjectSection(SolutionItems) = preProject
+		src\NatureProtector.AppHost\NatureProtector.AppHost.csproj = src\NatureProtector.AppHost\NatureProtector.AppHost.csproj
+		src\NatureProtector.AppHost\obj\Debug\net9.0\.NETCoreApp,Version=v9.0.AssemblyAttributes.cs = src\NatureProtector.AppHost\obj\Debug\net9.0\.NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+		src\NatureProtector.AppHost\obj\Debug\net9.0\Aspire\references\_AppHost.ProjectMetadata.g.cs = src\NatureProtector.AppHost\obj\Debug\net9.0\Aspire\references\_AppHost.ProjectMetadata.g.cs
+		src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.AssemblyInfo.cs = src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.AssemblyInfo.cs
+		src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.AssemblyInfoInputs.cache = src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.AssemblyInfoInputs.cache
+		src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.assets.cache = src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.assets.cache
+		src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.csproj.AssemblyReference.cache = src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.csproj.AssemblyReference.cache
+		src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.csproj.CoreCompileInputs.cache = src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.csproj.CoreCompileInputs.cache
+		src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.csproj.FileListAbsolute.txt = src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.csproj.FileListAbsolute.txt
+		src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.GeneratedMSBuildEditorConfig.editorconfig = src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.GeneratedMSBuildEditorConfig.editorconfig
+		src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.GlobalUsings.g.cs = src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.GlobalUsings.g.cs
+		src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.sourcelink.json = src\NatureProtector.AppHost\obj\Debug\net9.0\NatureProtector.AppHost.sourcelink.json
+		src\NatureProtector.AppHost\obj\NatureProtector.AppHost.csproj.nuget.dgspec.json = src\NatureProtector.AppHost\obj\NatureProtector.AppHost.csproj.nuget.dgspec.json
+		src\NatureProtector.AppHost\obj\NatureProtector.AppHost.csproj.nuget.g.props = src\NatureProtector.AppHost\obj\NatureProtector.AppHost.csproj.nuget.g.props
+		src\NatureProtector.AppHost\obj\NatureProtector.AppHost.csproj.nuget.g.targets = src\NatureProtector.AppHost\obj\NatureProtector.AppHost.csproj.nuget.g.targets
+		src\NatureProtector.AppHost\obj\project.assets.json = src\NatureProtector.AppHost\obj\project.assets.json
+		src\NatureProtector.AppHost\obj\project.nuget.cache = src\NatureProtector.AppHost\obj\project.nuget.cache
+		src\NatureProtector.AppHost\obj\project.packagespec.json = src\NatureProtector.AppHost\obj\project.packagespec.json
+		src\NatureProtector.AppHost\obj\rider.project.model.nuget.info = src\NatureProtector.AppHost\obj\rider.project.model.nuget.info
+		src\NatureProtector.AppHost\obj\rider.project.restore.info = src\NatureProtector.AppHost\obj\rider.project.restore.info
+		src\NatureProtector.AppHost\Program.cs = src\NatureProtector.AppHost\Program.cs
+		src\NatureProtector.AppHost\README.md = src\NatureProtector.AppHost\README.md
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NatureProtector.Core", "src\NatureProtector.Core\NatureProtector.Core.csproj", "{46DCF2D3-B2EB-42B8-820F-0E1693D2EE58}"
 EndProject

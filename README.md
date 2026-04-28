@@ -1,77 +1,95 @@
-# Nature Protector
+# NatureProtector
 
-O Nature Protector é uma plataforma modular de apoio à decisão para prevenção de incêndios florestais. Nesta fase, o repositório concentra-se sobretudo no módulo de prevenção: geração de leituras simuladas, transporte por eventos, cálculo preliminar de risco, persistência durável do plano de controlo em PostgreSQL, telemetria em InfluxDB e observabilidade de uma baseline local reproduzível.
+NatureProtector e um repositorio .NET 9 para suporte tecnico a prevencao de incendios florestais. Na fase atual, o foco esta no modulo de prevencao e numa baseline local demonstravel que liga simulacao, transporte de eventos, persistencia duravel, observabilidade e consulta operacional.
 
-Esta documentação foi alinhada com a proposta de projeto, com o documento técnico de fecho do escopo do módulo e com a pesquisa técnica sobre simulação e risco. Ainda assim, os documentos académicos continuam a ser a referência de enquadramento; o que aqui fazemos é traduzir esse enquadramento para a estrutura real do repositório.
+O repositorio nao deve ser lido como se toda a plataforma estivesse concluida. O estado atual corresponde a uma V1 executavel e documentada da baseline de prevencao, centrada na area piloto de Proenca-a-Nova e orientada pela implementacao do repositorio e pelos documentos referentes ao segundo momento de pesquisa.
 
-## O que já existe no repositório
+## Escopo atual
 
-- Um modelo de domínio em `.NET 9` para áreas, grelha territorial, sensores, cenários, leituras, avaliações de risco, alertas e recomendações.
-- Um `Simulator.Host` capaz de gerar leituras plausíveis e determinísticas a partir de configuração local, manifestos de cenário ou do plano de controlo em PostgreSQL.
-- Um `Prevention.Host` capaz de consumir leituras via RabbitMQ, usar inbox durável, processar retries internos e materializar projeções operacionais em PostgreSQL.
-- Um `Backoffice.Api` já ligado ao plano de controlo e à superfície operacional básica.
-- Uma baseline local com RabbitMQ, PostgreSQL, InfluxDB e Grafana via Docker Compose.
-- Uma pipeline de dados já documentada para a área piloto de `Proença-a-Nova`, incluindo cenários `A/B/C`.
+- foco funcional no modulo de prevencao;
+- area piloto Proenca-a-Nova;
+- baseline local demonstravel com `Simulator.Host`, `RabbitMQ`, `Prevention.Host`, `PostgreSQL`, `InfluxDB`, `Grafana` e `Backoffice.Api`;
+- observabilidade inicial com OpenTelemetry e infraestrutura local de apoio;
+- documentacao narrativa, tecnica e arquitetural em evolucao controlada.
 
-## Como devemos ler o repositório
+## Arquitetura atual
 
-- O ponto de entrada global da documentação está em [docs/README.md](docs/README.md).
-- O mapa técnico dos projetos de código está em [src/README.md](src/README.md).
-- O estado atual dos testes está em [tests/README.md](tests/README.md).
-- A documentação do workspace de dados está em [data/README.md](data/README.md).
-- A explicação detalhada da pipeline de dados está em [scripts/data/README.md](scripts/data/README.md).
+- `Simulator.Host`
+  - resolve contexto, cria `simulation_runs` quando o control plane esta ativo e publica leituras simuladas;
+- `RabbitMQ`
+  - barramento de eventos entre simulador e pipeline de prevencao;
+- `Prevention.Host`
+  - valida entrada, materializa inbox duravel, processa retries e quarentena, calcula risco e atualiza projeccoes;
+- `PostgreSQL`
+  - fonte de verdade para `control`, estado duravel da pipeline e projeccoes operacionais;
+- `InfluxDB`
+  - series temporais e telemetria operacional;
+- `Grafana`
+  - observacao local sobre InfluxDB;
+- `Backoffice.Api`
+  - superficie HTTP atual para leitura do plano de controlo e do estado operacional.
 
-## Estrutura principal
+Nao existe ainda, nesta baseline, uma web UI final integrada como parte estabilizada da entrega.
 
-```text
-docs/    documentação transversal e relativamente estável
-infra/   baseline local de infraestrutura e scripts operacionais
-src/     projetos .NET da solução
-tests/   projetos de teste
-data/    artefactos de dados, manifests e saídas de runtime
-scripts/ scripts auxiliares, com destaque para a pipeline de dados
-```
+## Estado atual da implementacao
 
-## Arranque rápido
+### Ja implementado
 
-### 1. Levantar a baseline local
+- plano de controlo em `PostgreSQL`;
+- bootstrap da baseline local do plano de controlo;
+- `Simulator.Host` ligado ao plano de controlo quando `ControlPlaneEnabled = true`;
+- `simulation_runs` persistidas em `control.simulation_runs`;
+- inbox duravel em `pipeline.event_inbox`;
+- rejeicao antecipada de eventos invalidos;
+- retry interno e quarentena persistida;
+- persistencia de leituras aceites, avaliacoes de risco, snapshots e projeccoes em `PostgreSQL`;
+- API de leitura para configuracoes, areas, sensores, cenarios, runs e estado operacional;
+- observabilidade inicial com `OpenTelemetry`, `InfluxDB`, `Grafana`, Doxygen, DocFX e Structurizr DSL.
 
-Para levantar a infraestrutura local, devemos executar:
+### Parcialmente implementado
+
+- semantica completa de `accepted`, `rejected` e `normalized` como superficie de eventos publicada;
+- separacao do simulador em camadas `TruthSnapshot`, `LocalObservation` e `OperationalEvent`;
+- score operacional final e politica final de alertas;
+- agregacao de area mais avancada;
+- modo local mais explicito para reduzir ou desligar InfluxDB;
+- cobertura de testes dos componentes runtime ainda desigual entre modulos.
+
+### Experimental ou dependente de decisao
+
+- `src/NatureProtector.AppHost/` com .NET Aspire;
+- integracao futura com collector de observabilidade;
+- refinamento metodologico dependente dos documentos de referencia do segundo momento de pesquisa.
+
+## Como executar localmente
+
+### Pre-requisitos
+
+- `.NET SDK 9.0`
+- Docker Desktop ou equivalente com `docker compose`
+- PowerShell
+
+### Configuracao local
+
+1. Criar `.env` a partir de `.env.example`.
+2. Confirmar as credenciais locais para `RabbitMQ`, `PostgreSQL`, `InfluxDB` e `Grafana`.
+
+### Levantar a baseline
 
 ```powershell
 .\infra\scripts\up.ps1
 .\infra\scripts\smoke-test.ps1
 ```
 
-Isto sobe RabbitMQ, PostgreSQL, InfluxDB e Grafana. O detalhe desta baseline está em [infra/README.md](infra/README.md).
-
-### 2. Compilar e testar a solução
-
-Para confirmar que a solução está consistente, devemos executar:
-
-```powershell
-.\scripts\dotnet\Use-RepoDotnetEnvironment.ps1
-dotnet build .\NatureProtector.sln --nologo -v minimal -m:1 --configfile NuGet.Config
-dotnet test .\NatureProtector.sln --nologo -v minimal -m:1
-```
-
-O helper acima fixa `APPDATA`, `DOTNET_CLI_HOME` e as caches de `NuGet` dentro do repositório para evitar falsos negativos de restore/build quando o perfil global da maquina não está acessivel.
-
-Neste workspace, `-m:1` fica assumido como caminho padrão para `dotnet build` e `dotnet test`, porque o caminho paralelo pode devolver um falso negativo sem erros de compilação.
-
-### 3. Materializar o plano de controlo
-
-Com a infraestrutura de pé, devemos executar:
+### Materializar o plano de controlo
 
 ```powershell
 .\scripts\postgres\bootstrap-control-plane.ps1
 ```
 
-Isto aplica as migrations e semeia a configuração piloto de `Proença-a-Nova`, incluindo área, grelha, sensores, cenários e artefactos de dataset.
+### Arrancar os hosts
 
-### 4. Executar os hosts atuais
-
-Em terminais separados, podemos executar:
+Em terminais separados:
 
 ```powershell
 .\scripts\dotnet\Use-RepoDotnetEnvironment.ps1
@@ -80,29 +98,68 @@ dotnet run --project .\src\NatureProtector.Prevention.Host
 dotnet run --project .\src\NatureProtector.Simulator.Host
 ```
 
-Antes de arrancar o `Prevention.Host`, devemos garantir que a configuração de `InfluxDb` está resolvida. O perfil local passa agora a aceitar o token a partir da secção `InfluxDb` ou do `.env` do repositório.
+### Validacao minima
 
-O perfil local suportado por defeito e o perfil com plano de controlo ativo:
+- o bootstrap deve terminar sem erros;
+- `Simulator.Host` deve publicar leituras;
+- `Prevention.Host` deve materializar inbox, processamento e projeccoes;
+- `Backoffice.Api` deve responder em `http://localhost:5254`.
 
-- `Simulator.Host` arranca com `ControlPlaneEnabled = true` e usa os sensores bootstrapados em PostgreSQL.
-- `Prevention.Host` arranca com `PipelinePersistenceEnabled = true` e persiste inbox, logs e projeções em PostgreSQL.
+## Como validar que o sistema esta vivo
 
-Se quisermos correr uma demo totalmente standalone, devemos tratar isso como override explícito do operador: desligar `Simulator:ControlPlaneEnabled`, desligar `PreventionHost:PipelinePersistenceEnabled` e fornecer um conjunto local coerente de `AreaId`, `ScenarioId` e `Sensors` para o simulador.
+- `RabbitMQ`
+  - abrir `http://localhost:15672` e confirmar a fila `np.ingestion.readings`;
+- `PostgreSQL`
+  - confirmar que o bootstrap populou `control.*` e que a runtime escreve em `pipeline.*` e `projection.*`;
+- `InfluxDB`
+  - confirmar que o contentor `np-influxdb` esta operacional e que as escritas surgem nos logs e dashboards;
+- `Grafana`
+  - abrir `http://localhost:3000` e validar o datasource local;
+- `Backoffice.Api`
+  - testar `http://localhost:5254/api/control/configurations/active` e `http://localhost:5254/api/control/areas`;
+- logs dos hosts
+  - observar `Simulator.Host`, `Prevention.Host` e `Backoffice.Api` para fluxo nominal, retries e escrita de projeccoes.
 
-## Estado atual, sem maquilhagem
+## Build, testes e coverage
 
-- `NatureProtector.Core` já define a linguagem comum do domínio e é o módulo mais estável do código.
-- `NatureProtector.Shared` concentra hoje contratos de eventos, enums de leitura e topologia RabbitMQ.
-- `NatureProtector.Simulator.Host` já não transporta o legado de ingestão e validação de uma pipeline antiga; está focado em gerar e publicar leituras.
-- `NatureProtector.Prevention.Host` já implementa inbox durável, retries internos e projeções básicas em PostgreSQL, mas continua com espaço para enriquecer classificação de falhas, alertas e normalização.
-- `NatureProtector.Backoffice.Api` já expõe a superfície principal do plano de controlo e o estado operacional básico.
-- PostgreSQL já está integrado na runtime dos projetos `.NET` para plano de controlo, inbox e projeções.
+Para compilar a solucao:
 
-## Documentação existente que foi mantida
+```powershell
+.\scripts\dotnet\Use-RepoDotnetEnvironment.ps1
+dotnet build .\NatureProtector.sln --nologo -v minimal -m:1 --configfile NuGet.Config
+```
 
-Continuam a existir documentos de planeamento que ajudam a perceber a evolução do projeto:
+Para correr todos os testes:
 
+```powershell
+.\scripts\dotnet\Use-RepoDotnetEnvironment.ps1
+dotnet test .\NatureProtector.sln --nologo -v minimal -m:1
+```
+
+Para gerar coverage consolidada:
+
+```powershell
+.\scripts\tests\generate-coverage-report.ps1
+```
+
+O relatorio consolidado fica em `coveragereport_core/index.html`.
+
+## Documentacao relacionada
+
+- [docs/README.md](docs/README.md)
+- [docs/architecture/README.md](docs/architecture/README.md)
+- [docs/architecture/implementation.md](docs/architecture/implementation.md)
+- [docs/architecture/code-and-design-review.md](docs/architecture/code-and-design-review.md)
+- [docs/doxygen/pages/mainpage.md](docs/doxygen/pages/mainpage.md)
+- [docs/docfx/docfx.json](docs/docfx/docfx.json)
+- [docs/structurizr/README.md](docs/structurizr/README.md)
 - [docs/planning/project-completion-roadmap.md](docs/planning/project-completion-roadmap.md)
-- [docs/planning/pipeline-gap-and-dependency-map.md](docs/planning/pipeline-gap-and-dependency-map.md)
-- [data/README.md](data/README.md)
-- [scripts/data/README.md](scripts/data/README.md)
+
+## Limitacoes conhecidas
+
+- o score de risco continua preliminar e nao deve ser lido como modelo metodologico final;
+- o simulador ainda nao separa completamente verdade fisica, observacao local e falha de transporte;
+- a semantica final de `accepted`, `rejected` e `normalized` ainda precisa de consolidacao;
+- `InfluxDB` continua a ser o principal candidato a gargalo local na baseline atual;
+- `AppHost` e a camada Aspire permanecem experimentais e fora do caminho critico da solucao;
+- a consolidacao metodologica continua dependente dos documentos de referencia do segundo momento de pesquisa.

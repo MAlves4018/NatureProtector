@@ -9,6 +9,7 @@ using NatureProtector.Prevention.Host.Projection;
 using NatureProtector.Prevention.Persistence;
 using NatureProtector.Prevention.Risk;
 using NatureProtector.Shared.Configuration;
+using NatureProtector.Shared.Observability;
 
 /*
  * Este ponto de entrada compõe o runtime do fluxo operacional de prevenção.
@@ -27,6 +28,13 @@ using NatureProtector.Shared.Configuration;
  */
 
 var builder = Host.CreateApplicationBuilder(args);
+builder.Logging.AddNatureProtectorActivityTracking();
+builder.Services.AddNatureProtectorOpenTelemetry(
+    builder.Configuration,
+    builder.Environment,
+    PreventionHostTelemetry.ServiceName,
+    [PreventionHostTelemetry.ServiceName],
+    [PreventionHostTelemetry.ServiceName]);
 
 builder.Services.AddSingleton<IValidateOptions<PreventionHostOptions>, PreventionHostOptionsValidator>();
 builder.Services.AddOptions<PreventionHostOptions>()

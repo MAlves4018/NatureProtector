@@ -1,0 +1,137 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="implementation-persistence-map" name="Page-1">
+    <mxGraphModel dx="2216" dy="964" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f4e78;strokeColor=#0b2e4f;fontColor=#ffffff;fontSize=24;fontStyle=1;" value="Mapa das leituras e escritas persistentes na baseline atual" vertex="1">
+          <mxGeometry height="70" width="1680" x="60" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#d6d6d6;fontSize=14;align=left;spacingLeft=10;spacingRight=10;" value="A vista distingue PostgreSQL relacional e InfluxDB temporal, indica quem escreve, em que fase do fluxo escreve e se a escrita pertence ao caminho nominal, a retry, rejeição, quarentena ou projeção." vertex="1">
+          <mxGeometry height="52" width="1680" x="60" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Writers e readers do sistema" vertex="1">
+          <mxGeometry height="500" width="470" x="60" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="ControlPlaneBootstrapper&#xa;bootstrap" vertex="1">
+          <mxGeometry height="65" width="170" x="25" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="PostgresSimulationRunStore&#xa;simulação nominal" vertex="1">
+          <mxGeometry height="65" width="200" x="225" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="PostgresReadingEventInbox&#xa;receção, duplicados, retry, quarentena" vertex="1">
+          <mxGeometry height="95" width="200" x="252" y="168" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="PostgresAcceptedReadingRepository&#xa;PostgresRiskAssessmentRepository&#xa;PostgresAreaRiskSnapshotRepository" vertex="1">
+          <mxGeometry height="105" width="233" x="10" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="15" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="PostgresAreaOperationalProjectionStore&#xa;projeções e alertas" vertex="1">
+          <mxGeometry height="75" width="200" x="29" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="16" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="InfluxWriteService&#xa;telemetria temporal paralela" vertex="1">
+          <mxGeometry height="65" width="180" x="249" y="405" as="geometry" />
+        </mxCell>
+        <mxCell id="17" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" value="PostgresSimulationContextSource&#xa;lê control.*" vertex="1">
+          <mxGeometry height="65" width="170" x="29" y="312" as="geometry" />
+        </mxCell>
+        <mxCell id="18" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" value="PostgresControlPlaneService&#xa;lê control.* e projection.*" vertex="1">
+          <mxGeometry height="65" width="200" x="229" y="312" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Persistência relacional em PostgreSQL" vertex="1">
+          <mxGeometry height="500" width="815" x="585" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="20" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" value="control&#xa;configuration_versions&#xa;dataset_artifacts&#xa;areas / area_contexts&#xa;grid_cells&#xa;sensor_profiles / sensor_networks / sensor_nodes&#xa;scenario_definitions / scenario_dataset_bindings&#xa;simulation_runs" vertex="1">
+          <mxGeometry height="190" width="230" x="20" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="20" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" value="pipeline&#xa;inbox_events&#xa;processing_attempts&#xa;rejected_events&#xa;quarantined_events" vertex="1">
+          <mxGeometry height="155" width="210" x="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="20" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" value="projection&#xa;accepted_reading_logs&#xa;risk_assessment_logs&#xa;area_risk_snapshot_logs&#xa;cell_operational_states&#xa;area_operational_states&#xa;alert_states" vertex="1">
+          <mxGeometry height="200" width="235" x="555" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="24" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" value="Labels nas setas: bootstrap, nominal, rejeição, retry, quarentena, projeção" vertex="1">
+          <mxGeometry height="36" width="521" x="123" y="346" as="geometry" />
+        </mxCell>
+        <mxCell id="30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Persistência temporal paralela" vertex="1">
+          <mxGeometry height="500" width="303" x="1437" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="31" parent="30" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="InfluxDB&#xa;accepted_readings&#xa;risk_assessments&#xa;area_risk_snapshots" vertex="1">
+          <mxGeometry height="140" width="217.94736842105263" x="42.526315789473685" y="248" as="geometry" />
+        </mxCell>
+        <mxCell id="aFi7-LNBypfw0zDKPqxZ-48" edge="1" parent="30" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="31" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="32" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" value="Quem escreve&#xa;ReadingRiskPipeline via InfluxWriteService" vertex="1">
+          <mxGeometry height="70" width="228.57894736842104" x="37.21052631578947" y="113" as="geometry" />
+        </mxCell>
+        <mxCell id="40" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#666666;strokeWidth=2;" target="21" value="bootstrap">
+          <mxGeometry relative="1" x="-0.0015" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="170" y="369" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="41" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#666666;strokeWidth=2;" target="21" value="nominal">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="545" y="318" />
+              <mxPoint x="545" y="351" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="42" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#666666;strokeWidth=2;" target="22" value="nominal + retry + quarentena">
+          <mxGeometry relative="1" x="0.4461" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="417" y="503" />
+              <mxPoint x="990" y="503" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="43" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#666666;strokeWidth=2;" target="23" value="logs nominais">
+          <mxGeometry relative="1" x="0.2626" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="175" y="518" />
+              <mxPoint x="1231" y="518" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="44" edge="1" parent="1" source="15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#666666;strokeWidth=2;" target="23" value="projeções">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="189" y="616" />
+              <mxPoint x="1277" y="616" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="45" edge="1" parent="1" source="16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="31" value="telemetria nominal">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="46" edge="1" parent="1" source="17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#9673a6;strokeWidth=2;" target="21" value="leitura">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="174" y="528" />
+              <mxPoint x="720" y="528" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="48" edge="1" parent="1" source="18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#9673a6;strokeWidth=2;" target="23" value="leitura">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1249" y="561" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="47" edge="1" parent="1" source="18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#9673a6;strokeWidth=2;" target="21" value="leitura">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="720" y="561" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

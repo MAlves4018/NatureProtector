@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NatureProtector.Core\NatureProtector.Core.csproj" />
+    <ProjectReference Include="..\NatureProtector.Shared\NatureProtector.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

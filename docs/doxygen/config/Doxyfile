@@ -1,0 +1,56 @@
+PROJECT_NAME           = NatureProtector
+CREATE_SUBDIRS         = NO
+
+# Path-sensitive settings are injected by scripts/docs/generate-doxygen.ps1
+# into a temporary configuration file with absolute paths.
+FILE_PATTERNS          = *.cs *.md
+RECURSIVE              = YES
+EXCLUDE                =
+EXCLUDE_PATTERNS       = */bin/* */obj/* */TestResults/* */.git/* */.idea/* */.nuget/* */coveragereport_*/* */html/* */xml/* */latex/* */rtf/* */man/* */docbook/*
+MARKDOWN_SUPPORT       = YES
+AUTOLINK_SUPPORT       = YES
+TOC_INCLUDE_HEADINGS   = 3
+
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = NO
+EXTRACT_LOCAL_CLASSES  = YES
+EXTRACT_LOCAL_METHODS  = NO
+
+HIDE_UNDOC_CLASSES     = NO
+HIDE_UNDOC_MEMBERS     = NO
+
+SOURCE_BROWSER         = NO
+INLINE_SOURCES         = NO
+REFERENCED_BY_RELATION = NO
+REFERENCES_RELATION    = NO
+VERBATIM_HEADERS       = NO
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+
+GENERATE_LATEX         = NO
+GENERATE_RTF           = NO
+GENERATE_MAN           = NO
+GENERATE_DOCBOOK       = NO
+
+GENERATE_TREEVIEW      = YES
+SEARCHENGINE           = NO
+
+HAVE_DOT               = NO
+CLASS_GRAPH            = NO
+COLLABORATION_GRAPH    = NO
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
+GRAPHICAL_HIERARCHY    = NO
+DIRECTORY_GRAPH        = NO
+GROUP_GRAPHS           = NO
+
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+DOT_GRAPH_MAX_NODES    = 50
+UML_LOOK               = YES
+TEMPLATE_RELATIONS     = YES

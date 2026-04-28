@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Options;
 using NatureProtector.Prevention.Host.Configuration;
+using NatureProtector.Shared.Observability;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
 
@@ -40,6 +42,13 @@ public sealed class ReadingEventProcessingService(
         InboxProcessingLease lease,
         CancellationToken cancellationToken)
     {
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.process");
+        activity?.SetTag(TelemetryTags.EventId, envelope.EventId);
+        activity?.SetTag(TelemetryTags.CorrelationId, envelope.CorrelationId);
+        activity?.SetTag(TelemetryTags.AreaId, envelope.AreaId);
+        activity?.SetTag(TelemetryTags.SensorId, envelope.Payload.SensorId);
+        activity?.SetTag(TelemetryTags.InboxEventId, lease.InboxEventId);
+        activity?.SetTag(TelemetryTags.AttemptNumber, lease.AttemptNumber);
         var processingStopwatch = Stopwatch.StartNew();
 
         try
@@ -53,6 +62,8 @@ public sealed class ReadingEventProcessingService(
                 cancellationToken);
 
             processingStopwatch.Stop();
+            PreventionHostTelemetry.ProcessedEvents.Add(1);
+            PreventionHostTelemetry.ProcessingDurationMs.Record(processingStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "completed" } });
             logger.LogInformation(
                 "processing_total_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | InboxEventId={InboxEventId} | Attempt={AttemptNumber} | Outcome=completed",
                 processingStopwatch.ElapsedMilliseconds,
@@ -64,6 +75,7 @@ public sealed class ReadingEventProcessingService(
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             processingStopwatch.Stop();
+            PreventionHostTelemetry.ProcessingDurationMs.Record(processingStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "cancelled" } });
             logger.LogWarning(
                 "processing_total_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | InboxEventId={InboxEventId} | Attempt={AttemptNumber} | Outcome=cancelled",
                 processingStopwatch.ElapsedMilliseconds,
@@ -79,12 +91,21 @@ public sealed class ReadingEventProcessingService(
 
             if (ShouldRetry(lease.AttemptNumber, classification, out var retryDelay))
             {
+                using var retryActivity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.retry.schedule");
+                retryActivity?.SetTag(TelemetryTags.ErrorCode, classification.ErrorCode);
+                retryActivity?.SetTag(TelemetryTags.RetryKind, classification.Kind);
                 await readingEventInbox.ScheduleRetryAsync(
                     lease,
                     classification.ErrorCode,
                     ex.Message,
                     retryDelay,
                     cancellationToken);
+                PreventionHostTelemetry.RetryScheduledEvents.Add(1, new TagList
+                {
+                    { TelemetryTags.ErrorCode, classification.ErrorCode },
+                    { TelemetryTags.RetryKind, classification.Kind.ToString() }
+                });
+                PreventionHostTelemetry.ProcessingDurationMs.Record(processingStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "retry_scheduled" } });
 
                 logger.LogWarning(
                     ex,
@@ -116,6 +137,12 @@ public sealed class ReadingEventProcessingService(
                 quarantineCode,
                 quarantineReason,
                 cancellationToken);
+            PreventionHostTelemetry.QuarantinedEvents.Add(1, new TagList
+            {
+                { TelemetryTags.ErrorCode, classification.ErrorCode },
+                { TelemetryTags.QuarantineCode, quarantineCode }
+            });
+            PreventionHostTelemetry.ProcessingDurationMs.Record(processingStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "quarantined" } });
 
             logger.LogError(
                 ex,

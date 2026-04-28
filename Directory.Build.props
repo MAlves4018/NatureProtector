@@ -6,6 +6,8 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile Condition="'$(IsTestProject)' != 'true'">true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
     <RestoreConfigFile Condition="'$(RestoreConfigFile)' == ''">$(MSBuildThisFileDirectory)NuGet.Config</RestoreConfigFile>
     <RestorePackagesPath Condition="'$(RestorePackagesPath)' == ''">$(MSBuildThisFileDirectory).nuget\packages</RestorePackagesPath>
   </PropertyGroup>

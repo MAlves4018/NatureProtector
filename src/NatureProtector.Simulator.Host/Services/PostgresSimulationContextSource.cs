@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NatureProtector.Core.Primitives;
@@ -6,6 +7,7 @@ using NatureProtector.Core.Scenarios;
 using NatureProtector.Core.Sensors;
 using NatureProtector.Infrastructure.Postgres.Control;
 using NatureProtector.Infrastructure.Postgres.Persistence;
+using NatureProtector.Shared.Observability;
 using NatureProtector.Simulator.Host.Configuration;
 
 /*
@@ -39,6 +41,8 @@ public sealed class PostgresSimulationContextSource(
     /// </summary>
     public async Task<SimulationContext> CreateAsync(CancellationToken cancellationToken)
     {
+        using var activity = SimulatorHostTelemetry.ActivitySource.StartActivity("natureprotector.simulator.context.create_from_postgres");
+        var stopwatch = Stopwatch.StartNew();
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         var area = await ResolveAreaAsync(dbContext, cancellationToken);
@@ -80,7 +84,7 @@ public sealed class PostgresSimulationContextSource(
         var intervalSeconds = simulatorOptions.GetProperty("IntervalSeconds").GetInt32();
         var numberOfCycles = simulatorOptions.GetProperty("NumberOfCycles").GetInt32();
 
-        return new SimulationContext(
+        var context = new SimulationContext(
             areaId: area.Id,
             scenario: domainScenario,
             scenarioCode: scenario.Code,
@@ -89,6 +93,17 @@ public sealed class PostgresSimulationContextSource(
             interval: TimeSpan.FromSeconds(intervalSeconds),
             numberOfCycles: numberOfCycles,
             configurationVersionId: scenario.ConfigurationVersionId);
+
+        activity?.SetTag(TelemetryTags.AreaId, context.AreaId);
+        activity?.SetTag(TelemetryTags.ScenarioId, context.Scenario.Id);
+        activity?.SetTag(TelemetryTags.ScenarioCode, context.ScenarioCode);
+        activity?.SetTag(TelemetryTags.ConfigurationVersion, context.ConfigurationVersionId);
+        activity?.SetTag(TelemetryTags.Outcome, "completed");
+        stopwatch.Stop();
+        SimulatorHostTelemetry.ContextCreations.Add(1);
+        SimulatorHostTelemetry.ContextCreationDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds);
+
+        return context;
     }
 
     private async Task<AreaRecord> ResolveAreaAsync(

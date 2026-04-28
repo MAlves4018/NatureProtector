@@ -1,0 +1,187 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="implementation-rejection-retry-quarantine" name="Page-1">
+    <mxGraphModel dx="2691" dy="1170" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f4e78;strokeColor=#0b2e4f;fontColor=#ffffff;fontSize=24;fontStyle=1;" value="Rejeição, retry e quarentena na pipeline atual" vertex="1">
+          <mxGeometry height="70" width="1680" x="60" y="94" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#d6d6d6;fontSize=14;align=left;spacingLeft=10;spacingRight=10;" value="A vista separa rejeição antes da inbox, duplicados, retry agendado, retry retomado e quarentena. Todo o retry é interno ao Prevention.Host e não regressa ao broker." vertex="1">
+          <mxGeometry height="52" width="1680" x="60" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Rejeição antes da inbox" vertex="1">
+          <mxGeometry height="410" width="490" x="60" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff1f0;strokeColor=#b85450;fontSize=13;" value="PreventionWorker.HandleReceivedAsync" vertex="1">
+          <mxGeometry height="65" width="269" x="103" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff1f0;strokeColor=#b85450;fontSize=13;" value="JSON inválido&#xa;StoreRejectedAsync" vertex="1">
+          <mxGeometry height="80" width="127" x="42" y="244" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff1f0;strokeColor=#b85450;fontSize=13;" value="envelope nulo&#xa;RejectBeforeInboxAsync" vertex="1">
+          <mxGeometry height="80" width="149" x="124" y="329" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff1f0;strokeColor=#b85450;fontSize=13;" value="falha de contrato&#xa;RejectBeforeInboxAsync" vertex="1">
+          <mxGeometry height="80" width="147" x="289" y="329" as="geometry" />
+        </mxCell>
+        <mxCell id="15" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff1f0;strokeColor=#b85450;fontSize=13;" value="OperationalState.Invalid&#xa;rejeição pré-inbox" vertex="1">
+          <mxGeometry height="80" width="152" x="300" y="197" as="geometry" />
+        </mxCell>
+        <mxCell id="53" edge="1" parent="10" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;" target="15" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="347" y="156" />
+              <mxPoint x="376" y="156" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Inbox e lógica de duplicados" vertex="1">
+          <mxGeometry height="410" width="410" x="566" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" value="PostgresReadingEventInbox.StoreIncomingAsync" vertex="1">
+          <mxGeometry height="70" width="295" x="55" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="duplicado exato&#xa;ack sem reprocessar" vertex="1">
+          <mxGeometry height="80" width="150" x="25" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff1f0;strokeColor=#b85450;fontSize=13;" value="duplicate_payload_mismatch&#xa;pipeline.rejected_events" vertex="1">
+          <mxGeometry height="80" width="170" x="215" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="24" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" value="novo evento&#xa;lease de processamento" vertex="1">
+          <mxGeometry height="70" width="190" x="110" y="285" as="geometry" />
+        </mxCell>
+        <mxCell id="30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Retry interno ao Prevention.Host" vertex="1">
+          <mxGeometry height="410" width="360" x="996" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="31" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d79b00;fontSize=13;" value="ReadingEventProcessingService.ProcessAsync" vertex="1">
+          <mxGeometry height="70" width="282" x="39" y="41" as="geometry" />
+        </mxCell>
+        <mxCell id="32" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d79b00;fontSize=13;" value="DefaultProcessingFailureClassifier" vertex="1">
+          <mxGeometry height="60" width="210" x="75" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="33" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d79b00;fontSize=13;" value="ScheduleRetryAsync&#xa;status = RetryPending" vertex="1">
+          <mxGeometry height="70" width="210" x="75" y="237" as="geometry" />
+        </mxCell>
+        <mxCell id="34" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d79b00;fontSize=13;" value="InboxRetryWorker.ExecuteAsync&#xa;TryStartDueRetryAsync" vertex="1">
+          <mxGeometry height="70" width="210" x="87" y="335" as="geometry" />
+        </mxCell>
+        <mxCell id="40" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Saídas terminais de erro" vertex="1">
+          <mxGeometry height="410" width="340" x="1398" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="41" parent="40" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff1f0;strokeColor=#b85450;fontSize=13;" value="QuarantineProcessingAsync&#xa;permanent_failure" vertex="1">
+          <mxGeometry height="75" width="230" x="55" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="42" parent="40" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff1f0;strokeColor=#b85450;fontSize=13;" value="QuarantineProcessingAsync&#xa;retries_exhausted" vertex="1">
+          <mxGeometry height="75" width="230" x="55" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="43" parent="40" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff1f0;strokeColor=#b85450;fontSize=13;" value="QuarantineMalformedRetryAsync&#xa;invalid_retry_payload" vertex="1">
+          <mxGeometry height="75" width="230" x="55" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="50" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;" target="12" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="195" y="415" />
+              <mxPoint x="171" y="415" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="51" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;" target="13" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="259" y="467" />
+              <mxPoint x="259" y="467" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="52" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;" target="14" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="324" y="511" />
+              <mxPoint x="399" y="511" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="54" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#666666;strokeWidth=2;" target="21" value="válido">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="390" y="310" />
+              <mxPoint x="390" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="55" edge="1" parent="1" source="21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d6b656;strokeWidth=2;" target="22" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="733" y="368" />
+              <mxPoint x="663" y="368" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="56" edge="1" parent="1" source="21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;" target="23" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="57" edge="1" parent="1" source="24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d79b00;strokeWidth=2;" target="31" value="processar">
+          <mxGeometry relative="1" x="-0.761" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1006" y="545" />
+              <mxPoint x="1006" y="301" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="58" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d79b00;strokeWidth=2;" target="32" value="falha">
+          <mxGeometry relative="1" x="-0.5351" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="59" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d79b00;strokeWidth=2;" target="33" value="retryable">
+          <mxGeometry relative="1" x="-0.5217" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="60" edge="1" parent="1" source="33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d79b00;strokeWidth=2;entryX=0.443;entryY=0.008;entryDx=0;entryDy=0;entryPerimeter=0;" target="34" value="aguardar e retomar">
+          <mxGeometry relative="1" x="0.2178" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="61" edge="1" parent="1" source="34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d79b00;strokeWidth=2;" target="31" value="retry retomado">
+          <mxGeometry relative="1" x="-0.771" y="-3" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1006" y="600" />
+              <mxPoint x="1006" y="301" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="62" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;" target="41" value="permanente">
+          <mxGeometry relative="1" x="-0.6762" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1365" y="387" />
+              <mxPoint x="1365" y="357" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="63" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;" target="42" value="tentativas&amp;nbsp;&lt;div&gt;esgotadas&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.7131" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1365" y="417" />
+              <mxPoint x="1365" y="467" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="64" edge="1" parent="1" source="34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;" target="43" value="payload&amp;nbsp;&lt;div&gt;ilegível&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.6442" y="11" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1323" y="595" />
+              <mxPoint x="1323" y="578" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

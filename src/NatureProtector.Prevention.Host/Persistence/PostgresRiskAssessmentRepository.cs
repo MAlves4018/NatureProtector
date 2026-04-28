@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Risk;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Projection;
+using NatureProtector.Shared.Observability;
 
 namespace NatureProtector.Prevention.Host.Persistence;
 
@@ -37,6 +40,8 @@ public sealed class PostgresRiskAssessmentRepository(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(assessment);
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.postgres.write.risk_assessment");
+        var stopwatch = Stopwatch.StartNew();
 
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -68,6 +73,12 @@ public sealed class PostgresRiskAssessmentRepository(
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        stopwatch.Stop();
+        PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        {
+            { TelemetryTags.Operation, "risk_assessment" },
+            { TelemetryTags.Outcome, "stored" }
+        });
 
         logger.LogDebug(
             "Risk assessment persisted in PostgreSQL | SourceEventId={SourceEventId} | SensorId={SensorId} | RiskLevel={RiskLevel}",
@@ -88,10 +99,10 @@ public sealed class PostgresRiskAssessmentRepository(
         var rows = await dbContext.RiskAssessmentLogs
             .AsNoTracking()
             .Where(entity => entity.AreaId == areaId)
-            .OrderBy(entity => entity.Timestamp)
             .ToListAsync(cancellationToken);
 
         return rows
+            .OrderBy(entity => entity.Timestamp)
             .Select(ToDomainAssessment)
             .ToArray();
     }

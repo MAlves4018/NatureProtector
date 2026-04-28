@@ -1,0 +1,16 @@
+- name: Home
+  href: index.md
+- name: Repository Overview
+  href: ../../README.md
+- name: Architecture
+  href: ../architecture/README.md
+- name: Planning
+  href: ../planning/project-completion-roadmap.md
+- name: Data
+  href: ../../data/README.md
+- name: Data Scripts
+  href: ../../scripts/data/README.md
+- name: API Reference
+  href: api/toc.yml
+- name: OpenAPI Future
+  href: openapi-future.md

@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Options;
 using NatureProtector.Core.Scenarios;
+using NatureProtector.Shared.Observability;
 using NatureProtector.Simulator.Host.Configuration;
 using NatureProtector.Simulator.Host.Publishing;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 /*
  * Este hosted service orquestra o ciclo de vida completo de uma execução de
@@ -44,6 +47,8 @@ public sealed class SimulationRunner(
     /// </param>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        using var runActivity = SimulatorHostTelemetry.ActivitySource.StartActivity("natureprotector.simulator.run");
+        var runStopwatch = Stopwatch.StartNew();
         logger.LogInformation(
             "Simulation runner starting at {Time}.",
             DateTimeOffset.UtcNow);
@@ -60,6 +65,9 @@ public sealed class SimulationRunner(
             seed,
             context.NumberOfCycles,
             context.Interval.TotalSeconds);
+        runActivity?.SetTag(TelemetryTags.AreaId, context.AreaId);
+        runActivity?.SetTag(TelemetryTags.ScenarioId, context.Scenario.Id);
+        runActivity?.SetTag(TelemetryTags.ScenarioCode, context.ScenarioCode);
 
         // O registo é persistido logo em Ready e depois em Running para tornar
         // explícita a transição de estado observável da execução.
@@ -69,6 +77,8 @@ public sealed class SimulationRunner(
         var actualStartedAt = DateTimeOffset.UtcNow;
         run.Start(actualStartedAt);
         await simulationRunStore.UpsertAsync(context, run, stoppingToken);
+        SimulatorHostTelemetry.SimulationRuns.Add(1, new TagList { { TelemetryTags.Outcome, "started" } });
+        runActivity?.SetTag(TelemetryTags.SimulationRunId, run.Id);
 
         logger.LogInformation(
             "Simulation run started | SimulationRunId={SimulationRunId} | StartedAt={StartedAt} | LogicalStartTimestamp={LogicalStartTimestamp}",
@@ -91,17 +101,26 @@ public sealed class SimulationRunner(
                     context.NumberOfCycles,
                     eventTime);
 
+                using var cycleActivity = SimulatorHostTelemetry.ActivitySource.StartActivity("natureprotector.simulator.cycle");
+                cycleActivity?.SetTag(TelemetryTags.SimulationRunId, run.Id);
+                cycleActivity?.SetTag(TelemetryTags.AreaId, context.AreaId);
+                cycleActivity?.SetTag(TelemetryTags.ScenarioId, context.Scenario.Id);
                 var envelopes = readingGenerationService.GenerateBatch(
                     context,
                     run.Id,
                     cycleIndex,
                     eventTime,
                     random);
+                var publishStopwatch = Stopwatch.StartNew();
+                SimulatorHostTelemetry.PublishBatchSize.Record(envelopes.Count);
 
                 foreach (var envelope in envelopes)
                 {
                     await readingPublisher.PublishAsync(envelope, stoppingToken);
                 }
+
+                publishStopwatch.Stop();
+                SimulatorHostTelemetry.PublishDurationMs.Record(publishStopwatch.Elapsed.TotalMilliseconds);
 
                 if (cycleIndex < context.NumberOfCycles - 1)
                 {
@@ -115,6 +134,10 @@ public sealed class SimulationRunner(
 
             run.Complete(actualCompletedAt);
             await simulationRunStore.UpsertAsync(context, run, stoppingToken);
+            runStopwatch.Stop();
+            runActivity?.SetTag(TelemetryTags.Outcome, "completed");
+            SimulatorHostTelemetry.SimulationRuns.Add(1, new TagList { { TelemetryTags.Outcome, "completed" } });
+            SimulatorHostTelemetry.SimulationRunDurationMs.Record(runStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "completed" } });
 
             logger.LogInformation(
                 "Simulation completed successfully | SimulationRunId={SimulationRunId} | CompletedAt={CompletedAt} | LogicalCompletedAt={LogicalCompletedAt}.",
@@ -130,6 +153,11 @@ public sealed class SimulationRunner(
                 await simulationRunStore.UpsertAsync(context, run, CancellationToken.None);
             }
 
+            runStopwatch.Stop();
+            runActivity?.SetTag(TelemetryTags.Outcome, "cancelled");
+            SimulatorHostTelemetry.SimulationRuns.Add(1, new TagList { { TelemetryTags.Outcome, "cancelled" } });
+            SimulatorHostTelemetry.SimulationRunDurationMs.Record(runStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "cancelled" } });
+
             logger.LogInformation(
                 "Simulation runner cancellation requested. Execution is stopping gracefully.");
         }
@@ -140,6 +168,11 @@ public sealed class SimulationRunner(
                 run.Fail(DateTimeOffset.UtcNow);
                 await simulationRunStore.UpsertAsync(context, run, CancellationToken.None);
             }
+
+            runStopwatch.Stop();
+            runActivity?.SetTag(TelemetryTags.Outcome, "failed");
+            SimulatorHostTelemetry.SimulationRuns.Add(1, new TagList { { TelemetryTags.Outcome, "failed" } });
+            SimulatorHostTelemetry.SimulationRunDurationMs.Record(runStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "failed" } });
 
             throw;
         }

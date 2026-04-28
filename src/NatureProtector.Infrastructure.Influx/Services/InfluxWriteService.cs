@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using InfluxDB.Client;
 using InfluxDB.Client.Api.Domain;
 using InfluxDB.Client.Writes;
@@ -9,6 +10,7 @@ using NatureProtector.Core.Risk;
 using NatureProtector.Infrastructure.Influx.Configuration;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
+using NatureProtector.Shared.Observability;
 
 namespace NatureProtector.Infrastructure.Influx.Services;
 
@@ -48,6 +50,7 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(envelope);
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.influx.write.accepted_reading");
 
         var point = PointData
             .Measurement("accepted_readings")
@@ -69,6 +72,11 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
             .WritePointAsync(point, _options.Bucket, _options.Organization, cancellationToken);
 
         stopwatch.Stop();
+        PreventionHostTelemetry.InfluxWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        {
+            { TelemetryTags.Measurement, "accepted_readings" },
+            { TelemetryTags.Outcome, "stored" }
+        });
 
         _logger.LogInformation(
             "influx_write_ms={ElapsedMs} | Measurement={Measurement} | AreaId={AreaId} | SensorId={SensorId}",
@@ -85,6 +93,7 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(assessment);
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.influx.write.risk_assessment");
 
         var point = PointData
             .Measurement("risk_assessments")
@@ -106,6 +115,11 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
             .WritePointAsync(point, _options.Bucket, _options.Organization, cancellationToken);
 
         stopwatch.Stop();
+        PreventionHostTelemetry.InfluxWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        {
+            { TelemetryTags.Measurement, "risk_assessments" },
+            { TelemetryTags.Outcome, "stored" }
+        });
 
         _logger.LogInformation(
             "influx_write_ms={ElapsedMs} | Measurement={Measurement} | AreaId={AreaId} | SensorId={SensorId}",
@@ -122,6 +136,7 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.influx.write.area_risk_snapshot");
 
         var severity = SeverityExtensions.FromRiskLevel(snapshot.AggregateRiskLevel);
 
@@ -141,6 +156,11 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
             .WritePointAsync(point, _options.Bucket, _options.Organization, cancellationToken);
 
         stopwatch.Stop();
+        PreventionHostTelemetry.InfluxWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        {
+            { TelemetryTags.Measurement, "area_risk_snapshots" },
+            { TelemetryTags.Outcome, "stored" }
+        });
 
         _logger.LogInformation(
             "influx_write_ms={ElapsedMs} | Measurement={Measurement} | AreaId={AreaId} | AssessmentCount={AssessmentCount}",

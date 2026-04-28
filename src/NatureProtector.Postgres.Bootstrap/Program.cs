@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NatureProtector.Infrastructure.Postgres.Bootstrap;
 using NatureProtector.Infrastructure.Postgres.Configuration;
 using NatureProtector.Infrastructure.Postgres.Persistence;
+using NatureProtector.Shared.Observability;
 
 /*
  * Este ponto de entrada executa o bootstrap da baseline PostgreSQL do projeto.
@@ -12,6 +13,8 @@ using NatureProtector.Infrastructure.Postgres.Persistence;
  * - O programa limita-se a resolver a ligação, construir o DbContext e delegar
  *   a importação para o bootstrapper dedicado.
  */
+
+using var bootstrapActivity = PostgresBootstrapTelemetry.ActivitySource.StartActivity("natureprotector.bootstrap.program");
 
 var repoRoot = ResolveRepoRoot(AppContext.BaseDirectory);
 var settings = PostgresConnectionSettingsLoader.LoadFromEnvironmentOrDotEnv(repoRoot);

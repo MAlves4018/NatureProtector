@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +8,7 @@ using NatureProtector.Core.Scenarios;
 using NatureProtector.Core.Sensors;
 using NatureProtector.Infrastructure.Postgres.Control;
 using NatureProtector.Infrastructure.Postgres.Persistence;
+using NatureProtector.Shared.Observability;
 
 namespace NatureProtector.Infrastructure.Postgres.Bootstrap;
 
@@ -46,32 +49,55 @@ public sealed class ControlPlaneBootstrapper
     /// </summary>
     public async Task<ControlPlaneBootstrapSummary> BootstrapPilotAreaAsync(CancellationToken cancellationToken = default)
     {
-        await EnsureSchemaAsync(cancellationToken);
+        using var activity = PostgresBootstrapTelemetry.ActivitySource.StartActivity("natureprotector.bootstrap.run");
+        var stopwatch = Stopwatch.StartNew();
+        PostgresBootstrapTelemetry.BootstrapRuns.Add(1);
 
-        var configuration = await UpsertConfigurationVersionAsync(cancellationToken);
+        await ExecuteStepAsync("ensure_schema", _ => EnsureSchemaAsync(cancellationToken), cancellationToken);
+
+        var configuration = await ExecuteStepAsync("upsert_configuration_version", _ => UpsertConfigurationVersionAsync(cancellationToken), cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         var areaId = ResolveAreaGuid();
-        var artifactsByPath = await UpsertDatasetArtifactsAsync(cancellationToken);
+        var artifactsByPath = await ExecuteStepAsync("upsert_dataset_artifacts", _ => UpsertDatasetArtifactsAsync(cancellationToken), cancellationToken, artifactsByPath => artifactsByPath.Count);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var area = await UpsertPilotAreaAsync(configuration.Id, areaId, cancellationToken);
+        var area = await ExecuteStepAsync("upsert_pilot_area", _ => UpsertPilotAreaAsync(configuration.Id, areaId, cancellationToken), cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var gridCellCount = await UpsertGridCellsAsync(configuration.Id, area.Id, cancellationToken);
+        var gridCellCount = await ExecuteStepAsync("upsert_grid_cells", _ => UpsertGridCellsAsync(configuration.Id, area.Id, cancellationToken), cancellationToken, count => count);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var sensorProfileCount = await UpsertSensorProfilesAsync(configuration.Id, cancellationToken);
+        var sensorProfileCount = await ExecuteStepAsync("upsert_sensor_profiles", _ => UpsertSensorProfilesAsync(configuration.Id, cancellationToken), cancellationToken, count => count);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var sensorNodeCount = await UpsertSensorNetworkAndNodesAsync(configuration.Id, area.Id, cancellationToken);
+        var sensorNodeCount = await ExecuteStepAsync("upsert_sensor_network_and_nodes", _ => UpsertSensorNetworkAndNodesAsync(configuration.Id, area.Id, cancellationToken), cancellationToken, count => count);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var scenarioCount = await UpsertScenariosAsync(configuration.Id, area.Id, artifactsByPath, cancellationToken);
+        var scenarioCount = await ExecuteStepAsync("upsert_scenarios", _ => UpsertScenariosAsync(configuration.Id, area.Id, artifactsByPath, cancellationToken), cancellationToken, count => count);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         var bindingCount = await _dbContext.ScenarioDatasetBindings.CountAsync(cancellationToken);
         var datasetArtifactCount = await _dbContext.DatasetArtifacts.CountAsync(cancellationToken);
+        activity?.SetTag(TelemetryTags.ConfigurationVersion, configuration.VersionNumber);
+        activity?.SetTag(TelemetryTags.AreaId, area.Id);
+        activity?.SetTag(TelemetryTags.Outcome, "completed");
+        PostgresBootstrapTelemetry.UpsertRows.Record(bindingCount, new TagList
+        {
+            { TelemetryTags.Host, PostgresBootstrapTelemetry.ServiceName },
+            { TelemetryTags.Operation, "count_scenario_dataset_bindings" }
+        });
+        PostgresBootstrapTelemetry.UpsertRows.Record(datasetArtifactCount, new TagList
+        {
+            { TelemetryTags.Host, PostgresBootstrapTelemetry.ServiceName },
+            { TelemetryTags.Operation, "count_dataset_artifacts" }
+        });
+        stopwatch.Stop();
+        PostgresBootstrapTelemetry.BootstrapDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        {
+            { TelemetryTags.Host, PostgresBootstrapTelemetry.ServiceName },
+            { TelemetryTags.Outcome, "completed" }
+        });
 
         return new ControlPlaneBootstrapSummary(
             configuration.VersionNumber,
@@ -83,6 +109,65 @@ public sealed class ControlPlaneBootstrapper
             scenarioCount,
             datasetArtifactCount,
             bindingCount);
+    }
+
+    private async Task ExecuteStepAsync(string operationName, Func<Activity?, Task> action, CancellationToken cancellationToken)
+    {
+        using var activity = PostgresBootstrapTelemetry.ActivitySource.StartActivity($"natureprotector.bootstrap.{operationName}");
+        var stopwatch = Stopwatch.StartNew();
+        activity?.SetTag(TelemetryTags.Operation, operationName);
+
+        await action(activity);
+
+        stopwatch.Stop();
+        PostgresBootstrapTelemetry.UpsertOperations.Add(1, new TagList
+        {
+            { TelemetryTags.Host, PostgresBootstrapTelemetry.ServiceName },
+            { TelemetryTags.Operation, operationName }
+        });
+        PostgresBootstrapTelemetry.UpsertDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        {
+            { TelemetryTags.Host, PostgresBootstrapTelemetry.ServiceName },
+            { TelemetryTags.Operation, operationName },
+            { TelemetryTags.Outcome, "completed" }
+        });
+    }
+
+    private async Task<T> ExecuteStepAsync<T>(
+        string operationName,
+        Func<Activity?, Task<T>> action,
+        CancellationToken cancellationToken,
+        Func<T, long>? rowCountSelector = null)
+    {
+        using var activity = PostgresBootstrapTelemetry.ActivitySource.StartActivity($"natureprotector.bootstrap.{operationName}");
+        var stopwatch = Stopwatch.StartNew();
+        activity?.SetTag(TelemetryTags.Operation, operationName);
+
+        var result = await action(activity);
+
+        stopwatch.Stop();
+        PostgresBootstrapTelemetry.UpsertOperations.Add(1, new TagList
+        {
+            { TelemetryTags.Host, PostgresBootstrapTelemetry.ServiceName },
+            { TelemetryTags.Operation, operationName }
+        });
+        PostgresBootstrapTelemetry.UpsertDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        {
+            { TelemetryTags.Host, PostgresBootstrapTelemetry.ServiceName },
+            { TelemetryTags.Operation, operationName },
+            { TelemetryTags.Outcome, "completed" }
+        });
+
+        if (rowCountSelector is not null)
+        {
+            PostgresBootstrapTelemetry.UpsertRows.Record(rowCountSelector(result), new TagList
+            {
+                { TelemetryTags.Host, PostgresBootstrapTelemetry.ServiceName },
+                { TelemetryTags.Operation, operationName }
+            });
+        }
+
+        return result;
     }
 
     /// <summary>

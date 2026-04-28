@@ -176,7 +176,7 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
 
             return Task.FromResult<IReadOnlyList<AreaSummaryResponse>>(
             [
-                new AreaSummaryResponse("proenca-a-nova", "Proenca-a-Nova", "PT", 1, 2, 2, 2)
+                new AreaSummaryResponse(Guid.Parse("00000000-0000-0000-0000-000000000001"),"proenca-a-nova", "Proenca-a-Nova", "PT", 1, 2, 2, 2)
             ]);
         }
 

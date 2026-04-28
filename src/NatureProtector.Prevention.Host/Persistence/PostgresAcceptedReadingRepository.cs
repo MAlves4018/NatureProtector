@@ -1,9 +1,12 @@
 using System.Text;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Microsoft.EntityFrameworkCore;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Projection;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
+using NatureProtector.Shared.Observability;
 
 namespace NatureProtector.Prevention.Host.Persistence;
 
@@ -35,6 +38,8 @@ public sealed class PostgresAcceptedReadingRepository(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(envelope);
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.postgres.write.accepted_reading");
+        var stopwatch = Stopwatch.StartNew();
 
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -67,6 +72,12 @@ public sealed class PostgresAcceptedReadingRepository(
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        stopwatch.Stop();
+        PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        {
+            { TelemetryTags.Operation, "accepted_reading" },
+            { TelemetryTags.Outcome, "stored" }
+        });
 
         logger.LogDebug(
             "Accepted reading persisted in PostgreSQL | EventId={EventId} | SensorId={SensorId}",
@@ -84,10 +95,10 @@ public sealed class PostgresAcceptedReadingRepository(
 
         var rows = await dbContext.AcceptedReadingLogs
             .AsNoTracking()
-            .OrderBy(entity => entity.EventTime)
             .ToListAsync(cancellationToken);
 
         return rows
+            .OrderBy(entity => entity.EventTime)
             .Select(entity => JsonEventSerializer.Deserialize<EventEnvelope<SensorReadingProducedPayload>>(Encoding.UTF8.GetBytes(entity.EnvelopeJson)))
             .Where(entity => entity is not null)
             .Cast<EventEnvelope<SensorReadingProducedPayload>>()

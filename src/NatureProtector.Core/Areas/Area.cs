@@ -68,6 +68,9 @@ public sealed class Area
     /// <param name="riskCells">
     /// Optional initial collection of risk cells associated with the area.
     /// </param>
+    /// <param name="gridCells">
+    /// Optional initial collection of territorial grid cells associated with the area.
+    /// </param>
     public Area(
         Guid id,
         string name,

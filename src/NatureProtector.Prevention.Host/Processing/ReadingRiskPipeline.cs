@@ -7,6 +7,7 @@ using NatureProtector.Prevention.Persistence;
 using NatureProtector.Prevention.Risk;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
+using NatureProtector.Shared.Observability;
 
 namespace NatureProtector.Prevention.Host.Processing;
 
@@ -47,6 +48,13 @@ public sealed class ReadingRiskPipeline(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(envelope);
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.pipeline.process");
+        activity?.SetTag(TelemetryTags.EventId, envelope.EventId);
+        activity?.SetTag(TelemetryTags.CorrelationId, envelope.CorrelationId);
+        activity?.SetTag(TelemetryTags.AreaId, envelope.AreaId);
+        activity?.SetTag(TelemetryTags.SensorId, envelope.Payload.SensorId);
+        activity?.SetTag(TelemetryTags.SensorName, envelope.Payload.SensorName);
+        activity?.SetTag(TelemetryTags.MetricType, envelope.Payload.MetricType);
 
         var pipelineStopwatch = Stopwatch.StartNew();
 

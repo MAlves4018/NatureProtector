@@ -1,0 +1,153 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using NatureProtector.Core.Risk;
+using NatureProtector.Infrastructure.Postgres.Projection;
+using NatureProtector.Prevention.Host.Projection;
+using NatureProtector.Prevention.Host.Tests.TestInfrastructure;
+
+namespace NatureProtector.Prevention.Host.Tests.Projection;
+
+public sealed class PostgresAreaOperationalProjectionStoreTests
+{
+    [Fact]
+    public async Task SaveCellAsync_KnownSensor_CreatesCellProjection()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var store = CreateStore(scope);
+        var assessment = CreateAssessment(
+            Guid.Parse("10000000-0000-0000-0000-000000000001"),
+            new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+            0.72,
+            "High risk due to temperature");
+
+        await store.SaveCellAsync(seed.AreaId, seed.SensorId, assessment, CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var row = Assert.Single(dbContext.CellOperationalStates);
+        Assert.Equal(seed.AreaId, row.AreaId);
+        Assert.Equal(seed.GridCellId, row.GridCellId);
+        Assert.Equal(seed.SensorId, row.SensorId);
+        Assert.Equal(assessment.Id, row.LatestAssessmentId);
+        Assert.Equal("VeryHigh", row.RiskLevel);
+        Assert.Equal("Critical", row.Severity);
+    }
+
+    [Fact]
+    public async Task SaveCellAsync_SameCellUpdated_ReplacesPreviousOperationalState()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var store = CreateStore(scope);
+
+        await store.SaveCellAsync(
+            seed.AreaId,
+            seed.SensorId,
+            CreateAssessment(Guid.NewGuid(), new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero), 0.30, "First"),
+            CancellationToken.None);
+
+        var updatedAssessment = CreateAssessment(
+            Guid.NewGuid(),
+            new DateTimeOffset(2026, 4, 10, 9, 0, 0, TimeSpan.Zero),
+            0.90,
+            "Updated");
+
+        await store.SaveCellAsync(seed.AreaId, seed.SensorId, updatedAssessment, CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var row = Assert.Single(dbContext.CellOperationalStates);
+        Assert.Equal(updatedAssessment.Id, row.LatestAssessmentId);
+        Assert.Equal(0.90, row.RiskScore);
+        Assert.Equal("Extreme", row.RiskLevel);
+        Assert.Equal("Emergency", row.Severity);
+    }
+
+    [Fact]
+    public async Task SaveCellAsync_SensorMissing_DoesNotCreateProjection()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var store = CreateStore(scope);
+
+        await store.SaveCellAsync(
+            seed.AreaId,
+            Guid.NewGuid(),
+            CreateAssessment(Guid.NewGuid(), new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero), 0.70, "Skipped"),
+            CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        Assert.Empty(dbContext.CellOperationalStates);
+    }
+
+    [Fact]
+    public async Task SaveAsync_HighRisk_CreatesAreaProjectionAndOpenAlert()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var store = CreateStore(scope);
+        var snapshot = new AreaRiskSnapshot(
+            Guid.Parse("20000000-0000-0000-0000-000000000001"),
+            new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+            0.85,
+            "Area remains under elevated risk.");
+
+        await store.SaveAsync(seed.AreaId, snapshot, 6, CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var areaState = Assert.Single(dbContext.AreaOperationalStates);
+        Assert.Equal(seed.AreaId, areaState.AreaId);
+        Assert.Equal(seed.ConfigurationVersionId, areaState.ConfigurationVersionId);
+        Assert.Equal("VeryHigh", areaState.AggregateRiskLevel);
+        Assert.Equal(6, areaState.AssessmentCount);
+
+        var alert = Assert.Single(dbContext.AlertStates);
+        Assert.Equal("area-risk-high", alert.AlertCode);
+        Assert.Equal(OperationalAlertStatus.Open.ToString(), alert.Status);
+        Assert.Equal("Critical", alert.Severity);
+    }
+
+    [Fact]
+    public async Task SaveAsync_RiskDrops_ResolvesExistingAlertAndUpdatesProjection()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var store = CreateStore(scope);
+
+        await store.SaveAsync(
+            seed.AreaId,
+            new AreaRiskSnapshot(Guid.NewGuid(), new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero), 0.85, "High"),
+            6,
+            CancellationToken.None);
+
+        await store.SaveAsync(
+            seed.AreaId,
+            new AreaRiskSnapshot(Guid.NewGuid(), new DateTimeOffset(2026, 4, 10, 9, 0, 0, TimeSpan.Zero), 0.20, "Improved"),
+            3,
+            CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var areaState = Assert.Single(dbContext.AreaOperationalStates);
+        Assert.Equal("Low", areaState.AggregateRiskLevel);
+        Assert.Equal("Low", areaState.Severity);
+        Assert.Equal(3, areaState.AssessmentCount);
+
+        var alert = Assert.Single(dbContext.AlertStates);
+        Assert.Equal(OperationalAlertStatus.Resolved.ToString(), alert.Status);
+        Assert.NotNull(alert.ResolvedAt);
+    }
+
+    private static PostgresAreaOperationalProjectionStore CreateStore(SqliteControlDbContextScope scope)
+    {
+        return new PostgresAreaOperationalProjectionStore(
+            scope.Factory,
+            NullLogger<PostgresAreaOperationalProjectionStore>.Instance);
+    }
+
+    private static RiskAssessment CreateAssessment(
+        Guid id,
+        DateTimeOffset timestamp,
+        double score,
+        string summary)
+    {
+        return new RiskAssessment(id, timestamp, score, summary);
+    }
+}

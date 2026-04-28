@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using NatureProtector.Infrastructure.Postgres.DependencyInjection;
 using NatureProtector.Shared.Configuration;
+using NatureProtector.Shared.Observability;
 using NatureProtector.Simulator.Host.Configuration;
 using NatureProtector.Simulator.Host.Publishing;
 using NatureProtector.Simulator.Host.Services;
@@ -23,6 +24,13 @@ using NatureProtector.Simulator.Host.Services;
  */
 
 var builder = Host.CreateApplicationBuilder(args);
+builder.Logging.AddNatureProtectorActivityTracking();
+builder.Services.AddNatureProtectorOpenTelemetry(
+    builder.Configuration,
+    builder.Environment,
+    SimulatorHostTelemetry.ServiceName,
+    [SimulatorHostTelemetry.ServiceName],
+    [SimulatorHostTelemetry.ServiceName]);
 
 builder.Services.Configure<RabbitMqOptions>(
     builder.Configuration.GetSection(RabbitMqOptions.SectionName));

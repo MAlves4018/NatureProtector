@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Core.Scenarios;
 using NatureProtector.Infrastructure.Postgres.Persistence;
+using NatureProtector.Shared.Observability;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace NatureProtector.Backoffice.Api.ControlPlane.Services;
 
@@ -50,9 +53,10 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
     /// </summary>
     public async Task<IReadOnlyList<ConfigurationVersionResponse>> ListConfigurationsAsync(CancellationToken cancellationToken)
     {
+        using var activity = BackofficeApiTelemetry.ActivitySource.StartActivity("natureprotector.backoffice.list_configurations");
+        var stopwatch = Stopwatch.StartNew();
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        return await dbContext.ConfigurationVersions
+        var result = await dbContext.ConfigurationVersions
             .AsNoTracking()
             .OrderByDescending(entity => entity.VersionNumber)
             .Select(entity => new ConfigurationVersionResponse(
@@ -67,6 +71,10 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
                 dbContext.ScenarioDefinitions.Count(scenario => scenario.ConfigurationVersionId == entity.Id),
                 dbContext.SimulationRuns.Count(run => run.ConfigurationVersionId == entity.Id)))
             .ToListAsync(cancellationToken);
+        stopwatch.Stop();
+        BackofficeApiTelemetry.Requests.Add(1, new TagList { { TelemetryTags.Operation, "list_configurations" } });
+        BackofficeApiTelemetry.QueryDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Operation, "list_configurations" } });
+        return result;
     }
 
     /// <summary>
@@ -74,14 +82,20 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
     /// </summary>
     public async Task<ConfigurationVersionResponse?> GetActiveConfigurationAsync(CancellationToken cancellationToken)
     {
+        using var activity = BackofficeApiTelemetry.ActivitySource.StartActivity("natureprotector.backoffice.get_active_configuration");
+        var stopwatch = Stopwatch.StartNew();
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        return await ProjectConfigurationAsync(
+        var result = await ProjectConfigurationAsync(
             dbContext,
             dbContext.ConfigurationVersions
                 .AsNoTracking()
                 .Where(entity => entity.IsActive)
                 .OrderByDescending(entity => entity.VersionNumber),
             cancellationToken);
+        stopwatch.Stop();
+        BackofficeApiTelemetry.Requests.Add(1, new TagList { { TelemetryTags.Operation, "get_active_configuration" } });
+        BackofficeApiTelemetry.QueryDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Operation, "get_active_configuration" } });
+        return result;
     }
 
     /// <summary>
@@ -89,6 +103,8 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
     /// </summary>
     public async Task<ConfigurationVersionResponse?> ActivateConfigurationAsync(int versionNumber, CancellationToken cancellationToken)
     {
+        using var activity = BackofficeApiTelemetry.ActivitySource.StartActivity("natureprotector.backoffice.activate_configuration");
+        var stopwatch = Stopwatch.StartNew();
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         var target = await dbContext.ConfigurationVersions
@@ -108,12 +124,16 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return await ProjectConfigurationAsync(
+        var result = await ProjectConfigurationAsync(
             dbContext,
             dbContext.ConfigurationVersions
                 .AsNoTracking()
                 .Where(entity => entity.Id == target.Id),
             cancellationToken);
+        stopwatch.Stop();
+        BackofficeApiTelemetry.Requests.Add(1, new TagList { { TelemetryTags.Operation, "activate_configuration" } });
+        BackofficeApiTelemetry.QueryDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Operation, "activate_configuration" } });
+        return result;
     }
 
     /// <summary>
@@ -134,7 +154,7 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             .Where(entity => entity.ConfigurationVersion!.VersionNumber == resolvedConfigurationVersion.Value)
             .OrderBy(entity => entity.Name)
             .Select(entity => new AreaSummaryResponse(
-                entity.Id,
+		        entity.Id,
                 entity.Code,
                 entity.Name,
                 entity.CountryCode,

@@ -82,6 +82,12 @@ public sealed class SimulationContext
     /// <param name="numberOfCycles">
     /// Number of cycles to execute.
     /// </param>
+    /// <param name="configurationVersionId">
+    /// Optional control-plane configuration version that produced this context.
+    /// </param>
+    /// <param name="scenarioCode">
+    /// Optional control-plane scenario code that produced this context.
+    /// </param>
     public SimulationContext(
         Guid areaId,
         Scenario scenario,

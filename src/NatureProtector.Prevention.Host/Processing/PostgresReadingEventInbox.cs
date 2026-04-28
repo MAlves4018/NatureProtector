@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Metrics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Pipeline;
+using NatureProtector.Shared.Observability;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
 
@@ -46,6 +48,11 @@ public sealed class PostgresReadingEventInbox(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(envelope);
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.inbox.store");
+        activity?.SetTag(TelemetryTags.EventId, envelope.EventId);
+        activity?.SetTag(TelemetryTags.CorrelationId, envelope.CorrelationId);
+        activity?.SetTag(TelemetryTags.AreaId, envelope.AreaId);
+        activity?.SetTag(TelemetryTags.Stage, stage);
 
         var storeIncomingStopwatch = Stopwatch.StartNew();
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -83,6 +90,7 @@ public sealed class PostgresReadingEventInbox(
                 envelope.CorrelationId,
                 existing.Id,
                 existing.Status);
+            PreventionHostTelemetry.InboxStoreDurationMs.Record(storeIncomingStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "duplicate" } });
 
             return new InboxStoreResult(
                 existing.Id,
@@ -135,6 +143,7 @@ public sealed class PostgresReadingEventInbox(
             envelope.CorrelationId,
             inboxEventId,
             attemptNumber);
+        PreventionHostTelemetry.InboxStoreDurationMs.Record(storeIncomingStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "stored" } });
 
         return new InboxStoreResult(
             inboxEventId,
@@ -208,6 +217,10 @@ public sealed class PostgresReadingEventInbox(
         TimeSpan retryDelay,
         CancellationToken cancellationToken)
     {
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.inbox.retry.schedule");
+        activity?.SetTag(TelemetryTags.InboxEventId, lease.InboxEventId);
+        activity?.SetTag(TelemetryTags.AttemptNumber, lease.AttemptNumber);
+        activity?.SetTag(TelemetryTags.ErrorCode, errorCode);
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var now = DateTimeOffset.UtcNow;
 
@@ -320,6 +333,11 @@ public sealed class PostgresReadingEventInbox(
         string quarantineReason,
         CancellationToken cancellationToken)
     {
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.inbox.quarantine");
+        activity?.SetTag(TelemetryTags.InboxEventId, lease.InboxEventId);
+        activity?.SetTag(TelemetryTags.AttemptNumber, lease.AttemptNumber);
+        activity?.SetTag(TelemetryTags.ErrorCode, errorCode);
+        activity?.SetTag(TelemetryTags.QuarantineCode, quarantineCode);
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var now = DateTimeOffset.UtcNow;
 

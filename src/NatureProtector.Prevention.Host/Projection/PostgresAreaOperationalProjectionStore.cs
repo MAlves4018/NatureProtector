@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Risk;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Projection;
+using NatureProtector.Shared.Observability;
 
 namespace NatureProtector.Prevention.Host.Projection;
 
@@ -35,6 +38,8 @@ public sealed class PostgresAreaOperationalProjectionStore(
         RiskAssessment assessment,
         CancellationToken cancellationToken)
     {
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.postgres.write.cell_projection");
+        var stopwatch = Stopwatch.StartNew();
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         var sensorNode = await dbContext.SensorNodes
@@ -87,6 +92,12 @@ public sealed class PostgresAreaOperationalProjectionStore(
         existingState.UpdatedAt = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        stopwatch.Stop();
+        PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        {
+            { TelemetryTags.Operation, "cell_projection" },
+            { TelemetryTags.Outcome, "stored" }
+        });
     }
 
     /// <summary>
@@ -99,6 +110,8 @@ public sealed class PostgresAreaOperationalProjectionStore(
         int assessmentCount,
         CancellationToken cancellationToken)
     {
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.postgres.write.area_projection");
+        var stopwatch = Stopwatch.StartNew();
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         var area = await dbContext.Areas
@@ -173,6 +186,12 @@ public sealed class PostgresAreaOperationalProjectionStore(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        stopwatch.Stop();
+        PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        {
+            { TelemetryTags.Operation, "area_projection" },
+            { TelemetryTags.Outcome, "stored" }
+        });
 
         logger.LogInformation(
             "Projection updated | AreaId={AreaId} | RiskLevel={RiskLevel} | Severity={Severity} | AssessmentCount={AssessmentCount}",

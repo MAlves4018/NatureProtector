@@ -4,8 +4,11 @@ using NatureProtector.Prevention.Host.Processing;
 using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
+using NatureProtector.Shared.Observability;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Text;
 
 namespace NatureProtector.Prevention.Host;
@@ -124,6 +127,9 @@ public sealed class PreventionWorker(
         BasicDeliverEventArgs ea,
         CancellationToken stoppingToken)
     {
+        using var receiveActivity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.receive");
+        receiveActivity?.SetTag(TelemetryTags.Stage, "broker_receive");
+        PreventionHostTelemetry.ReceivedEvents.Add(1);
         var ackSent = false;
 
         try
@@ -132,6 +138,7 @@ public sealed class PreventionWorker(
 
             try
             {
+                using var deserializeActivity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.deserialize");
                 envelope = JsonEventSerializer.Deserialize<EventEnvelope<SensorReadingProducedPayload>>(ea.Body);
             }
             catch (Exception ex)
@@ -147,8 +154,10 @@ public sealed class PreventionWorker(
                     "The message body could not be deserialized into a sensor reading envelope.",
                     null,
                     stoppingToken);
+                PreventionHostTelemetry.RejectedEvents.Add(1, new TagList { { TelemetryTags.RejectionCode, "invalid_json" } });
 
                 channel.BasicAck(ea.DeliveryTag, multiple: false);
+                PreventionHostTelemetry.AckedEvents.Add(1, new TagList { { TelemetryTags.Outcome, "rejected" } });
                 return;
             }
 
@@ -162,6 +171,14 @@ public sealed class PreventionWorker(
                     stoppingToken);
                 return;
             }
+
+            PreventionHostTelemetry.ValidatedEvents.Add(1);
+            receiveActivity?.SetTag(TelemetryTags.EventId, envelope.EventId);
+            receiveActivity?.SetTag(TelemetryTags.CorrelationId, envelope.CorrelationId);
+            receiveActivity?.SetTag(TelemetryTags.AreaId, envelope.AreaId);
+            receiveActivity?.SetTag(TelemetryTags.SensorId, envelope.Payload.SensorId);
+            receiveActivity?.SetTag(TelemetryTags.SensorName, envelope.Payload.SensorName);
+            receiveActivity?.SetTag(TelemetryTags.MetricType, envelope.Payload.MetricType);
 
             if (!TryValidateEnvelope(envelope, out var validationFailure))
             {
@@ -195,8 +212,10 @@ public sealed class PreventionWorker(
 
             // O broker só recebe ack depois de o evento ficar materializado no
             // inbox, para que o fluxo operacional consiga retomar trabalho em caso de falha.
+            using var ackActivity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.broker.ack");
             channel.BasicAck(ea.DeliveryTag, multiple: false);
             ackSent = true;
+            PreventionHostTelemetry.AckedEvents.Add(1, new TagList { { TelemetryTags.Outcome, "stored" } });
 
             if (!storeResult.ShouldProcessNow || storeResult.Lease is null)
             {
@@ -248,6 +267,7 @@ public sealed class PreventionWorker(
             envelope?.SchemaVersion,
             envelope?.AreaId,
             envelope?.Payload.SensorId);
+        PreventionHostTelemetry.RejectedEvents.Add(1, new TagList { { TelemetryTags.RejectionCode, rejectionCode } });
 
         await readingEventInbox.StoreRejectedAsync(
             ea.Body,
@@ -271,6 +291,7 @@ public sealed class PreventionWorker(
             stoppingToken);
 
         channel.BasicAck(ea.DeliveryTag, multiple: false);
+        PreventionHostTelemetry.AckedEvents.Add(1, new TagList { { TelemetryTags.Outcome, "rejected" } });
     }
 
     private static bool TryValidateEnvelope(

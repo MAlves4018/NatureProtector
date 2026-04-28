@@ -1,0 +1,147 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="implementation-data-and-scripts-flow" name="Page-1">
+    <mxGraphModel dx="2093" dy="910" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f4e78;strokeColor=#0b2e4f;fontColor=#ffffff;fontSize=24;fontStyle=1;" value="Cadeia de dados, scripts e artefactos da baseline atual" vertex="1">
+          <mxGeometry height="70" width="1680" x="60" y="99" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#d6d6d6;fontSize=14;align=left;spacingLeft=10;spacingRight=10;" value="A vista segue a passagem causal desde as fontes externas até aos artefactos curados, aos manifestos, ao bootstrap PostgreSQL e ao consumo posterior por simulador, API e runtime local." vertex="1">
+          <mxGeometry height="52" width="1680" x="60" y="171" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Origem e staging local" vertex="1">
+          <mxGeometry height="340" width="430" x="60" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=14;" value="Fontes externas&#xa;IPMA, Open-Meteo, ICNF, DGT, LNEG, PT-FireSprd" vertex="1">
+          <mxGeometry height="105" width="170" x="20" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=14;" value="data/external&#xa;respostas, amostras e fontes guardadas" vertex="1">
+          <mxGeometry height="105" width="165" x="230" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="download_ipma_open_data.py&#xa;bootstrap-proenca-a-nova.ps1" vertex="1">
+          <mxGeometry height="70" width="200" x="110" y="235" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Curadoria e baseline" vertex="1">
+          <mxGeometry height="340" width="550" x="508" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="build_weather_reference_from_open_meteo.py&#xa;build_fire_weather_indexes_reference.py&#xa;build_cells_attributes_seed.py" vertex="1">
+          <mxGeometry height="110" width="279" x="6" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="data/baseline/areas/proenca-a-nova/&#xa;area, grid_1km, cells_attributes, fire_history,&#xa;weather_reference, weather_daily_reference,&#xa;scenario_candidates, manifest.json" vertex="1">
+          <mxGeometry height="150" width="240" x="290" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="build_proenca_scenarios.py&#xa;gera cenários A, B e C" vertex="1">
+          <mxGeometry height="70" width="200" x="121" y="235" as="geometry" />
+        </mxCell>
+        <mxCell id="30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Manifestos, bootstrap e consumo posterior" vertex="1">
+          <mxGeometry height="340" width="652.33" x="1102" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="31" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="data/manifests/datasets/&#xa;proenca-a-nova-dataset-plan.json" vertex="1">
+          <mxGeometry height="80" width="173.42" x="40.58" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="32" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="data/manifests/scenarios/&#xa;template, catálogo e manifestos individuais" vertex="1">
+          <mxGeometry height="80" width="202.0333333333333" x="244.56666666666663" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="33" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="scripts/postgres/bootstrap-control-plane.ps1&#xa;Postgres.Bootstrap / ControlPlaneBootstrapper" vertex="1">
+          <mxGeometry height="85" width="265.8333333333333" x="24.00333333333333" y="179" as="geometry" />
+        </mxCell>
+        <mxCell id="34" parent="30" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" value="PostgreSQL&#xa;control.*" vertex="1">
+          <mxGeometry height="95" width="138.23333333333332" x="340.95" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="37" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3ecf7;strokeColor=#9673a6;fontSize=13;" value="data/runtime/&#xa;simulations e exports transitórios" vertex="1">
+          <mxGeometry height="56" width="271.15" x="334.95" y="279" as="geometry" />
+        </mxCell>
+        <mxCell id="36" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="Backoffice.Api&#xa;lê control.* e projection.*" vertex="1">
+          <mxGeometry height="90" width="106.33333333333333" x="481.99666666666667" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="50" edge="1" parent="30" source="34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="36" value="leituras e consulta">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="404" y="145" />
+              <mxPoint x="535" y="145" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="35" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="Simulator.Host&#xa;lê control plane ou manifesto local" vertex="1">
+          <mxGeometry height="90" width="106.33333333333333" x="542.9966666666667" y="144" as="geometry" />
+        </mxCell>
+        <mxCell id="49" edge="1" parent="30" source="34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="35" value="contexto&amp;nbsp;&lt;div&gt;nominal&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.1573" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="51" edge="1" parent="30" source="35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#9673a6;strokeWidth=2;dashed=1;" target="37" value="gera outputs transitórios">
+          <mxGeometry relative="1" x="-0.391" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="596" y="257" />
+              <mxPoint x="484" y="257" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="40" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d6b656;strokeWidth=2;" target="12" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="41" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d6b656;strokeWidth=2;" target="21" value="curar e enriquecer">
+          <mxGeometry relative="1" x="0.2466" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="684" y="424" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="42" edge="1" parent="1" source="21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d6b656;strokeWidth=2;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" target="22" value="produzem baseline">
+          <mxGeometry relative="1" x="0.0154" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="753" y="276" />
+              <mxPoint x="888" y="276" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="43" edge="1" parent="1" source="22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d6b656;strokeWidth=2;" target="23" value="selecionar e fixar cenários">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1000" y="478" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="44" edge="1" parent="1" source="22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="31" value="catalogar datasets">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="45" edge="1" parent="1" source="23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="32" value="produz manifestos">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1421" y="513" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="46" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="33" value="indexar e materializar">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1161" y="380" />
+              <mxPoint x="1229" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="47" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="33" value="bootstrap de cenários">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1373" y="380" />
+              <mxPoint x="1259" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="48" edge="1" parent="1" source="33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#666666;strokeWidth=2;" target="34" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1404" y="443" />
+              <mxPoint x="1404" y="443" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

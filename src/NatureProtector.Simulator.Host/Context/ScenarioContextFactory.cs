@@ -2,7 +2,9 @@ using Microsoft.Extensions.Options;
 using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Scenarios;
 using NatureProtector.Core.Sensors;
+using NatureProtector.Shared.Observability;
 using NatureProtector.Simulator.Host.Configuration;
+using System.Diagnostics;
 
 /*
  * This factory builds the in-memory simulation context consumed by the host.
@@ -48,6 +50,8 @@ public sealed class ScenarioContextFactory : ISimulationContextSource
     /// </returns>
     public SimulationContext Create()
     {
+        using var activity = SimulatorHostTelemetry.ActivitySource.StartActivity("natureprotector.simulator.context.create");
+        var stopwatch = Stopwatch.StartNew();
         ValidateOptions(_options);
 
         var scenarioParameters = new ScenarioParameters(
@@ -73,7 +77,7 @@ public sealed class ScenarioContextFactory : ISimulationContextSource
         var startTimestamp = _options.StartTimestamp ?? DateTimeOffset.UtcNow;
         var interval = TimeSpan.FromSeconds(_options.IntervalSeconds);
 
-        return new SimulationContext(
+        var context = new SimulationContext(
             areaId: _options.AreaId,
             scenario: scenario,
             scenarioCode: null,
@@ -81,6 +85,15 @@ public sealed class ScenarioContextFactory : ISimulationContextSource
             startTimestamp: startTimestamp,
             interval: interval,
             numberOfCycles: _options.NumberOfCycles);
+
+        activity?.SetTag(TelemetryTags.AreaId, context.AreaId);
+        activity?.SetTag(TelemetryTags.ScenarioId, context.Scenario.Id);
+        activity?.SetTag(TelemetryTags.Outcome, "completed");
+        stopwatch.Stop();
+        SimulatorHostTelemetry.ContextCreations.Add(1);
+        SimulatorHostTelemetry.ContextCreationDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds);
+
+        return context;
     }
 
     public Task<SimulationContext> CreateAsync(CancellationToken cancellationToken)

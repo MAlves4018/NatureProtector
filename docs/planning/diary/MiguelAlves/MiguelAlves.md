@@ -267,3 +267,215 @@ Esta conclusão é importante porque altera a leitura do estado atual do projeto
 4. Garantir que o catálogo gerado de cenários, o bootstrap do plano de controlo e a runtime do simulador se mantêm sincronizados, evitando novas derivações entre configuração pretendida e comportamento efetivo.
 5. Consolidar a documentação operacional desta frente, deixando explícito que a principal limitação local atual não está no armazenamento relacional nem no pipeline de retries, mas sim no custo das escritas para `InfluxDB`.
 6. Só depois de estabilizado o modo local sem pressão excessiva é que deve voltar a ser equacionada uma otimização mais profunda da pipeline, para evitar abrir uma refatoração larga antes de o comportamento atual estar suficientemente controlado.
+
+# Recapitulação Quinzenal
+
+## Período
+
+22 de abril a 5 de maio de 2026
+
+## Objetivo desta entrada
+
+Registar, de forma primeiro estruturada e só depois mais detalhada, o trabalho de preparação da apresentação de progresso, consolidação da documentação de implementação, organização das ferramentas de documentação técnica, diagnóstico operacional da pipeline, reforço de observabilidade, manutenção do repositório e alinhamento entre código, documentação e comportamento real da baseline.
+
+## Índice
+
+* Resumo Estruturado
+* 1. Preparação e revisão da apresentação de progresso
+* 2. Consolidação do `implementation.md` e dos diagramas de implementação
+* 3. Organização das ferramentas de documentação técnica
+* 4. Diagnóstico operacional da pipeline em execução real
+* 5. Instrumentação, cronómetros, logs e observabilidade transversal
+* 6. Rejeição, retry, quarentena e durabilidade do processamento
+* 7. Simulator, bootstrap e plano de controlo
+* 8. Backoffice API, contratos e testes
+* 9. Manutenção do repositório, merge e validação de build
+* 10. Resultado da quinzena e próximos passos
+
+## Resumo Estruturado
+
+### O que foi feito
+
+1. Foi preparada e revista a apresentação de progresso do projeto, com reorganização da narrativa, seleção dos conteúdos principais, separação de slides extra e maior foco na evidência técnica da baseline já demonstrável.
+2. Foi consolidado o documento `implementation.md` como ponto de entrada para a explicação da implementação atual, ligando código, runtime, persistência, pipeline, observabilidade e documentação.
+3. Foi expandido o conjunto de diagramas de implementação, com diagramas dedicados ao simulador, prevenção, persistência, API, bootstrap, cenários, testes, rejeição, retry e quarentena.
+4. Foram organizadas e validadas ferramentas de documentação técnica, incluindo Doxygen, DocFX, Structurizr, PlantUML, Graphviz, Docker, Draw.io e scripts auxiliares em `scripts/docs`.
+5. Foi feito trabalho específico de diagnóstico da pipeline em execução real, com análise da ordem de processamento, volume de mensagens, pressão sobre o consumidor, tempos por etapa e comportamento do RabbitMQ.
+6. Foram introduzidos cronómetros, logs e elementos de observabilidade para medir operações críticas e perceber onde surgiam atrasos, acumulações ou custos operacionais relevantes.
+7. Foi reforçada a distinção entre eventos inválidos, falhas transitórias com retry e falhas persistentes que devem seguir para quarentena, tornando a pipeline mais auditável.
+8. Foram revistas alterações relacionadas com PostgreSQL, projeções operacionais, bootstrap do plano de controlo, simulador e contexto de execução baseado em configuração persistida.
+9. Foram ajustados componentes da Backoffice API e testes associados, incluindo compatibilidade com contratos atualizados.
+10. Foi feita manutenção do repositório, incluindo resolução de conflitos após `git pull`, atualização do `.gitignore`, validação de build e análise de ficheiros gerados ou experimentais que devem ou não entrar no commit.
+
+### Resultado principal da quinzena
+
+O resultado principal desta quinzena foi a aproximação entre três dimensões do projeto que ainda estavam parcialmente desalinhadas:
+
+* no plano da apresentação, porque a baseline passou a ser explicada de forma mais direta, com foco no que já é demonstrável;
+* no plano documental, porque os diagramas e documentos passaram a refletir melhor a implementação real, incluindo fluxos nominais e fluxos de falha;
+* no plano operacional, porque a pipeline deixou de ser analisada apenas como arquitetura e passou a ser medida como sistema em execução, com logs, cronómetros, pressão de mensagens, persistência, observabilidade e pontos de estrangulamento identificados.
+
+Esta quinzena foi, por isso, uma fase de transição entre “documentar o que existe” e “validar se o que existe se comporta corretamente em runtime”.
+
+---
+
+## 1. Preparação e revisão da apresentação de progresso
+
+Durante este período foi preparada e revista a apresentação de progresso do projeto NatureProtector. O trabalho passou pela reorganização da estrutura da apresentação, de forma a alinhar melhor com os critérios pedidos: introdução ao problema, explicação do módulo de prevenção, investigação realizada, requisitos abordados, pipeline implementada, trabalho futuro e demonstração.
+
+Foi também acrescentado um slide de organização da apresentação, para tornar mais claro o percurso da exposição. Esta alteração ajudou a enquadrar melhor a sequência dos temas e a reduzir o risco de a apresentação parecer apenas uma sucessão de conteúdos técnicos sem fio condutor.
+
+Além disso, houve trabalho de separação entre slides principais e slides extra. Os slides principais ficaram mais focados no essencial para o tempo disponível, enquanto os slides opcionais passaram a servir como apoio para perguntas, nomeadamente sobre tecnologias, diagramas mais detalhados, escolhas de arquitetura, persistência, pipeline e funcionamento interno.
+
+Também foi feita uma revisão ao conteúdo dos slides, corrigindo erros de escrita, ajustando a linguagem técnica e tornando algumas afirmações mais rigorosas. Foram melhorados os slides sobre pesquisa, requisitos, pipeline, demonstração e trabalho futuro, incluindo uma leitura mais honesta da percentagem estimada de progresso e do que ainda falta concluir.
+
+A linha principal da apresentação passou a centrar-se na evidência de progresso: mostrar que já existe uma baseline demonstrável com simulação, transporte por RabbitMQ, persistência em PostgreSQL e InfluxDB, cálculo inicial de risco, API/backoffice e observabilidade em Grafana. Isto ajudou a transformar a apresentação numa defesa do estado real do projeto, e não apenas numa descrição da ideia geral.
+
+---
+
+## 2. Consolidação do `implementation.md` e dos diagramas de implementação
+
+Nesta quinzena foi consolidada a documentação de implementação do projeto, com foco em explicar como a solução está realmente organizada no repositório e como os principais fluxos técnicos funcionam na prática.
+
+O documento `implementation.md` passou a assumir o papel de ponto de entrada para a implementação atual. A intenção foi evitar que a compreensão do sistema dependesse apenas da leitura dispersa de código, diagramas soltos ou conhecimento informal da equipa. Este documento passou a funcionar como uma vista de síntese da baseline implementada, ligando runtime, persistência, pipeline, API, simulador e observabilidade.
+
+Em paralelo, foi expandido o conjunto de diagramas de implementação em `docs/architecture/diagrams`. Em vez de tentar representar tudo num único diagrama demasiado denso, foram criados diagramas especializados para diferentes aspetos da solução: fluxo nominal do simulador, fluxo nominal da prevenção, rejeição, retry e quarentena, bootstrap do plano de controlo, persistência, organização do repositório, cenários e manifests, caminhos de leitura da API e mapa de testes.
+
+Esta separação tornou os diagramas mais úteis, porque cada um passou a responder a uma pergunta técnica concreta. Por exemplo, alguns diagramas ajudam a explicar como a simulação produz eventos, outros mostram como a prevenção processa leituras, outros descrevem onde entram a persistência e as projeções, e outros ajudam a perceber como o repositório está organizado.
+
+Um aspeto importante deste trabalho foi o alinhamento entre os diagramas e o comportamento real da runtime. A preocupação não foi apenas produzir diagramas visualmente mais completos, mas sim aproximá-los do que realmente acontece no código. Isto foi particularmente relevante nos diagramas sobre rejeição, retry, quarentena e fluxos da prevenção, porque o diagnóstico da pipeline mostrou que a ordem real de processamento tinha de ser descrita com mais rigor.
+
+Também foi revista a cadeia end-to-end de dados, para refletir melhor a ligação entre simulador, RabbitMQ, `Prevention.Host`, PostgreSQL, InfluxDB, Backoffice API e Grafana. Esta cadeia passou a ser uma peça importante para explicar a baseline demonstrável do projeto.
+
+---
+
+## 3. Organização das ferramentas de documentação técnica
+
+Outro eixo importante desta quinzena foi a organização das ferramentas de documentação técnica do projeto. O objetivo foi perceber que ferramentas já estavam funcionais, que partes precisavam de correção e como cada uma se encaixa no processo global de documentação.
+
+No caso do Doxygen, foi validada a instalação das dependências relevantes, nomeadamente Java, PlantUML e Graphviz. A partir daí, foi possível confirmar que a geração local da documentação estava operacional. Houve trabalho de limpeza de configuração, regeneração controlada de documentação e reforço das páginas manuais.
+
+Foi criado e ajustado um `Doxyfile.local`, pensado para geração local em ambiente Windows, com output local separado. A documentação passou a conseguir gerar páginas HTML, XML, diagramas e relações automáticas entre classes, ficheiros, diretórios e chamadas. Também foram identificados alguns warnings e corrigidos os que faziam sentido nesta fase, em especial referências frágeis e comentários XML incompletos.
+
+As páginas manuais do Doxygen foram revistas para que a documentação gerada não fosse apenas um inventário automático de classes e ficheiros. A intenção foi combinar documentação automática com enquadramento arquitetural, explicando fluxos como controlo e bootstrap, persistência, simulador, prevenção e testes.
+
+No caso do DocFX, o foco foi mais organizacional. A preocupação principal foi consolidar a explicação sobre o que a ferramenta representa no projeto, que ficheiros são fonte, que ficheiros são gerados, como limpar outputs e como utilizar a documentação localmente. Isto evita que a pasta do DocFX pareça apenas um conjunto de artefactos sem contexto.
+
+No Structurizr, o trabalho foi mais corretivo. A primeira validação mostrou problemas reais de sintaxe e de compatibilidade com a versão da ferramenta usada. Também ficou claro que a utilização local deveria depender de Docker, em vez de instalações manuais ou ferramentas descontinuadas. A solução passou por usar a imagem `structurizr/structurizr`, tanto para validação como para exportação e execução local.
+
+Depois de corrigido o `workspace.dsl`, o modelo passou a representar vistas úteis da solução atual, como contexto do sistema, runtime atual, componentes centrais do `Prevention.Host` e baseline local em Docker Compose. A validação passou a funcionar e a exportação para PlantUML começou a gerar ficheiros `.puml` utilizáveis.
+
+Também foram organizados scripts auxiliares em `scripts/docs`, para tornar a geração, limpeza e validação da documentação menos dependente de comandos manuais dispersos. Esta organização ajuda a tornar o processo documental mais repetível e mais fácil de recuperar no futuro.
+
+No conjunto, esta frente tornou a infraestrutura documental mais madura: Doxygen funcional e enriquecido, DocFX melhor enquadrado, Structurizr corrigido e operacional, e uma distinção mais clara entre documentação manual, documentação gerada, diagramas narrativos e modelos validáveis.
+
+---
+
+## 4. Diagnóstico operacional da pipeline em execução real
+
+Uma das frentes técnicas mais importantes desta quinzena foi o diagnóstico da pipeline em execução real. A necessidade surgiu porque, apesar de o fluxo nominal já estar definido arquiteturalmente, era necessário perceber como o sistema se comportava quando o simulador produzia leituras em sequência e o `Prevention.Host` tinha de as receber, persistir, processar e confirmar no RabbitMQ.
+
+O foco deixou de ser apenas validar a lógica da pipeline e passou a ser observar o seu comportamento operacional. Foram analisados aspetos como o número de mensagens recebidas, a ordem de processamento, o tempo gasto em cada etapa, a acumulação de mensagens e os pontos onde podiam surgir atrasos ou falhas.
+
+Este trabalho foi importante porque mostrou que a correção funcional não é suficiente para validar a baseline. Mesmo que a pipeline esteja logicamente correta, é necessário perceber se consegue acompanhar a taxa de entrada de eventos, se o consumidor se mantém estável, se a fila cresce de forma inesperada e se as operações de persistência e observabilidade introduzem atrasos relevantes.
+
+A análise também ajudou a confirmar que a pressão sobre o consumidor depende da relação entre a cadência do simulador, o número de sensores ativos, a configuração carregada do plano de controlo e o custo de cada operação realizada durante o processamento. Isto foi especialmente importante porque, com o modo `ControlPlaneEnabled`, a runtime efetiva não depende apenas do `appsettings.json`, mas também do cenário e dos sensores ativos persistidos em PostgreSQL.
+
+Durante esta fase ficou mais claro que a pipeline deve ser analisada como uma cadeia operacional completa: receção da mensagem, validação, registo durável, processamento, persistência dos resultados, atualização de projeções, escrita de observabilidade e confirmação ao RabbitMQ. A documentação e os diagramas foram ajustados para refletir melhor esta ordem real.
+
+---
+
+## 5. Instrumentação, cronómetros, logs e observabilidade transversal
+
+Para tornar o comportamento da pipeline mais visível, foram acrescentados cronómetros e logs em pontos críticos do fluxo. A intenção foi produzir evidência concreta sobre o percurso de cada mensagem e sobre o tempo gasto em operações específicas.
+
+Esta instrumentação foi usada para perceber quando a mensagem era recebida pelo consumidor, quando era registada ou materializada na inbox, quando começava o processamento de negócio, quanto tempo demorava a execução do pipeline de risco, quando eram atualizadas projeções, quanto tempo era gasto em persistência e em que momento acontecia o `ack` ao RabbitMQ.
+
+O resultado prático foi uma melhoria significativa da capacidade de diagnóstico. Em vez de apenas concluir que “o sistema está lento” ou que “as mensagens estão a acumular”, passou a ser possível localizar melhor onde o tempo estava a ser gasto e que parte da pipeline justificava investigação adicional.
+
+Este trabalho também evoluiu para uma base mais estruturada de observabilidade em `NatureProtector.Shared/Observability`. A intenção foi evitar medições dispersas e criar uma forma mais consistente de identificar operações, tags e métricas nos vários serviços. Esta base comum foi depois refletida em pontos como a Backoffice API, o Simulator Host, o Prevention Host, o serviço de escrita para InfluxDB e a publicação de leituras por RabbitMQ.
+
+A observabilidade tornou-se especialmente relevante para a demonstração da baseline. O projeto não precisa apenas de executar; precisa de mostrar evidência de que os dados percorrem a cadeia end-to-end, que os serviços estão ativos e que os atrasos ou falhas podem ser diagnosticados. Esta frente contribuiu diretamente para essa capacidade.
+
+Também ficou claro, por medição, que o principal gargalo local atual não está necessariamente no PostgreSQL nem na query de estado mais recente da área, mas sim no custo associado às escritas para InfluxDB. Esta conclusão é importante porque altera a prioridade das próximas otimizações: antes de refatorar a pipeline de forma ampla, faz mais sentido permitir desligar, agrupar ou amortecer escritas de observabilidade temporal em ambiente local.
+
+---
+
+## 6. Rejeição, retry, quarentena e durabilidade do processamento
+
+A análise da pipeline levou também a reforçar a distinção entre diferentes tipos de eventos e falhas. Um problema relevante identificado foi o tratamento de leituras com `OperationalState=Invalid`. Estes eventos não devem seguir o mesmo caminho das leituras aceites, porque poderiam contaminar persistência aceite, avaliação de risco, snapshots agregados e projeções operacionais.
+
+Por isso, foi reforçada a rejeição precoce de eventos inválidos. Esta validação à entrada do `PreventionWorker` ajuda a garantir que o fluxo principal só processa leituras semanticamente válidas. Em paralelo, foi melhorado o registo das rejeições, tornando mais claro e auditável o caminho dos eventos que não devem entrar no processamento normal.
+
+Também foi consolidada a separação entre falhas transitórias e falhas persistentes. Nem todos os erros devem ser tratados da mesma forma: alguns justificam uma nova tentativa, enquanto outros devem ser registados e enviados para quarentena. Esta distinção aproxima a implementação de uma pipeline operacional mais robusta.
+
+O trabalho sobre retry, tentativas de processamento e quarentena é importante porque reduz dois riscos opostos: perda silenciosa de eventos e repetição indefinida de mensagens problemáticas. Ao apoiar-se em estruturas persistidas para inbox, tentativas, rejeições e quarentena, a pipeline fica mais auditável e mais fácil de explicar.
+
+Também foi clarificada a relação entre durabilidade e confirmação ao RabbitMQ. O `ack` não deve ser entendido apenas como uma consequência abstrata de “fim do processamento”, mas como uma decisão ligada ao ponto em que o evento já está suficientemente protegido contra perda. Esta distinção é relevante para justificar a arquitetura e para alinhar código, documentação e diagramas.
+
+---
+
+## 7. Simulator, bootstrap e plano de controlo
+
+Nesta quinzena também houve trabalho relacionado com o simulador, o bootstrap e a ligação ao plano de controlo persistido em PostgreSQL.
+
+No simulador, foram feitas alterações relacionadas com a construção do contexto de simulação e com a ligação aos dados configurados no plano de controlo. Componentes como o `ScenarioContextFactory`, o `SimulationContext`, o `PostgresSimulationContextSource` e o `SimulationRunner` foram trabalhados para aproximar a execução do simulador das áreas, sensores e cenários definidos na configuração persistida.
+
+Esta evolução é importante porque a simulação deixa de ser apenas um produtor isolado de valores artificiais. Passa a fazer parte de uma cadeia configurável e auditável, em que uma execução concreta pode ser associada a uma área, a um cenário, a sensores ativos e a uma versão de configuração.
+
+Também foi continuado o trabalho sobre o bootstrap do plano de controlo. As alterações ao `ControlPlaneBootstrapper` e ao projeto `NatureProtector.Postgres.Bootstrap` procuram tornar mais repetível a criação/importação da configuração base do sistema. Isto inclui áreas, grelha, sensores, perfis, cenários e ligações a artefactos de dataset.
+
+Durante o diagnóstico da pipeline, ficou claro que o bootstrap tem impacto direto na carga operacional do sistema. Se a seleção de células piloto ou o número de sensores ativos for reduzido no catálogo, mas sensores antigos não forem desativados no plano de controlo, a runtime pode continuar a produzir mais mensagens do que o esperado. Por isso, a sincronização entre catálogo de cenários, bootstrap, sensores ativos e runtime passou a ser um ponto importante a controlar.
+
+Esta frente reforçou a importância de tratar a configuração persistida como parte central da baseline. O comportamento real do sistema não depende apenas dos ficheiros locais, mas também do que está efetivamente carregado em PostgreSQL.
+
+---
+
+## 8. Backoffice API, contratos e testes
+
+Na Backoffice API foram feitas alterações ao serviço que consulta e projeta dados do plano de controlo, nomeadamente o `PostgresControlPlaneService`. Este serviço é responsável por transformar dados persistidos em contratos de resposta usados pelo backoffice, incluindo configurações, áreas, sensores, cenários, execuções de simulação, estados operacionais e alertas.
+
+Também foi introduzida instrumentação no caminho de leitura da API, permitindo medir operações e tempos de consulta. Isto é útil porque a API é uma das formas principais de explorar o estado do sistema e precisa de ser observável, especialmente à medida que passa a consultar mais dados persistidos.
+
+Durante a integração com alterações vindas do repositório remoto, foi necessário adaptar código e testes ao contrato atualizado de `AreaSummaryResponse`, que passou a incluir o identificador da área. Esta alteração obrigou a corrigir mocks/fakes usados nos testes da Backoffice API, para manter compatibilidade com o contrato atual.
+
+Esta frente também mostrou a importância de manter os testes alinhados com os contratos da API. Pequenas alterações nos contratos de resposta podem quebrar testes ou clientes, por isso a atualização dos testes foi parte necessária da integração e não apenas uma correção acessória.
+
+---
+
+## 9. Manutenção do repositório, merge e validação de build
+
+Para além das frentes técnicas e documentais, houve trabalho de manutenção do repositório. Foram feitos ajustes ao `.gitignore`, à solução `NatureProtector.sln`, a configurações comuns de build e à organização dos ficheiros que devem ou não entrar no controlo de versões.
+
+Esta parte tornou-se especialmente importante porque foram introduzidos novos diagramas, imagens, scripts, ficheiros de documentação e outputs associados a ferramentas como Doxygen, DocFX e Structurizr. Foi necessário distinguir melhor entre fontes que devem ser versionadas e artefactos gerados que devem ser ignorados.
+
+Também foi necessário resolver conflitos depois de atualizar o repositório com alterações remotas. O `git pull` trouxe alterações novas, incluindo uma frente de `webUI` e alterações em contratos da API. Para preservar o trabalho local, foi necessário usar `stash`, aplicar o `pull`, reaplicar as alterações locais e resolver conflitos no `.gitignore` e no `PostgresControlPlaneService`.
+
+Depois da resolução dos conflitos, foi feita validação com `dotnet build`. O build ajudou a identificar problemas concretos: um teste da Backoffice API estava desatualizado face ao novo contrato de `AreaSummaryResponse`, e a exploração do `AppHost` ainda apresentava erros relacionados com os tipos gerados `Projects.*`.
+
+A correção do teste foi integrada, mas o `AppHost` ficou identificado como frente exploratória ainda não estabilizada. Por isso, esta parte deve ser tratada com cuidado no commit: só deve entrar como trabalho funcional se o build ficar limpo, ou então deve ficar fora da solução até ser corrigida.
+
+Esta manutenção foi necessária para garantir que o estado do repositório continua coerente e que a documentação, a implementação e os testes evoluem sem deixar o projeto num estado inconsistente.
+
+---
+
+## 10. Resultado da quinzena e próximos passos
+
+Em síntese, esta quinzena foi marcada por uma consolidação importante da baseline técnica e documental do projeto. A apresentação ficou mais alinhada com o que já existe, a documentação passou a explicar melhor a implementação real, os diagramas ficaram mais próximos da runtime e a pipeline passou a ser analisada com base em medições concretas.
+
+O ponto mais relevante foi a passagem de uma visão arquitetural da pipeline para uma leitura operacional. Foram adicionados logs, cronómetros e elementos de observabilidade que permitiram perceber melhor o comportamento sob carga, a ordem real de processamento, a pressão causada pelo volume de mensagens e o custo das operações de persistência e observabilidade.
+
+Também ficou mais claro que a baseline local atual tem um gargalo relevante nas escritas para InfluxDB. Esta conclusão é útil porque evita otimizações prematuras no sítio errado. Antes de reestruturar a pipeline inteira, faz sentido criar um modo local em que as escritas para InfluxDB possam ser desligadas, agrupadas ou amortecidas.
+
+A documentação beneficiou diretamente deste diagnóstico. O `implementation.md`, os diagramas e as páginas de documentação passaram a refletir melhor o comportamento real do sistema, incluindo rejeição, retry, quarentena, inbox persistida, confirmação ao RabbitMQ, projeções e pontos de observação.
+
+### Trabalho a fazer na continuação desta frente
+
+1. Introduzir uma configuração para desligar ou reduzir escritas para InfluxDB em ambiente local, de forma a diagnosticar a pipeline sem o principal gargalo temporal.
+2. Rever o `InfluxWriteService`, avaliando se as escritas podem ser agrupadas, amortecidas ou executadas de forma menos penalizadora.
+3. Manter a versão funcional e segura da consulta `GetLatestByAreaAsync`, só voltando a otimizar quando houver uma abordagem validada pelo Entity Framework Core.
+4. Garantir que catálogo de cenários, bootstrap do plano de controlo e runtime do simulador permanecem sincronizados, especialmente no número de sensores ativos.
+5. Finalizar a seleção do que deve entrar no commit, distinguindo fontes/documentação de outputs gerados.
+6. Corrigir ou retirar temporariamente o `AppHost` da solução até que a frente Aspire esteja estável.
+7. Correr `dotnet build` e, idealmente, `dotnet test` antes de fechar o commit.
+8. Atualizar a documentação operacional para deixar explícito que o gargalo local atual está sobretudo no caminho de escrita para InfluxDB, e não no PostgreSQL nem no mecanismo de retry/quarentena.

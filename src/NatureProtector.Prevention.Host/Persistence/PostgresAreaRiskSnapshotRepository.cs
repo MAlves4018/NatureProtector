@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using NatureProtector.Core.Risk;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Projection;
 using NatureProtector.Prevention.Persistence;
+using NatureProtector.Shared.Observability;
 
 namespace NatureProtector.Prevention.Host.Persistence;
 
@@ -35,6 +38,8 @@ public sealed class PostgresAreaRiskSnapshotRepository(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.postgres.write.area_risk_snapshot");
+        var stopwatch = Stopwatch.StartNew();
 
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -60,6 +65,12 @@ public sealed class PostgresAreaRiskSnapshotRepository(
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        stopwatch.Stop();
+        PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        {
+            { TelemetryTags.Operation, "area_risk_snapshot" },
+            { TelemetryTags.Outcome, "stored" }
+        });
 
         logger.LogDebug(
             "Area risk snapshot persisted in PostgreSQL | AreaId={AreaId} | SnapshotId={SnapshotId} | AssessmentCount={AssessmentCount}",
@@ -80,19 +91,22 @@ public sealed class PostgresAreaRiskSnapshotRepository(
         var row = await dbContext.AreaRiskSnapshotLogs
             .AsNoTracking()
             .Where(entity => entity.AreaId == areaId)
+            .ToListAsync(cancellationToken);
+
+        var latest = row
             .OrderByDescending(entity => entity.SnapshotTimestamp)
             .ThenByDescending(entity => entity.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefault();
 
-        if (row is null)
+        if (latest is null)
         {
             return null;
         }
 
         return new AreaRiskSnapshot(
-            row.Id,
-            row.SnapshotTimestamp,
-            row.AggregateRiskScore,
-            row.Summary);
+            latest.Id,
+            latest.SnapshotTimestamp,
+            latest.AggregateRiskScore,
+            latest.Summary);
     }
 }

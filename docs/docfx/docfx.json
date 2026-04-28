@@ -1,0 +1,64 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "artifacts/api-input",
+          "files": [
+            "**/*.dll",
+            "**/*.xml"
+          ],
+          "exclude": [
+            "**/*.Tests.dll",
+            "**/*.Tests.xml"
+          ]
+        }
+      ],
+      "dest": "api",
+      "shouldSkipMarkup": false
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [
+          "index.md",
+          "toc.yml",
+          "openapi-future.md",
+          "../README.md",
+          "../architecture/**/*.md",
+          "../planning/**/*.md",
+          "../../README.md",
+          "../../data/README.md",
+          "../../scripts/data/README.md",
+          "api/**.yml",
+          "api/toc.yml"
+        ],
+        "exclude": [
+          "**/bin/**",
+          "**/obj/**"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [
+          "../architecture/images/**",
+          "../architecture/diagrams/**"
+        ]
+      }
+    ],
+    "output": "output",
+    "template": [
+      "default",
+      "modern"
+    ],
+    "disableGitFeatures": true,
+    "globalMetadata": {
+      "_appTitle": "NatureProtector Documentation",
+      "_appName": "NatureProtector",
+      "_enableSearch": true
+    }
+  }
+}

@@ -1,0 +1,152 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="implementation-simulator-nominal-flow" name="Page-1">
+    <mxGraphModel dx="2355" dy="1024" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f4e78;strokeColor=#0b2e4f;fontColor=#ffffff;fontSize=24;fontStyle=1;" value="Fluxo nominal do simulador na runtime atual" vertex="1">
+          <mxGeometry height="70" width="1680" x="60" y="98" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#d6d6d6;fontSize=14;align=left;spacingLeft=10;spacingRight=10;" value="A vista mostra composição, validação, seleção por flags, construção do SimulationContext, persistência de run, geração de leituras e publicação em RabbitMQ. Linhas tracejadas representam caminhos alternativos." vertex="1">
+          <mxGeometry height="52" width="1680" x="60" y="171" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Composição e escolhas iniciais" vertex="1">
+          <mxGeometry height="360" width="546" x="60" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="Program.cs&#xa;liga DI, opções e hosted service" vertex="1">
+          <mxGeometry height="80" width="180" x="9" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="SimulatorOptions&#xa;ControlPlaneEnabled = true&#xa;ControlPlaneAreaCode = proenca-a-nova&#xa;ControlPlaneScenarioCode = scenario_b&#xa;Seed = 12345&#xa;NumberOfCycles = 20&#xa;IntervalSeconds = 5" vertex="1">
+          <mxGeometry height="150" width="270" x="225" y="53" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="SimulatorOptionsValidator.Validate" vertex="1">
+          <mxGeometry height="60" width="203" x="2" y="258" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;dashed=1;" value="GeneratedScenarioManifestLoader.ApplyIfConfigured&#xa;apenas no caminho standalone" vertex="1">
+          <mxGeometry height="80" width="321" x="210" y="266" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Contexto, runner e persistência de run" vertex="1">
+          <mxGeometry height="360" width="560" x="635" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="ISimulationContextSource&#xa;PostgresSimulationContextSource&#xa;caminho nominal" vertex="1">
+          <mxGeometry height="95" width="205" x="65" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;dashed=1;" value="ISimulationContextSource&#xa;ScenarioContextFactory&#xa;alternativa local" vertex="1">
+          <mxGeometry height="95" width="205" x="308" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="SimulationRunner.ExecuteAsync&#xa;seed -&gt; SimulationRun -&gt; ciclos lógicos" vertex="1">
+          <mxGeometry height="85" width="215" x="195" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="24" parent="20" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" value="PostgresSimulationRunStore&#xa;control.simulation_runs" vertex="1">
+          <mxGeometry height="90" width="175" x="376" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="25" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;dashed=1;" value="NoOpSimulationRunStore&#xa;sem persistência" vertex="1">
+          <mxGeometry height="60" width="156" x="35" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Geração e publicação" vertex="1">
+          <mxGeometry height="360" width="500" x="1240" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="31" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="ReadingGenerationService&#xa;GenerateBatch / GenerateReading&#xa;tipos publicados: Temperature, Humidity, Wind" vertex="1">
+          <mxGeometry height="110" width="220" x="25" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="32" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="EventEnvelope&lt;SensorReadingProducedPayload&gt;&#xa;EventType = SensorReadingProduced" vertex="1">
+          <mxGeometry height="90" width="205" x="270" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="33" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="RabbitMqReadingPublisher&#xa;np.events / simulation.reading.produced" vertex="1">
+          <mxGeometry height="80" width="190" x="82" y="183" as="geometry" />
+        </mxCell>
+        <mxCell id="34" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;dashed=1;" value="ConsoleReadingPublisher&#xa;alternativa implícita" vertex="1">
+          <mxGeometry height="60" width="145" x="338" y="209" as="geometry" />
+        </mxCell>
+        <mxCell id="35" parent="30" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="RabbitMQ&#xa;np.ingestion.readings&#xa;np.observability.raw" vertex="1">
+          <mxGeometry height="82" width="200" x="214" y="276" as="geometry" />
+        </mxCell>
+        <mxCell id="40" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="12" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="258" y="353" />
+              <mxPoint x="258" y="353" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="41" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d6b656;strokeWidth=2;" target="13" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="164" y="414" />
+              <mxPoint x="164" y="414" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="42" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#d6b656;strokeWidth=2;dashed=1;" target="14" value="se houver manifesto">
+          <mxGeometry relative="1" x="0.0001" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="198" y="448" />
+              <mxPoint x="430" y="448" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="43" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="21" value="ControlPlaneEnabled&amp;nbsp;&lt;div&gt;= true&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.1383" y="3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="44" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;dashed=1;" target="22" value="ControlPlaneEnabled = false">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="649" y="307" />
+              <mxPoint x="649" y="284" />
+              <mxPoint x="910" y="284" />
+              <mxPoint x="910" y="343" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="45" edge="1" parent="1" source="21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="23" value="contexto nominal">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="46" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#666666;strokeWidth=2;" target="24" value="persistência nominal">
+          <mxGeometry relative="1" x="0.4314" y="1" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="984" y="400" />
+              <mxPoint x="984" y="454" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="47" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#666666;strokeWidth=2;dashed=1;" target="25" value="alternativa">
+          <mxGeometry relative="1" x="0.417" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="688" y="406" />
+              <mxPoint x="688" y="564" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="48" edge="1" parent="1" source="23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="31" value="cada ciclo">
+          <mxGeometry relative="1" x="0.1747" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1299" y="537" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="49" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="32" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="50" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="33" value="publicação nominal">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="51" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;dashed=1;" target="34" value="alternativa">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52" edge="1" parent="1" source="33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="35" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1417" y="542" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

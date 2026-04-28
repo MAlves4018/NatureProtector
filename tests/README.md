@@ -1,102 +1,114 @@
 # Testes
 
-Esta pasta contém os projetos de teste da solução. O panorama atual continua assimétrico: o domínio central está bem coberto, mas os módulos de runtime e integração exigiram trabalho adicional para chegar a uma medição útil de coverage.
+Esta pasta contém os projetos de teste da solução. O objetivo da suite atual é duplo: proteger a lógica de domínio mais estável e cobrir os caminhos críticos da baseline de prevenção que já estão operacionais em runtime.
 
 ## Projetos existentes
 
 - [NatureProtector.Core.Tests](NatureProtector.Core.Tests)
-- contém testes reais para áreas, primitivas, leituras, risco, cenários, sensores e meteorologia
+  - domínio base: áreas, primitivas, leituras, risco, cenários, sensores e meteorologia;
 - [NatureProtector.Prevention.Tests](NatureProtector.Prevention.Tests)
-- cobre scoring, snapshots e persistência in-memory do módulo de prevenção
+  - scoring, snapshots e persistência in-memory do módulo de prevenção;
 - [NatureProtector.Shared.Tests](NatureProtector.Shared.Tests)
-- cobre serialização, contratos e topologia de messaging
+  - serialização, contratos e topologia de messaging;
 - [NatureProtector.Simulator.Host.Tests](NatureProtector.Simulator.Host.Tests)
-- cobre contexto, geração de leituras, publishers e código residual de ingestão
+  - contexto, geração de leituras, publishers e runtime do simulador;
 - [NatureProtector.Prevention.Host.Tests](NatureProtector.Prevention.Host.Tests)
-- cobre pipeline ativa e comportamento principal do worker de prevenção
+  - pipeline ativa, inbox, retries, quarentena e adaptadores PostgreSQL do host de prevenção;
 - [NatureProtector.Infrastructure.Influx.Tests](NatureProtector.Infrastructure.Influx.Tests)
-- cobre configuração, DI, guard clauses e execução útil do write service
+  - configuração, DI e write service de InfluxDB;
 - [NatureProtector.Backoffice.Api.Tests](NatureProtector.Backoffice.Api.Tests)
-- cobre o arranque mínimo da API
+  - arranque mínimo da API e serviço de controlo;
 - [NatureProtector.IntegrationTests](NatureProtector.IntegrationTests)
-- cobre compatibilidade entre simulador e prevenção sem broker real
+  - compatibilidade entre simulador e prevenção sem broker real.
 
 ## Como executar
 
-Para correr todos os testes disponíveis, devemos executar:
+Para correr todos os testes disponíveis:
 
 ```powershell
 .\scripts\dotnet\Use-RepoDotnetEnvironment.ps1
 dotnet test .\NatureProtector.sln --nologo -v minimal -m:1
-```
+````
 
-Se quisermos focar apenas o domínio, devemos executar:
+Para focar apenas a `Prevention.Host`:
 
 ```powershell
 .\scripts\dotnet\Use-RepoDotnetEnvironment.ps1
-dotnet test .\tests\NatureProtector.Core.Tests\NatureProtector.Core.Tests.csproj --nologo -v minimal -m:1
+dotnet test .\tests\NatureProtector.Prevention.Host.Tests\NatureProtector.Prevention.Host.Tests.csproj --nologo -v minimal
 ```
 
-## Cobertura
+## Coverage
 
-O repositório usa `coverlet.collector` nos projetos de teste e gera coverage com o collector `XPlat Code Coverage` em formato `cobertura`.
+O repositório usa `coverlet.collector` e agrega os resultados com `reportgenerator`.
 
-Para gerar um relatório consolidado em HTML e um resumo em texto, devemos executar:
+Para gerar o relatório consolidado:
 
 ```powershell
 .\scripts\tests\generate-coverage-report.ps1
 ```
 
-Isto:
+Este comando:
 
-- limpa `TestResults` antigos
-- corre `dotnet test` com `coverage.runsettings`
-- junta todos os `coverage.cobertura.xml`
-- gera o relatório em `coveragereport_core`
+* limpa `TestResults` antigos;
+* corre `dotnet test` com `coverage.runsettings`;
+* agrega todos os `coverage.cobertura.xml`;
+* gera HTML e `Summary.txt` em `coveragereport_core`.
 
 ## Resultados atuais
 
-Na medição consolidada mais recente, gerada em `12/04/2026`, o projeto ficou com:
+Na medição consolidada mais recente, gerada em `28/04/2026`, o projeto ficou com:
 
-* `81.2%` de line coverage (`4094/5040`)
-* `80.0%` de branch coverage (`997/1246`)
-* `88.4%` de method coverage (`633/716`)
+* `91.0%` de line coverage (`5037/5530`);
+* `82.3%` de branch coverage (`1133/1376`);
+* `91.8%` de method coverage (`680/740`).
 
-A geração do relatório foi concluída com `584` testes executados, todos com sucesso.
+O relatório agregado cobre `7` assemblies, `91` classes e `74` ficheiros relevantes para a lógica aplicacional. O detalhe navegável fica em `coveragereport_core/index.html` e o resumo textual em `coveragereport_core/Summary.txt`.
 
-O relatório agregado cobre `7` assemblies, `85` classes e `71` ficheiros relevantes para a lógica aplicacional. O detalhe navegável fica em `coveragereport_core/index.html` e o resumo textual em `coveragereport_core/Summary.txt`.
+Por assembly, o estado atual é:
 
-Face à medição anterior, esta leitura mostra uma melhoria material da cobertura global, em especial no `Backoffice.Api` e no `Simulator.Host`. O caso mais evidente é o de `NatureProtector.Backoffice.Api.ControlPlane.Services.PostgresControlPlaneService`, que deixou de estar sem cobertura e passou para cobertura praticamente total. Em contrapartida, o principal bloco ainda fraco continua a ser o `NatureProtector.Prevention.Host`, sobretudo nos adaptadores PostgreSQL de persistência, inbox e projeções.
-
-Por assembly, o estado mais recente ficou assim:
-
-* `NatureProtector.Backoffice.Api`: `89.4%`
+* `NatureProtector.Backoffice.Api`: `89.5%`
 * `NatureProtector.Core`: `91.7%`
-* `NatureProtector.Infrastructure.Influx`: `94.1%`
+* `NatureProtector.Infrastructure.Influx`: `75.8%`
 * `NatureProtector.Prevention`: `96.2%`
-* `NatureProtector.Prevention.Host`: `50.8%`
-* `NatureProtector.Shared`: `100%`
+* `NatureProtector.Prevention.Host`: `91.0%`
+* `NatureProtector.Shared`: `90.6%`
 * `NatureProtector.Simulator.Host`: `92.9%`
 
-Os principais hotspots que ainda justificam trabalho adicional são:
+A melhoria mais expressiva desta iteração ocorreu em `NatureProtector.Prevention.Host`, que subiu de cerca de `52%` para `91%` depois da cobertura dos adaptadores PostgreSQL e da pipeline durável.
 
-* `NatureProtector.Prevention.Host.Persistence.PostgresAcceptedReadingRepository`: `0%`
-* `NatureProtector.Prevention.Host.Persistence.PostgresAreaRiskSnapshotRepository`: `0%`
-* `NatureProtector.Prevention.Host.Processing.PostgresReadingEventInbox`: `0%`
-* `NatureProtector.Prevention.Host.Projection.PostgresAreaOperationalProjectionStore`: `0%`
-* `NatureProtector.Prevention.Host.Persistence.PostgresRiskAssessmentRepository`: `26%`
+Os componentes prioritários dessa vaga ficaram assim:
+
+* `NatureProtector.Prevention.Host.Persistence.PostgresAcceptedReadingRepository`: `100%`
+* `NatureProtector.Prevention.Host.Persistence.PostgresAreaRiskSnapshotRepository`: `100%`
+* `NatureProtector.Prevention.Host.Persistence.PostgresRiskAssessmentRepository`: `100%`
+* `NatureProtector.Prevention.Host.Processing.PostgresReadingEventInbox`: `98%`
+* `NatureProtector.Prevention.Host.Projection.PostgresAreaOperationalProjectionStore`: `88.8%`
+
+Os hotspots que ainda justificam trabalho adicional são:
+
+* `NatureProtector.Prevention.Host.Processing.DefaultProcessingFailureClassifier`: `58.4%`
+* `NatureProtector.Infrastructure.Influx.Services.InfluxWriteService`: `65.4%`
 * `NatureProtector.Backoffice.Api.ControlPlane.Contracts.GridCellResponse`: `20%`
+* construtores e primitivas específicas em `NatureProtector.Core.Areas` e `NatureProtector.Core.Sensors`
 
-Ao nível de risco por complexidade e baixa cobertura, o relatório destaca sobretudo métodos em `PostgresAreaOperationalProjectionStore`, `PostgresReadingEventInbox`, `DefaultProcessingFailureClassifier`, `PostgresRiskAssessmentRepository`, `RabbitMqReadingPublisher.EnsureChannel()` e o construtor de `NatureProtector.Core.Areas.GridCell`.
+## Nota sobre provider de teste
 
-Alguns hotspots referidos anteriormente deixaram de ser válidos nesta medição. Em particular, `NatureProtector.Backoffice.Api.ControlPlane.Services.PostgresControlPlaneService` já não é um ponto fraco, `NatureProtector.Simulator.Host.Services.PostgresSimulationContextSource` já apresenta `85.4%`, `NatureProtector.Simulator.Host.Services.PostgresSimulationRunStore` está em `100%`, e a referência histórica a `NatureProtector.Prevention.Host.Validation.SimpleReadingValidator` continua a não se aplicar porque esse código já não existe na runtime atual.
+Os testes de persistência da `Prevention.Host` usam `SQLite` in-memory porque permitem validar comportamento relacional sem depender de serviços externos. Há, no entanto, uma limitação importante: `SQLite` não traduz `ORDER BY` sobre `DateTimeOffset` da mesma forma que `PostgreSQL`.
+
+Por isso, o comportamento de ordenação crítica nos adaptadores PostgreSQL ficou protegido por testes e por uma abordagem segura no código que mantém a semântica em runtime sem esconder a diferença entre providers.
 
 ## Filosofia de coverage
 
-- o foco principal do relatório consolidado é a lógica de domínio, contratos, serialização, scoring e pipeline
-- `Program.cs`, workers e bootstrap de hosting são tratados como infraestrutura de arranque e são excluídos do relatório final consolidado
-- código gerado, `bin` e `obj` também são excluídos
+* o foco principal do relatório consolidado é a lógica aplicacional e o comportamento observável;
+* `Program.cs`, workers e bootstrap de hosting continuam excluídos do relatório agregado;
+* código gerado, `bin` e `obj` também continuam excluídos;
+* o objetivo não é perseguir `100%` artificial, mas cobrir caminhos críticos e regressão relevante.
 
-## Relação com a documentação de planeamento
+## Relação com o roadmap
 
-O roadmap em [../docs/planning/project-completion-roadmap.md](../docs/planning/project-completion-roadmap.md) já antecipava a necessidade de aumentar a cobertura em contratos, simulação, pipeline e integração. Esta pasta mostra isso de forma concreta.
+O roadmap em [../docs/planning/project-completion-roadmap.md](../docs/planning/project-completion-roadmap.md) continua a orientar as próximas vagas de testes, nomeadamente:
+
+* semântica completa de rejeição, retry e quarentena;
+* modos locais e falhas em `InfluxDB`;
+* casos canónicos end-to-end;
+* superfície da `Backoffice.Api` e comportamento sem dados.

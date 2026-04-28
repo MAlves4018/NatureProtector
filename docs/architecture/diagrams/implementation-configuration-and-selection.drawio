@@ -1,0 +1,136 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="implementation-configuration-and-selection" name="Page-1">
+    <mxGraphModel dx="1507" dy="655" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f4e78;strokeColor=#0b2e4f;fontColor=#ffffff;fontSize=24;fontStyle=1;" value="Configuração e seleção de implementações na branch atual" vertex="1">
+          <mxGeometry height="70" width="1680" x="60" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#d6d6d6;fontSize=14;align=left;spacingLeft=10;spacingRight=10;" value="Cada zona mostra onde a escolha é feita, que opção a controla, quais são as implementações possíveis e qual é o caminho nominal atual. Linhas tracejadas representam alternativas suportadas, mas não dominantes." vertex="1">
+          <mxGeometry height="52" width="1680" x="60" y="169" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Simulator.Host" vertex="1">
+          <mxGeometry height="640" width="520" x="60" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="Program.cs&lt;br&gt;(onde a escolha é feita)" vertex="1">
+          <mxGeometry height="70" width="190" x="190" y="34" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="SimulatorOptions.ControlPlaneEnabled = true" vertex="1">
+          <mxGeometry height="60" width="289" x="141" y="123" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="ISimulationContextSource&lt;br&gt;PostgresSimulationContextSource&lt;div&gt;ISimulationRunStore&lt;br&gt;PostgresSimulationRunStore&lt;br&gt;(caminho nominal)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="127" width="210" x="40" y="209" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;dashed=1;" value="ISimulationContextSource&lt;br&gt;ScenarioContextFactory&lt;br&gt;(alternativa local)" vertex="1">
+          <mxGeometry height="95" width="210" x="292" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="16" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;dashed=1;" value="ISimulationRunStore&lt;br&gt;NoOpSimulationRunStore&lt;br&gt;(sem persistência)" vertex="1">
+          <mxGeometry height="95" width="210" x="292" y="333" as="geometry" />
+        </mxCell>
+        <mxCell id="17" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="Publisher&#xa;sem flag explícita no código" vertex="1">
+          <mxGeometry height="60" width="210" x="150" y="434" as="geometry" />
+        </mxCell>
+        <mxCell id="18" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="RabbitMqReadingPublisher&lt;br&gt;(caminho nominal inferido)" vertex="1">
+          <mxGeometry height="85" width="210" x="25" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="19" parent="10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;dashed=1;" value="ConsoleReadingPublisher&lt;br&gt;(alternativa implícita)" vertex="1">
+          <mxGeometry height="85" width="210" x="285" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Prevention.Host" vertex="1">
+          <mxGeometry height="640" width="520" x="640" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#edf4ff;strokeColor=#6c8ebf;fontSize=13;" value="Program.cs&lt;br&gt;(onde a escolha é feita)" vertex="1">
+          <mxGeometry height="70" width="190" x="165" y="64" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="PreventionHostOptions.PipelinePersistenceEnabled = true" vertex="1">
+          <mxGeometry height="60" width="349" x="85.5" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="Stack persistente:&lt;br&gt;PostgresReadingEventInbox&lt;br&gt;Postgres repositories&lt;br&gt;PostgresAreaOperationalProjectionStore&lt;br&gt;InboxRetryWorker" vertex="1">
+          <mxGeometry height="180" width="250" x="19" y="279" as="geometry" />
+        </mxCell>
+        <mxCell id="24" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;dashed=1;" value="Stack in-memory:&lt;br&gt;InMemoryReadingEventInbox&lt;br&gt;InMemory repositories&lt;br&gt;InMemory projection store" vertex="1">
+          <mxGeometry height="145" width="210" x="285" y="279" as="geometry" />
+        </mxCell>
+        <mxCell id="25" parent="20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="O que muda quando false&#xa;sem pipeline.* durável&#xa;sem projection.* persistida&#xa;sem coordenação durável de retries" vertex="1">
+          <mxGeometry height="105" width="330" x="95" y="495" as="geometry" />
+        </mxCell>
+        <mxCell id="30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingTop=8;spacingLeft=8;" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;Backoffice.Api e configuração transversal" vertex="1">
+          <mxGeometry height="640" width="520" x="1220" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="31" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3ecf7;strokeColor=#9673a6;fontSize=13;" value="Program.cs&lt;br&gt;(onde a escolha é feita)" vertex="1">
+          <mxGeometry height="70" width="190" x="160" y="67" as="geometry" />
+        </mxCell>
+        <mxCell id="32" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf2;strokeColor=#d6b656;fontSize=13;" value="BackofficeApiOptions.ControlPlaneEnabled = true" vertex="1">
+          <mxGeometry height="60" width="305" x="102.5" y="167" as="geometry" />
+        </mxCell>
+        <mxCell id="33" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="IControlPlaneService&lt;br&gt;PostgresControlPlaneService&lt;br&gt;(caminho nominal)" vertex="1">
+          <mxGeometry height="95" width="210" x="25" y="277" as="geometry" />
+        </mxCell>
+        <mxCell id="34" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;dashed=1;" value="IControlPlaneService&lt;br&gt;UnavailableControlPlaneService&lt;br&gt;(fallback)" vertex="1">
+          <mxGeometry height="95" width="210" x="285" y="277" as="geometry" />
+        </mxCell>
+        <mxCell id="35" parent="30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3ecf7;strokeColor=#9673a6;fontSize=13;" value="Configuração transversal&#xa;POSTGRES_* e .env&#xa;INFLUXDB_* e .env&#xa;RabbitMq:* e defaults" vertex="1">
+          <mxGeometry height="110" width="260" x="125" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="40" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="12" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="361" y="336" />
+              <mxPoint x="361" y="336" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="41" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="13" value="true">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="306" y="419" />
+              <mxPoint x="190" y="419" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="42" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;dashed=1;" target="14" value="false">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="362" y="417" />
+              <mxPoint x="450" y="417" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="44" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;dashed=1;" target="16" value="false">
+          <mxGeometry relative="1" x="0.3354" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="342" y="540" />
+              <mxPoint x="450" y="540" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="45" edge="1" parent="1" source="17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="18" value="nominal">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="46" edge="1" parent="1" source="17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;dashed=1;" target="19" value="alternativo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="47" edge="1" parent="1" source="21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" target="22" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="48" edge="1" parent="1" source="22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="23" value="true">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="49" edge="1" parent="1" source="22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;dashed=1;" target="24" value="false">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="50" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#9673a6;strokeWidth=2;" target="32" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="51" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" target="33" value="true">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;dashed=1;" target="34" value="false">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

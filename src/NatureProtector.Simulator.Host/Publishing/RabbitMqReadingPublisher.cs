@@ -2,7 +2,9 @@ using Microsoft.Extensions.Options;
 using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
+using NatureProtector.Shared.Observability;
 using RabbitMQ.Client;
+using System.Diagnostics;
 
 /*
  * Este publisher envia os eventos de leitura gerados para RabbitMQ.
@@ -49,6 +51,15 @@ public sealed class RabbitMqReadingPublisher(
     {
         ArgumentNullException.ThrowIfNull(envelope);
         cancellationToken.ThrowIfCancellationRequested();
+        using var activity = SimulatorHostTelemetry.ActivitySource.StartActivity("natureprotector.simulator.publish");
+        var stopwatch = Stopwatch.StartNew();
+        activity?.SetTag(TelemetryTags.EventId, envelope.EventId);
+        activity?.SetTag(TelemetryTags.CorrelationId, envelope.CorrelationId);
+        activity?.SetTag(TelemetryTags.AreaId, envelope.AreaId);
+        activity?.SetTag(TelemetryTags.SimulationRunId, envelope.Payload.SimulationRunId);
+        activity?.SetTag(TelemetryTags.SensorId, envelope.Payload.SensorId);
+        activity?.SetTag(TelemetryTags.SensorName, envelope.Payload.SensorName);
+        activity?.SetTag(TelemetryTags.MetricType, envelope.Payload.MetricType);
 
         EnsureChannel();
 
@@ -78,6 +89,10 @@ public sealed class RabbitMqReadingPublisher(
             envelope.Payload.SensorId,
             envelope.Payload.SensorName,
             envelope.Payload.Value);
+
+        stopwatch.Stop();
+        SimulatorHostTelemetry.PublishedMessages.Add(1);
+        SimulatorHostTelemetry.PublishDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds);
 
         return Task.CompletedTask;
     }

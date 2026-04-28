@@ -6,6 +6,8 @@ Esta pasta concentra a documentação de arquitetura do projeto, com foco princi
 
 - [architecture.md](architecture.md)
   - documento central, autocontido, com a leitura progressiva da arquitetura;
+- [implementation.md](implementation.md)
+  - documento central de onboarding técnico da implementação atual, guiado por vistas e alinhado com o código real da branch;
 - [repository-exploration-guide.md](repository-exploration-guide.md)
   - guia de entrada para quem abre o repositório pela primeira vez e precisa de uma ordem de leitura concreta;
 - [current-capabilities-and-how-to-run.md](current-capabilities-and-how-to-run.md)
@@ -22,6 +24,7 @@ Esta pasta concentra a documentação de arquitetura do projeto, com foco princi
 ## Convenções
 
 - `architecture.md` é a referência principal para leitura técnica, apresentação e apoio ao relatório.
+- `implementation.md` é a referência principal para perceber a implementação atual sem partir diretamente para leitura dispersa do código.
 - `postgresql-architecture.md` é a referência principal para perceber `control`, `pipeline` e `projection` sem ter de ler as fases históricas uma a uma.
 - Cada imagem em `images/` tem um ficheiro Draw.io homónimo em `diagrams/`.
 - O ficheiro [diagrams/00-legacy-current-repo-architecture.drawio.xml](diagrams/00-legacy-current-repo-architecture.drawio.xml) foi preservado apenas como artefacto legado e não deve ser tratado como diagrama final.

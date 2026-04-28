@@ -2,42 +2,44 @@
 
 Esta pasta guarda documentação transversal e relativamente estável sobre o projeto.
 
-O princípio que seguimos é simples:
+O princípio é simples:
 
 - `docs/` concentra conhecimento que interessa ao projeto como um todo;
 - cada módulo em `src/` deve ter o seu próprio `README.md` para explicar responsabilidade, dependências, configuração e estado atual;
-- a documentação de dados mantém-se onde já faz sentido hoje, em [../data/README.md](../data/README.md) e [../scripts/data/README.md](../scripts/data/README.md).
+- a documentação de dados mantém-se em [../data/README.md](../data/README.md) e [../scripts/data/README.md](../scripts/data/README.md).
 
 Assim evitamos dois extremos: nem tudo fica espalhado por pequenos ficheiros locais, nem tudo fica esmagado numa única pasta central sem contexto de proximidade ao código.
 
 ## Índice recomendado
 
 - [../README.md](../README.md)
-  - visão global do repositório, quickstart e estado atual
+  - visão global do repositório, quickstart e estado atual;
 - [../src/README.md](../src/README.md)
-  - mapa técnico dos projetos `.NET`
+  - mapa técnico dos projetos `.NET`;
 - [../tests/README.md](../tests/README.md)
-  - estado atual da estratégia de testes
+  - estado atual da estratégia de testes;
 - [architecture/README.md](architecture/README.md)
-  - leitura da arquitetura atual e ligação aos documentos de planeamento
+  - leitura da arquitetura atual e ligação aos documentos de planeamento;
 - [architecture/repository-exploration-guide.md](architecture/repository-exploration-guide.md)
-  - percurso recomendado para explorar o repositório, os docs e os hotspots de código
+  - percurso recomendado para explorar o repositório, a documentação e os pontos críticos de código;
 - [architecture/current-capabilities-and-how-to-run.md](architecture/current-capabilities-and-how-to-run.md)
-  - visão operacional do que já pode ser corrido e observado hoje
+  - visão operacional do que já pode ser corrido e observado hoje;
 - [architecture/grafana-influx-dashboard-guide.md](architecture/grafana-influx-dashboard-guide.md)
-  - guia prático para ligar o `Grafana` ao `InfluxDB`, descobrir tabelas e construir dashboards
+  - guia prático para ligar o `Grafana` ao `InfluxDB`, descobrir tabelas e construir dashboards;
 - [architecture/postgresql-architecture.md](architecture/postgresql-architecture.md)
-  - referência consolidada do papel atual do `PostgreSQL`, cobrindo `control`, `pipeline`, `projection`, bootstrap, runtime e API
+  - referência consolidada do papel atual do `PostgreSQL`, cobrindo `control`, `pipeline`, `projection`, bootstrap, runtime e API;
+- [structurizr/README.md](structurizr/README.md)
+  - modelo C4 em Structurizr DSL, com instruções de validação, exportação e abertura local;
 - [planning/project-completion-roadmap.md](planning/project-completion-roadmap.md)
-  - roadmap global e estrutura alvo
+  - roadmap global e estrutura alvo;
 - [planning/pipeline-gap-and-dependency-map.md](planning/pipeline-gap-and-dependency-map.md)
-  - lacunas, dependências e próximos passos
+  - lacunas, dependências e próximos passos;
 - [../data/README.md](../data/README.md)
-  - organização da workspace de dados
+  - organização da workspace de dados;
 - [../scripts/data/README.md](../scripts/data/README.md)
-  - história completa da aquisição e curadoria de dados
+  - história completa da aquisição e curadoria de dados.
 
-Nota de leitura: os nove documentos de fase em `docs/planning/` continuam preservados como historial incremental do trabalho em `PostgreSQL`, mas a referência consolidada para o estado atual passou a ser [architecture/postgresql-architecture.md](architecture/postgresql-architecture.md). Para os comandos `dotnet` atuais, o caminho canónico passa pelo [../README.md](../README.md) e por [../tests/README.md](../tests/README.md).
+Nota de leitura: os documentos de fase em `docs/planning/` continuam preservados como historial incremental do trabalho em `PostgreSQL`, mas a referência consolidada para o estado atual passou a ser [architecture/postgresql-architecture.md](architecture/postgresql-architecture.md). Para os comandos `dotnet` atuais, o caminho canónico passa pelo [../README.md](../README.md) e por [../tests/README.md](../tests/README.md).
 
 ## Regra prática para acrescentar documentação nova
 

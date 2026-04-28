@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using NatureProtector.Prevention.Host.Configuration;
+using NatureProtector.Shared.Observability;
 
 namespace NatureProtector.Prevention.Host.Processing;
 
@@ -58,6 +59,7 @@ public sealed class InboxRetryWorker(
                         "Picked up due retry from inbox. InboxEventId={InboxEventId} Attempt={AttemptNumber}",
                         workItem.Lease.InboxEventId,
                         workItem.Lease.AttemptNumber);
+                    PreventionHostTelemetry.RetryPickedEvents.Add(1);
 
                     await processingService.ProcessAsync(
                         workItem.Envelope,
