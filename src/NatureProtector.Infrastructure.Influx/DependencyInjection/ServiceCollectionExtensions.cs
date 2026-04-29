@@ -29,7 +29,19 @@ public static class ServiceCollectionExtensions
         services.PostConfigure<InfluxDbOptions>(
             options => InfluxDbSettingsLoader.ApplyEnvironmentOrDotEnvFallbacks(options, basePath));
 
-        services.AddSingleton<IInfluxWriteService, InfluxWriteService>();
+        services.AddSingleton<InfluxWriteService>();
+        services.AddSingleton<Func<IInfluxWriteService>>(serviceProvider =>
+            () => serviceProvider.GetRequiredService<InfluxWriteService>());
+        services.AddSingleton<SafeInfluxWriteService>();
+        services.AddSingleton<NoOpInfluxWriteService>();
+        services.AddSingleton<IInfluxWriteService>(serviceProvider =>
+        {
+            var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<InfluxDbOptions>>().Value;
+
+            return options.Enabled
+                ? serviceProvider.GetRequiredService<SafeInfluxWriteService>()
+                : serviceProvider.GetRequiredService<NoOpInfluxWriteService>();
+        });
 
         return services;
     }

@@ -1,4 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using NatureProtector.Infrastructure.Influx.Configuration;
+using NatureProtector.Infrastructure.Influx.Services;
 using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Projection;
 using NatureProtector.Prevention.Host.Processing;
@@ -172,12 +175,52 @@ public sealed class ReadingRiskPipelineTests
         Assert.Equal(1, projection.AssessmentCount);
     }
 
+    [Fact]
+    public async Task ProcessAcceptedReadingAsync_Completes_WhenInfluxFailureIsTolerated()
+    {
+        var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
+        var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
+        var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
+        var projectionStore = new InMemoryAreaOperationalProjectionStore();
+        var throwingInner = new ThrowingInfluxWriteService();
+        var safeInfluxWriteService = new SafeInfluxWriteService(
+            () => throwingInner,
+            Options.Create(new InfluxDbOptions
+            {
+                Enabled = true,
+                FailPipelineOnWriteError = false
+            }),
+            NullLogger<SafeInfluxWriteService>.Instance);
+        var pipeline = CreatePipeline(
+            acceptedReadingRepository,
+            riskAssessmentRepository,
+            areaRiskSnapshotRepository,
+            projectionStore,
+            safeInfluxWriteService);
+        var envelope = EnvelopeFactory.Create(
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 33.5,
+            eventTime: new DateTimeOffset(2026, 4, 29, 11, 0, 0, TimeSpan.Zero));
+
+        await pipeline.ProcessAcceptedReadingAsync(envelope, CancellationToken.None);
+
+        Assert.Single(await acceptedReadingRepository.GetAllAsync(CancellationToken.None));
+        Assert.Single(await riskAssessmentRepository.GetByAreaAsync(envelope.AreaId, CancellationToken.None));
+        Assert.NotNull(await areaRiskSnapshotRepository.GetLatestAsync(envelope.AreaId, CancellationToken.None));
+        Assert.Single(projectionStore.States);
+        Assert.Single(projectionStore.CellStates);
+        Assert.Equal(1, throwingInner.AcceptedReadingCalls);
+        Assert.Equal(1, throwingInner.RiskAssessmentCalls);
+        Assert.Equal(1, throwingInner.AreaRiskSnapshotCalls);
+    }
+
     private static ReadingRiskPipeline CreatePipeline(
         IAcceptedReadingRepository acceptedReadingRepository,
         IRiskAssessmentRepository riskAssessmentRepository,
         IAreaRiskSnapshotRepository areaRiskSnapshotRepository,
         IAreaOperationalProjectionStore projectionStore,
-        FakeInfluxWriteService influxWriteService)
+        IInfluxWriteService influxWriteService)
     {
         return new ReadingRiskPipeline(
             acceptedReadingRepository,

@@ -10,31 +10,63 @@ namespace NatureProtector.Infrastructure.Influx.Tests.DependencyInjection;
 public sealed class ServiceCollectionExtensionsTests
 {
     [Fact]
-    public void AddInfluxPersistence_RegistersWriteService_AndBindsOptions()
+    public void AddInfluxPersistence_WhenEnabled_RegistersSafeWriteService_AndBindsOptions()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
+                [$"{InfluxDbOptions.SectionName}:Enabled"] = "true",
+                [$"{InfluxDbOptions.SectionName}:FailPipelineOnWriteError"] = "false",
                 [$"{InfluxDbOptions.SectionName}:Url"] = "http://localhost:8086",
                 [$"{InfluxDbOptions.SectionName}:Token"] = "token",
                 [$"{InfluxDbOptions.SectionName}:Organization"] = "org",
-                [$"{InfluxDbOptions.SectionName}:Bucket"] = "bucket"
+                [$"{InfluxDbOptions.SectionName}:Bucket"] = "bucket",
+                [$"{InfluxDbOptions.SectionName}:Writes:AcceptedReadings"] = "true",
+                [$"{InfluxDbOptions.SectionName}:Writes:RiskAssessments"] = "true",
+                [$"{InfluxDbOptions.SectionName}:Writes:AreaRiskSnapshots"] = "false"
             })
             .Build();
 
         var services = new ServiceCollection();
+        services.AddLogging();
 
         services.AddInfluxPersistence(configuration, AppContext.BaseDirectory);
 
         using var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<IOptions<InfluxDbOptions>>().Value;
-        var descriptor = services.Single(service => service.ServiceType == typeof(IInfluxWriteService));
+        var writeService = provider.GetRequiredService<IInfluxWriteService>();
 
-        Assert.Equal(typeof(InfluxWriteService), descriptor.ImplementationType);
+        Assert.IsType<SafeInfluxWriteService>(writeService);
+        Assert.True(options.Enabled);
+        Assert.False(options.FailPipelineOnWriteError);
         Assert.Equal("http://localhost:8086", options.Url);
         Assert.Equal("token", options.Token);
         Assert.Equal("org", options.Organization);
         Assert.Equal("bucket", options.Bucket);
+        Assert.True(options.Writes.AcceptedReadings);
+        Assert.True(options.Writes.RiskAssessments);
+        Assert.False(options.Writes.AreaRiskSnapshots);
+    }
+
+    [Fact]
+    public void AddInfluxPersistence_WhenDisabled_RegistersNoOpWriteService()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{InfluxDbOptions.SectionName}:Enabled"] = "false"
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services.AddInfluxPersistence(configuration, AppContext.BaseDirectory);
+
+        using var provider = services.BuildServiceProvider();
+        var writeService = provider.GetRequiredService<IInfluxWriteService>();
+
+        Assert.IsType<NoOpInfluxWriteService>(writeService);
     }
 
     [Fact]
@@ -59,6 +91,7 @@ public sealed class ServiceCollectionExtensionsTests
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
+                    [$"{InfluxDbOptions.SectionName}:Enabled"] = "true",
                     [$"{InfluxDbOptions.SectionName}:Url"] = string.Empty,
                     [$"{InfluxDbOptions.SectionName}:Token"] = string.Empty,
                     [$"{InfluxDbOptions.SectionName}:Organization"] = string.Empty,
@@ -67,6 +100,7 @@ public sealed class ServiceCollectionExtensionsTests
                 .Build();
 
             var services = new ServiceCollection();
+            services.AddLogging();
 
             services.AddInfluxPersistence(configuration, basePath);
 

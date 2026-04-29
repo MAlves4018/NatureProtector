@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NatureProtector.Infrastructure.Influx.Configuration;
+using NatureProtector.Infrastructure.Influx.Services;
 using NatureProtector.Prevention.Host.Configuration;
 using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Projection;
@@ -113,6 +115,44 @@ public sealed class ReadingEventProcessingServiceTests
         Assert.Empty(inbox.Quarantines);
     }
 
+    [Fact]
+    public async Task ProcessAsync_CompletesWithoutRetryOrQuarantine_WhenOnlyInfluxFailsAndFailureIsTolerated()
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var envelope = EnvelopeFactory.Create();
+        var storeResult = await inbox.StoreIncomingAsync(
+            envelope,
+            JsonEventSerializer.SerializeToUtf8Bytes(envelope),
+            "reading_risk_pipeline",
+            CancellationToken.None);
+        var tolerantInfluxWriteService = new SafeInfluxWriteService(
+            () => new ThrowingInfluxWriteService(),
+            Options.Create(new InfluxDbOptions
+            {
+                Enabled = true,
+                FailPipelineOnWriteError = false
+            }),
+            NullLogger<SafeInfluxWriteService>.Instance);
+        var processingService = CreateService(
+            CreatePipeline(
+                new InMemoryAcceptedReadingRepository(),
+                tolerantInfluxWriteService),
+            inbox);
+
+        await processingService.ProcessAsync(
+            envelope,
+            storeResult.Lease!,
+            CancellationToken.None);
+
+        var inboxEvent = Assert.Single(inbox.Events);
+        Assert.Equal(NatureProtector.Infrastructure.Postgres.Pipeline.InboxEventStatus.Processed, inboxEvent.Status);
+        Assert.Single(inbox.Attempts);
+        Assert.Equal(
+            NatureProtector.Infrastructure.Postgres.Pipeline.ProcessingAttemptOutcome.Succeeded,
+            inbox.Attempts.Single().Outcome);
+        Assert.Empty(inbox.Quarantines);
+    }
+
     private static ReadingEventProcessingService CreateService(
         ReadingRiskPipeline pipeline,
         IReadingEventInbox inbox)
@@ -131,7 +171,9 @@ public sealed class ReadingEventProcessingServiceTests
             new DefaultProcessingFailureClassifier());
     }
 
-    private static ReadingRiskPipeline CreatePipeline(IAcceptedReadingRepository acceptedReadingRepository)
+    private static ReadingRiskPipeline CreatePipeline(
+        IAcceptedReadingRepository acceptedReadingRepository,
+        IInfluxWriteService? influxWriteService = null)
     {
         return new ReadingRiskPipeline(
             acceptedReadingRepository,
@@ -140,7 +182,7 @@ public sealed class ReadingEventProcessingServiceTests
             new AreaRiskSnapshotService(),
             new InMemoryAreaRiskSnapshotRepository(),
             new InMemoryAreaOperationalProjectionStore(),
-            new FakeInfluxWriteService(),
+            influxWriteService ?? new FakeInfluxWriteService(),
             NullLogger<ReadingRiskPipeline>.Instance);
     }
 

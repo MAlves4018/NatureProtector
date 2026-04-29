@@ -23,7 +23,7 @@ O repositorio nao deve ser lido como se toda a plataforma estivesse concluida. O
 - `PostgreSQL`
   - fonte de verdade para `control`, estado duravel da pipeline e projeccoes operacionais;
 - `InfluxDB`
-  - series temporais e telemetria operacional;
+  - series temporais e observabilidade temporal, com escritas configuraveis por measurement;
 - `Grafana`
   - observacao local sobre InfluxDB;
 - `Backoffice.Api`
@@ -73,6 +73,10 @@ Nao existe ainda, nesta baseline, uma web UI final integrada como parte estabili
 
 1. Criar `.env` a partir de `.env.example`.
 2. Confirmar as credenciais locais para `RabbitMQ`, `PostgreSQL`, `InfluxDB` e `Grafana`.
+3. Ajustar a secção `InfluxDb` conforme o modo local pretendido:
+   - `Enabled=false` para desligar totalmente as escritas em InfluxDB;
+   - `FailPipelineOnWriteError=false` para tolerar falhas de observabilidade sem interromper a pipeline operacional;
+   - `Writes.*` para ativar ou desativar `accepted_readings`, `risk_assessments` e `area_risk_snapshots`.
 
 ### Levantar a baseline
 
@@ -112,7 +116,7 @@ dotnet run --project .\src\NatureProtector.Simulator.Host
 - `PostgreSQL`
   - confirmar que o bootstrap populou `control.*` e que a runtime escreve em `pipeline.*` e `projection.*`;
 - `InfluxDB`
-  - confirmar que o contentor `np-influxdb` esta operacional e que as escritas surgem nos logs e dashboards;
+  - confirmar que o contentor `np-influxdb` esta operacional e que as escritas surgem nos logs e dashboards, se `InfluxDb:Enabled=true`;
 - `Grafana`
   - abrir `http://localhost:3000` e validar o datasource local;
 - `Backoffice.Api`
@@ -161,5 +165,6 @@ O relatorio consolidado fica em `coveragereport_core/index.html`.
 - o simulador ainda nao separa completamente verdade fisica, observacao local e falha de transporte;
 - a semantica final de `accepted`, `rejected` e `normalized` ainda precisa de consolidacao;
 - `InfluxDB` continua a ser o principal candidato a gargalo local na baseline atual;
+- a observabilidade em `InfluxDB` pode ser desligada ou tolerada por configuração, mas isso nao substitui uma estrategia futura de batching ou desacoplamento;
 - `AppHost` e a camada Aspire permanecem experimentais e fora do caminho critico da solucao;
 - a consolidacao metodologica continua dependente dos documentos de referencia do segundo momento de pesquisa.

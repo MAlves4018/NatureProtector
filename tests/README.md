@@ -97,6 +97,19 @@ Os testes de persistência da `Prevention.Host` usam `SQLite` in-memory porque p
 
 Por isso, o comportamento de ordenação crítica nos adaptadores PostgreSQL ficou protegido por testes e por uma abordagem segura no código que mantém a semântica em runtime sem esconder a diferença entre providers.
 
+## Nota sobre InfluxDB em testes
+
+Os testes do repositório não dependem de um servidor InfluxDB real para validar a pipeline operacional.
+
+Nesta fase, a cobertura de `NatureProtector.Infrastructure.Influx` e da `Prevention.Host` valida:
+
+* modo `NoOp` quando `InfluxDb:Enabled=false`;
+* tolerância a falhas quando `InfluxDb:FailPipelineOnWriteError=false`;
+* comportamento estrito quando `InfluxDb:FailPipelineOnWriteError=true`;
+* ativação ou desativação por measurement para `accepted_readings`, `risk_assessments` e `area_risk_snapshots`.
+
+Isto reforça a decisão arquitetural atual: `PostgreSQL` permanece o estado durável da pipeline e `InfluxDB` é observabilidade temporal configurável.
+
 ## Filosofia de coverage
 
 * o foco principal do relatório consolidado é a lógica aplicacional e o comportamento observável;

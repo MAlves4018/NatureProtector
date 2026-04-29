@@ -306,6 +306,9 @@ Registar, de forma primeiro estruturada e só depois mais detalhada, o trabalho 
 8. Foram revistas alterações relacionadas com PostgreSQL, projeções operacionais, bootstrap do plano de controlo, simulador e contexto de execução baseado em configuração persistida.
 9. Foram ajustados componentes da Backoffice API e testes associados, incluindo compatibilidade com contratos atualizados.
 10. Foi feita manutenção do repositório, incluindo resolução de conflitos após `git pull`, atualização do `.gitignore`, validação de build e análise de ficheiros gerados ou experimentais que devem ou não entrar no commit.
+11. Foi implementada uma alteração específica na infraestrutura de InfluxDB para tornar as escritas de observabilidade configuráveis e não críticas por defeito para o sucesso operacional da pipeline. A configuração passou a permitir desligar totalmente o InfluxDB, tolerar falhas de escrita sem enviar eventos para retry/quarentena e ativar ou desativar individualmente as measurements `accepted_readings`, `risk_assessments` e `area_risk_snapshots`.
+12. Foram adicionados um `NoOpInfluxWriteService` e um `SafeInfluxWriteService`, mantendo a política de observabilidade concentrada na infraestrutura de InfluxDB. Esta alteração permitiu preservar a ordem funcional da pipeline, o `BasicAck`, os contratos RabbitMQ, o simulador e a persistência PostgreSQL.
+13. Foram acrescentados testes para validar o modo NoOp, a tolerância a falhas de InfluxDB, o comportamento estrito configurável, a configuração por measurement e o registo correto dos serviços por dependency injection.
 
 ### Resultado principal da quinzena
 
@@ -399,6 +402,19 @@ A observabilidade tornou-se especialmente relevante para a demonstração da bas
 
 Também ficou claro, por medição, que o principal gargalo local atual não está necessariamente no PostgreSQL nem na query de estado mais recente da área, mas sim no custo associado às escritas para InfluxDB. Esta conclusão é importante porque altera a prioridade das próximas otimizações: antes de refatorar a pipeline de forma ampla, faz mais sentido permitir desligar, agrupar ou amortecer escritas de observabilidade temporal em ambiente local.
 
+Na continuação deste diagnóstico, foi implementada uma alteração concreta na infraestrutura de InfluxDB. A análise da pipeline mostrou que as escritas para InfluxDB estavam no caminho síncrono do processamento e que, apesar de serem importantes para observabilidade, não deveriam ser tratadas como condição obrigatória para considerar uma leitura operacionalmente processada.
+
+A decisão arquitetural assumida foi separar claramente o papel de PostgreSQL e InfluxDB. O PostgreSQL continua a representar o estado durável e operacional da pipeline, incluindo inbox, tentativas de processamento, leituras aceites, avaliações de risco, snapshots e projeções. O InfluxDB passa a ser tratado explicitamente como observabilidade temporal, útil para séries temporais, dashboards e diagnóstico, mas não como fonte principal de verdade operacional.
+
+Com base nessa decisão, a configuração `InfluxDb` foi expandida para permitir ativar ou desativar globalmente as escritas para InfluxDB, decidir se uma falha de escrita deve ou não falhar a pipeline e controlar individualmente as measurements escritas. As opções introduzidas permitem configurar `Enabled`, `FailPipelineOnWriteError` e as flags `Writes.AcceptedReadings`, `Writes.RiskAssessments` e `Writes.AreaRiskSnapshots`.
+
+Quando `Enabled=false`, a aplicação passa a usar um `NoOpInfluxWriteService`, que mantém a interface esperada pela pipeline mas não tenta ligar nem escrever em InfluxDB. Isto permite executar a baseline local sem depender da disponibilidade do InfluxDB e ajuda a diagnosticar o comportamento da pipeline, PostgreSQL, RabbitMQ e API de forma isolada.
+
+Quando `Enabled=true`, a aplicação passa a usar um `SafeInfluxWriteService`, que concentra a política de escrita na infraestrutura de InfluxDB. Este serviço delega no writer real apenas quando a measurement correspondente está ativa. Se ocorrer uma falha de escrita e `FailPipelineOnWriteError=false`, a falha é registada mas a pipeline continua. Se `FailPipelineOnWriteError=true`, a exceção é relançada e o comportamento estrito é preservado.
+
+Esta alteração foi feita sem mudar a ordem funcional da `ReadingRiskPipeline`, sem alterar o `BasicAck`, sem alterar contratos RabbitMQ, sem alterar o simulador e sem modificar a persistência PostgreSQL. O objetivo foi corrigir a criticidade indevida da observabilidade temporal, não redesenhar a pipeline.
+
+Também foram adicionados testes específicos para validar o novo comportamento. Foram cobertos o `NoOpInfluxWriteService`, o `SafeInfluxWriteService`, a tolerância a falhas, o modo estrito, a configuração por measurement e o registo dos serviços por dependency injection. Foram ainda reforçados testes da pipeline para confirmar que uma falha tolerada de InfluxDB não leva o evento para retry ou quarentena.
 ---
 
 ## 6. Rejeição, retry, quarentena e durabilidade do processamento
@@ -469,11 +485,17 @@ Também ficou mais claro que a baseline local atual tem um gargalo relevante nas
 
 A documentação beneficiou diretamente deste diagnóstico. O `implementation.md`, os diagramas e as páginas de documentação passaram a refletir melhor o comportamento real do sistema, incluindo rejeição, retry, quarentena, inbox persistida, confirmação ao RabbitMQ, projeções e pontos de observação.
 
+Na sequência dessa conclusão, foi implementada uma primeira correção de baixo risco: tornar as escritas para InfluxDB configuráveis e não críticas por defeito. Esta alteração não teve como objetivo otimizar definitivamente o throughput da pipeline, mas sim separar corretamente a semântica operacional da observabilidade temporal.
+
+A pipeline passou a poder correr com InfluxDB desligado, com InfluxDB parcialmente ativo por measurement, ou com InfluxDB ativo mas tolerante a falhas de escrita. Isto permite testar e demonstrar a cadeia principal com RabbitMQ, PostgreSQL, processamento de risco, projeções e API sem depender obrigatoriamente da disponibilidade ou desempenho do InfluxDB.
+
+Esta correção também prepara o passo seguinte: avaliar a escrita em batch para InfluxDB. Como agora a política de falha e ativação das measurements está concentrada na infraestrutura de InfluxDB, será mais seguro estudar uma otimização que reduza o número de chamadas feitas ao InfluxDB, por exemplo agrupando as escritas de `accepted_readings`, `risk_assessments` e `area_risk_snapshots` numa operação mais eficiente.
+
 ### Trabalho a fazer na continuação desta frente
 
-1. Introduzir uma configuração para desligar ou reduzir escritas para InfluxDB em ambiente local, de forma a diagnosticar a pipeline sem o principal gargalo temporal.
-2. Rever o `InfluxWriteService`, avaliando se as escritas podem ser agrupadas, amortecidas ou executadas de forma menos penalizadora.
-3. Manter a versão funcional e segura da consulta `GetLatestByAreaAsync`, só voltando a otimizar quando houver uma abordagem validada pelo Entity Framework Core.
+1. Medir novamente a pipeline com três perfis de execução: InfluxDB completo, InfluxDB parcialmente ativo por measurement e InfluxDB desligado, comparando `pipeline_total_ms`, `processing_total_ms`, tempos de escrita InfluxDB, backlog RabbitMQ e ocorrência de retry/quarentena.
+2. Avaliar batch writes para InfluxDB, procurando reduzir o overhead das três escritas atuais por evento aceite (`accepted_readings`, `risk_assessments` e `area_risk_snapshots`) sem alterar contratos RabbitMQ, `BasicAck`, simulador ou persistência PostgreSQL.
+3. Rever o `InfluxWriteService`, avaliando se as escritas podem ser agrupadas numa operação batch por evento antes de avançar para soluções mais complexas, como background writer, filas internas ou Redis.
 4. Garantir que catálogo de cenários, bootstrap do plano de controlo e runtime do simulador permanecem sincronizados, especialmente no número de sensores ativos.
 5. Finalizar a seleção do que deve entrar no commit, distinguindo fontes/documentação de outputs gerados.
 6. Corrigir ou retirar temporariamente o `AppHost` da solução até que a frente Aspire esteja estável.
