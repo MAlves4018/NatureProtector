@@ -77,6 +77,7 @@ Nao existe ainda, nesta baseline, uma web UI final integrada como parte estabili
    - `Enabled=false` para desligar totalmente as escritas em InfluxDB;
    - `FailPipelineOnWriteError=false` para tolerar falhas de observabilidade sem interromper a pipeline operacional;
    - `Writes.*` para ativar ou desativar `accepted_readings`, `risk_assessments` e `area_risk_snapshots`.
+4. O `src/NatureProtector.Prevention.Host/appsettings.json` usa `InfluxDb:Enabled=false` por omissão para a baseline local. Ativar `Enabled=true` apenas quando for necessário observar séries temporais e dashboards locais.
 
 ### Levantar a baseline
 

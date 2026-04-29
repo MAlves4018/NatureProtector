@@ -17,21 +17,26 @@ public sealed class NoOpInfluxWriteServiceTests
         var envelope = CreateEnvelope();
         var assessment = CreateAssessment();
         var snapshot = CreateSnapshot();
+        var batch = new InfluxTelemetryBatch()
+            .AddAcceptedReading(envelope)
+            .AddRiskAssessment(Guid.NewGuid(), Guid.NewGuid(), assessment)
+            .AddAreaRiskSnapshot(Guid.NewGuid(), 2, snapshot);
 
+        await service.WriteBatchAsync(batch, CancellationToken.None);
         await service.WriteAcceptedReadingAsync(envelope, CancellationToken.None);
         await service.WriteRiskAssessmentAsync(Guid.NewGuid(), Guid.NewGuid(), assessment, CancellationToken.None);
         await service.WriteAreaRiskSnapshotAsync(Guid.NewGuid(), 2, snapshot, CancellationToken.None);
     }
 
     [Fact]
-    public async Task WriteAcceptedReadingAsync_ThrowsOperationCanceledException_WhenCancellationIsRequested()
+    public async Task WriteBatchAsync_ThrowsOperationCanceledException_WhenCancellationIsRequested()
     {
         var service = CreateService();
         using var cancellationTokenSource = new CancellationTokenSource();
         cancellationTokenSource.Cancel();
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => service.WriteAcceptedReadingAsync(
-            CreateEnvelope(),
+        await Assert.ThrowsAsync<OperationCanceledException>(() => service.WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAcceptedReading(CreateEnvelope()),
             cancellationTokenSource.Token));
     }
 

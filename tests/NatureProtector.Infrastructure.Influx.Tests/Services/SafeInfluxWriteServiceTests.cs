@@ -11,7 +11,7 @@ namespace NatureProtector.Infrastructure.Influx.Tests.Services;
 public sealed class SafeInfluxWriteServiceTests
 {
     [Fact]
-    public async Task WriteAcceptedReadingAsync_DoesNotRethrow_WhenFailureIsTolerated()
+    public async Task WriteBatchAsync_DoesNotRethrow_WhenFailureIsTolerated()
     {
         var inner = new ThrowingInfluxWriteService();
         var service = CreateService(
@@ -22,13 +22,15 @@ public sealed class SafeInfluxWriteServiceTests
                 FailPipelineOnWriteError = false
             });
 
-        await service.WriteAcceptedReadingAsync(CreateEnvelope(), CancellationToken.None);
+        await service.WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAcceptedReading(CreateEnvelope()),
+            CancellationToken.None);
 
-        Assert.Equal(1, inner.AcceptedReadingCalls);
+        Assert.Equal(1, inner.BatchCalls);
     }
 
     [Fact]
-    public async Task WriteAcceptedReadingAsync_Rethrows_WhenFailureIsStrict()
+    public async Task WriteBatchAsync_Rethrows_WhenFailureIsStrict()
     {
         var inner = new ThrowingInfluxWriteService();
         var service = CreateService(
@@ -39,13 +41,29 @@ public sealed class SafeInfluxWriteServiceTests
                 FailPipelineOnWriteError = true
             });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.WriteAcceptedReadingAsync(
-            CreateEnvelope(),
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAcceptedReading(CreateEnvelope()),
             CancellationToken.None));
     }
 
     [Fact]
-    public async Task WriteAcceptedReadingAsync_DoesNotCallInner_WhenAcceptedReadingsAreDisabled()
+    public async Task WriteBatchAsync_DoesNotCallInner_WhenBatchIsEmpty()
+    {
+        var inner = new RecordingInfluxWriteService();
+        var service = CreateService(
+            inner,
+            new InfluxDbOptions
+            {
+                Enabled = true
+            });
+
+        await service.WriteBatchAsync(new InfluxTelemetryBatch(), CancellationToken.None);
+
+        Assert.Equal(0, inner.BatchCalls);
+    }
+
+    [Fact]
+    public async Task WriteBatchAsync_RespectsAcceptedReadingsFlag()
     {
         var inner = new RecordingInfluxWriteService();
         var service = CreateService(
@@ -59,13 +77,15 @@ public sealed class SafeInfluxWriteServiceTests
                 }
             });
 
-        await service.WriteAcceptedReadingAsync(CreateEnvelope(), CancellationToken.None);
+        await service.WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAcceptedReading(CreateEnvelope()),
+            CancellationToken.None);
 
-        Assert.Equal(0, inner.AcceptedReadingCalls);
+        Assert.Equal(0, inner.BatchCalls);
     }
 
     [Fact]
-    public async Task WriteRiskAssessmentAsync_DoesNotCallInner_WhenRiskAssessmentsAreDisabled()
+    public async Task WriteBatchAsync_RespectsRiskAssessmentsFlag()
     {
         var inner = new RecordingInfluxWriteService();
         var service = CreateService(
@@ -79,17 +99,18 @@ public sealed class SafeInfluxWriteServiceTests
                 }
             });
 
-        await service.WriteRiskAssessmentAsync(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            CreateAssessment(),
+        await service.WriteBatchAsync(
+            new InfluxTelemetryBatch().AddRiskAssessment(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                CreateAssessment()),
             CancellationToken.None);
 
-        Assert.Equal(0, inner.RiskAssessmentCalls);
+        Assert.Equal(0, inner.BatchCalls);
     }
 
     [Fact]
-    public async Task WriteAreaRiskSnapshotAsync_DoesNotCallInner_WhenAreaRiskSnapshotsAreDisabled()
+    public async Task WriteBatchAsync_RespectsAreaRiskSnapshotsFlag()
     {
         var inner = new RecordingInfluxWriteService();
         var service = CreateService(
@@ -103,13 +124,14 @@ public sealed class SafeInfluxWriteServiceTests
                 }
             });
 
-        await service.WriteAreaRiskSnapshotAsync(
-            Guid.NewGuid(),
-            2,
-            CreateSnapshot(),
+        await service.WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAreaRiskSnapshot(
+                Guid.NewGuid(),
+                2,
+                CreateSnapshot()),
             CancellationToken.None);
 
-        Assert.Equal(0, inner.AreaRiskSnapshotCalls);
+        Assert.Equal(0, inner.BatchCalls);
     }
 
     private static SafeInfluxWriteService CreateService(IInfluxWriteService inner, InfluxDbOptions options)
@@ -166,6 +188,13 @@ public sealed class SafeInfluxWriteServiceTests
         public int AcceptedReadingCalls { get; private set; }
         public int RiskAssessmentCalls { get; private set; }
         public int AreaRiskSnapshotCalls { get; private set; }
+        public int BatchCalls { get; private set; }
+
+        public Task WriteBatchAsync(InfluxTelemetryBatch batch, CancellationToken cancellationToken)
+        {
+            BatchCalls++;
+            return Task.CompletedTask;
+        }
 
         public Task WriteAcceptedReadingAsync(EventEnvelope<SensorReadingProducedPayload> envelope, CancellationToken cancellationToken)
         {
@@ -189,21 +218,34 @@ public sealed class SafeInfluxWriteServiceTests
     private sealed class ThrowingInfluxWriteService : IInfluxWriteService
     {
         public int AcceptedReadingCalls { get; private set; }
+        public int BatchCalls { get; private set; }
+
+        public Task WriteBatchAsync(InfluxTelemetryBatch batch, CancellationToken cancellationToken)
+        {
+            BatchCalls++;
+            throw new InvalidOperationException("Simulated InfluxDB failure.");
+        }
 
         public Task WriteAcceptedReadingAsync(EventEnvelope<SensorReadingProducedPayload> envelope, CancellationToken cancellationToken)
         {
             AcceptedReadingCalls++;
-            throw new InvalidOperationException("Simulated InfluxDB failure.");
+            return WriteBatchAsync(
+                new InfluxTelemetryBatch().AddAcceptedReading(envelope),
+                cancellationToken);
         }
 
         public Task WriteRiskAssessmentAsync(Guid areaId, Guid sensorId, RiskAssessment assessment, CancellationToken cancellationToken)
         {
-            throw new InvalidOperationException("Simulated InfluxDB failure.");
+            return WriteBatchAsync(
+                new InfluxTelemetryBatch().AddRiskAssessment(areaId, sensorId, assessment),
+                cancellationToken);
         }
 
         public Task WriteAreaRiskSnapshotAsync(Guid areaId, int assessmentCount, AreaRiskSnapshot snapshot, CancellationToken cancellationToken)
         {
-            throw new InvalidOperationException("Simulated InfluxDB failure.");
+            return WriteBatchAsync(
+                new InfluxTelemetryBatch().AddAreaRiskSnapshot(areaId, assessmentCount, snapshot),
+                cancellationToken);
         }
     }
 }

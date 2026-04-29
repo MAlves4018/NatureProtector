@@ -23,6 +23,8 @@ public sealed class NoOpInfluxWriteService : IInfluxWriteService
         var value = options.Value;
         var writes = value.Writes;
 
+        _logger.LogInformation(
+            "InfluxDB is disabled. Prevention pipeline will continue without writing telemetry to InfluxDB.");
         _logger.LogInformation("InfluxDB writes enabled: {Enabled}", value.Enabled);
         _logger.LogInformation("Fail pipeline on InfluxDB write error: {FailPipelineOnWriteError}", value.FailPipelineOnWriteError);
         _logger.LogInformation("Write accepted_readings: {AcceptedReadings}", writes.AcceptedReadings);
@@ -34,9 +36,10 @@ public sealed class NoOpInfluxWriteService : IInfluxWriteService
         EventEnvelope<SensorReadingProducedPayload> envelope,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        _logger.LogDebug("Skipped InfluxDB write for measurement {Measurement} because InfluxDB is disabled.", "accepted_readings");
-        return Task.CompletedTask;
+        ArgumentNullException.ThrowIfNull(envelope);
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAcceptedReading(envelope),
+            cancellationToken);
     }
 
     public Task WriteRiskAssessmentAsync(
@@ -45,9 +48,10 @@ public sealed class NoOpInfluxWriteService : IInfluxWriteService
         RiskAssessment assessment,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        _logger.LogDebug("Skipped InfluxDB write for measurement {Measurement} because InfluxDB is disabled.", "risk_assessments");
-        return Task.CompletedTask;
+        ArgumentNullException.ThrowIfNull(assessment);
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddRiskAssessment(areaId, sensorId, assessment),
+            cancellationToken);
     }
 
     public Task WriteAreaRiskSnapshotAsync(
@@ -56,8 +60,24 @@ public sealed class NoOpInfluxWriteService : IInfluxWriteService
         AreaRiskSnapshot snapshot,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAreaRiskSnapshot(areaId, assessmentCount, snapshot),
+            cancellationToken);
+    }
+
+    public Task WriteBatchAsync(
+        InfluxTelemetryBatch batch,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(batch);
         cancellationToken.ThrowIfCancellationRequested();
-        _logger.LogDebug("Skipped InfluxDB write for measurement {Measurement} because InfluxDB is disabled.", "area_risk_snapshots");
+        _logger.LogDebug(
+            "Skipped InfluxDB batch because InfluxDB is disabled. points={PointCount} | accepted_readings={AcceptedReadings} | risk_assessments={RiskAssessments} | area_risk_snapshots={AreaRiskSnapshots}",
+            batch.PointCount,
+            batch.AcceptedReadingCount,
+            batch.RiskAssessmentCount,
+            batch.AreaRiskSnapshotCount);
         return Task.CompletedTask;
     }
 }

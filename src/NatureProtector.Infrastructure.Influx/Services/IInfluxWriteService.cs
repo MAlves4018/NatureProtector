@@ -6,6 +6,10 @@ namespace NatureProtector.Infrastructure.Influx.Services;
 
 public interface IInfluxWriteService
 {
+    Task WriteBatchAsync(
+        InfluxTelemetryBatch batch,
+        CancellationToken cancellationToken);
+
     Task WriteAcceptedReadingAsync(
         EventEnvelope<SensorReadingProducedPayload> envelope,
         CancellationToken cancellationToken);

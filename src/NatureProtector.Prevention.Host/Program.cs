@@ -73,7 +73,9 @@ else
 }
 
 builder.Services.AddSingleton<IProcessingFailureClassifier, DefaultProcessingFailureClassifier>();
-builder.Services.AddSingleton<ISimpleRiskScoringService, SimpleRiskScoringService>();
+builder.Services.AddSingleton<SimpleRiskScoringService>();
+builder.Services.AddSingleton<IRiskScoringService>(sp => sp.GetRequiredService<SimpleRiskScoringService>());
+builder.Services.AddSingleton<ISimpleRiskScoringService>(sp => sp.GetRequiredService<SimpleRiskScoringService>());
 builder.Services.AddSingleton<IAreaRiskSnapshotService, AreaRiskSnapshotService>();
 
 builder.Services.AddSingleton<ReadingRiskPipeline>();

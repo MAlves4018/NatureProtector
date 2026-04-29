@@ -17,14 +17,26 @@ internal sealed class ThrowingInfluxWriteService : IInfluxWriteService
     public int AcceptedReadingCalls { get; private set; }
     public int RiskAssessmentCalls { get; private set; }
     public int AreaRiskSnapshotCalls { get; private set; }
+    public int BatchCalls { get; private set; }
+
+    public Task WriteBatchAsync(
+        InfluxTelemetryBatch batch,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(batch);
+        cancellationToken.ThrowIfCancellationRequested();
+        BatchCalls++;
+        throw _exception;
+    }
 
     public Task WriteAcceptedReadingAsync(
         EventEnvelope<SensorReadingProducedPayload> envelope,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         AcceptedReadingCalls++;
-        throw _exception;
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAcceptedReading(envelope),
+            cancellationToken);
     }
 
     public Task WriteRiskAssessmentAsync(
@@ -33,9 +45,10 @@ internal sealed class ThrowingInfluxWriteService : IInfluxWriteService
         RiskAssessment assessment,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         RiskAssessmentCalls++;
-        throw _exception;
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddRiskAssessment(areaId, sensorId, assessment),
+            cancellationToken);
     }
 
     public Task WriteAreaRiskSnapshotAsync(
@@ -44,8 +57,9 @@ internal sealed class ThrowingInfluxWriteService : IInfluxWriteService
         AreaRiskSnapshot snapshot,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         AreaRiskSnapshotCalls++;
-        throw _exception;
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAreaRiskSnapshot(areaId, assessmentCount, snapshot),
+            cancellationToken);
     }
 }

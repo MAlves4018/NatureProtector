@@ -39,10 +39,9 @@ public sealed class SafeInfluxWriteService : IInfluxWriteService
         EventEnvelope<SensorReadingProducedPayload> envelope,
         CancellationToken cancellationToken)
     {
-        return ExecuteAsync(
-            "accepted_readings",
-            _options.Writes.AcceptedReadings,
-            () => _innerFactory().WriteAcceptedReadingAsync(envelope, cancellationToken),
+        ArgumentNullException.ThrowIfNull(envelope);
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAcceptedReading(envelope),
             cancellationToken);
     }
 
@@ -52,10 +51,9 @@ public sealed class SafeInfluxWriteService : IInfluxWriteService
         RiskAssessment assessment,
         CancellationToken cancellationToken)
     {
-        return ExecuteAsync(
-            "risk_assessments",
-            _options.Writes.RiskAssessments,
-            () => _innerFactory().WriteRiskAssessmentAsync(areaId, sensorId, assessment, cancellationToken),
+        ArgumentNullException.ThrowIfNull(assessment);
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddRiskAssessment(areaId, sensorId, assessment),
             cancellationToken);
     }
 
@@ -65,39 +63,49 @@ public sealed class SafeInfluxWriteService : IInfluxWriteService
         AreaRiskSnapshot snapshot,
         CancellationToken cancellationToken)
     {
-        return ExecuteAsync(
-            "area_risk_snapshots",
-            _options.Writes.AreaRiskSnapshots,
-            () => _innerFactory().WriteAreaRiskSnapshotAsync(areaId, assessmentCount, snapshot, cancellationToken),
+        ArgumentNullException.ThrowIfNull(snapshot);
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAreaRiskSnapshot(areaId, assessmentCount, snapshot),
             cancellationToken);
     }
 
+    public async Task WriteBatchAsync(
+        InfluxTelemetryBatch batch,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(batch);
+
+        var filteredBatch = batch.CloneFiltered(
+            includeAcceptedReadings: _options.Writes.AcceptedReadings,
+            includeRiskAssessments: _options.Writes.RiskAssessments,
+            includeAreaRiskSnapshots: _options.Writes.AreaRiskSnapshots);
+
+        await ExecuteAsync(
+            filteredBatch,
+            cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task ExecuteAsync(
-        string measurement,
-        bool enabled,
-        Func<Task> operation,
+        InfluxTelemetryBatch batch,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!enabled)
+        if (batch.IsEmpty)
         {
-            _logger.LogDebug(
-                "Skipped InfluxDB write for measurement {Measurement} because it is disabled by configuration.",
-                measurement);
+            _logger.LogDebug("Skipped InfluxDB batch write because all measurements in the batch are disabled or absent.");
             return;
         }
 
         try
         {
-            await operation().ConfigureAwait(false);
+            await _innerFactory().WriteBatchAsync(batch, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (!_options.FailPipelineOnWriteError && ex is not OperationCanceledException)
         {
             _logger.LogWarning(
                 ex,
-                "Failed to write measurement {Measurement} to InfluxDB. Continuing pipeline because observability writes are configured as non-critical.",
-                measurement);
+                "Failed to write InfluxDB batch. Continuing pipeline because observability writes are configured as non-critical.");
         }
     }
 }

@@ -9,6 +9,18 @@ namespace NatureProtector.Infrastructure.Influx.Tests.Services;
 public sealed class InfluxWriteServiceGuardClauseTests
 {
     [Fact]
+    public async Task WriteBatchAsync_Throws_WhenBatchIsNull()
+    {
+        using var service = CreateService();
+
+        var ex = await Assert.ThrowsAsync<ArgumentNullException>(() => service.WriteBatchAsync(
+            batch: null!,
+            cancellationToken: CancellationToken.None));
+
+        Assert.Equal("batch", ex.ParamName);
+    }
+
+    [Fact]
     public async Task WriteAcceptedReadingAsync_Throws_WhenEnvelopeIsNull()
     {
         using var service = CreateService();

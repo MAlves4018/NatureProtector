@@ -11,6 +11,20 @@ namespace NatureProtector.Infrastructure.Influx.Tests.Services;
 public sealed class InfluxWriteServiceExecutionTests
 {
     [Fact]
+    public async Task WriteBatchAsync_AttemptsRemoteWrite_ForValidBatch()
+    {
+        using var service = CreateService();
+        var batch = new InfluxTelemetryBatch()
+            .AddAcceptedReading(CreateEnvelope())
+            .AddRiskAssessment(Guid.NewGuid(), Guid.NewGuid(), CreateAssessment())
+            .AddAreaRiskSnapshot(Guid.NewGuid(), 3, CreateSnapshot());
+
+        await Assert.ThrowsAnyAsync<Exception>(() => service.WriteBatchAsync(
+            batch,
+            CancellationToken.None));
+    }
+
+    [Fact]
     public async Task WriteAcceptedReadingAsync_AttemptsRemoteWrite_ForValidEnvelope()
     {
         using var service = CreateService();
@@ -81,6 +95,24 @@ public sealed class InfluxWriteServiceExecutionTests
             Bucket = "bucket"
         }),
         NullLogger<InfluxWriteService>.Instance);
+    }
+
+    private static RiskAssessment CreateAssessment()
+    {
+        return new RiskAssessment(
+            Guid.NewGuid(),
+            new DateTimeOffset(2026, 4, 7, 0, 0, 0, TimeSpan.Zero),
+            0.72,
+            "Hot and dry");
+    }
+
+    private static AreaRiskSnapshot CreateSnapshot()
+    {
+        return new AreaRiskSnapshot(
+            Guid.NewGuid(),
+            new DateTimeOffset(2026, 4, 7, 0, 10, 0, TimeSpan.Zero),
+            0.81,
+            "Escalating");
     }
 
     private static EventEnvelope<SensorReadingProducedPayload> CreateEnvelope()

@@ -306,9 +306,12 @@ Registar, de forma primeiro estruturada e só depois mais detalhada, o trabalho 
 8. Foram revistas alterações relacionadas com PostgreSQL, projeções operacionais, bootstrap do plano de controlo, simulador e contexto de execução baseado em configuração persistida.
 9. Foram ajustados componentes da Backoffice API e testes associados, incluindo compatibilidade com contratos atualizados.
 10. Foi feita manutenção do repositório, incluindo resolução de conflitos após `git pull`, atualização do `.gitignore`, validação de build e análise de ficheiros gerados ou experimentais que devem ou não entrar no commit.
-11. Foi implementada uma alteração específica na infraestrutura de InfluxDB para tornar as escritas de observabilidade configuráveis e não críticas por defeito para o sucesso operacional da pipeline. A configuração passou a permitir desligar totalmente o InfluxDB, tolerar falhas de escrita sem enviar eventos para retry/quarentena e ativar ou desativar individualmente as measurements `accepted_readings`, `risk_assessments` e `area_risk_snapshots`.
-12. Foram adicionados um `NoOpInfluxWriteService` e um `SafeInfluxWriteService`, mantendo a política de observabilidade concentrada na infraestrutura de InfluxDB. Esta alteração permitiu preservar a ordem funcional da pipeline, o `BasicAck`, os contratos RabbitMQ, o simulador e a persistência PostgreSQL.
-13. Foram acrescentados testes para validar o modo NoOp, a tolerância a falhas de InfluxDB, o comportamento estrito configurável, a configuração por measurement e o registo correto dos serviços por dependency injection.
+11. Foi consolidado o comportamento configurável da infraestrutura de InfluxDB. Verificou-se que a opção `InfluxDb:Enabled`, a seleção por dependency injection entre writer real e writer no-op, e o valor local por omissão `Enabled=false` já estavam praticamente montados. O trabalho desta fase serviu sobretudo para fechar a história operacional: tornar o modo desligado mais explícito, documentá-lo e protegê-lo com teste.
+12. Foi reforçado o `NoOpInfluxWriteService`, com logging mais claro quando o InfluxDB está desativado. Este comportamento permite correr a pipeline local com PostgreSQL, RabbitMQ, cálculo de risco, snapshots e projeções operacionais ativos, sem depender da disponibilidade ou desempenho do InfluxDB.
+13. Foi adicionado um teste específico à `ReadingRiskPipeline` para garantir que, com InfluxDB desligado, a pipeline continua a persistir a leitura aceite, a avaliação de risco, o snapshot da área e as projeções operacionais. Esta validação ajuda a separar melhor o estado durável da pipeline, que fica em PostgreSQL, da observabilidade temporal, que fica em InfluxDB.
+14. Foi feita uma revisão arquitetural da fronteira de cálculo de risco. A pipeline deixou de depender diretamente da interface específica `ISimpleRiskScoringService` e passou a depender de uma interface mais genérica, `IRiskScoringService`, mantendo o `SimpleRiskScoringService` como implementação atual. Esta alteração não mudou os resultados do score, mas preparou melhor o código para futuros modelos de risco.
+15. Foi identificado que a implementação atual do score é adequada como demonstração e baseline, mas ainda não está semanticamente preparada para índices reais como FWI, KBDI ou Haines. Para isso, serão necessários conceitos explícitos como `NormalizedReading`, `RiskInput`, elegibilidade para risco, estado do modelo, cadência de cálculo, dados meteorológicos adicionais e metadados de proveniência/versionamento.
+16. Foi analisado o estado da pipeline face ao objetivo V1. A conclusão foi que a base técnica é forte em transporte, inbox durável, retry/quarentena, persistência histórica, projeções operacionais e observabilidade, mas ainda faltam fronteiras semânticas internas para separar observação bruta, leitura normalizada, input de risco, classificação e cálculo de risco.
 
 ### Resultado principal da quinzena
 
@@ -319,6 +322,8 @@ O resultado principal desta quinzena foi a aproximação entre três dimensões 
 * no plano operacional, porque a pipeline deixou de ser analisada apenas como arquitetura e passou a ser medida como sistema em execução, com logs, cronómetros, pressão de mensagens, persistência, observabilidade e pontos de estrangulamento identificados.
 
 Esta quinzena foi, por isso, uma fase de transição entre “documentar o que existe” e “validar se o que existe se comporta corretamente em runtime”.
+
+Além disso, esta quinzena permitiu clarificar que a evolução para índices de risco reais não deve começar pela substituição direta da fórmula de score. Antes disso, é necessário preparar a pipeline para receber inputs mais ricos, distinguir leituras aceites de leituras elegíveis para risco, formalizar a normalização e evitar que a `ReadingRiskPipeline` acumule regras de modelo, janelas temporais, estado persistido e políticas de dados em falta.
 
 ---
 
@@ -402,19 +407,17 @@ A observabilidade tornou-se especialmente relevante para a demonstração da bas
 
 Também ficou claro, por medição, que o principal gargalo local atual não está necessariamente no PostgreSQL nem na query de estado mais recente da área, mas sim no custo associado às escritas para InfluxDB. Esta conclusão é importante porque altera a prioridade das próximas otimizações: antes de refatorar a pipeline de forma ampla, faz mais sentido permitir desligar, agrupar ou amortecer escritas de observabilidade temporal em ambiente local.
 
-Na continuação deste diagnóstico, foi implementada uma alteração concreta na infraestrutura de InfluxDB. A análise da pipeline mostrou que as escritas para InfluxDB estavam no caminho síncrono do processamento e que, apesar de serem importantes para observabilidade, não deveriam ser tratadas como condição obrigatória para considerar uma leitura operacionalmente processada.
+Na continuação deste diagnóstico, foi revista a infraestrutura de InfluxDB. A análise mostrou que as escritas para InfluxDB estavam no caminho síncrono do processamento e que, embora sejam importantes para observabilidade, não devem ser confundidas com a persistência operacional principal da pipeline.
 
-A decisão arquitetural assumida foi separar claramente o papel de PostgreSQL e InfluxDB. O PostgreSQL continua a representar o estado durável e operacional da pipeline, incluindo inbox, tentativas de processamento, leituras aceites, avaliações de risco, snapshots e projeções. O InfluxDB passa a ser tratado explicitamente como observabilidade temporal, útil para séries temporais, dashboards e diagnóstico, mas não como fonte principal de verdade operacional.
+A decisão arquitetural assumida foi separar com mais clareza o papel de PostgreSQL e InfluxDB. O PostgreSQL continua a representar o estado durável e operacional da pipeline, incluindo inbox, tentativas de processamento, leituras aceites, avaliações de risco, snapshots e projeções. O InfluxDB é tratado como camada de observabilidade temporal, útil para séries temporais, dashboards e diagnóstico, mas não como fonte principal de verdade operacional.
 
-Com base nessa decisão, a configuração `InfluxDb` foi expandida para permitir ativar ou desativar globalmente as escritas para InfluxDB, decidir se uma falha de escrita deve ou não falhar a pipeline e controlar individualmente as measurements escritas. As opções introduzidas permitem configurar `Enabled`, `FailPipelineOnWriteError` e as flags `Writes.AcceptedReadings`, `Writes.RiskAssessments` e `Writes.AreaRiskSnapshots`.
+Durante a revisão verificou-se que a infraestrutura para desligar o InfluxDB já estava praticamente montada: a opção `InfluxDb:Enabled` já existia, o dependency injection já resolvia `IInfluxWriteService` para `NoOpInfluxWriteService` quando `Enabled=false`, e o `Prevention.Host` já arrancava com InfluxDB desligado por omissão na baseline local.
 
-Quando `Enabled=false`, a aplicação passa a usar um `NoOpInfluxWriteService`, que mantém a interface esperada pela pipeline mas não tenta ligar nem escrever em InfluxDB. Isto permite executar a baseline local sem depender da disponibilidade do InfluxDB e ajuda a diagnosticar o comportamento da pipeline, PostgreSQL, RabbitMQ e API de forma isolada.
+O trabalho feito nesta fase foi, por isso, mais de fecho e validação do que de redesenho. Foi reforçado o logging do `NoOpInfluxWriteService`, tornando explícito que o InfluxDB está desativado e que a pipeline continua sem escrever telemetria temporal. Também foi acrescentada documentação curta no README sobre o comportamento por omissão em local.
 
-Quando `Enabled=true`, a aplicação passa a usar um `SafeInfluxWriteService`, que concentra a política de escrita na infraestrutura de InfluxDB. Este serviço delega no writer real apenas quando a measurement correspondente está ativa. Se ocorrer uma falha de escrita e `FailPipelineOnWriteError=false`, a falha é registada mas a pipeline continua. Se `FailPipelineOnWriteError=true`, a exceção é relançada e o comportamento estrito é preservado.
+Foi ainda adicionado um teste específico à `ReadingRiskPipeline` para confirmar que, com `NoOpInfluxWriteService`, a pipeline continua a persistir corretamente a leitura aceite, a avaliação de risco, o snapshot da área e as projeções operacionais. Isto protege o cenário em que a observabilidade temporal está desligada, mas o processamento principal continua ativo.
 
-Esta alteração foi feita sem mudar a ordem funcional da `ReadingRiskPipeline`, sem alterar o `BasicAck`, sem alterar contratos RabbitMQ, sem alterar o simulador e sem modificar a persistência PostgreSQL. O objetivo foi corrigir a criticidade indevida da observabilidade temporal, não redesenhar a pipeline.
-
-Também foram adicionados testes específicos para validar o novo comportamento. Foram cobertos o `NoOpInfluxWriteService`, o `SafeInfluxWriteService`, a tolerância a falhas, o modo estrito, a configuração por measurement e o registo dos serviços por dependency injection. Foram ainda reforçados testes da pipeline para confirmar que uma falha tolerada de InfluxDB não leva o evento para retry ou quarentena.
+Esta alteração não mudou a ordem funcional da `ReadingRiskPipeline`, não alterou o `BasicAck`, não alterou contratos RabbitMQ, não mudou o simulador, não modificou as regras de score e não alterou a persistência PostgreSQL. O objetivo foi garantir que o modo local sem InfluxDB é explícito, testado e documentado.
 ---
 
 ## 6. Rejeição, retry, quarentena e durabilidade do processamento
@@ -431,7 +434,25 @@ Também foi clarificada a relação entre durabilidade e confirmação ao Rabbit
 
 ---
 
-## 7. Simulator, bootstrap e plano de controlo
+## 7. Preparação da fronteira de cálculo de risco
+
+Para além do diagnóstico operacional da pipeline, foi feita uma revisão específica da forma como o cálculo de risco está integrado no sistema. O objetivo foi perceber se a implementação atual está preparada para evoluir de um score demonstrativo simples para modelos de risco mais realistas, como FWI, KBDI ou Haines.
+
+A conclusão foi que o score atual cumpre bem o papel de baseline demonstrável: recebe uma leitura, aplica regras simples por tipo de métrica e produz uma avaliação de risco com score, nível e explicação. No entanto, esta abordagem ainda não é suficiente para índices reais, porque esses modelos exigem mais contexto do que uma única leitura isolada.
+
+Foi identificada a necessidade de separar melhor as fronteiras internas da pipeline. Atualmente, a `ReadingRiskPipeline` ainda trabalha muito diretamente com os dados vindos do evento recebido. Para uma evolução mais robusta, será necessário introduzir conceitos intermédios, como `NormalizedReading`, `RiskInput`, decisão explícita de elegibilidade para risco e, mais tarde, estado persistido do modelo.
+
+Como primeira alteração segura, foi introduzida uma interface genérica `IRiskScoringService`. A interface específica `ISimpleRiskScoringService` passou a estender essa interface genérica, preservando compatibilidade com o código e testes existentes. A `ReadingRiskPipeline` passou a depender da abstração genérica, enquanto o `SimpleRiskScoringService` continua a ser a implementação concreta usada na baseline.
+
+Esta alteração não teve como objetivo alterar os resultados do score. O comportamento funcional manteve-se igual. A importância da alteração está na preparação arquitetural: a pipeline passa a estar menos acoplada ao modelo simples atual e fica mais preparada para aceitar, no futuro, outros motores de cálculo.
+
+Também ficou claro que não faz sentido implementar já uma versão “falsa” ou incompleta de FWI, KBDI ou Haines. Antes disso, é necessário concluir a pesquisa, definir os inputs necessários, decidir a cadência de cálculo, perceber que estado histórico é obrigatório e criar uma estrutura de input adequada. Caso contrário, haveria o risco de introduzir uma pseudo-implementação tecnicamente vistosa, mas cientificamente fraca.
+
+A recomendação resultante foi manter o `SimpleRiskScoringService` como baseline de demonstração, mas preparar progressivamente a pipeline para modelos mais ricos. A ordem sugerida é: primeiro criar uma fronteira interna de `NormalizedReading` e `RiskInput`, depois explicitar a elegibilidade para risco, depois definir estado/cadência dos modelos, e só depois implementar índices reais.
+
+---
+
+## 8. Simulator, bootstrap e plano de controlo
 
 Nesta quinzena também houve trabalho relacionado com o simulador, o bootstrap e a ligação ao plano de controlo persistido em PostgreSQL.
 
@@ -447,7 +468,7 @@ Esta frente reforçou a importância de tratar a configuração persistida como 
 
 ---
 
-## 8. Backoffice API, contratos e testes
+## 9. Backoffice API, contratos e testes
 
 Na Backoffice API foram feitas alterações ao serviço que consulta e projeta dados do plano de controlo, nomeadamente o `PostgresControlPlaneService`. Este serviço é responsável por transformar dados persistidos em contratos de resposta usados pelo backoffice, incluindo configurações, áreas, sensores, cenários, execuções de simulação, estados operacionais e alertas.
 
@@ -457,9 +478,11 @@ Durante a integração com alterações vindas do repositório remoto, foi neces
 
 Esta frente também mostrou a importância de manter os testes alinhados com os contratos da API. Pequenas alterações nos contratos de resposta podem quebrar testes ou clientes, por isso a atualização dos testes foi parte necessária da integração e não apenas uma correção acessória.
 
+Na validação mais recente, os comandos com restore/configuração NuGet falharam por problema de ambiente relacionado com acesso ao `NuGet.Config` global do utilizador. Para validar o código já restaurado, foram usados `dotnet build --no-restore` e `dotnet test --no-restore`, ambos com resultado positivo. Esta distinção é importante porque a falha não estava associada ao código alterado, mas sim ao ambiente local de restore.
+
 ---
 
-## 9. Manutenção do repositório, merge e validação de build
+## 10. Manutenção do repositório, merge e validação de build
 
 Para além das frentes técnicas e documentais, houve trabalho de manutenção do repositório. Foram feitos ajustes ao `.gitignore`, à solução `NatureProtector.sln`, a configurações comuns de build e à organização dos ficheiros que devem ou não entrar no controlo de versões.
 
@@ -475,7 +498,7 @@ Esta manutenção foi necessária para garantir que o estado do repositório con
 
 ---
 
-## 10. Resultado da quinzena e próximos passos
+## 11. Resultado da quinzena e próximos passos
 
 Em síntese, esta quinzena foi marcada por uma consolidação importante da baseline técnica e documental do projeto. A apresentação ficou mais alinhada com o que já existe, a documentação passou a explicar melhor a implementação real, os diagramas ficaram mais próximos da runtime e a pipeline passou a ser analisada com base em medições concretas.
 
@@ -485,19 +508,25 @@ Também ficou mais claro que a baseline local atual tem um gargalo relevante nas
 
 A documentação beneficiou diretamente deste diagnóstico. O `implementation.md`, os diagramas e as páginas de documentação passaram a refletir melhor o comportamento real do sistema, incluindo rejeição, retry, quarentena, inbox persistida, confirmação ao RabbitMQ, projeções e pontos de observação.
 
-Na sequência dessa conclusão, foi implementada uma primeira correção de baixo risco: tornar as escritas para InfluxDB configuráveis e não críticas por defeito. Esta alteração não teve como objetivo otimizar definitivamente o throughput da pipeline, mas sim separar corretamente a semântica operacional da observabilidade temporal.
+Na sequência dessa conclusão, foi fechada uma primeira correção de baixo risco: tornar explícito, testado e documentado o modo local com InfluxDB desligado. A infraestrutura base já existia, mas faltava proteger melhor esse comportamento com logging, teste de pipeline e documentação operacional.
 
-A pipeline passou a poder correr com InfluxDB desligado, com InfluxDB parcialmente ativo por measurement, ou com InfluxDB ativo mas tolerante a falhas de escrita. Isto permite testar e demonstrar a cadeia principal com RabbitMQ, PostgreSQL, processamento de risco, projeções e API sem depender obrigatoriamente da disponibilidade ou desempenho do InfluxDB.
+A pipeline passou a ter uma validação mais clara de que consegue correr com RabbitMQ, PostgreSQL, processamento de risco, snapshots e projeções operacionais sem depender obrigatoriamente de InfluxDB. Isto é importante para desenvolvimento local, diagnóstico e demonstração, porque permite isolar o comportamento funcional da pipeline do custo da observabilidade temporal.
 
-Esta correção também prepara o passo seguinte: avaliar a escrita em batch para InfluxDB. Como agora a política de falha e ativação das measurements está concentrada na infraestrutura de InfluxDB, será mais seguro estudar uma otimização que reduza o número de chamadas feitas ao InfluxDB, por exemplo agrupando as escritas de `accepted_readings`, `risk_assessments` e `area_risk_snapshots` numa operação mais eficiente.
+Também foi feita uma alteração preparatória na fronteira de cálculo de risco, através da introdução de `IRiskScoringService`. Esta mudança preserva o score atual como baseline, mas reduz o acoplamento da pipeline ao modelo simples de demonstração. A alteração é pequena, mas importante para a evolução futura para índices reais.
+
+O estado atual da pipeline pode ser resumido assim: a base técnica de transporte, persistência, retry/quarentena, projeções e observabilidade está suficientemente forte para demonstração; a base semântica para modelos de risco reais ainda precisa de trabalho. Antes de implementar FWI, KBDI ou Haines, é necessário introduzir conceitos intermédios como leitura normalizada, input de risco, elegibilidade, estado do modelo e cadência de cálculo.
 
 ### Trabalho a fazer na continuação desta frente
 
-1. Medir novamente a pipeline com três perfis de execução: InfluxDB completo, InfluxDB parcialmente ativo por measurement e InfluxDB desligado, comparando `pipeline_total_ms`, `processing_total_ms`, tempos de escrita InfluxDB, backlog RabbitMQ e ocorrência de retry/quarentena.
-2. Avaliar batch writes para InfluxDB, procurando reduzir o overhead das três escritas atuais por evento aceite (`accepted_readings`, `risk_assessments` e `area_risk_snapshots`) sem alterar contratos RabbitMQ, `BasicAck`, simulador ou persistência PostgreSQL.
-3. Rever o `InfluxWriteService`, avaliando se as escritas podem ser agrupadas numa operação batch por evento antes de avançar para soluções mais complexas, como background writer, filas internas ou Redis.
-4. Garantir que catálogo de cenários, bootstrap do plano de controlo e runtime do simulador permanecem sincronizados, especialmente no número de sensores ativos.
-5. Finalizar a seleção do que deve entrar no commit, distinguindo fontes/documentação de outputs gerados.
-6. Corrigir ou retirar temporariamente o `AppHost` da solução até que a frente Aspire esteja estável.
-7. Correr `dotnet build` e, idealmente, `dotnet test` antes de fechar o commit.
-8. Atualizar a documentação operacional para deixar explícito que o gargalo local atual está sobretudo no caminho de escrita para InfluxDB, e não no PostgreSQL nem no mecanismo de retry/quarentena.
+1. Fechar o estado atual em commit, garantindo que o modo local com InfluxDB desligado fica documentado e testado.
+2. Corrigir a idempotência concorrente dos adaptadores PostgreSQL, verificando pontos `read-then-insert` e tratando violações de unique constraint esperadas como duplicados legítimos, sem mascarar erros reais.
+3. Introduzir validação precoce entre `AreaId` do envelope e o deployment real do sensor no plano de controlo, para impedir que leituras de sensores inexistentes, inativos ou associados a outra área contaminem o estado operacional.
+4. Medir novamente a pipeline com InfluxDB desligado e, se necessário, com InfluxDB ativo, comparando tempos de processamento, backlog RabbitMQ, retry/quarentena e custo das escritas temporais.
+5. Rever a query `GetLatestByAreaAsync`, que atualmente é aceitável para a demo de 20 ciclos, mas pode tornar-se cara em simulações longas por carregar histórico antes de selecionar o estado mais recente por sensor.
+6. Introduzir uma fronteira interna de `NormalizedReading` e `RiskInput`, sem alterar ainda os contratos RabbitMQ nem implementar índices reais.
+7. Definir explicitamente a política de elegibilidade para risco, distinguindo leitura aceite, leitura normalizada e leitura efetivamente usada para cálculo.
+8. Concluir a pesquisa sobre índices de risco reais, identificando inputs obrigatórios, escala temporal, necessidade de precipitação, estado anterior, janelas temporais e limitações de cada modelo.
+9. Só depois implementar um primeiro índice real ou semi-realista, evitando uma pseudo-implementação que apenas substitua o score atual por fórmulas incompletas.
+10. Garantir que catálogo de cenários, bootstrap do plano de controlo e runtime do simulador permanecem sincronizados, especialmente no número de sensores ativos.
+11. Manter o `AppHost`/Aspire como frente exploratória até estar estável, evitando que contamine a baseline demonstrável.
+12. Correr `dotnet build` e `dotnet test` antes de fechar commits relevantes, distinguindo falhas reais de código de problemas locais de restore/configuração NuGet.

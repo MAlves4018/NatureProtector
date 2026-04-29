@@ -32,7 +32,7 @@ namespace NatureProtector.Prevention.Host.Processing;
 
 public sealed class ReadingRiskPipeline(
     IAcceptedReadingRepository acceptedReadingRepository,
-    ISimpleRiskScoringService riskScoringService,
+    IRiskScoringService riskScoringService,
     IRiskAssessmentRepository riskAssessmentRepository,
     IAreaRiskSnapshotService areaRiskSnapshotService,
     IAreaRiskSnapshotRepository areaRiskSnapshotRepository,
@@ -68,18 +68,12 @@ public sealed class ReadingRiskPipeline(
             envelope.CorrelationId,
             envelope.AreaId,
             envelope.Payload.SensorId);
+        var influxBatch = new InfluxTelemetryBatch()
+            .AddAcceptedReading(envelope);
 
-        var acceptedReadingInfluxStopwatch = Stopwatch.StartNew();
-        await influxWriteService.WriteAcceptedReadingAsync(envelope, cancellationToken);
-        acceptedReadingInfluxStopwatch.Stop();
-        logger.LogDebug(
-            "accepted_reading_influx_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId}",
-            acceptedReadingInfluxStopwatch.ElapsedMilliseconds,
-            envelope.EventId,
-            envelope.CorrelationId,
-            envelope.AreaId,
-            envelope.Payload.SensorId);
-
+        // The pipeline depends on a model-agnostic scoring contract so the current
+        // threshold baseline can later evolve into stateful wildfire indices
+        // without coupling scoring rules to broker, persistence or telemetry code.
         var assessment = riskScoringService.CreateAssessment(
             areaId: envelope.AreaId,
             sensorId: envelope.Payload.SensorId,
@@ -118,22 +112,15 @@ public sealed class ReadingRiskPipeline(
             envelope.CorrelationId,
             envelope.AreaId,
             envelope.Payload.SensorId);
-
-        var riskAssessmentInfluxStopwatch = Stopwatch.StartNew();
-        await influxWriteService.WriteRiskAssessmentAsync(
+        influxBatch.AddRiskAssessment(
             envelope.AreaId,
             envelope.Payload.SensorId,
-            assessment,
-            cancellationToken);
-        riskAssessmentInfluxStopwatch.Stop();
-        logger.LogDebug(
-            "risk_assessment_influx_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId}",
-            riskAssessmentInfluxStopwatch.ElapsedMilliseconds,
-            envelope.EventId,
-            envelope.CorrelationId,
-            envelope.AreaId,
-            envelope.Payload.SensorId);
+            assessment);
 
+        // The current area aggregate is intentionally based on the latest
+        // assessment known per sensor. Future models with temporal windows or
+        // accumulated state should introduce a richer evaluation context rather
+        // than expanding orchestration logic here.
         var getLatestByAreaStopwatch = Stopwatch.StartNew();
         var areaAssessments = await riskAssessmentRepository.GetLatestByAreaAsync(
             envelope.AreaId,
@@ -174,21 +161,10 @@ public sealed class ReadingRiskPipeline(
             envelope.CorrelationId,
             envelope.AreaId,
             areaAssessments.Count);
-
-        var snapshotInfluxStopwatch = Stopwatch.StartNew();
-        await influxWriteService.WriteAreaRiskSnapshotAsync(
+        influxBatch.AddAreaRiskSnapshot(
             envelope.AreaId,
             areaAssessments.Count,
-            snapshot,
-            cancellationToken);
-        snapshotInfluxStopwatch.Stop();
-        logger.LogDebug(
-            "snapshot_influx_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | AssessmentCount={AssessmentCount}",
-            snapshotInfluxStopwatch.ElapsedMilliseconds,
-            envelope.EventId,
-            envelope.CorrelationId,
-            envelope.AreaId,
-            areaAssessments.Count);
+            snapshot);
 
         var saveAreaProjectionStopwatch = Stopwatch.StartNew();
         await areaOperationalProjectionStore.SaveAsync(
@@ -198,22 +174,39 @@ public sealed class ReadingRiskPipeline(
             cancellationToken);
         saveAreaProjectionStopwatch.Stop();
 
+        var influxBatchWriteStopwatch = Stopwatch.StartNew();
+        await influxWriteService.WriteBatchAsync(influxBatch, cancellationToken);
+        influxBatchWriteStopwatch.Stop();
+        logger.LogDebug(
+            "influx_batch_write_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId} | points={PointCount} | accepted_readings={AcceptedReadings} | risk_assessments={RiskAssessments} | area_risk_snapshots={AreaRiskSnapshots}",
+            influxBatchWriteStopwatch.ElapsedMilliseconds,
+            envelope.EventId,
+            envelope.CorrelationId,
+            envelope.AreaId,
+            envelope.Payload.SensorId,
+            influxBatch.PointCount,
+            influxBatch.AcceptedReadingCount,
+            influxBatch.RiskAssessmentCount,
+            influxBatch.AreaRiskSnapshotCount);
+
         var severity = SeverityExtensions.FromRiskLevel(snapshot.AggregateRiskLevel);
         pipelineStopwatch.Stop();
 
         logger.LogInformation(
-            "pipeline_total_ms={PipelineTotalMs} | accepted_reading_persist_ms={AcceptedReadingPersistMs} | accepted_reading_influx_ms={AcceptedReadingInfluxMs} | risk_assessment_persist_ms={RiskAssessmentPersistMs} | save_cell_projection_ms={SaveCellProjectionMs} | risk_assessment_influx_ms={RiskAssessmentInfluxMs} | get_latest_by_area_ms={GetLatestByAreaMs} | build_snapshot_ms={BuildSnapshotMs} | snapshot_persist_ms={SnapshotPersistMs} | snapshot_influx_ms={SnapshotInfluxMs} | save_area_projection_ms={SaveAreaProjectionMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId} | RiskScore={RiskScore:F2} | RiskLevel={RiskLevel} | SnapshotScore={SnapshotScore:F2} | SnapshotLevel={SnapshotLevel} | Severity={Severity} | AssessmentCount={AssessmentCount}",
+            "pipeline_total_ms={PipelineTotalMs} | accepted_reading_persist_ms={AcceptedReadingPersistMs} | risk_assessment_persist_ms={RiskAssessmentPersistMs} | save_cell_projection_ms={SaveCellProjectionMs} | get_latest_by_area_ms={GetLatestByAreaMs} | build_snapshot_ms={BuildSnapshotMs} | snapshot_persist_ms={SnapshotPersistMs} | save_area_projection_ms={SaveAreaProjectionMs} | influx_batch_write_ms={InfluxBatchWriteMs} | influx_batch_points={InfluxBatchPoints} | influx_batch_accepted_readings={InfluxBatchAcceptedReadings} | influx_batch_risk_assessments={InfluxBatchRiskAssessments} | influx_batch_area_risk_snapshots={InfluxBatchAreaRiskSnapshots} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId} | RiskScore={RiskScore:F2} | RiskLevel={RiskLevel} | SnapshotScore={SnapshotScore:F2} | SnapshotLevel={SnapshotLevel} | Severity={Severity} | AssessmentCount={AssessmentCount}",
             pipelineStopwatch.ElapsedMilliseconds,
             acceptedReadingPersistStopwatch.ElapsedMilliseconds,
-            acceptedReadingInfluxStopwatch.ElapsedMilliseconds,
             riskAssessmentPersistStopwatch.ElapsedMilliseconds,
             saveCellProjectionStopwatch.ElapsedMilliseconds,
-            riskAssessmentInfluxStopwatch.ElapsedMilliseconds,
             getLatestByAreaStopwatch.ElapsedMilliseconds,
             buildSnapshotStopwatch.ElapsedMilliseconds,
             snapshotPersistStopwatch.ElapsedMilliseconds,
-            snapshotInfluxStopwatch.ElapsedMilliseconds,
             saveAreaProjectionStopwatch.ElapsedMilliseconds,
+            influxBatchWriteStopwatch.ElapsedMilliseconds,
+            influxBatch.PointCount,
+            influxBatch.AcceptedReadingCount,
+            influxBatch.RiskAssessmentCount,
+            influxBatch.AreaRiskSnapshotCount,
             envelope.EventId,
             envelope.CorrelationId,
             envelope.AreaId,
