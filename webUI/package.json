@@ -1,4 +1,13 @@
 {
+  "name": "webui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "@chakra-ui/react": "^3.34.0",
     "@types/leaflet": "^1.9.21",

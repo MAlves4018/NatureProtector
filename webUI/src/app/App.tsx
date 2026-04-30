@@ -4,7 +4,6 @@ import {
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { MainPage } from './components/views/mainPage';
 import { DashBoards } from './components/views/dashBoards';
-import { AreaProvider } from './context/areaContext';
 
 // ─── Chakra system ─────────────────────────────────────────────────────────────
 const system = createSystem(defaultConfig, defineConfig({ theme: {} }));
@@ -30,9 +29,7 @@ export default function App() {
 
   return (
     <ChakraProvider value={system}>
-      <AreaProvider>
         <RouterProvider router={routes}/>
-      </AreaProvider>
     </ChakraProvider>
   );
 }

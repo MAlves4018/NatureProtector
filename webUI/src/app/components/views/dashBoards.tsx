@@ -3,18 +3,14 @@ import {
   Search, Flame, AlertTriangle, Grid3X3, Layers, Leaf, Sun, Moon, TreePine, Mountain,
 } from 'lucide-react';
 import {
-  ChakraProvider, createSystem, defaultConfig,
-  Box, Flex, HStack, VStack, Text, Input, Checkbox, defineConfig,
+  Box, Flex, HStack, VStack, Text, Input, Checkbox,
 } from '@chakra-ui/react';
 import { GrafanaStrip } from '../mainComponents/GrafanaStrip';
 import { PortugalMap } from '../mainComponents/PortugalMap';
 import {useColors} from '../../utils/utils'
 
-import {NPArea, GridInfo} from "../../types/index"
+import { GridInfo} from "../../types"
 import { useParams } from 'react-router-dom';
-
-// ─── Chakra system ─────────────────────────────────────────────────────────────
-const system = createSystem(defaultConfig, defineConfig({ theme: {} }));
 
 // ─── Danger zones ──────────────────────────────────────────────────────────────
 const dangerZones = []

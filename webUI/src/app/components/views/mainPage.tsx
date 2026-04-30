@@ -2,8 +2,7 @@ import { Flame, Leaf } from "lucide-react";
 import { useEffect, useReducer, useState } from "react";
 import { api } from "../../services/api";
 import { useNavigate } from "react-router";
-import { areaReducer, initialAreaState } from "../hooks/AreaIdReducer";
-import { NumberInputLabelProps } from "@chakra-ui/react";
+import { areaReducer, initialAreaState } from "../../hooks/AreaIdReducer";
 
 
 export function MainPage() {
