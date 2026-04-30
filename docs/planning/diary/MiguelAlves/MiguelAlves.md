@@ -276,54 +276,55 @@ Esta conclusão é importante porque altera a leitura do estado atual do projeto
 
 ## Objetivo desta entrada
 
-Registar, de forma primeiro estruturada e só depois mais detalhada, o trabalho de preparação da apresentação de progresso, consolidação da documentação de implementação, organização das ferramentas de documentação técnica, diagnóstico operacional da pipeline, reforço de observabilidade, manutenção do repositório e alinhamento entre código, documentação e comportamento real da baseline.
+Registar, de forma primeiro estruturada e só depois mais detalhada, o trabalho de preparação da apresentação de progresso, consolidação da documentação de implementação, diagnóstico operacional da pipeline, correção de riscos de robustez, preparação da fronteira de cálculo de risco, manutenção do repositório e alinhamento entre código, documentação e comportamento real da baseline.
 
 ## Índice
 
 * Resumo Estruturado
 * 1. Preparação e revisão da apresentação de progresso
-* 2. Consolidação do `implementation.md` e dos diagramas de implementação
+* 2. Consolidação do `implementation.md`, `architecture.md` e dos diagramas de implementação
 * 3. Organização das ferramentas de documentação técnica
 * 4. Diagnóstico operacional da pipeline em execução real
 * 5. Instrumentação, cronómetros, logs e observabilidade transversal
-* 6. Rejeição, retry, quarentena e durabilidade do processamento
-* 7. Simulator, bootstrap e plano de controlo
-* 8. Backoffice API, contratos e testes
-* 9. Manutenção do repositório, merge e validação de build
-* 10. Resultado da quinzena e próximos passos
+* 6. InfluxDB como observabilidade configurável e não crítica
+* 7. Idempotência concorrente e robustez dos adaptadores PostgreSQL
+* 8. Validação semântica `area_id` ↔ `sensor_id`
+* 9. Normalização, `RiskInput` e elegibilidade para risco
+* 10. Simulator, bootstrap e plano de controlo
+* 11. Backoffice API, contratos e testes
+* 12. Manutenção do repositório, merge e validação de build
+* 13. Resultado da quinzena e próximos passos
 
 ## Resumo Estruturado
 
 ### O que foi feito
 
-1. Foi preparada e revista a apresentação de progresso do projeto, com reorganização da narrativa, seleção dos conteúdos principais, separação de slides extra e maior foco na evidência técnica da baseline já demonstrável.
-2. Foi consolidado o documento `implementation.md` como ponto de entrada para a explicação da implementação atual, ligando código, runtime, persistência, pipeline, observabilidade e documentação.
-3. Foi expandido o conjunto de diagramas de implementação, com diagramas dedicados ao simulador, prevenção, persistência, API, bootstrap, cenários, testes, rejeição, retry e quarentena.
+1. Foi preparada e revista a apresentação de progresso do projeto, com reorganização da narrativa, seleção dos conteúdos principais, separação de slides extra e maior foco na evidência técnica da baseline demonstrável.
+2. Foi consolidado o `implementation.md` como documento de onboarding técnico da implementação atual e foi atualizado o `architecture.md` para refletir melhor a arquitetura real, a arquitetura-alvo e os novos limites internos da pipeline.
+3. Foi expandido e revisto o conjunto de diagramas de implementação, com vistas dedicadas ao simulador, prevenção, persistência, API, bootstrap, cenários, testes, rejeição, retry e quarentena.
 4. Foram organizadas e validadas ferramentas de documentação técnica, incluindo Doxygen, DocFX, Structurizr, PlantUML, Graphviz, Docker, Draw.io e scripts auxiliares em `scripts/docs`.
-5. Foi feito trabalho específico de diagnóstico da pipeline em execução real, com análise da ordem de processamento, volume de mensagens, pressão sobre o consumidor, tempos por etapa e comportamento do RabbitMQ.
-6. Foram introduzidos cronómetros, logs e elementos de observabilidade para medir operações críticas e perceber onde surgiam atrasos, acumulações ou custos operacionais relevantes.
-7. Foi reforçada a distinção entre eventos inválidos, falhas transitórias com retry e falhas persistentes que devem seguir para quarentena, tornando a pipeline mais auditável.
-8. Foram revistas alterações relacionadas com PostgreSQL, projeções operacionais, bootstrap do plano de controlo, simulador e contexto de execução baseado em configuração persistida.
-9. Foram ajustados componentes da Backoffice API e testes associados, incluindo compatibilidade com contratos atualizados.
-10. Foi feita manutenção do repositório, incluindo resolução de conflitos após `git pull`, atualização do `.gitignore`, validação de build e análise de ficheiros gerados ou experimentais que devem ou não entrar no commit.
-11. Foi consolidado o comportamento configurável da infraestrutura de InfluxDB. Verificou-se que a opção `InfluxDb:Enabled`, a seleção por dependency injection entre writer real e writer no-op, e o valor local por omissão `Enabled=false` já estavam praticamente montados. O trabalho desta fase serviu sobretudo para fechar a história operacional: tornar o modo desligado mais explícito, documentá-lo e protegê-lo com teste.
-12. Foi reforçado o `NoOpInfluxWriteService`, com logging mais claro quando o InfluxDB está desativado. Este comportamento permite correr a pipeline local com PostgreSQL, RabbitMQ, cálculo de risco, snapshots e projeções operacionais ativos, sem depender da disponibilidade ou desempenho do InfluxDB.
-13. Foi adicionado um teste específico à `ReadingRiskPipeline` para garantir que, com InfluxDB desligado, a pipeline continua a persistir a leitura aceite, a avaliação de risco, o snapshot da área e as projeções operacionais. Esta validação ajuda a separar melhor o estado durável da pipeline, que fica em PostgreSQL, da observabilidade temporal, que fica em InfluxDB.
-14. Foi feita uma revisão arquitetural da fronteira de cálculo de risco. A pipeline deixou de depender diretamente da interface específica `ISimpleRiskScoringService` e passou a depender de uma interface mais genérica, `IRiskScoringService`, mantendo o `SimpleRiskScoringService` como implementação atual. Esta alteração não mudou os resultados do score, mas preparou melhor o código para futuros modelos de risco.
-15. Foi identificado que a implementação atual do score é adequada como demonstração e baseline, mas ainda não está semanticamente preparada para índices reais como FWI, KBDI ou Haines. Para isso, serão necessários conceitos explícitos como `NormalizedReading`, `RiskInput`, elegibilidade para risco, estado do modelo, cadência de cálculo, dados meteorológicos adicionais e metadados de proveniência/versionamento.
-16. Foi analisado o estado da pipeline face ao objetivo V1. A conclusão foi que a base técnica é forte em transporte, inbox durável, retry/quarentena, persistência histórica, projeções operacionais e observabilidade, mas ainda faltam fronteiras semânticas internas para separar observação bruta, leitura normalizada, input de risco, classificação e cálculo de risco.
+5. Foi feito diagnóstico operacional da pipeline em execução real, com análise da ordem de processamento, volume de mensagens, pressão sobre o consumidor, tempos por etapa, comportamento RabbitMQ e impacto da configuração persistida em PostgreSQL.
+6. Foram introduzidos e usados cronómetros, logs e elementos de observabilidade para medir operações críticas e identificar onde surgiam atrasos, acumulações ou custos operacionais relevantes.
+7. Foi consolidado o modo local com InfluxDB desligado por configuração, usando `NoOpInfluxWriteService`, logging explícito e teste de pipeline para garantir que PostgreSQL, snapshots e projeções continuam a funcionar sem telemetria temporal.
+8. Foi reforçada a distinção entre PostgreSQL como estado durável e InfluxDB como observabilidade temporal, evitando que falhas ou custos de observabilidade sejam confundidos com falhas do processamento operacional.
+9. Foi corrigida a idempotência concorrente em pontos vulneráveis do padrão `read-then-insert`, tratando unique violations esperadas como duplicados legítimos sem mascarar erros reais.
+10. Foi estabilizada a identidade dos `AreaRiskSnapshot`, que deixou de depender de um `Guid.NewGuid()` por tentativa e passou a usar o `EventId` da leitura como identidade estável do snapshot derivado desse evento.
+11. Foi introduzida validação semântica entre `area_id` do envelope e `sensor_id` do payload, depois da inbox e antes da `ReadingRiskPipeline`, colocando em quarentena eventos com sensor inexistente, sensor inativo ou sensor pertencente a outra área.
+12. Foi criada uma fronteira interna explícita entre evento bruto, leitura normalizada, input de risco e cálculo de risco: `EventEnvelope<SensorReadingProducedPayload> -> NormalizedReading -> RiskInput -> IRiskScoringService -> RiskAssessment`.
+13. Foi introduzida uma etapa explícita de elegibilidade para risco: `NormalizedReading -> RiskEligibilityResult -> RiskInput`, preparando a distinção entre leitura aceite para auditoria e leitura efetivamente usada no cálculo de risco.
+14. Foi implementada a semântica interna para leituras `NotEligible`: a leitura continua a ser persistida como accepted reading, mas a pipeline termina com sucesso sem score, sem `RiskAssessment`, sem `AreaRiskSnapshot`, sem projeções de risco e sem retry/quarentena.
+15. Foi mantido o `SimpleRiskScoringService` como baseline demonstrável, mas a pipeline passou a depender de `IRiskScoringService`, reduzindo o acoplamento ao score simples atual e preparando a evolução futura para modelos mais ricos.
+16. Foram revistos componentes da Backoffice API e testes associados, incluindo compatibilidade com contratos atualizados e alinhamento com a leitura de `control.*` e `projection.*`.
+17. Foi feita manutenção do repositório, incluindo resolução de conflitos após `git pull`, atualização do `.gitignore`, validação de build, análise de artefactos gerados e separação entre código demonstrável e frentes experimentais.
+18. Foram executadas validações sucessivas com `dotnet build --no-restore` e `dotnet test --no-restore`; no final das alterações da pipeline, a solução passou com 647 testes.
 
 ### Resultado principal da quinzena
 
-O resultado principal desta quinzena foi a aproximação entre três dimensões do projeto que ainda estavam parcialmente desalinhadas:
+O resultado principal desta quinzena foi a passagem de uma baseline apenas demonstrável para uma baseline tecnicamente mais robusta, mais auditável e mais preparada para evoluir. A pipeline deixou de ser apenas um fluxo que consome leituras e calcula um score simples. Passou a ter limites internos mais explícitos: inbox durável, idempotência concorrente, validação semântica contra o plano de controlo, normalização, input de risco e elegibilidade.
 
-* no plano da apresentação, porque a baseline passou a ser explicada de forma mais direta, com foco no que já é demonstrável;
-* no plano documental, porque os diagramas e documentos passaram a refletir melhor a implementação real, incluindo fluxos nominais e fluxos de falha;
-* no plano operacional, porque a pipeline deixou de ser analisada apenas como arquitetura e passou a ser medida como sistema em execução, com logs, cronómetros, pressão de mensagens, persistência, observabilidade e pontos de estrangulamento identificados.
+Esta quinzena também clarificou uma decisão importante: a evolução para índices reais de risco, como FWI, KBDI ou Haines, não deve começar pela substituição direta da fórmula atual. Antes disso, era necessário preparar a pipeline para receber inputs mais ricos, distinguir leituras aceites de leituras elegíveis para risco, formalizar a normalização e evitar que a `ReadingRiskPipeline` acumulasse regras de modelo, janelas temporais, estado persistido e políticas de dados em falta.
 
-Esta quinzena foi, por isso, uma fase de transição entre “documentar o que existe” e “validar se o que existe se comporta corretamente em runtime”.
-
-Além disso, esta quinzena permitiu clarificar que a evolução para índices de risco reais não deve começar pela substituição direta da fórmula de score. Antes disso, é necessário preparar a pipeline para receber inputs mais ricos, distinguir leituras aceites de leituras elegíveis para risco, formalizar a normalização e evitar que a `ReadingRiskPipeline` acumule regras de modelo, janelas temporais, estado persistido e políticas de dados em falta.
+Em paralelo, a documentação ficou mais alinhada com o comportamento real. O `implementation.md`, o `architecture.md`, os diagramas e a narrativa da apresentação passaram a refletir melhor a runtime: o que acontece antes da inbox, o que acontece depois da inbox, onde entram retry/quarentena, como se separa PostgreSQL de InfluxDB, e por que motivo o score atual deve ser tratado como baseline e não como modelo final.
 
 ---
 
@@ -331,29 +332,27 @@ Além disso, esta quinzena permitiu clarificar que a evolução para índices de
 
 Durante este período foi preparada e revista a apresentação de progresso do projeto NatureProtector. O trabalho passou pela reorganização da estrutura da apresentação, de forma a alinhar melhor com os critérios pedidos: introdução ao problema, explicação do módulo de prevenção, investigação realizada, requisitos abordados, pipeline implementada, trabalho futuro e demonstração.
 
-Foi também acrescentado um slide de organização da apresentação, para tornar mais claro o percurso da exposição. Esta alteração ajudou a enquadrar melhor a sequência dos temas e a reduzir o risco de a apresentação parecer apenas uma sucessão de conteúdos técnicos sem fio condutor.
+Foi acrescentado um slide de organização da apresentação, para tornar mais claro o percurso da exposição. Esta alteração ajudou a enquadrar melhor a sequência dos temas e a reduzir o risco de a apresentação parecer apenas uma sucessão de conteúdos técnicos sem fio condutor.
 
-Além disso, houve trabalho de separação entre slides principais e slides extra. Os slides principais ficaram mais focados no essencial para o tempo disponível, enquanto os slides opcionais passaram a servir como apoio para perguntas, nomeadamente sobre tecnologias, diagramas mais detalhados, escolhas de arquitetura, persistência, pipeline e funcionamento interno.
+Também houve trabalho de separação entre slides principais e slides extra. Os slides principais ficaram mais focados no essencial para o tempo disponível, enquanto os slides opcionais passaram a servir como apoio para perguntas, nomeadamente sobre tecnologias, diagramas mais detalhados, escolhas de arquitetura, persistência, pipeline e funcionamento interno.
 
-Também foi feita uma revisão ao conteúdo dos slides, corrigindo erros de escrita, ajustando a linguagem técnica e tornando algumas afirmações mais rigorosas. Foram melhorados os slides sobre pesquisa, requisitos, pipeline, demonstração e trabalho futuro, incluindo uma leitura mais honesta da percentagem estimada de progresso e do que ainda falta concluir.
-
-A linha principal da apresentação passou a centrar-se na evidência de progresso: mostrar que já existe uma baseline demonstrável com simulação, transporte por RabbitMQ, persistência em PostgreSQL e InfluxDB, cálculo inicial de risco, API/backoffice e observabilidade em Grafana. Isto ajudou a transformar a apresentação numa defesa do estado real do projeto, e não apenas numa descrição da ideia geral.
+A linha principal da apresentação passou a centrar-se na evidência de progresso: mostrar que já existe uma baseline demonstrável com simulação, transporte por RabbitMQ, persistência em PostgreSQL e InfluxDB, cálculo inicial de risco, API/backoffice e observabilidade em Grafana. Esta abordagem ajudou a transformar a apresentação numa defesa do estado real do projeto, e não apenas numa descrição da ideia geral.
 
 ---
 
-## 2. Consolidação do `implementation.md` e dos diagramas de implementação
+## 2. Consolidação do `implementation.md`, `architecture.md` e dos diagramas de implementação
 
 Nesta quinzena foi consolidada a documentação de implementação do projeto, com foco em explicar como a solução está realmente organizada no repositório e como os principais fluxos técnicos funcionam na prática.
 
-O documento `implementation.md` passou a assumir o papel de ponto de entrada para a implementação atual. A intenção foi evitar que a compreensão do sistema dependesse apenas da leitura dispersa de código, diagramas soltos ou conhecimento informal da equipa. Este documento passou a funcionar como uma vista de síntese da baseline implementada, ligando runtime, persistência, pipeline, API, simulador e observabilidade.
+O `implementation.md` passou a assumir o papel de ponto de entrada para a implementação atual. A intenção foi evitar que a compreensão do sistema dependesse apenas da leitura dispersa de código, diagramas soltos ou conhecimento informal da equipa. Este documento passou a funcionar como uma vista de síntese da baseline implementada, ligando runtime, persistência, pipeline, API, simulador, observabilidade e testes.
 
-Em paralelo, foi expandido o conjunto de diagramas de implementação em `docs/architecture/diagrams`. Em vez de tentar representar tudo num único diagrama demasiado denso, foram criados diagramas especializados para diferentes aspetos da solução: fluxo nominal do simulador, fluxo nominal da prevenção, rejeição, retry e quarentena, bootstrap do plano de controlo, persistência, organização do repositório, cenários e manifests, caminhos de leitura da API e mapa de testes.
+Depois das alterações feitas na pipeline, o documento teve de ser revisto para não ficar desatualizado. Em particular, foram identificadas zonas que já não podiam continuar a dizer que a prevenção processava diretamente o envelope bruto até ao score. A nova leitura correta passou a ser: o evento é recebido, materializado na inbox, validado semanticamente, convertido internamente em `NormalizedReading`, avaliado quanto à elegibilidade e só depois transformado em `RiskInput`.
 
-Esta separação tornou os diagramas mais úteis, porque cada um passou a responder a uma pergunta técnica concreta. Por exemplo, alguns diagramas ajudam a explicar como a simulação produz eventos, outros mostram como a prevenção processa leituras, outros descrevem onde entram a persistência e as projeções, e outros ajudam a perceber como o repositório está organizado.
+O `architecture.md` também foi atualizado para refletir esta evolução. A arquitetura deixou de descrever apenas a intenção futura de `accepted / rejected / normalized` e passou a reconhecer que já existe uma primeira fronteira interna de normalização e input de risco. Ao mesmo tempo, manteve-se a distinção correta: isto ainda não significa que o projeto tenha uma implementação final de índices reais, nem que exista publicação externa de eventos `ReadingNormalized`. Trata-se de uma fronteira interna preparada para evolução.
 
-Um aspeto importante deste trabalho foi o alinhamento entre os diagramas e o comportamento real da runtime. A preocupação não foi apenas produzir diagramas visualmente mais completos, mas sim aproximá-los do que realmente acontece no código. Isto foi particularmente relevante nos diagramas sobre rejeição, retry, quarentena e fluxos da prevenção, porque o diagnóstico da pipeline mostrou que a ordem real de processamento tinha de ser descrita com mais rigor.
+Em paralelo, foi expandido o conjunto de diagramas de implementação em `docs/architecture/diagrams`. Em vez de tentar representar tudo num único diagrama demasiado denso, foram criados ou revistos diagramas especializados para diferentes aspetos da solução: fluxo nominal do simulador, fluxo nominal da prevenção, rejeição, retry e quarentena, bootstrap do plano de controlo, persistência, organização do repositório, cenários e manifestos, caminhos de leitura da API e mapa de testes.
 
-Também foi revista a cadeia end-to-end de dados, para refletir melhor a ligação entre simulador, RabbitMQ, `Prevention.Host`, PostgreSQL, InfluxDB, Backoffice API e Grafana. Esta cadeia passou a ser uma peça importante para explicar a baseline demonstrável do projeto.
+Esta separação tornou os diagramas mais úteis, porque cada um passou a responder a uma pergunta técnica concreta. O foco principal foi alinhar os diagramas com o comportamento real da runtime, sobretudo nos pontos onde a leitura errada poderia levar a conclusões incorretas: momento do `BasicAck`, papel da inbox, caminho da quarentena, diferença entre observabilidade e estado operacional, e nova fronteira de cálculo de risco.
 
 ---
 
@@ -365,17 +364,11 @@ No caso do Doxygen, foi validada a instalação das dependências relevantes, no
 
 Foi criado e ajustado um `Doxyfile.local`, pensado para geração local em ambiente Windows, com output local separado. A documentação passou a conseguir gerar páginas HTML, XML, diagramas e relações automáticas entre classes, ficheiros, diretórios e chamadas. Também foram identificados alguns warnings e corrigidos os que faziam sentido nesta fase, em especial referências frágeis e comentários XML incompletos.
 
-As páginas manuais do Doxygen foram revistas para que a documentação gerada não fosse apenas um inventário automático de classes e ficheiros. A intenção foi combinar documentação automática com enquadramento arquitetural, explicando fluxos como controlo e bootstrap, persistência, simulador, prevenção e testes.
-
-No caso do DocFX, o foco foi mais organizacional. A preocupação principal foi consolidar a explicação sobre o que a ferramenta representa no projeto, que ficheiros são fonte, que ficheiros são gerados, como limpar outputs e como utilizar a documentação localmente. Isto evita que a pasta do DocFX pareça apenas um conjunto de artefactos sem contexto.
+No caso do DocFX, o foco foi mais organizacional. A preocupação principal foi consolidar a explicação sobre o que a ferramenta representa no projeto, que ficheiros são fonte, que ficheiros são gerados, como limpar outputs e como utilizar a documentação localmente.
 
 No Structurizr, o trabalho foi mais corretivo. A primeira validação mostrou problemas reais de sintaxe e de compatibilidade com a versão da ferramenta usada. Também ficou claro que a utilização local deveria depender de Docker, em vez de instalações manuais ou ferramentas descontinuadas. A solução passou por usar a imagem `structurizr/structurizr`, tanto para validação como para exportação e execução local.
 
-Depois de corrigido o `workspace.dsl`, o modelo passou a representar vistas úteis da solução atual, como contexto do sistema, runtime atual, componentes centrais do `Prevention.Host` e baseline local em Docker Compose. A validação passou a funcionar e a exportação para PlantUML começou a gerar ficheiros `.puml` utilizáveis.
-
 Também foram organizados scripts auxiliares em `scripts/docs`, para tornar a geração, limpeza e validação da documentação menos dependente de comandos manuais dispersos. Esta organização ajuda a tornar o processo documental mais repetível e mais fácil de recuperar no futuro.
-
-No conjunto, esta frente tornou a infraestrutura documental mais madura: Doxygen funcional e enriquecido, DocFX melhor enquadrado, Structurizr corrigido e operacional, e uma distinção mais clara entre documentação manual, documentação gerada, diagramas narrativos e modelos validáveis.
 
 ---
 
@@ -385,11 +378,11 @@ Uma das frentes técnicas mais importantes desta quinzena foi o diagnóstico da 
 
 O foco deixou de ser apenas validar a lógica da pipeline e passou a ser observar o seu comportamento operacional. Foram analisados aspetos como o número de mensagens recebidas, a ordem de processamento, o tempo gasto em cada etapa, a acumulação de mensagens e os pontos onde podiam surgir atrasos ou falhas.
 
-Este trabalho foi importante porque mostrou que a correção funcional não é suficiente para validar a baseline. Mesmo que a pipeline esteja logicamente correta, é necessário perceber se consegue acompanhar a taxa de entrada de eventos, se o consumidor se mantém estável, se a fila cresce de forma inesperada e se as operações de persistência e observabilidade introduzem atrasos relevantes.
+Este trabalho mostrou que a correção funcional não é suficiente para validar a baseline. Mesmo que a pipeline esteja logicamente correta, é necessário perceber se consegue acompanhar a taxa de entrada de eventos, se o consumidor se mantém estável, se a fila cresce de forma inesperada e se as operações de persistência e observabilidade introduzem atrasos relevantes.
 
-A análise também ajudou a confirmar que a pressão sobre o consumidor depende da relação entre a cadência do simulador, o número de sensores ativos, a configuração carregada do plano de controlo e o custo de cada operação realizada durante o processamento. Isto foi especialmente importante porque, com o modo `ControlPlaneEnabled`, a runtime efetiva não depende apenas do `appsettings.json`, mas também do cenário e dos sensores ativos persistidos em PostgreSQL.
+A análise também confirmou que a pressão sobre o consumidor depende da relação entre a cadência do simulador, o número de sensores ativos, a configuração carregada do plano de controlo e o custo de cada operação realizada durante o processamento. Isto foi especialmente importante porque, com o modo `ControlPlaneEnabled`, a runtime efetiva não depende apenas do `appsettings.json`, mas também do cenário e dos sensores ativos persistidos em PostgreSQL.
 
-Durante esta fase ficou mais claro que a pipeline deve ser analisada como uma cadeia operacional completa: receção da mensagem, validação, registo durável, processamento, persistência dos resultados, atualização de projeções, escrita de observabilidade e confirmação ao RabbitMQ. A documentação e os diagramas foram ajustados para refletir melhor esta ordem real.
+Durante esta fase ficou mais claro que a pipeline deve ser analisada como uma cadeia operacional completa: receção da mensagem, validação, registo durável, validação semântica, processamento, persistência dos resultados, atualização de projeções, escrita de observabilidade e confirmação ao RabbitMQ.
 
 ---
 
@@ -403,11 +396,13 @@ O resultado prático foi uma melhoria significativa da capacidade de diagnóstic
 
 Este trabalho também evoluiu para uma base mais estruturada de observabilidade em `NatureProtector.Shared/Observability`. A intenção foi evitar medições dispersas e criar uma forma mais consistente de identificar operações, tags e métricas nos vários serviços. Esta base comum foi depois refletida em pontos como a Backoffice API, o Simulator Host, o Prevention Host, o serviço de escrita para InfluxDB e a publicação de leituras por RabbitMQ.
 
-A observabilidade tornou-se especialmente relevante para a demonstração da baseline. O projeto não precisa apenas de executar; precisa de mostrar evidência de que os dados percorrem a cadeia end-to-end, que os serviços estão ativos e que os atrasos ou falhas podem ser diagnosticados. Esta frente contribuiu diretamente para essa capacidade.
+A medição mostrou que o principal gargalo local atual não estava necessariamente no PostgreSQL nem na query de estado mais recente da área, mas sim no custo associado às escritas para InfluxDB. Esta conclusão foi importante porque alterou a prioridade das otimizações seguintes: antes de refatorar a pipeline de forma ampla, fazia mais sentido permitir desligar ou controlar melhor a observabilidade temporal em ambiente local.
 
-Também ficou claro, por medição, que o principal gargalo local atual não está necessariamente no PostgreSQL nem na query de estado mais recente da área, mas sim no custo associado às escritas para InfluxDB. Esta conclusão é importante porque altera a prioridade das próximas otimizações: antes de refatorar a pipeline de forma ampla, faz mais sentido permitir desligar, agrupar ou amortecer escritas de observabilidade temporal em ambiente local.
+---
 
-Na continuação deste diagnóstico, foi revista a infraestrutura de InfluxDB. A análise mostrou que as escritas para InfluxDB estavam no caminho síncrono do processamento e que, embora sejam importantes para observabilidade, não devem ser confundidas com a persistência operacional principal da pipeline.
+## 6. InfluxDB como observabilidade configurável e não crítica
+
+Na continuação do diagnóstico, foi revista a infraestrutura de InfluxDB. A análise mostrou que as escritas para InfluxDB estavam no caminho síncrono do processamento e que, embora sejam importantes para observabilidade, não devem ser confundidas com a persistência operacional principal da pipeline.
 
 A decisão arquitetural assumida foi separar com mais clareza o papel de PostgreSQL e InfluxDB. O PostgreSQL continua a representar o estado durável e operacional da pipeline, incluindo inbox, tentativas de processamento, leituras aceites, avaliações de risco, snapshots e projeções. O InfluxDB é tratado como camada de observabilidade temporal, útil para séries temporais, dashboards e diagnóstico, mas não como fonte principal de verdade operacional.
 
@@ -418,49 +413,94 @@ O trabalho feito nesta fase foi, por isso, mais de fecho e validação do que de
 Foi ainda adicionado um teste específico à `ReadingRiskPipeline` para confirmar que, com `NoOpInfluxWriteService`, a pipeline continua a persistir corretamente a leitura aceite, a avaliação de risco, o snapshot da área e as projeções operacionais. Isto protege o cenário em que a observabilidade temporal está desligada, mas o processamento principal continua ativo.
 
 Esta alteração não mudou a ordem funcional da `ReadingRiskPipeline`, não alterou o `BasicAck`, não alterou contratos RabbitMQ, não mudou o simulador, não modificou as regras de score e não alterou a persistência PostgreSQL. O objetivo foi garantir que o modo local sem InfluxDB é explícito, testado e documentado.
----
-
-## 6. Rejeição, retry, quarentena e durabilidade do processamento
-
-A análise da pipeline levou também a reforçar a distinção entre diferentes tipos de eventos e falhas. Um problema relevante identificado foi o tratamento de leituras com `OperationalState=Invalid`. Estes eventos não devem seguir o mesmo caminho das leituras aceites, porque poderiam contaminar persistência aceite, avaliação de risco, snapshots agregados e projeções operacionais.
-
-Por isso, foi reforçada a rejeição precoce de eventos inválidos. Esta validação à entrada do `PreventionWorker` ajuda a garantir que o fluxo principal só processa leituras semanticamente válidas. Em paralelo, foi melhorado o registo das rejeições, tornando mais claro e auditável o caminho dos eventos que não devem entrar no processamento normal.
-
-Também foi consolidada a separação entre falhas transitórias e falhas persistentes. Nem todos os erros devem ser tratados da mesma forma: alguns justificam uma nova tentativa, enquanto outros devem ser registados e enviados para quarentena. Esta distinção aproxima a implementação de uma pipeline operacional mais robusta.
-
-O trabalho sobre retry, tentativas de processamento e quarentena é importante porque reduz dois riscos opostos: perda silenciosa de eventos e repetição indefinida de mensagens problemáticas. Ao apoiar-se em estruturas persistidas para inbox, tentativas, rejeições e quarentena, a pipeline fica mais auditável e mais fácil de explicar.
-
-Também foi clarificada a relação entre durabilidade e confirmação ao RabbitMQ. O `ack` não deve ser entendido apenas como uma consequência abstrata de “fim do processamento”, mas como uma decisão ligada ao ponto em que o evento já está suficientemente protegido contra perda. Esta distinção é relevante para justificar a arquitetura e para alinhar código, documentação e diagramas.
 
 ---
 
-## 7. Preparação da fronteira de cálculo de risco
+## 7. Idempotência concorrente e robustez dos adaptadores PostgreSQL
 
-Para além do diagnóstico operacional da pipeline, foi feita uma revisão específica da forma como o cálculo de risco está integrado no sistema. O objetivo foi perceber se a implementação atual está preparada para evoluir de um score demonstrativo simples para modelos de risco mais realistas, como FWI, KBDI ou Haines.
+Depois de estabilizado o modo local de observabilidade, foi tratada uma frente mais ligada à robustez da pipeline durável: a idempotência concorrente dos adaptadores PostgreSQL.
 
-A conclusão foi que o score atual cumpre bem o papel de baseline demonstrável: recebe uma leitura, aplica regras simples por tipo de métrica e produz uma avaliação de risco com score, nível e explicação. No entanto, esta abordagem ainda não é suficiente para índices reais, porque esses modelos exigem mais contexto do que uma única leitura isolada.
+O problema identificado era o padrão `read-then-insert`. Em execução simples, verificar se um registo existe e inserir apenas quando não existe funciona. No entanto, em concorrência real, dois workers ou duas tentativas podem verificar ao mesmo tempo que o registo não existe e competir pela mesma unique constraint. Nesse caso, uma das inserções ganha e a outra pode falhar com `DbUpdateException`, apesar de representar apenas um duplicado legítimo.
 
-Foi identificada a necessidade de separar melhor as fronteiras internas da pipeline. Atualmente, a `ReadingRiskPipeline` ainda trabalha muito diretamente com os dados vindos do evento recebido. Para uma evolução mais robusta, será necessário introduzir conceitos intermédios, como `NormalizedReading`, `RiskInput`, decisão explícita de elegibilidade para risco e, mais tarde, estado persistido do modelo.
+A correção passou por tratar unique violations esperadas como resultado idempotente, sem esconder erros reais. Para isso, foi criado um helper localizado, `ExpectedUniqueViolationDetector`, capaz de reconhecer apenas constraints esperadas: em PostgreSQL por `ConstraintName`, e em SQLite por erro e assinatura de tabela/colunas nos testes.
 
-Como primeira alteração segura, foi introduzida uma interface genérica `IRiskScoringService`. A interface específica `ISimpleRiskScoringService` passou a estender essa interface genérica, preservando compatibilidade com o código e testes existentes. A `ReadingRiskPipeline` passou a depender da abstração genérica, enquanto o `SimpleRiskScoringService` continua a ser a implementação concreta usada na baseline.
+Foram corrigidos vários pontos relevantes:
 
-Esta alteração não teve como objetivo alterar os resultados do score. O comportamento funcional manteve-se igual. A importância da alteração está na preparação arquitetural: a pipeline passa a estar menos acoplada ao modelo simples atual e fica mais preparada para aceitar, no futuro, outros motores de cálculo.
+- `PostgresReadingEventInbox.StoreIncomingAsync`, onde a colisão concorrente em `EventId` passou a ser tratada como duplicado idempotente;
+- `PostgresReadingEventInbox.TryStartDueRetryAsync`, onde uma corrida na criação de nova tentativa deixou de ser tratada como falha operacional;
+- `PostgresAcceptedReadingRepository.AddAsync`, onde duplicados por `EventId` passaram a ser sucesso idempotente;
+- `PostgresRiskAssessmentRepository.AddAsync`, onde duplicados por `SourceEventId` passaram a ser sucesso idempotente;
+- `PostgresAreaRiskSnapshotRepository.SaveAsync`, onde duplicados por chave do snapshot passaram a ser idempotentes;
+- `PostgresAreaOperationalProjectionStore.SaveCellAsync` e `SaveAsync`, onde a primeira criação concorrente passou a recair para update quando a insert perde a corrida.
 
-Também ficou claro que não faz sentido implementar já uma versão “falsa” ou incompleta de FWI, KBDI ou Haines. Antes disso, é necessário concluir a pesquisa, definir os inputs necessários, decidir a cadência de cálculo, perceber que estado histórico é obrigatório e criar uma estrutura de input adequada. Caso contrário, haveria o risco de introduzir uma pseudo-implementação tecnicamente vistosa, mas cientificamente fraca.
+Nesta frente foi também corrigido um ponto subtil: o `AreaRiskSnapshot` era persistido com um identificador novo a cada tentativa. Isto significava que retries ou reentregas do mesmo evento podiam criar snapshots lógicos duplicados. A pipeline passou então a construir o snapshot derivado com `Id = envelope.EventId`, tornando a identidade do snapshot estável por evento.
 
-A recomendação resultante foi manter o `SimpleRiskScoringService` como baseline de demonstração, mas preparar progressivamente a pipeline para modelos mais ricos. A ordem sugerida é: primeiro criar uma fronteira interna de `NormalizedReading` e `RiskInput`, depois explicitar a elegibilidade para risco, depois definir estado/cadência dos modelos, e só depois implementar índices reais.
+Esta alteração melhorou a robustez sem alterar contratos RabbitMQ, `BasicAck`, scoring, simulador ou política de InfluxDB. O objetivo foi tornar a persistência mais resiliente aos casos que uma arquitetura com RabbitMQ, reentregas e retries deve naturalmente tolerar.
 
 ---
 
-## 8. Simulator, bootstrap e plano de controlo
+## 8. Validação semântica `area_id` ↔ `sensor_id`
+
+Outra frente importante foi a validação semântica entre o `area_id` do envelope e o `sensor_id` do payload. Até aqui, a pipeline já fazia validação técnica do envelope, mas ainda faltava confirmar se o sensor declarado no evento existia no plano de controlo, se estava ativo e se pertencia de facto à área indicada.
+
+A decisão arquitetural foi manter a rejeição antes da inbox apenas para invalidez técnica, e tratar inconsistências semânticas depois da inbox, usando quarentena. Esta decisão é importante porque estes eventos são tecnicamente válidos: têm JSON legível, envelope válido e payload estruturado. O problema é que o conteúdo é incompatível com o plano de controlo. Por isso, faz sentido materializá-los para auditoria e depois terminá-los como não processáveis.
+
+Foi criado um `IReadingSemanticValidator` e uma implementação `ReadingSemanticValidator`. Este validador consulta o plano de controlo e verifica três condições mínimas:
+
+- o sensor existe;
+- o sensor está ativo;
+- o sensor pertence à área declarada no envelope.
+
+A integração foi feita no `ReadingEventProcessingService`, depois da materialização durável na inbox e antes da chamada à `ReadingRiskPipeline`. Se a validação falhar, o evento é colocado em quarentena com motivo explícito, como `sensor_not_found`, `sensor_inactive` ou `sensor_area_mismatch`. Se a consulta à base de dados falhar por problema operacional, a exceção não é convertida em erro semântico; a política atual de retry/quarentena continua a tratar esse caso como falha operacional.
+
+O resultado é uma pipeline mais segura. Eventos semanticamente incompatíveis deixam de contaminar `accepted_reading_log`, `risk_assessment_log`, `area_risk_snapshot_log`, projeções operacionais e InfluxDB. Ao mesmo tempo, a decisão fica auditável na inbox e na quarentena.
+
+Esta alteração reforçou uma separação importante: o `PreventionWorker` trata transporte e contrato técnico; o `ReadingEventProcessingService` trata processamento durável, validação semântica e política de falha; a `ReadingRiskPipeline` assume que só recebe leituras processáveis.
+
+---
+
+## 9. Normalização, `RiskInput` e elegibilidade para risco
+
+Depois da robustez operacional e semântica, foi preparada a fronteira interna do cálculo de risco. Esta frente foi necessária porque a evolução para índices reais não deve consistir em substituir diretamente os thresholds do `SimpleRiskScoringService` por fórmulas mais complexas. Antes disso, a pipeline precisava de deixar de alimentar o motor de risco diretamente a partir do envelope bruto.
+
+A primeira alteração foi introduzir `NormalizedReading` e `RiskInput`. A pipeline passou a atravessar uma fronteira explícita:
+
+`EventEnvelope<SensorReadingProducedPayload> -> NormalizedReading -> RiskInput -> IRiskScoringService -> RiskAssessment`
+
+O `NormalizedReading` representa a leitura já validada tecnicamente e semanticamente, preservando os campos essenciais do envelope e do payload. O `RiskInput` representa o input mínimo do motor de risco atual, com informação como área, sensor, evento de origem, tipo de métrica, valor, unidade e tempo do evento.
+
+Esta alteração foi feita sem mudança de comportamento observável. O score atual, os thresholds, a persistência PostgreSQL, a semântica da inbox/retry/quarentena, o `BasicAck`, o payload RabbitMQ e a política de InfluxDB mantiveram-se inalterados. A diferença é arquitetural: o cálculo de risco deixou de depender diretamente do envelope bruto.
+
+A seguir, foi introduzida uma fronteira explícita de elegibilidade para risco:
+
+`NormalizedReading -> RiskEligibilityResult -> RiskInput`
+
+Foi criado `IRiskEligibilityService`, `RiskEligibilityService`, `RiskEligibilityResult` e `RiskEligibilityReason`. O serviço default é deliberadamente permissivo, para preservar a baseline. No entanto, a pipeline passou a ter o ponto certo para decidir se uma leitura aceite e normalizada deve, ou não, seguir para cálculo de risco.
+
+Por fim, foi implementada a semântica interna de leitura `NotEligible`. Neste caso:
+
+- a leitura continua a ser normalizada;
+- a `accepted reading` continua a ser persistida;
+- a pipeline termina com sucesso;
+- não há `RiskAssessment`;
+- não há `AreaRiskSnapshot`;
+- não há atualização de projeções de risco;
+- não há retry;
+- não há quarentena.
+
+Esta decisão é importante para o futuro, porque alguns dados podem ser válidos e úteis para auditoria, mas não elegíveis para determinado modelo de risco. Por exemplo, no futuro podem existir leituras com métrica não suportada pelo modelo ativo, unidade incompatível, falta de dados auxiliares, janela temporal incompleta ou cadência errada. A pipeline agora tem uma forma limpa de representar esse caso sem o tratar como erro operacional.
+
+Esta frente preparou diretamente a evolução para índices reais, mas sem implementar ainda FWI, KBDI ou Haines. A decisão foi manter a baseline estável e só avançar para esses modelos depois de terminar a pesquisa sobre inputs, cadência, estado anterior, precipitação, janelas temporais e proveniência.
+
+---
+
+## 10. Simulator, bootstrap e plano de controlo
 
 Nesta quinzena também houve trabalho relacionado com o simulador, o bootstrap e a ligação ao plano de controlo persistido em PostgreSQL.
 
-No simulador, foram feitas alterações relacionadas com a construção do contexto de simulação e com a ligação aos dados configurados no plano de controlo. Componentes como o `ScenarioContextFactory`, o `SimulationContext`, o `PostgresSimulationContextSource` e o `SimulationRunner` foram trabalhados para aproximar a execução do simulador das áreas, sensores e cenários definidos na configuração persistida.
+No simulador, foram revistas alterações relacionadas com a construção do contexto de simulação e com a ligação aos dados configurados no plano de controlo. Componentes como o `ScenarioContextFactory`, o `SimulationContext`, o `PostgresSimulationContextSource` e o `SimulationRunner` foram analisados para aproximar a execução do simulador das áreas, sensores e cenários definidos na configuração persistida.
 
 Esta evolução é importante porque a simulação deixa de ser apenas um produtor isolado de valores artificiais. Passa a fazer parte de uma cadeia configurável e auditável, em que uma execução concreta pode ser associada a uma área, a um cenário, a sensores ativos e a uma versão de configuração.
-
-Também foi continuado o trabalho sobre o bootstrap do plano de controlo. As alterações ao `ControlPlaneBootstrapper` e ao projeto `NatureProtector.Postgres.Bootstrap` procuram tornar mais repetível a criação/importação da configuração base do sistema. Isto inclui áreas, grelha, sensores, perfis, cenários e ligações a artefactos de dataset.
 
 Durante o diagnóstico da pipeline, ficou claro que o bootstrap tem impacto direto na carga operacional do sistema. Se a seleção de células piloto ou o número de sensores ativos for reduzido no catálogo, mas sensores antigos não forem desativados no plano de controlo, a runtime pode continuar a produzir mais mensagens do que o esperado. Por isso, a sincronização entre catálogo de cenários, bootstrap, sensores ativos e runtime passou a ser um ponto importante a controlar.
 
@@ -468,21 +508,21 @@ Esta frente reforçou a importância de tratar a configuração persistida como 
 
 ---
 
-## 9. Backoffice API, contratos e testes
+## 11. Backoffice API, contratos e testes
 
-Na Backoffice API foram feitas alterações ao serviço que consulta e projeta dados do plano de controlo, nomeadamente o `PostgresControlPlaneService`. Este serviço é responsável por transformar dados persistidos em contratos de resposta usados pelo backoffice, incluindo configurações, áreas, sensores, cenários, execuções de simulação, estados operacionais e alertas.
+Na Backoffice API foram revistas alterações ao serviço que consulta e projeta dados do plano de controlo, nomeadamente o `PostgresControlPlaneService`. Este serviço é responsável por transformar dados persistidos em contratos de resposta usados pelo backoffice, incluindo configurações, áreas, sensores, cenários, execuções de simulação, estados operacionais e alertas.
 
 Também foi introduzida instrumentação no caminho de leitura da API, permitindo medir operações e tempos de consulta. Isto é útil porque a API é uma das formas principais de explorar o estado do sistema e precisa de ser observável, especialmente à medida que passa a consultar mais dados persistidos.
 
-Durante a integração com alterações vindas do repositório remoto, foi necessário adaptar código e testes ao contrato atualizado de `AreaSummaryResponse`, que passou a incluir o identificador da área. Esta alteração obrigou a corrigir mocks/fakes usados nos testes da Backoffice API, para manter compatibilidade com o contrato atual.
+Durante a integração com alterações vindas do repositório remoto, foi necessário adaptar código e testes ao contrato atualizado de `AreaSummaryResponse`, que passou a incluir o identificador da área. Esta alteração obrigou a corrigir mocks e fakes usados nos testes da Backoffice API, para manter compatibilidade com o contrato atual.
 
-Esta frente também mostrou a importância de manter os testes alinhados com os contratos da API. Pequenas alterações nos contratos de resposta podem quebrar testes ou clientes, por isso a atualização dos testes foi parte necessária da integração e não apenas uma correção acessória.
+Os testes passaram a ter ainda maior valor documental. Em particular, os testes de `ReadingRiskPipeline`, `ReadingEventProcessingService`, `PreventionWorker`, `InboxRetryWorker`, repositórios PostgreSQL, validação semântica, normalização, input de risco e elegibilidade passaram a funcionar como especificação executável do comportamento da pipeline.
 
-Na validação mais recente, os comandos com restore/configuração NuGet falharam por problema de ambiente relacionado com acesso ao `NuGet.Config` global do utilizador. Para validar o código já restaurado, foram usados `dotnet build --no-restore` e `dotnet test --no-restore`, ambos com resultado positivo. Esta distinção é importante porque a falha não estava associada ao código alterado, mas sim ao ambiente local de restore.
+Na validação mais recente, os comandos com restore/configuração NuGet falharam por problema de ambiente relacionado com acesso ao `NuGet.Config` global do utilizador. Para validar o código já restaurado, foram usados `dotnet build --no-restore` e `dotnet test --no-restore`, ambos com resultado positivo.
 
 ---
 
-## 10. Manutenção do repositório, merge e validação de build
+## 12. Manutenção do repositório, merge e validação de build
 
 Para além das frentes técnicas e documentais, houve trabalho de manutenção do repositório. Foram feitos ajustes ao `.gitignore`, à solução `NatureProtector.sln`, a configurações comuns de build e à organização dos ficheiros que devem ou não entrar no controlo de versões.
 
@@ -494,39 +534,38 @@ Depois da resolução dos conflitos, foi feita validação com `dotnet build`. O
 
 A correção do teste foi integrada, mas o `AppHost` ficou identificado como frente exploratória ainda não estabilizada. Por isso, esta parte deve ser tratada com cuidado no commit: só deve entrar como trabalho funcional se o build ficar limpo, ou então deve ficar fora da solução até ser corrigida.
 
-Esta manutenção foi necessária para garantir que o estado do repositório continua coerente e que a documentação, a implementação e os testes evoluem sem deixar o projeto num estado inconsistente.
+Ao longo das alterações da pipeline, foram feitas validações sucessivas. A contagem de testes aumentou com a introdução de novos testes de idempotência, validação semântica, normalização, input de risco e elegibilidade. No estado final desta sequência, a solução passou com 647 testes.
 
 ---
 
-## 11. Resultado da quinzena e próximos passos
+## 13. Resultado da quinzena e próximos passos
 
 Em síntese, esta quinzena foi marcada por uma consolidação importante da baseline técnica e documental do projeto. A apresentação ficou mais alinhada com o que já existe, a documentação passou a explicar melhor a implementação real, os diagramas ficaram mais próximos da runtime e a pipeline passou a ser analisada com base em medições concretas.
 
-O ponto mais relevante foi a passagem de uma visão arquitetural da pipeline para uma leitura operacional. Foram adicionados logs, cronómetros e elementos de observabilidade que permitiram perceber melhor o comportamento sob carga, a ordem real de processamento, a pressão causada pelo volume de mensagens e o custo das operações de persistência e observabilidade.
+O ponto mais relevante foi a passagem de uma visão arquitetural da pipeline para uma leitura operacional e semântica. Foram adicionados logs, cronómetros e elementos de observabilidade que permitiram perceber melhor o comportamento sob carga, a ordem real de processamento, a pressão causada pelo volume de mensagens e o custo das operações de persistência e observabilidade.
 
-Também ficou mais claro que a baseline local atual tem um gargalo relevante nas escritas para InfluxDB. Esta conclusão é útil porque evita otimizações prematuras no sítio errado. Antes de reestruturar a pipeline inteira, faz sentido criar um modo local em que as escritas para InfluxDB possam ser desligadas, agrupadas ou amortecidas.
+Depois disso, a pipeline foi reforçada em três níveis:
 
-A documentação beneficiou diretamente deste diagnóstico. O `implementation.md`, os diagramas e as páginas de documentação passaram a refletir melhor o comportamento real do sistema, incluindo rejeição, retry, quarentena, inbox persistida, confirmação ao RabbitMQ, projeções e pontos de observação.
+1. robustez operacional, com InfluxDB desligável localmente e idempotência concorrente nos adaptadores PostgreSQL;
+2. integridade semântica, com validação `area_id` ↔ `sensor_id` antes da pipeline de risco;
+3. preparação para modelos futuros, com `NormalizedReading`, `RiskInput`, elegibilidade para risco e semântica de leituras `NotEligible`.
 
-Na sequência dessa conclusão, foi fechada uma primeira correção de baixo risco: tornar explícito, testado e documentado o modo local com InfluxDB desligado. A infraestrutura base já existia, mas faltava proteger melhor esse comportamento com logging, teste de pipeline e documentação operacional.
+Esta evolução é importante porque permite defender a baseline com mais segurança. O projeto já não depende apenas de uma cadeia funcional feliz. Passa a demonstrar preocupação com duplicados, retries, inconsistências semânticas, separação entre estado durável e observabilidade, e preparação gradual para modelos de risco mais exigentes.
 
-A pipeline passou a ter uma validação mais clara de que consegue correr com RabbitMQ, PostgreSQL, processamento de risco, snapshots e projeções operacionais sem depender obrigatoriamente de InfluxDB. Isto é importante para desenvolvimento local, diagnóstico e demonstração, porque permite isolar o comportamento funcional da pipeline do custo da observabilidade temporal.
-
-Também foi feita uma alteração preparatória na fronteira de cálculo de risco, através da introdução de `IRiskScoringService`. Esta mudança preserva o score atual como baseline, mas reduz o acoplamento da pipeline ao modelo simples de demonstração. A alteração é pequena, mas importante para a evolução futura para índices reais.
-
-O estado atual da pipeline pode ser resumido assim: a base técnica de transporte, persistência, retry/quarentena, projeções e observabilidade está suficientemente forte para demonstração; a base semântica para modelos de risco reais ainda precisa de trabalho. Antes de implementar FWI, KBDI ou Haines, é necessário introduzir conceitos intermédios como leitura normalizada, input de risco, elegibilidade, estado do modelo e cadência de cálculo.
+O cálculo atual de risco continua a ser uma baseline demonstrativa. A decisão mais correta neste momento é não implementar ainda FWI, KBDI ou Haines enquanto a pesquisa não estiver fechada e enquanto não estiverem definidos os inputs, a cadência, o estado anterior, a precipitação, as janelas temporais e a proveniência/versionamento dos modelos.
 
 ### Trabalho a fazer na continuação desta frente
 
-1. Fechar o estado atual em commit, garantindo que o modo local com InfluxDB desligado fica documentado e testado.
-2. Corrigir a idempotência concorrente dos adaptadores PostgreSQL, verificando pontos `read-then-insert` e tratando violações de unique constraint esperadas como duplicados legítimos, sem mascarar erros reais.
-3. Introduzir validação precoce entre `AreaId` do envelope e o deployment real do sensor no plano de controlo, para impedir que leituras de sensores inexistentes, inativos ou associados a outra área contaminem o estado operacional.
-4. Medir novamente a pipeline com InfluxDB desligado e, se necessário, com InfluxDB ativo, comparando tempos de processamento, backlog RabbitMQ, retry/quarentena e custo das escritas temporais.
-5. Rever a query `GetLatestByAreaAsync`, que atualmente é aceitável para a demo de 20 ciclos, mas pode tornar-se cara em simulações longas por carregar histórico antes de selecionar o estado mais recente por sensor.
-6. Introduzir uma fronteira interna de `NormalizedReading` e `RiskInput`, sem alterar ainda os contratos RabbitMQ nem implementar índices reais.
-7. Definir explicitamente a política de elegibilidade para risco, distinguindo leitura aceite, leitura normalizada e leitura efetivamente usada para cálculo.
-8. Concluir a pesquisa sobre índices de risco reais, identificando inputs obrigatórios, escala temporal, necessidade de precipitação, estado anterior, janelas temporais e limitações de cada modelo.
-9. Só depois implementar um primeiro índice real ou semi-realista, evitando uma pseudo-implementação que apenas substitua o score atual por fórmulas incompletas.
-10. Garantir que catálogo de cenários, bootstrap do plano de controlo e runtime do simulador permanecem sincronizados, especialmente no número de sensores ativos.
-11. Manter o `AppHost`/Aspire como frente exploratória até estar estável, evitando que contamine a baseline demonstrável.
-12. Correr `dotnet build` e `dotnet test` antes de fechar commits relevantes, distinguindo falhas reais de código de problemas locais de restore/configuração NuGet.
+1. Fechar commit da baseline atual, garantindo que documentação, código e testes ficam coerentes.
+2. Terminar a pesquisa sobre índices de risco reais, distinguindo o que é necessário para FWI, KBDI, Haines ou outros modelos, e identificando inputs obrigatórios, escalas temporais, estado anterior e limitações.
+3. Decidir qual será o primeiro índice realista a implementar, evitando uma pseudo-implementação que apenas substitua thresholds por fórmulas incompletas.
+4. Definir se o primeiro modelo real será calculado por leitura, por janela temporal, por hora, por dia ou por modo híbrido.
+5. Introduzir, quando fizer sentido, estado persistido de modelo, como `DailyCellState` ou `RiskModelState`, sem usar projeções operacionais como estado implícito do motor de risco.
+6. Ativar o primeiro caso real de inelegibilidade, por exemplo métrica ou unidade não suportada pelo modelo ativo, mantendo a semântica já preparada: accepted reading sim, score não.
+7. Rever `GetLatestByAreaAsync`, que continua aceitável para a demo de 20 ciclos mas pode tornar-se caro em simulações longas, preferindo uma query database-side ou um estado atual explícito.
+8. Endurecer, se necessário, a validação semântica com coerência adicional entre `SensorNode.GridCellId` e `GridCell.AreaId`, sem entrar ainda em regras complexas de versão/configuração ativa.
+9. Avaliar `alert_state`, que ainda tem risco residual de duplicação lógica de alertas abertos por área/código e pode exigir uma decisão de schema/semântica própria.
+10. Medir novamente a pipeline com InfluxDB desligado e com InfluxDB ativo, comparando tempos de processamento, backlog RabbitMQ, retry/quarentena e custo das escritas temporais.
+11. Garantir que catálogo de cenários, bootstrap do plano de controlo e runtime do simulador permanecem sincronizados, especialmente no número de sensores ativos.
+12. Manter o `AppHost`/Aspire como frente exploratória até estar estável, evitando que contamine a baseline demonstrável.
+13. Continuar a atualizar `implementation.md`, `architecture.md` e os diagramas sempre que uma fronteira semântica passar de intenção para código.
