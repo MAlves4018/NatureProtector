@@ -28,6 +28,9 @@ public static class TelemetryTags
     public const string RetryKind = "np.retry_kind";
     public const string Measurement = "np.measurement";
     public const string ConfigurationVersion = "np.configuration_version";
+    public const string HasAcceptedReadings = "np.has_accepted_readings";
+    public const string HasRiskAssessments = "np.has_risk_assessments";
+    public const string HasAreaRiskSnapshots = "np.has_area_risk_snapshots";
 }
 
 public static class PostgresBootstrapTelemetry
@@ -73,6 +76,8 @@ public static class PreventionHostTelemetry
     public static readonly Histogram<double> ProcessingDurationMs = Meter.CreateHistogram<double>("natureprotector.prevention.processing.duration", unit: "ms");
     public static readonly Histogram<double> PostgresWriteDurationMs = Meter.CreateHistogram<double>("natureprotector.prevention.postgres.write.duration", unit: "ms");
     public static readonly Histogram<double> InfluxWriteDurationMs = Meter.CreateHistogram<double>("natureprotector.prevention.influx.write.duration", unit: "ms");
+    public static readonly Histogram<double> InfluxBatchWriteDurationMs = Meter.CreateHistogram<double>("natureprotector.prevention.influx.batch.write.duration", unit: "ms");
+    public static readonly Histogram<long> InfluxBatchPoints = Meter.CreateHistogram<long>("natureprotector.prevention.influx.batch.points");
 }
 
 public static class BackofficeApiTelemetry

@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Risk;
 using NatureProtector.Infrastructure.Postgres.Projection;
@@ -58,6 +59,56 @@ public sealed class PostgresRiskAssessmentRepositoryTests
         await using var dbContext = scope.CreateDbContext();
         var row = Assert.Single(dbContext.RiskAssessmentLogs);
         Assert.Equal(0.40, row.RiskScore);
+    }
+
+    [Fact]
+    public async Task AddAsync_ConcurrentUniqueViolation_TreatedAsIdempotent()
+    {
+        var databasePath = Path.Combine(
+            Path.GetTempPath(),
+            $"natureprotector-risk-assessment-tests-{Guid.NewGuid():N}.sqlite");
+        await using var bootstrapScope = new SqliteControlDbContextScope(
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(bootstrapScope);
+        var sourceEventId = Guid.NewGuid();
+        var assessment = new RiskAssessment(Guid.NewGuid(), new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero), 0.40, "First");
+        var interceptor = new DuplicateInsertOnSaveInterceptor(
+            bootstrapScope.PlainOptions,
+            context => context.ChangeTracker.Entries<RiskAssessmentLogRecord>().Any(entry => entry.State == EntityState.Added),
+            (sidecarContext, currentContext, _) =>
+            {
+                var pending = currentContext.ChangeTracker.Entries<RiskAssessmentLogRecord>()
+                    .Single(entry => entry.State == EntityState.Added)
+                    .Entity;
+
+                sidecarContext.RiskAssessmentLogs.Add(new RiskAssessmentLogRecord
+                {
+                    Id = Guid.NewGuid(),
+                    AreaId = pending.AreaId,
+                    SensorId = pending.SensorId,
+                    GridCellId = pending.GridCellId,
+                    SourceEventId = pending.SourceEventId,
+                    Timestamp = pending.Timestamp,
+                    RiskScore = pending.RiskScore,
+                    RiskLevel = pending.RiskLevel,
+                    ExplanationSummary = pending.ExplanationSummary,
+                    CreatedAt = pending.CreatedAt
+                });
+
+                return Task.CompletedTask;
+            });
+        await using var scope = new SqliteControlDbContextScope(
+            configureOptions: builder => builder.AddInterceptors(interceptor),
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var repository = CreateRepository(scope);
+
+        await repository.AddAsync(seed.AreaId, seed.SensorId, sourceEventId, assessment, CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var row = Assert.Single(dbContext.RiskAssessmentLogs);
+        Assert.Equal(sourceEventId, row.SourceEventId);
     }
 
     [Fact]

@@ -71,7 +71,19 @@ public sealed class PostgresAcceptedReadingRepository(
             CreatedAt = DateTimeOffset.UtcNow
         });
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ExpectedUniqueViolationDetector.IsExpected(ex, NatureProtectorUniqueConstraints.AcceptedReadingEventId))
+        {
+            logger.LogDebug(
+                "Accepted reading duplicate treated as idempotent after concurrent insert | EventId={EventId} | SensorId={SensorId}",
+                envelope.EventId,
+                envelope.Payload.SensorId);
+            return;
+        }
+
         stopwatch.Stop();
         PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
         {

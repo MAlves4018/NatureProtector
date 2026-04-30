@@ -10,14 +10,31 @@ internal sealed class FakeInfluxWriteService : IInfluxWriteService
     public List<EventEnvelope<SensorReadingProducedPayload>> AcceptedReadings { get; } = [];
     public List<(Guid AreaId, Guid SensorId, RiskAssessment Assessment)> RiskAssessments { get; } = [];
     public List<(Guid AreaId, int AssessmentCount, AreaRiskSnapshot Snapshot)> AreaSnapshots { get; } = [];
+    public List<InfluxTelemetryBatch> Batches { get; } = [];
+
+    public Task WriteBatchAsync(
+        InfluxTelemetryBatch batch,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(batch);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        Batches.Add(batch);
+
+        AcceptedReadings.AddRange(batch.AcceptedReadings);
+        RiskAssessments.AddRange(batch.RiskAssessments.Select(static write => (write.AreaId, write.SensorId, write.Assessment)));
+        AreaSnapshots.AddRange(batch.AreaRiskSnapshots.Select(static write => (write.AreaId, write.AssessmentCount, write.Snapshot)));
+
+        return Task.CompletedTask;
+    }
 
     public Task WriteAcceptedReadingAsync(
         EventEnvelope<SensorReadingProducedPayload> envelope,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        AcceptedReadings.Add(envelope);
-        return Task.CompletedTask;
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAcceptedReading(envelope),
+            cancellationToken);
     }
 
     public Task WriteRiskAssessmentAsync(
@@ -26,9 +43,9 @@ internal sealed class FakeInfluxWriteService : IInfluxWriteService
         RiskAssessment assessment,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        RiskAssessments.Add((areaId, sensorId, assessment));
-        return Task.CompletedTask;
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddRiskAssessment(areaId, sensorId, assessment),
+            cancellationToken);
     }
 
     public Task WriteAreaRiskSnapshotAsync(
@@ -37,8 +54,8 @@ internal sealed class FakeInfluxWriteService : IInfluxWriteService
         AreaRiskSnapshot snapshot,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        AreaSnapshots.Add((areaId, assessmentCount, snapshot));
-        return Task.CompletedTask;
+        return WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAreaRiskSnapshot(areaId, assessmentCount, snapshot),
+            cancellationToken);
     }
 }

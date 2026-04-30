@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using NatureProtector.Infrastructure.Postgres.Projection;
 using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Tests.TestData;
 using NatureProtector.Prevention.Host.Tests.TestInfrastructure;
@@ -55,6 +57,86 @@ public sealed class PostgresAcceptedReadingRepositoryTests
         await using var dbContext = scope.CreateDbContext();
         var row = Assert.Single(dbContext.AcceptedReadingLogs);
         Assert.Equal(20.0, row.Value);
+    }
+
+    [Fact]
+    public async Task AddAsync_ConcurrentUniqueViolation_TreatedAsIdempotent()
+    {
+        var databasePath = Path.Combine(
+            Path.GetTempPath(),
+            $"natureprotector-accepted-reading-tests-{Guid.NewGuid():N}.sqlite");
+        await using var bootstrapScope = new SqliteControlDbContextScope(
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(bootstrapScope);
+        var envelope = EnvelopeFactory.Create(areaId: seed.AreaId, sensorId: seed.SensorId, value: 20.0);
+        var interceptor = new DuplicateInsertOnSaveInterceptor(
+            bootstrapScope.PlainOptions,
+            context => context.ChangeTracker.Entries<AcceptedReadingLogRecord>().Any(entry => entry.State == EntityState.Added),
+            (sidecarContext, currentContext, _) =>
+            {
+                var pending = currentContext.ChangeTracker.Entries<AcceptedReadingLogRecord>()
+                    .Single(entry => entry.State == EntityState.Added)
+                    .Entity;
+
+                sidecarContext.AcceptedReadingLogs.Add(new AcceptedReadingLogRecord
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = pending.EventId,
+                    AreaId = pending.AreaId,
+                    SensorId = pending.SensorId,
+                    MetricType = pending.MetricType,
+                    MeasurementUnit = pending.MeasurementUnit,
+                    OperationalState = pending.OperationalState,
+                    Value = pending.Value,
+                    EventTime = pending.EventTime,
+                    IngestTime = pending.IngestTime,
+                    Producer = pending.Producer,
+                    CorrelationId = pending.CorrelationId,
+                    PayloadJson = pending.PayloadJson,
+                    EnvelopeJson = pending.EnvelopeJson,
+                    CreatedAt = pending.CreatedAt
+                });
+
+                return Task.CompletedTask;
+            });
+        await using var scope = new SqliteControlDbContextScope(
+            configureOptions: builder => builder.AddInterceptors(interceptor),
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var repository = CreateRepository(scope);
+
+        await repository.AddAsync(envelope, CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var row = Assert.Single(dbContext.AcceptedReadingLogs);
+        Assert.Equal(envelope.EventId, row.EventId);
+    }
+
+    [Fact]
+    public async Task AddAsync_UnexpectedDbUpdateException_IsNotMasked()
+    {
+        var databasePath = Path.Combine(
+            Path.GetTempPath(),
+            $"natureprotector-accepted-reading-error-tests-{Guid.NewGuid():N}.sqlite");
+        await using var bootstrapScope = new SqliteControlDbContextScope(
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(bootstrapScope);
+        var interceptor = new ThrowingSaveChangesInterceptor(
+            new DbUpdateException("boom", new InvalidOperationException("not a duplicate")));
+        await using var scope = new SqliteControlDbContextScope(
+            configureOptions: builder => builder.AddInterceptors(interceptor),
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var repository = CreateRepository(scope);
+
+        var exception = await Assert.ThrowsAsync<DbUpdateException>(() =>
+            repository.AddAsync(
+                EnvelopeFactory.Create(areaId: seed.AreaId, sensorId: seed.SensorId),
+                CancellationToken.None));
+
+        Assert.Equal("boom", exception.Message);
     }
 
     [Fact]

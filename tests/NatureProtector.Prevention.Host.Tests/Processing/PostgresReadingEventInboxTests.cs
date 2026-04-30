@@ -76,6 +76,79 @@ public sealed class PostgresReadingEventInboxTests
     }
 
     [Fact]
+    public async Task StoreIncomingAsync_ConcurrentUniqueViolation_TreatedAsDuplicate()
+    {
+        var databasePath = Path.Combine(
+            Path.GetTempPath(),
+            $"natureprotector-inbox-tests-{Guid.NewGuid():N}.sqlite");
+        await using var bootstrapScope = new SqliteControlDbContextScope(
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var envelope = EnvelopeFactory.Create();
+        var interceptor = new DuplicateInsertOnSaveInterceptor(
+            bootstrapScope.PlainOptions,
+            context => context.ChangeTracker.Entries<InboxEventRecord>().Any(entry => entry.State == EntityState.Added),
+            (sidecarContext, currentContext, _) =>
+            {
+                var pendingInbox = currentContext.ChangeTracker.Entries<InboxEventRecord>()
+                    .Single(entry => entry.State == EntityState.Added)
+                    .Entity;
+                var pendingAttempt = currentContext.ChangeTracker.Entries<ProcessingAttemptRecord>()
+                    .Single(entry => entry.State == EntityState.Added)
+                    .Entity;
+
+                sidecarContext.InboxEvents.Add(new InboxEventRecord
+                {
+                    Id = pendingInbox.Id,
+                    EventId = pendingInbox.EventId,
+                    SchemaVersion = pendingInbox.SchemaVersion,
+                    CorrelationId = pendingInbox.CorrelationId,
+                    Producer = pendingInbox.Producer,
+                    EventType = pendingInbox.EventType,
+                    AreaId = pendingInbox.AreaId,
+                    EventTime = pendingInbox.EventTime,
+                    ReceivedAt = pendingInbox.ReceivedAt,
+                    IngestTime = pendingInbox.IngestTime,
+                    PayloadJson = pendingInbox.PayloadJson,
+                    EnvelopeJson = pendingInbox.EnvelopeJson,
+                    Status = pendingInbox.Status,
+                    AttemptCount = pendingInbox.AttemptCount,
+                    LastAttemptAt = pendingInbox.LastAttemptAt
+                });
+
+                sidecarContext.ProcessingAttempts.Add(new ProcessingAttemptRecord
+                {
+                    Id = pendingAttempt.Id,
+                    InboxEventId = pendingAttempt.InboxEventId,
+                    AttemptNumber = pendingAttempt.AttemptNumber,
+                    Stage = pendingAttempt.Stage,
+                    StartedAt = pendingAttempt.StartedAt,
+                    Outcome = pendingAttempt.Outcome
+                });
+
+                return Task.CompletedTask;
+            });
+        await using var scope = new SqliteControlDbContextScope(
+            configureOptions: builder => builder.AddInterceptors(interceptor),
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var inbox = CreateInbox(scope);
+
+        var result = await inbox.StoreIncomingAsync(
+            envelope,
+            JsonEventSerializer.SerializeToUtf8Bytes(envelope),
+            "reading_risk_pipeline",
+            CancellationToken.None);
+
+        Assert.True(result.IsDuplicate);
+        Assert.False(result.ShouldProcessNow);
+
+        await using var dbContext = scope.CreateDbContext();
+        Assert.Single(dbContext.InboxEvents);
+        Assert.Single(dbContext.ProcessingAttempts);
+    }
+
+    [Fact]
     public async Task StoreRejectedAsync_PersistsRejectedPayloadOutsideInbox()
     {
         await using var scope = new SqliteControlDbContextScope();
@@ -194,6 +267,70 @@ public sealed class PostgresReadingEventInboxTests
         Assert.Equal(InboxEventStatus.Processing, inboxEvent.Status);
         Assert.Equal(2, inboxEvent.AttemptCount);
         Assert.Equal(2, dbContext.ProcessingAttempts.Count());
+    }
+
+    [Fact]
+    public async Task TryStartDueRetryAsync_ConcurrentAttemptNumberRace_ReturnsNull()
+    {
+        var databasePath = Path.Combine(
+            Path.GetTempPath(),
+            $"natureprotector-retry-race-tests-{Guid.NewGuid():N}.sqlite");
+        await using var bootstrapScope = new SqliteControlDbContextScope(
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var bootstrapInbox = CreateInbox(bootstrapScope);
+        var envelope = EnvelopeFactory.Create();
+        var stored = await bootstrapInbox.StoreIncomingAsync(
+            envelope,
+            JsonEventSerializer.SerializeToUtf8Bytes(envelope),
+            "reading_risk_pipeline",
+            CancellationToken.None);
+
+        await bootstrapInbox.ScheduleRetryAsync(
+            stored.Lease!,
+            "timeout",
+            "temporary downstream outage",
+            TimeSpan.Zero,
+            CancellationToken.None);
+
+        var interceptor = new DuplicateInsertOnSaveInterceptor(
+            bootstrapScope.PlainOptions,
+            context => context.ChangeTracker.Entries<ProcessingAttemptRecord>().Any(entry =>
+                entry.State == EntityState.Added &&
+                entry.Entity.AttemptNumber == 2),
+            async (sidecarContext, currentContext, cancellationToken) =>
+            {
+                var pending = currentContext.ChangeTracker.Entries<ProcessingAttemptRecord>()
+                    .Single(entry => entry.State == EntityState.Added && entry.Entity.AttemptNumber == 2)
+                    .Entity;
+                var inboxRow = await sidecarContext.InboxEvents.SingleAsync(
+                    entity => entity.Id == pending.InboxEventId,
+                    cancellationToken);
+
+                inboxRow.Status = InboxEventStatus.Processing;
+                inboxRow.AttemptCount = pending.AttemptNumber;
+                inboxRow.LastAttemptAt = pending.StartedAt;
+                inboxRow.NextAttemptNotBefore = null;
+
+                sidecarContext.ProcessingAttempts.Add(new ProcessingAttemptRecord
+                {
+                    Id = Guid.NewGuid(),
+                    InboxEventId = pending.InboxEventId,
+                    AttemptNumber = pending.AttemptNumber,
+                    Stage = pending.Stage,
+                    StartedAt = pending.StartedAt,
+                    Outcome = pending.Outcome
+                });
+            });
+        await using var scope = new SqliteControlDbContextScope(
+            configureOptions: builder => builder.AddInterceptors(interceptor),
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var inbox = CreateInbox(scope);
+
+        var retry = await inbox.TryStartDueRetryAsync("reading_risk_pipeline", CancellationToken.None);
+
+        Assert.Null(retry);
     }
 
     [Fact]

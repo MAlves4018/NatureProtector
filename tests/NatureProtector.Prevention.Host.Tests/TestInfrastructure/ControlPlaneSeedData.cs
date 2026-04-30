@@ -16,7 +16,8 @@ internal static class ControlPlaneSeedData
         SqliteControlDbContextScope scope,
         Guid? areaId = null,
         Guid? sensorId = null,
-        Guid? gridCellId = null)
+        Guid? gridCellId = null,
+        bool isActive = true)
     {
         var configurationVersionId = Guid.NewGuid();
         var versionNumber = Random.Shared.Next(1, int.MaxValue);
@@ -74,7 +75,7 @@ internal static class ControlPlaneSeedData
                 Type = SensorType.WeatherStation,
                 Latitude = 39.75,
                 Longitude = -7.92,
-                IsActive = true
+                IsActive = isActive
             });
 
             return Task.CompletedTask;

@@ -45,45 +45,57 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
         _client = InfluxDBClientFactory.Create(_options.Url, _options.Token);
     }
 
+    public async Task WriteBatchAsync(
+        InfluxTelemetryBatch batch,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(batch);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (batch.IsEmpty)
+        {
+            _logger.LogDebug("Skipped InfluxDB batch write because the batch was empty.");
+            return;
+        }
+
+        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.influx.write.batch");
+        activity?.SetTag(TelemetryTags.Outcome, "stored");
+        activity?.SetTag(TelemetryTags.HasAcceptedReadings, batch.AcceptedReadingCount > 0);
+        activity?.SetTag(TelemetryTags.HasRiskAssessments, batch.RiskAssessmentCount > 0);
+        activity?.SetTag(TelemetryTags.HasAreaRiskSnapshots, batch.AreaRiskSnapshotCount > 0);
+
+        var points = BuildPoints(batch);
+        var tags = CreateBatchTelemetryTags(batch, "stored");
+        var stopwatch = Stopwatch.StartNew();
+
+        await _client
+            .GetWriteApiAsync()
+            .WritePointsAsync(points, _options.Bucket, _options.Organization, cancellationToken)
+            .ConfigureAwait(false);
+
+        stopwatch.Stop();
+
+        PreventionHostTelemetry.InfluxBatchWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, tags);
+        PreventionHostTelemetry.InfluxBatchPoints.Record(points.Count, tags);
+
+        _logger.LogInformation(
+            "influx_batch_write_ms={ElapsedMs} | points={PointCount} | accepted_readings={AcceptedReadings} | risk_assessments={RiskAssessments} | area_risk_snapshots={AreaRiskSnapshots}",
+            stopwatch.ElapsedMilliseconds,
+            points.Count,
+            batch.AcceptedReadingCount,
+            batch.RiskAssessmentCount,
+            batch.AreaRiskSnapshotCount);
+    }
+
     public async Task WriteAcceptedReadingAsync(
         EventEnvelope<SensorReadingProducedPayload> envelope,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(envelope);
-        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.influx.write.accepted_reading");
-
-        var point = PointData
-            .Measurement("accepted_readings")
-            .Tag("area_id", envelope.AreaId.ToString())
-            .Tag("sensor_id", envelope.Payload.SensorId.ToString())
-            .Tag("sensor_name", envelope.Payload.SensorName)
-            .Tag("metric_type", envelope.Payload.MetricType.ToString())
-            .Tag("unit", envelope.Payload.Unit.ToString())
-            .Tag("operational_state", envelope.Payload.OperationalState.ToString())
-            .Field("value", envelope.Payload.Value)
-            .Field("latitude", envelope.Payload.Latitude)
-            .Field("longitude", envelope.Payload.Longitude)
-            .Timestamp(envelope.EventTime.UtcDateTime, WritePrecision.Ns);
-
-        var stopwatch = Stopwatch.StartNew();
-
-        await _client
-            .GetWriteApiAsync()
-            .WritePointAsync(point, _options.Bucket, _options.Organization, cancellationToken);
-
-        stopwatch.Stop();
-        PreventionHostTelemetry.InfluxWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
-        {
-            { TelemetryTags.Measurement, "accepted_readings" },
-            { TelemetryTags.Outcome, "stored" }
-        });
-
-        _logger.LogInformation(
-            "influx_write_ms={ElapsedMs} | Measurement={Measurement} | AreaId={AreaId} | SensorId={SensorId}",
-            stopwatch.ElapsedMilliseconds,
-            "accepted_readings",
-            envelope.AreaId,
-            envelope.Payload.SensorId);
+        await WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAcceptedReading(envelope),
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task WriteRiskAssessmentAsync(
@@ -93,40 +105,9 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(assessment);
-        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.influx.write.risk_assessment");
-
-        var point = PointData
-            .Measurement("risk_assessments")
-            .Tag("area_id", areaId.ToString())
-            .Tag("sensor_id", sensorId.ToString())
-            .Tag("risk_level", assessment.RiskLevel.ToString())
-            .Field("risk_score", assessment.RiskScore)
-            .Timestamp(assessment.Timestamp.UtcDateTime, WritePrecision.Ns);
-
-        if (!string.IsNullOrWhiteSpace(assessment.ExplanationSummary))
-        {
-            point = point.Field("has_explanation", 1);
-        }
-
-        var stopwatch = Stopwatch.StartNew();
-
-        await _client
-            .GetWriteApiAsync()
-            .WritePointAsync(point, _options.Bucket, _options.Organization, cancellationToken);
-
-        stopwatch.Stop();
-        PreventionHostTelemetry.InfluxWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
-        {
-            { TelemetryTags.Measurement, "risk_assessments" },
-            { TelemetryTags.Outcome, "stored" }
-        });
-
-        _logger.LogInformation(
-            "influx_write_ms={ElapsedMs} | Measurement={Measurement} | AreaId={AreaId} | SensorId={SensorId}",
-            stopwatch.ElapsedMilliseconds,
-            "risk_assessments",
-            areaId,
-            sensorId);
+        await WriteBatchAsync(
+            new InfluxTelemetryBatch().AddRiskAssessment(areaId, sensorId, assessment),
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task WriteAreaRiskSnapshotAsync(
@@ -136,38 +117,75 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.influx.write.area_risk_snapshot");
+        await WriteBatchAsync(
+            new InfluxTelemetryBatch().AddAreaRiskSnapshot(areaId, assessmentCount, snapshot),
+            cancellationToken).ConfigureAwait(false);
+    }
 
-        var severity = SeverityExtensions.FromRiskLevel(snapshot.AggregateRiskLevel);
+    private static List<PointData> BuildPoints(InfluxTelemetryBatch batch)
+    {
+        var points = new List<PointData>(batch.PointCount);
 
-        var point = PointData
-            .Measurement("area_risk_snapshots")
-            .Tag("area_id", areaId.ToString())
-            .Tag("aggregate_risk_level", snapshot.AggregateRiskLevel.ToString())
-            .Tag("severity", severity.ToString())
-            .Field("aggregate_risk_score", snapshot.AggregateRiskScore)
-            .Field("assessment_count", assessmentCount)
-            .Timestamp(snapshot.Timestamp.UtcDateTime, WritePrecision.Ns);
-
-        var stopwatch = Stopwatch.StartNew();
-
-        await _client
-            .GetWriteApiAsync()
-            .WritePointAsync(point, _options.Bucket, _options.Organization, cancellationToken);
-
-        stopwatch.Stop();
-        PreventionHostTelemetry.InfluxWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+        foreach (var envelope in batch.AcceptedReadings)
         {
-            { TelemetryTags.Measurement, "area_risk_snapshots" },
-            { TelemetryTags.Outcome, "stored" }
-        });
+            points.Add(PointData
+                .Measurement("accepted_readings")
+                .Tag("area_id", envelope.AreaId.ToString())
+                .Tag("sensor_id", envelope.Payload.SensorId.ToString())
+                .Tag("sensor_name", envelope.Payload.SensorName)
+                .Tag("metric_type", envelope.Payload.MetricType.ToString())
+                .Tag("unit", envelope.Payload.Unit.ToString())
+                .Tag("operational_state", envelope.Payload.OperationalState.ToString())
+                .Field("value", envelope.Payload.Value)
+                .Field("latitude", envelope.Payload.Latitude)
+                .Field("longitude", envelope.Payload.Longitude)
+                .Timestamp(envelope.EventTime.UtcDateTime, WritePrecision.Ns));
+        }
 
-        _logger.LogInformation(
-            "influx_write_ms={ElapsedMs} | Measurement={Measurement} | AreaId={AreaId} | AssessmentCount={AssessmentCount}",
-            stopwatch.ElapsedMilliseconds,
-            "area_risk_snapshots",
-            areaId,
-            assessmentCount);
+        foreach (var write in batch.RiskAssessments)
+        {
+            var point = PointData
+                .Measurement("risk_assessments")
+                .Tag("area_id", write.AreaId.ToString())
+                .Tag("sensor_id", write.SensorId.ToString())
+                .Tag("risk_level", write.Assessment.RiskLevel.ToString())
+                .Field("risk_score", write.Assessment.RiskScore)
+                .Timestamp(write.Assessment.Timestamp.UtcDateTime, WritePrecision.Ns);
+
+            if (!string.IsNullOrWhiteSpace(write.Assessment.ExplanationSummary))
+            {
+                point = point.Field("has_explanation", 1);
+            }
+
+            points.Add(point);
+        }
+
+        foreach (var write in batch.AreaRiskSnapshots)
+        {
+            var severity = SeverityExtensions.FromRiskLevel(write.Snapshot.AggregateRiskLevel);
+
+            points.Add(PointData
+                .Measurement("area_risk_snapshots")
+                .Tag("area_id", write.AreaId.ToString())
+                .Tag("aggregate_risk_level", write.Snapshot.AggregateRiskLevel.ToString())
+                .Tag("severity", severity.ToString())
+                .Field("aggregate_risk_score", write.Snapshot.AggregateRiskScore)
+                .Field("assessment_count", write.AssessmentCount)
+                .Timestamp(write.Snapshot.Timestamp.UtcDateTime, WritePrecision.Ns));
+        }
+
+        return points;
+    }
+
+    private static TagList CreateBatchTelemetryTags(InfluxTelemetryBatch batch, string outcome)
+    {
+        return new TagList
+        {
+            { TelemetryTags.Outcome, outcome },
+            { TelemetryTags.HasAcceptedReadings, batch.AcceptedReadingCount > 0 ? "true" : "false" },
+            { TelemetryTags.HasRiskAssessments, batch.RiskAssessmentCount > 0 ? "true" : "false" },
+            { TelemetryTags.HasAreaRiskSnapshots, batch.AreaRiskSnapshotCount > 0 ? "true" : "false" }
+        };
     }
 
     public void Dispose()

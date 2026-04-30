@@ -41,6 +41,7 @@ public sealed class SimulatorToPreventionCompatibilityTests
         var influxWriteService = new FakeInfluxWriteService();
         var pipeline = new ReadingRiskPipeline(
             acceptedReadingRepository,
+            new RiskEligibilityService(),
             new SimpleRiskScoringService(),
             riskAssessmentRepository,
             new AreaRiskSnapshotService(),
@@ -100,6 +101,7 @@ public sealed class SimulatorToPreventionCompatibilityTests
         var influxWriteService = new FakeInfluxWriteService();
         var pipeline = new ReadingRiskPipeline(
             acceptedReadingRepository,
+            new RiskEligibilityService(),
             new SimpleRiskScoringService(),
             riskAssessmentRepository,
             new AreaRiskSnapshotService(),

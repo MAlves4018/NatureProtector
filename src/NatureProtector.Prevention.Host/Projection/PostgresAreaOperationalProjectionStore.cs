@@ -5,6 +5,7 @@ using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Risk;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Projection;
+using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Shared.Observability;
 
 namespace NatureProtector.Prevention.Host.Projection;
@@ -40,64 +41,80 @@ public sealed class PostgresAreaOperationalProjectionStore(
     {
         using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.postgres.write.cell_projection");
         var stopwatch = Stopwatch.StartNew();
-        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var sensorNode = await dbContext.SensorNodes
-            .AsNoTracking()
-            .SingleOrDefaultAsync(entity => entity.Id == sensorId, cancellationToken);
-
-        if (sensorNode is null)
+        for (var attempt = 0; attempt < 2; attempt++)
         {
-            logger.LogWarning(
-                "Projection update skipped for cell state because sensor was not found in control plane | AreaId={AreaId} | SensorId={SensorId}",
-                areaId,
-                sensorId);
-            return;
-        }
+            await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        if (sensorNode.AreaId != areaId)
-        {
-            logger.LogWarning(
-                "Projection update detected area mismatch between reading and sensor deployment | ReadingAreaId={ReadingAreaId} | SensorAreaId={SensorAreaId} | SensorId={SensorId}",
-                areaId,
-                sensorNode.AreaId,
-                sensorId);
-        }
+            var sensorNode = await dbContext.SensorNodes
+                .AsNoTracking()
+                .SingleOrDefaultAsync(entity => entity.Id == sensorId, cancellationToken);
 
-        var existingState = await dbContext.CellOperationalStates
-            .SingleOrDefaultAsync(entity => entity.GridCellId == sensorNode.GridCellId, cancellationToken);
-
-        var now = DateTimeOffset.UtcNow;
-        var severity = SeverityExtensions.FromRiskLevel(assessment.RiskLevel);
-
-        if (existingState is null)
-        {
-            existingState = new CellOperationalStateRecord
+            if (sensorNode is null)
             {
-                Id = Guid.NewGuid(),
-                AreaId = sensorNode.AreaId,
-                GridCellId = sensorNode.GridCellId
-            };
+                logger.LogWarning(
+                    "Projection update skipped for cell state because sensor was not found in control plane | AreaId={AreaId} | SensorId={SensorId}",
+                    areaId,
+                    sensorId);
+                return;
+            }
 
-            dbContext.CellOperationalStates.Add(existingState);
+            if (sensorNode.AreaId != areaId)
+            {
+                logger.LogWarning(
+                    "Projection update detected area mismatch between reading and sensor deployment | ReadingAreaId={ReadingAreaId} | SensorAreaId={SensorAreaId} | SensorId={SensorId}",
+                    areaId,
+                    sensorNode.AreaId,
+                    sensorId);
+            }
+
+            var existingState = await dbContext.CellOperationalStates
+                .SingleOrDefaultAsync(entity => entity.GridCellId == sensorNode.GridCellId, cancellationToken);
+
+            var now = DateTimeOffset.UtcNow;
+            var severity = SeverityExtensions.FromRiskLevel(assessment.RiskLevel);
+
+            if (existingState is null)
+            {
+                existingState = new CellOperationalStateRecord
+                {
+                    Id = Guid.NewGuid(),
+                    AreaId = sensorNode.AreaId,
+                    GridCellId = sensorNode.GridCellId
+                };
+
+                dbContext.CellOperationalStates.Add(existingState);
+            }
+
+            existingState.SensorId = sensorId;
+            existingState.LatestAssessmentId = assessment.Id;
+            existingState.SnapshotTimestamp = assessment.Timestamp;
+            existingState.RiskScore = assessment.RiskScore;
+            existingState.RiskLevel = assessment.RiskLevel.ToString();
+            existingState.Severity = severity.ToString();
+            existingState.Summary = Truncate(assessment.ExplanationSummary, 2000);
+            existingState.UpdatedAt = now;
+
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+                stopwatch.Stop();
+                PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+                {
+                    { TelemetryTags.Operation, "cell_projection" },
+                    { TelemetryTags.Outcome, "stored" }
+                });
+                return;
+            }
+            catch (DbUpdateException ex) when (attempt == 0 && ExpectedUniqueViolationDetector.IsExpected(ex, NatureProtectorUniqueConstraints.CellOperationalStateGridCellId))
+            {
+                logger.LogDebug(
+                    "Cell projection insert raced on GridCellId and will be retried as update | AreaId={AreaId} | SensorId={SensorId}",
+                    areaId,
+                    sensorId);
+            }
         }
 
-        existingState.SensorId = sensorId;
-        existingState.LatestAssessmentId = assessment.Id;
-        existingState.SnapshotTimestamp = assessment.Timestamp;
-        existingState.RiskScore = assessment.RiskScore;
-        existingState.RiskLevel = assessment.RiskLevel.ToString();
-        existingState.Severity = severity.ToString();
-        existingState.Summary = Truncate(assessment.ExplanationSummary, 2000);
-        existingState.UpdatedAt = now;
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        stopwatch.Stop();
-        PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
-        {
-            { TelemetryTags.Operation, "cell_projection" },
-            { TelemetryTags.Outcome, "stored" }
-        });
+        throw new InvalidOperationException("Cell operational projection retry loop exited unexpectedly.");
     }
 
     /// <summary>
@@ -112,93 +129,108 @@ public sealed class PostgresAreaOperationalProjectionStore(
     {
         using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.postgres.write.area_projection");
         var stopwatch = Stopwatch.StartNew();
-        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var area = await dbContext.Areas
-            .AsNoTracking()
-            .SingleAsync(entity => entity.Id == areaId, cancellationToken);
-
-        var existingState = await dbContext.AreaOperationalStates
-            .SingleOrDefaultAsync(entity => entity.AreaId == areaId, cancellationToken);
-
-        var now = DateTimeOffset.UtcNow;
-        var severity = SeverityExtensions.FromRiskLevel(snapshot.AggregateRiskLevel);
-
-        if (existingState is null)
+        for (var attempt = 0; attempt < 2; attempt++)
         {
-            existingState = new AreaOperationalStateRecord
+            await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            var area = await dbContext.Areas
+                .AsNoTracking()
+                .SingleAsync(entity => entity.Id == areaId, cancellationToken);
+
+            var existingState = await dbContext.AreaOperationalStates
+                .SingleOrDefaultAsync(entity => entity.AreaId == areaId, cancellationToken);
+
+            var now = DateTimeOffset.UtcNow;
+            var severity = SeverityExtensions.FromRiskLevel(snapshot.AggregateRiskLevel);
+
+            if (existingState is null)
             {
-                Id = Guid.NewGuid(),
-                AreaId = areaId,
-                ConfigurationVersionId = area.ConfigurationVersionId
-            };
-
-            dbContext.AreaOperationalStates.Add(existingState);
-        }
-
-        existingState.SnapshotTimestamp = snapshot.Timestamp;
-        existingState.AggregateRiskScore = snapshot.AggregateRiskScore;
-        existingState.AggregateRiskLevel = snapshot.AggregateRiskLevel.ToString();
-        existingState.Severity = severity.ToString();
-        existingState.Summary = Truncate(snapshot.Summary, 2000);
-        existingState.AssessmentCount = assessmentCount;
-        existingState.UpdatedAt = now;
-
-        var existingAlert = await dbContext.AlertStates
-            .SingleOrDefaultAsync(
-                entity => entity.AreaId == areaId &&
-                    entity.AlertCode == "area-risk-high" &&
-                    entity.Status == OperationalAlertStatus.Open.ToString(),
-                cancellationToken);
-
-        if (snapshot.AggregateRiskLevel.IsHighOrAbove())
-        {
-            if (existingAlert is null)
-            {
-                dbContext.AlertStates.Add(new AlertStateRecord
+                existingState = new AreaOperationalStateRecord
                 {
                     Id = Guid.NewGuid(),
                     AreaId = areaId,
-                    ConfigurationVersionId = area.ConfigurationVersionId,
-                    AreaOperationalStateId = existingState.Id,
-                    AlertCode = "area-risk-high",
-                    Severity = severity.ToString(),
-                    Status = OperationalAlertStatus.Open.ToString(),
-                    Message = Truncate(BuildAlertMessage(snapshot), 2000) ?? string.Empty,
-                    TriggeredAt = snapshot.Timestamp,
-                    UpdatedAt = now
-                });
+                    ConfigurationVersionId = area.ConfigurationVersionId
+                };
+
+                dbContext.AreaOperationalStates.Add(existingState);
             }
-            else
+
+            existingState.SnapshotTimestamp = snapshot.Timestamp;
+            existingState.AggregateRiskScore = snapshot.AggregateRiskScore;
+            existingState.AggregateRiskLevel = snapshot.AggregateRiskLevel.ToString();
+            existingState.Severity = severity.ToString();
+            existingState.Summary = Truncate(snapshot.Summary, 2000);
+            existingState.AssessmentCount = assessmentCount;
+            existingState.UpdatedAt = now;
+
+            var existingAlert = await dbContext.AlertStates
+                .SingleOrDefaultAsync(
+                    entity => entity.AreaId == areaId &&
+                        entity.AlertCode == "area-risk-high" &&
+                        entity.Status == OperationalAlertStatus.Open.ToString(),
+                    cancellationToken);
+
+            if (snapshot.AggregateRiskLevel.IsHighOrAbove())
             {
-                existingAlert.AreaOperationalStateId = existingState.Id;
-                existingAlert.Severity = severity.ToString();
-                existingAlert.Message = Truncate(BuildAlertMessage(snapshot), 2000) ?? string.Empty;
+                if (existingAlert is null)
+                {
+                    dbContext.AlertStates.Add(new AlertStateRecord
+                    {
+                        Id = Guid.NewGuid(),
+                        AreaId = areaId,
+                        ConfigurationVersionId = area.ConfigurationVersionId,
+                        AreaOperationalStateId = existingState.Id,
+                        AlertCode = "area-risk-high",
+                        Severity = severity.ToString(),
+                        Status = OperationalAlertStatus.Open.ToString(),
+                        Message = Truncate(BuildAlertMessage(snapshot), 2000) ?? string.Empty,
+                        TriggeredAt = snapshot.Timestamp,
+                        UpdatedAt = now
+                    });
+                }
+                else
+                {
+                    existingAlert.AreaOperationalStateId = existingState.Id;
+                    existingAlert.Severity = severity.ToString();
+                    existingAlert.Message = Truncate(BuildAlertMessage(snapshot), 2000) ?? string.Empty;
+                    existingAlert.UpdatedAt = now;
+                    existingAlert.ResolvedAt = null;
+                }
+            }
+            else if (existingAlert is not null)
+            {
+                existingAlert.Status = OperationalAlertStatus.Resolved.ToString();
                 existingAlert.UpdatedAt = now;
-                existingAlert.ResolvedAt = null;
+                existingAlert.ResolvedAt = now;
+            }
+
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+                stopwatch.Stop();
+                PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
+                {
+                    { TelemetryTags.Operation, "area_projection" },
+                    { TelemetryTags.Outcome, "stored" }
+                });
+
+                logger.LogInformation(
+                    "Projection updated | AreaId={AreaId} | RiskLevel={RiskLevel} | Severity={Severity} | AssessmentCount={AssessmentCount}",
+                    areaId,
+                    snapshot.AggregateRiskLevel,
+                    severity,
+                    assessmentCount);
+                return;
+            }
+            catch (DbUpdateException ex) when (attempt == 0 && ExpectedUniqueViolationDetector.IsExpected(ex, NatureProtectorUniqueConstraints.AreaOperationalStateAreaId))
+            {
+                logger.LogDebug(
+                    "Area projection insert raced on AreaId and will be retried as update | AreaId={AreaId}",
+                    areaId);
             }
         }
-        else if (existingAlert is not null)
-        {
-            existingAlert.Status = OperationalAlertStatus.Resolved.ToString();
-            existingAlert.UpdatedAt = now;
-            existingAlert.ResolvedAt = now;
-        }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-        stopwatch.Stop();
-        PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
-        {
-            { TelemetryTags.Operation, "area_projection" },
-            { TelemetryTags.Outcome, "stored" }
-        });
-
-        logger.LogInformation(
-            "Projection updated | AreaId={AreaId} | RiskLevel={RiskLevel} | Severity={Severity} | AssessmentCount={AssessmentCount}",
-            areaId,
-            snapshot.AggregateRiskLevel,
-            severity,
-            assessmentCount);
+        throw new InvalidOperationException("Area operational projection retry loop exited unexpectedly.");
     }
 
     /// <summary>

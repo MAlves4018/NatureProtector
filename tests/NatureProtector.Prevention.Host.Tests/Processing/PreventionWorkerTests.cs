@@ -253,6 +253,7 @@ public sealed class PreventionWorkerTests
             preventionOptions,
             pipeline,
             inbox,
+            new PassThroughReadingSemanticValidator(),
             new DefaultProcessingFailureClassifier());
 
         return new PreventionWorker(
@@ -278,6 +279,7 @@ public sealed class PreventionWorkerTests
     {
         return new ReadingRiskPipeline(
             acceptedReadingRepository,
+            new RiskEligibilityService(),
             new SimpleRiskScoringService(),
             riskAssessmentRepository,
             new AreaRiskSnapshotService(),

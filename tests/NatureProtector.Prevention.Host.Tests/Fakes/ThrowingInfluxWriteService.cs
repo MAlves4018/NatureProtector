@@ -5,12 +5,19 @@ using NatureProtector.Shared.Messaging;
 
 namespace NatureProtector.Prevention.Host.Tests.Fakes;
 
-internal sealed class FakeInfluxWriteService : IInfluxWriteService
+internal sealed class ThrowingInfluxWriteService : IInfluxWriteService
 {
-    public List<EventEnvelope<SensorReadingProducedPayload>> AcceptedReadings { get; } = [];
-    public List<(Guid AreaId, Guid SensorId, RiskAssessment Assessment)> RiskAssessments { get; } = [];
-    public List<(Guid AreaId, int AssessmentCount, AreaRiskSnapshot Snapshot)> AreaSnapshots { get; } = [];
-    public List<InfluxTelemetryBatch> Batches { get; } = [];
+    private readonly Exception _exception;
+
+    public ThrowingInfluxWriteService(Exception? exception = null)
+    {
+        _exception = exception ?? new InvalidOperationException("Simulated InfluxDB failure.");
+    }
+
+    public int AcceptedReadingCalls { get; private set; }
+    public int RiskAssessmentCalls { get; private set; }
+    public int AreaRiskSnapshotCalls { get; private set; }
+    public int BatchCalls { get; private set; }
 
     public Task WriteBatchAsync(
         InfluxTelemetryBatch batch,
@@ -18,31 +25,15 @@ internal sealed class FakeInfluxWriteService : IInfluxWriteService
     {
         ArgumentNullException.ThrowIfNull(batch);
         cancellationToken.ThrowIfCancellationRequested();
-
-        Batches.Add(batch);
-
-        foreach (var envelope in batch.AcceptedReadings)
-        {
-            AcceptedReadings.Add(envelope);
-        }
-
-        foreach (var write in batch.RiskAssessments)
-        {
-            RiskAssessments.Add((write.AreaId, write.SensorId, write.Assessment));
-        }
-
-        foreach (var write in batch.AreaRiskSnapshots)
-        {
-            AreaSnapshots.Add((write.AreaId, write.AssessmentCount, write.Snapshot));
-        }
-
-        return Task.CompletedTask;
+        BatchCalls++;
+        throw _exception;
     }
 
     public Task WriteAcceptedReadingAsync(
         EventEnvelope<SensorReadingProducedPayload> envelope,
         CancellationToken cancellationToken)
     {
+        AcceptedReadingCalls++;
         return WriteBatchAsync(
             new InfluxTelemetryBatch().AddAcceptedReading(envelope),
             cancellationToken);
@@ -54,6 +45,7 @@ internal sealed class FakeInfluxWriteService : IInfluxWriteService
         RiskAssessment assessment,
         CancellationToken cancellationToken)
     {
+        RiskAssessmentCalls++;
         return WriteBatchAsync(
             new InfluxTelemetryBatch().AddRiskAssessment(areaId, sensorId, assessment),
             cancellationToken);
@@ -65,6 +57,7 @@ internal sealed class FakeInfluxWriteService : IInfluxWriteService
         AreaRiskSnapshot snapshot,
         CancellationToken cancellationToken)
     {
+        AreaRiskSnapshotCalls++;
         return WriteBatchAsync(
             new InfluxTelemetryBatch().AddAreaRiskSnapshot(areaId, assessmentCount, snapshot),
             cancellationToken);

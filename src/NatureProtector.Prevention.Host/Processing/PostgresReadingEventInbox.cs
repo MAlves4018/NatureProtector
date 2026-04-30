@@ -6,6 +6,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Pipeline;
+using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Shared.Observability;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
@@ -65,39 +66,15 @@ public sealed class PostgresReadingEventInbox(
 
         if (existing is not null)
         {
-            if (!string.Equals(existing.EnvelopeJson, envelopeJson, StringComparison.Ordinal))
-            {
-                dbContext.RejectedEvents.Add(new RejectedEventRecord
-                {
-                    Id = Guid.NewGuid(),
-                    InboxEventId = existing.Id,
-                    EventId = envelope.EventId,
-                    RejectionCode = "duplicate_payload_mismatch",
-                    RejectionReason = "Received a duplicate event id with a different payload.",
-                    RejectedAt = now,
-                    RawBodyUtf8 = Encoding.UTF8.GetString(rawBody.Span),
-                    MetadataJson = $"{{\"stage\":\"{stage}\"}}"
-                });
-
-                await dbContext.SaveChangesAsync(cancellationToken);
-            }
-
-            storeIncomingStopwatch.Stop();
-            logger.LogInformation(
-                "inbox_store_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | InboxEventId={InboxEventId} | Status={Status} | Outcome=duplicate",
-                storeIncomingStopwatch.ElapsedMilliseconds,
-                envelope.EventId,
-                envelope.CorrelationId,
-                existing.Id,
-                existing.Status);
-            PreventionHostTelemetry.InboxStoreDurationMs.Record(storeIncomingStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "duplicate" } });
-
-            return new InboxStoreResult(
-                existing.Id,
-                existing.Status,
-                true,
-                false,
-                null);
+            return await BuildDuplicateStoreResultAsync(
+                dbContext,
+                existing,
+                envelope,
+                rawBody,
+                stage,
+                envelopeJson,
+                storeIncomingStopwatch,
+                cancellationToken);
         }
 
         var inboxEventId = Guid.NewGuid();
@@ -133,7 +110,27 @@ public sealed class PostgresReadingEventInbox(
             Outcome = ProcessingAttemptOutcome.Started
         });
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ExpectedUniqueViolationDetector.IsExpected(ex, NatureProtectorUniqueConstraints.InboxEventId))
+        {
+            await using var duplicateContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            existing = await duplicateContext.InboxEvents
+                .SingleAsync(entity => entity.EventId == envelope.EventId, cancellationToken);
+
+            return await BuildDuplicateStoreResultAsync(
+                duplicateContext,
+                existing,
+                envelope,
+                rawBody,
+                stage,
+                envelopeJson,
+                storeIncomingStopwatch,
+                cancellationToken);
+        }
+
         storeIncomingStopwatch.Stop();
 
         logger.LogInformation(
@@ -313,7 +310,14 @@ public sealed class PostgresReadingEventInbox(
                 Outcome = ProcessingAttemptOutcome.Started
             });
 
-            await dbContext.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException ex) when (ExpectedUniqueViolationDetector.IsExpected(ex, NatureProtectorUniqueConstraints.ProcessingAttemptNumber))
+            {
+                continue;
+            }
 
             return new InboxRetryWorkItem(
                 envelope,
@@ -469,5 +473,50 @@ public sealed class PostgresReadingEventInbox(
             errorMessage = $"{InvalidRetryPayloadReason} {ex.Message}".Trim();
             return false;
         }
+    }
+
+    private async Task<InboxStoreResult> BuildDuplicateStoreResultAsync(
+        NatureProtectorControlDbContext dbContext,
+        InboxEventRecord existing,
+        EventEnvelope<SensorReadingProducedPayload> envelope,
+        ReadOnlyMemory<byte> rawBody,
+        string stage,
+        string envelopeJson,
+        Stopwatch storeIncomingStopwatch,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(existing.EnvelopeJson, envelopeJson, StringComparison.Ordinal))
+        {
+            dbContext.RejectedEvents.Add(new RejectedEventRecord
+            {
+                Id = Guid.NewGuid(),
+                InboxEventId = existing.Id,
+                EventId = envelope.EventId,
+                RejectionCode = "duplicate_payload_mismatch",
+                RejectionReason = "Received a duplicate event id with a different payload.",
+                RejectedAt = DateTimeOffset.UtcNow,
+                RawBodyUtf8 = Encoding.UTF8.GetString(rawBody.Span),
+                MetadataJson = $"{{\"stage\":\"{stage}\"}}"
+            });
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        storeIncomingStopwatch.Stop();
+        logger.LogInformation(
+            "inbox_store_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | InboxEventId={InboxEventId} | Status={Status} | Outcome=duplicate",
+            storeIncomingStopwatch.ElapsedMilliseconds,
+            envelope.EventId,
+            envelope.CorrelationId,
+            existing.Id,
+            existing.Status);
+        PreventionHostTelemetry.InboxStoreDurationMs.Record(storeIncomingStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "duplicate" } });
+
+        return new InboxStoreResult(
+            existing.Id,
+            existing.Status,
+            true,
+            false,
+            null);
     }
 }

@@ -54,6 +54,7 @@ if (preventionHostOptions.PipelinePersistenceEnabled)
     // Neste modo o fluxo operacional usa inbox durável, projeções persistidas
     // e um worker de novas tentativas apoiado por PostgreSQL.
     builder.Services.AddNatureProtectorControlPlanePostgres(builder.Environment.ContentRootPath);
+    builder.Services.AddSingleton<IReadingSemanticValidator, ReadingSemanticValidator>();
     builder.Services.AddSingleton<IReadingEventInbox, PostgresReadingEventInbox>();
     builder.Services.AddSingleton<IAreaOperationalProjectionStore, PostgresAreaOperationalProjectionStore>();
     builder.Services.AddSingleton<IAcceptedReadingRepository, PostgresAcceptedReadingRepository>();
@@ -65,6 +66,7 @@ else
 {
     // O modo em memória mantém a demonstração funcional sem dependência do
     // control plane persistente.
+    builder.Services.AddSingleton<IReadingSemanticValidator, PassThroughReadingSemanticValidator>();
     builder.Services.AddSingleton<IReadingEventInbox, InMemoryReadingEventInbox>();
     builder.Services.AddSingleton<IAreaOperationalProjectionStore, InMemoryAreaOperationalProjectionStore>();
     builder.Services.AddSingleton<IAcceptedReadingRepository, InMemoryAcceptedReadingRepository>();
@@ -73,7 +75,10 @@ else
 }
 
 builder.Services.AddSingleton<IProcessingFailureClassifier, DefaultProcessingFailureClassifier>();
-builder.Services.AddSingleton<ISimpleRiskScoringService, SimpleRiskScoringService>();
+builder.Services.AddSingleton<IRiskEligibilityService, RiskEligibilityService>();
+builder.Services.AddSingleton<SimpleRiskScoringService>();
+builder.Services.AddSingleton<IRiskScoringService>(sp => sp.GetRequiredService<SimpleRiskScoringService>());
+builder.Services.AddSingleton<ISimpleRiskScoringService>(sp => sp.GetRequiredService<SimpleRiskScoringService>());
 builder.Services.AddSingleton<IAreaRiskSnapshotService, AreaRiskSnapshotService>();
 
 builder.Services.AddSingleton<ReadingRiskPipeline>();

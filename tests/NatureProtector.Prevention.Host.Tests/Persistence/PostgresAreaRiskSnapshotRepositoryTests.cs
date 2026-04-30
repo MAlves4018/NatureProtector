@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NatureProtector.Core.Risk;
+using NatureProtector.Infrastructure.Postgres.Projection;
 using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Tests.TestInfrastructure;
 
@@ -61,6 +63,57 @@ public sealed class PostgresAreaRiskSnapshotRepositoryTests
         var row = Assert.Single(dbContext.AreaRiskSnapshotLogs);
         Assert.Equal(0.55, row.AggregateRiskScore);
         Assert.Equal(4, row.AssessmentCount);
+    }
+
+    [Fact]
+    public async Task SaveAsync_ConcurrentUniqueViolation_TreatedAsIdempotent()
+    {
+        var databasePath = Path.Combine(
+            Path.GetTempPath(),
+            $"natureprotector-area-snapshot-tests-{Guid.NewGuid():N}.sqlite");
+        await using var bootstrapScope = new SqliteControlDbContextScope(
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(bootstrapScope);
+        var snapshot = new AreaRiskSnapshot(
+            Guid.Parse("50000000-0000-0000-0000-000000000001"),
+            new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+            0.55,
+            "First");
+        var interceptor = new DuplicateInsertOnSaveInterceptor(
+            bootstrapScope.PlainOptions,
+            context => context.ChangeTracker.Entries<AreaRiskSnapshotLogRecord>().Any(entry => entry.State == EntityState.Added),
+            (sidecarContext, currentContext, _) =>
+            {
+                var pending = currentContext.ChangeTracker.Entries<AreaRiskSnapshotLogRecord>()
+                    .Single(entry => entry.State == EntityState.Added)
+                    .Entity;
+
+                sidecarContext.AreaRiskSnapshotLogs.Add(new AreaRiskSnapshotLogRecord
+                {
+                    Id = pending.Id,
+                    AreaId = pending.AreaId,
+                    SnapshotTimestamp = pending.SnapshotTimestamp,
+                    AggregateRiskScore = pending.AggregateRiskScore,
+                    AggregateRiskLevel = pending.AggregateRiskLevel,
+                    Summary = pending.Summary,
+                    AssessmentCount = pending.AssessmentCount,
+                    CreatedAt = pending.CreatedAt
+                });
+
+                return Task.CompletedTask;
+            });
+        await using var scope = new SqliteControlDbContextScope(
+            configureOptions: builder => builder.AddInterceptors(interceptor),
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var repository = CreateRepository(scope);
+
+        await repository.SaveAsync(seed.AreaId, snapshot, 4, CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var row = Assert.Single(dbContext.AreaRiskSnapshotLogs);
+        Assert.Equal(snapshot.Id, row.Id);
     }
 
     [Fact]
