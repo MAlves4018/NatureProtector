@@ -7,26 +7,56 @@ namespace NatureProtector.Prevention.Host.Tests.TestInfrastructure;
 internal sealed class SqliteControlDbContextScope : IAsyncDisposable
 {
     private readonly DbContextOptions<NatureProtectorControlDbContext> _options;
-    private readonly SqliteConnection _connection;
+    private readonly DbContextOptions<NatureProtectorControlDbContext> _plainOptions;
+    private readonly SqliteConnection? _connection;
+    private readonly string? _databasePath;
 
-    public SqliteControlDbContextScope()
+    public SqliteControlDbContextScope(
+        Action<DbContextOptionsBuilder<NatureProtectorControlDbContext>>? configureOptions = null,
+        bool useFileDatabase = false,
+        string? databasePath = null)
     {
-        _connection = new SqliteConnection("Data Source=:memory:");
-        _connection.Open();
+        if (useFileDatabase)
+        {
+            _databasePath = databasePath ?? Path.Combine(
+                Path.GetTempPath(),
+                $"natureprotector-tests-{Guid.NewGuid():N}.sqlite");
 
-        _options = new DbContextOptionsBuilder<NatureProtectorControlDbContext>()
-            .UseSqlite(_connection)
-            .Options;
+            _plainOptions = BuildOptions(
+                connectionString: $"Data Source={_databasePath}",
+                configureOptions: null,
+                connection: null);
+            _options = BuildOptions(
+                connectionString: $"Data Source={_databasePath}",
+                configureOptions: configureOptions,
+                connection: null);
+        }
+        else
+        {
+            _connection = new SqliteConnection("Data Source=:memory:");
+            _connection.Open();
 
-        using var dbContext = new NatureProtectorControlDbContext(_options);
+            _plainOptions = BuildOptions(
+                connectionString: null,
+                configureOptions: null,
+                connection: _connection);
+            _options = BuildOptions(
+                connectionString: null,
+                configureOptions: configureOptions,
+                connection: _connection);
+        }
+
+        using var dbContext = new NatureProtectorControlDbContext(_plainOptions);
         dbContext.Database.EnsureCreated();
 
         Factory = new TestDbContextFactory(_options);
     }
 
     public IDbContextFactory<NatureProtectorControlDbContext> Factory { get; }
+    public DbContextOptions<NatureProtectorControlDbContext> PlainOptions => _plainOptions;
 
     public NatureProtectorControlDbContext CreateDbContext() => new(_options);
+    public NatureProtectorControlDbContext CreatePlainDbContext() => new(_plainOptions);
 
     public async Task SeedAsync(Func<NatureProtectorControlDbContext, Task> seed)
     {
@@ -35,7 +65,48 @@ internal sealed class SqliteControlDbContextScope : IAsyncDisposable
         await dbContext.SaveChangesAsync();
     }
 
-    public ValueTask DisposeAsync() => _connection.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        if (_connection is not null)
+        {
+            await _connection.DisposeAsync();
+        }
+
+        if (_databasePath is not null && File.Exists(_databasePath))
+        {
+            try
+            {
+                File.Delete(_databasePath);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+    }
+
+    private static DbContextOptions<NatureProtectorControlDbContext> BuildOptions(
+        string? connectionString,
+        Action<DbContextOptionsBuilder<NatureProtectorControlDbContext>>? configureOptions,
+        SqliteConnection? connection)
+    {
+        var builder = new DbContextOptionsBuilder<NatureProtectorControlDbContext>();
+
+        if (connection is not null)
+        {
+            builder.UseSqlite(connection);
+        }
+        else if (connectionString is not null)
+        {
+            builder.UseSqlite(connectionString);
+        }
+
+        configureOptions?.Invoke(builder);
+
+        return builder.Options;
+    }
 
     private sealed class TestDbContextFactory(DbContextOptions<NatureProtectorControlDbContext> options)
         : IDbContextFactory<NatureProtectorControlDbContext>

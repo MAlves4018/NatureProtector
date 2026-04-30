@@ -64,7 +64,19 @@ public sealed class PostgresAreaRiskSnapshotRepository(
             CreatedAt = DateTimeOffset.UtcNow
         });
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ExpectedUniqueViolationDetector.IsExpected(ex, NatureProtectorUniqueConstraints.AreaRiskSnapshotId))
+        {
+            logger.LogDebug(
+                "Area risk snapshot duplicate treated as idempotent after concurrent insert | AreaId={AreaId} | SnapshotId={SnapshotId}",
+                areaId,
+                snapshot.Id);
+            return;
+        }
+
         stopwatch.Stop();
         PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
         {

@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using NatureProtector.Core.Primitives;
+using NatureProtector.Core.Risk;
 using NatureProtector.Infrastructure.Influx.Services;
 using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Projection;
 using NatureProtector.Prevention.Persistence;
+using NatureProtector.Prevention.Readings;
 using NatureProtector.Prevention.Risk;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
@@ -32,6 +34,7 @@ namespace NatureProtector.Prevention.Host.Processing;
 
 public sealed class ReadingRiskPipeline(
     IAcceptedReadingRepository acceptedReadingRepository,
+    IRiskEligibilityService riskEligibilityService,
     IRiskScoringService riskScoringService,
     IRiskAssessmentRepository riskAssessmentRepository,
     IAreaRiskSnapshotService areaRiskSnapshotService,
@@ -48,13 +51,14 @@ public sealed class ReadingRiskPipeline(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(envelope);
+        var normalizedReading = NormalizedReading.FromEnvelope(envelope);
         using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.pipeline.process");
-        activity?.SetTag(TelemetryTags.EventId, envelope.EventId);
-        activity?.SetTag(TelemetryTags.CorrelationId, envelope.CorrelationId);
-        activity?.SetTag(TelemetryTags.AreaId, envelope.AreaId);
-        activity?.SetTag(TelemetryTags.SensorId, envelope.Payload.SensorId);
-        activity?.SetTag(TelemetryTags.SensorName, envelope.Payload.SensorName);
-        activity?.SetTag(TelemetryTags.MetricType, envelope.Payload.MetricType);
+        activity?.SetTag(TelemetryTags.EventId, normalizedReading.EventId);
+        activity?.SetTag(TelemetryTags.CorrelationId, normalizedReading.CorrelationId);
+        activity?.SetTag(TelemetryTags.AreaId, normalizedReading.AreaId);
+        activity?.SetTag(TelemetryTags.SensorId, normalizedReading.SensorId);
+        activity?.SetTag(TelemetryTags.SensorName, normalizedReading.SensorName);
+        activity?.SetTag(TelemetryTags.MetricType, normalizedReading.MetricType);
 
         var pipelineStopwatch = Stopwatch.StartNew();
 
@@ -64,57 +68,82 @@ public sealed class ReadingRiskPipeline(
         logger.LogDebug(
             "accepted_reading_persist_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId}",
             acceptedReadingPersistStopwatch.ElapsedMilliseconds,
-            envelope.EventId,
-            envelope.CorrelationId,
-            envelope.AreaId,
-            envelope.Payload.SensorId);
+            normalizedReading.EventId,
+            normalizedReading.CorrelationId,
+            normalizedReading.AreaId,
+            normalizedReading.SensorId);
         var influxBatch = new InfluxTelemetryBatch()
             .AddAcceptedReading(envelope);
 
-        // The pipeline depends on a model-agnostic scoring contract so the current
-        // threshold baseline can later evolve into stateful wildfire indices
-        // without coupling scoring rules to broker, persistence or telemetry code.
-        var assessment = riskScoringService.CreateAssessment(
-            areaId: envelope.AreaId,
-            sensorId: envelope.Payload.SensorId,
-            sourceEventId: envelope.EventId,
-            metricType: envelope.Payload.MetricType,
-            value: envelope.Payload.Value,
-            assessedAt: envelope.EventTime);
+        // The pipeline now crosses an explicit internal boundary before risk
+        // evaluation: transport envelope -> normalized reading -> eligibility
+        // decision -> risk input. The current implementation stays permissive
+        // for compatibility with the baseline demo.
+        var eligibility = await riskEligibilityService.EvaluateAsync(
+            normalizedReading,
+            cancellationToken);
+
+        if (!eligibility.IsEligible)
+        {
+            var acceptedOnlyInfluxWriteStopwatch = Stopwatch.StartNew();
+            await influxWriteService.WriteBatchAsync(influxBatch, cancellationToken);
+            acceptedOnlyInfluxWriteStopwatch.Stop();
+            pipelineStopwatch.Stop();
+
+            logger.LogInformation(
+                "pipeline_total_ms={PipelineTotalMs} | accepted_reading_persist_ms={AcceptedReadingPersistMs} | influx_batch_write_ms={InfluxBatchWriteMs} | influx_batch_points={InfluxBatchPoints} | influx_batch_accepted_readings={InfluxBatchAcceptedReadings} | influx_batch_risk_assessments={InfluxBatchRiskAssessments} | influx_batch_area_risk_snapshots={InfluxBatchAreaRiskSnapshots} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId} | Outcome=completed_without_risk | EligibilityReason={EligibilityReason} | EligibilityMessage={EligibilityMessage}",
+                pipelineStopwatch.ElapsedMilliseconds,
+                acceptedReadingPersistStopwatch.ElapsedMilliseconds,
+                acceptedOnlyInfluxWriteStopwatch.ElapsedMilliseconds,
+                influxBatch.PointCount,
+                influxBatch.AcceptedReadingCount,
+                influxBatch.RiskAssessmentCount,
+                influxBatch.AreaRiskSnapshotCount,
+                normalizedReading.EventId,
+                normalizedReading.CorrelationId,
+                normalizedReading.AreaId,
+                normalizedReading.SensorId,
+                eligibility.ReasonCode,
+                eligibility.Message ?? "n/a");
+            return;
+        }
+
+        var riskInput = RiskInput.FromNormalizedReading(normalizedReading);
+        var assessment = riskScoringService.CreateAssessment(riskInput);
 
         var riskAssessmentPersistStopwatch = Stopwatch.StartNew();
         await riskAssessmentRepository.AddAsync(
-            envelope.AreaId,
-            envelope.Payload.SensorId,
-            envelope.EventId,
+            normalizedReading.AreaId,
+            normalizedReading.SensorId,
+            normalizedReading.EventId,
             assessment,
             cancellationToken);
         riskAssessmentPersistStopwatch.Stop();
         logger.LogDebug(
             "risk_assessment_persist_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId}",
             riskAssessmentPersistStopwatch.ElapsedMilliseconds,
-            envelope.EventId,
-            envelope.CorrelationId,
-            envelope.AreaId,
-            envelope.Payload.SensorId);
+            normalizedReading.EventId,
+            normalizedReading.CorrelationId,
+            normalizedReading.AreaId,
+            normalizedReading.SensorId);
 
         var saveCellProjectionStopwatch = Stopwatch.StartNew();
         await areaOperationalProjectionStore.SaveCellAsync(
-            envelope.AreaId,
-            envelope.Payload.SensorId,
+            normalizedReading.AreaId,
+            normalizedReading.SensorId,
             assessment,
             cancellationToken);
         saveCellProjectionStopwatch.Stop();
         logger.LogDebug(
             "save_cell_projection_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId}",
             saveCellProjectionStopwatch.ElapsedMilliseconds,
-            envelope.EventId,
-            envelope.CorrelationId,
-            envelope.AreaId,
-            envelope.Payload.SensorId);
+            normalizedReading.EventId,
+            normalizedReading.CorrelationId,
+            normalizedReading.AreaId,
+            normalizedReading.SensorId);
         influxBatch.AddRiskAssessment(
-            envelope.AreaId,
-            envelope.Payload.SensorId,
+            normalizedReading.AreaId,
+            normalizedReading.SensorId,
             assessment);
 
         // The current area aggregate is intentionally based on the latest
@@ -123,33 +152,38 @@ public sealed class ReadingRiskPipeline(
         // than expanding orchestration logic here.
         var getLatestByAreaStopwatch = Stopwatch.StartNew();
         var areaAssessments = await riskAssessmentRepository.GetLatestByAreaAsync(
-            envelope.AreaId,
+            normalizedReading.AreaId,
             cancellationToken);
         getLatestByAreaStopwatch.Stop();
         logger.LogDebug(
             "get_latest_by_area_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | Count={Count}",
             getLatestByAreaStopwatch.ElapsedMilliseconds,
-            envelope.EventId,
-            envelope.CorrelationId,
-            envelope.AreaId,
+            normalizedReading.EventId,
+            normalizedReading.CorrelationId,
+            normalizedReading.AreaId,
             areaAssessments.Count);
 
         var buildSnapshotStopwatch = Stopwatch.StartNew();
-        var snapshot = areaRiskSnapshotService.BuildSnapshot(
+        var computedSnapshot = areaRiskSnapshotService.BuildSnapshot(
             assessments: areaAssessments,
-            snapshotTime: envelope.EventTime);
+            snapshotTime: normalizedReading.EventTime);
+        var snapshot = new AreaRiskSnapshot(
+            id: normalizedReading.EventId,
+            timestamp: computedSnapshot.Timestamp,
+            aggregateRiskScore: computedSnapshot.AggregateRiskScore,
+            summary: computedSnapshot.Summary);
         buildSnapshotStopwatch.Stop();
         logger.LogDebug(
             "build_snapshot_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | AssessmentCount={AssessmentCount}",
             buildSnapshotStopwatch.ElapsedMilliseconds,
-            envelope.EventId,
-            envelope.CorrelationId,
-            envelope.AreaId,
+            normalizedReading.EventId,
+            normalizedReading.CorrelationId,
+            normalizedReading.AreaId,
             areaAssessments.Count);
 
         var snapshotPersistStopwatch = Stopwatch.StartNew();
         await areaRiskSnapshotRepository.SaveAsync(
-            envelope.AreaId,
+            normalizedReading.AreaId,
             snapshot,
             areaAssessments.Count,
             cancellationToken);
@@ -157,18 +191,18 @@ public sealed class ReadingRiskPipeline(
         logger.LogDebug(
             "snapshot_persist_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | AssessmentCount={AssessmentCount}",
             snapshotPersistStopwatch.ElapsedMilliseconds,
-            envelope.EventId,
-            envelope.CorrelationId,
-            envelope.AreaId,
+            normalizedReading.EventId,
+            normalizedReading.CorrelationId,
+            normalizedReading.AreaId,
             areaAssessments.Count);
         influxBatch.AddAreaRiskSnapshot(
-            envelope.AreaId,
+            normalizedReading.AreaId,
             areaAssessments.Count,
             snapshot);
 
         var saveAreaProjectionStopwatch = Stopwatch.StartNew();
         await areaOperationalProjectionStore.SaveAsync(
-            envelope.AreaId,
+            normalizedReading.AreaId,
             snapshot,
             areaAssessments.Count,
             cancellationToken);
@@ -180,10 +214,10 @@ public sealed class ReadingRiskPipeline(
         logger.LogDebug(
             "influx_batch_write_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId} | points={PointCount} | accepted_readings={AcceptedReadings} | risk_assessments={RiskAssessments} | area_risk_snapshots={AreaRiskSnapshots}",
             influxBatchWriteStopwatch.ElapsedMilliseconds,
-            envelope.EventId,
-            envelope.CorrelationId,
-            envelope.AreaId,
-            envelope.Payload.SensorId,
+            normalizedReading.EventId,
+            normalizedReading.CorrelationId,
+            normalizedReading.AreaId,
+            normalizedReading.SensorId,
             influxBatch.PointCount,
             influxBatch.AcceptedReadingCount,
             influxBatch.RiskAssessmentCount,
@@ -207,10 +241,10 @@ public sealed class ReadingRiskPipeline(
             influxBatch.AcceptedReadingCount,
             influxBatch.RiskAssessmentCount,
             influxBatch.AreaRiskSnapshotCount,
-            envelope.EventId,
-            envelope.CorrelationId,
-            envelope.AreaId,
-            envelope.Payload.SensorId,
+            normalizedReading.EventId,
+            normalizedReading.CorrelationId,
+            normalizedReading.AreaId,
+            normalizedReading.SensorId,
             assessment.RiskScore,
             assessment.RiskLevel,
             snapshot.AggregateRiskScore,

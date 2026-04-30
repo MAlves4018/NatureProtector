@@ -72,7 +72,19 @@ public sealed class PostgresRiskAssessmentRepository(
             CreatedAt = DateTimeOffset.UtcNow
         });
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ExpectedUniqueViolationDetector.IsExpected(ex, NatureProtectorUniqueConstraints.RiskAssessmentSourceEventId))
+        {
+            logger.LogDebug(
+                "Risk assessment duplicate treated as idempotent after concurrent insert | SourceEventId={SourceEventId} | SensorId={SensorId}",
+                sourceEventId,
+                sensorId);
+            return;
+        }
+
         stopwatch.Stop();
         PreventionHostTelemetry.PostgresWriteDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
         {

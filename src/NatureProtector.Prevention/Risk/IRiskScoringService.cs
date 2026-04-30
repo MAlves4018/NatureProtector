@@ -1,6 +1,4 @@
 using NatureProtector.Core.Risk;
-using NatureProtector.Shared.Contracts.Readings;
-
 namespace NatureProtector.Prevention.Risk;
 
 /// <summary>
@@ -8,11 +6,5 @@ namespace NatureProtector.Prevention.Risk;
 /// </summary>
 public interface IRiskScoringService
 {
-    RiskAssessment CreateAssessment(
-        Guid areaId,
-        Guid sensorId,
-        Guid sourceEventId,
-        SensorMetricType metricType,
-        double value,
-        DateTimeOffset assessedAt);
+    RiskAssessment CreateAssessment(RiskInput input);
 }

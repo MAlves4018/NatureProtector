@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NatureProtector.Core.Risk;
 using NatureProtector.Infrastructure.Postgres.Projection;
@@ -59,6 +60,60 @@ public sealed class PostgresAreaOperationalProjectionStoreTests
         Assert.Equal(0.90, row.RiskScore);
         Assert.Equal("Extreme", row.RiskLevel);
         Assert.Equal("Emergency", row.Severity);
+    }
+
+    [Fact]
+    public async Task SaveCellAsync_ConcurrentUniqueViolation_RetriesAsUpdate()
+    {
+        var databasePath = Path.Combine(
+            Path.GetTempPath(),
+            $"natureprotector-cell-projection-tests-{Guid.NewGuid():N}.sqlite");
+        await using var bootstrapScope = new SqliteControlDbContextScope(
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(bootstrapScope);
+        var assessment = CreateAssessment(
+            Guid.Parse("11000000-0000-0000-0000-000000000001"),
+            new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+            0.72,
+            "High risk due to temperature");
+        var interceptor = new DuplicateInsertOnSaveInterceptor(
+            bootstrapScope.PlainOptions,
+            context => context.ChangeTracker.Entries<CellOperationalStateRecord>().Any(entry => entry.State == EntityState.Added),
+            (sidecarContext, currentContext, _) =>
+            {
+                var pending = currentContext.ChangeTracker.Entries<CellOperationalStateRecord>()
+                    .Single(entry => entry.State == EntityState.Added)
+                    .Entity;
+
+                sidecarContext.CellOperationalStates.Add(new CellOperationalStateRecord
+                {
+                    Id = Guid.NewGuid(),
+                    AreaId = pending.AreaId,
+                    GridCellId = pending.GridCellId,
+                    SensorId = pending.SensorId,
+                    LatestAssessmentId = pending.LatestAssessmentId,
+                    SnapshotTimestamp = pending.SnapshotTimestamp,
+                    RiskScore = pending.RiskScore,
+                    RiskLevel = pending.RiskLevel,
+                    Severity = pending.Severity,
+                    Summary = pending.Summary,
+                    UpdatedAt = pending.UpdatedAt
+                });
+
+                return Task.CompletedTask;
+            });
+        await using var scope = new SqliteControlDbContextScope(
+            configureOptions: builder => builder.AddInterceptors(interceptor),
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var store = CreateStore(scope);
+
+        await store.SaveCellAsync(seed.AreaId, seed.SensorId, assessment, CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var row = Assert.Single(dbContext.CellOperationalStates);
+        Assert.Equal(assessment.Id, row.LatestAssessmentId);
     }
 
     [Fact]
@@ -133,6 +188,59 @@ public sealed class PostgresAreaOperationalProjectionStoreTests
         var alert = Assert.Single(dbContext.AlertStates);
         Assert.Equal(OperationalAlertStatus.Resolved.ToString(), alert.Status);
         Assert.NotNull(alert.ResolvedAt);
+    }
+
+    [Fact]
+    public async Task SaveAsync_ConcurrentUniqueViolation_RetriesAsUpdate()
+    {
+        var databasePath = Path.Combine(
+            Path.GetTempPath(),
+            $"natureprotector-area-projection-tests-{Guid.NewGuid():N}.sqlite");
+        await using var bootstrapScope = new SqliteControlDbContextScope(
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(bootstrapScope);
+        var snapshot = new AreaRiskSnapshot(
+            Guid.Parse("22000000-0000-0000-0000-000000000001"),
+            new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+            0.85,
+            "Area remains under elevated risk.");
+        var interceptor = new DuplicateInsertOnSaveInterceptor(
+            bootstrapScope.PlainOptions,
+            context => context.ChangeTracker.Entries<AreaOperationalStateRecord>().Any(entry => entry.State == EntityState.Added),
+            (sidecarContext, currentContext, _) =>
+            {
+                var pending = currentContext.ChangeTracker.Entries<AreaOperationalStateRecord>()
+                    .Single(entry => entry.State == EntityState.Added)
+                    .Entity;
+
+                sidecarContext.AreaOperationalStates.Add(new AreaOperationalStateRecord
+                {
+                    Id = Guid.NewGuid(),
+                    AreaId = pending.AreaId,
+                    ConfigurationVersionId = pending.ConfigurationVersionId,
+                    SnapshotTimestamp = pending.SnapshotTimestamp,
+                    AggregateRiskScore = pending.AggregateRiskScore,
+                    AggregateRiskLevel = pending.AggregateRiskLevel,
+                    Severity = pending.Severity,
+                    Summary = pending.Summary,
+                    AssessmentCount = pending.AssessmentCount,
+                    UpdatedAt = pending.UpdatedAt
+                });
+
+                return Task.CompletedTask;
+            });
+        await using var scope = new SqliteControlDbContextScope(
+            configureOptions: builder => builder.AddInterceptors(interceptor),
+            useFileDatabase: true,
+            databasePath: databasePath);
+        var store = CreateStore(scope);
+
+        await store.SaveAsync(seed.AreaId, snapshot, 6, CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var row = Assert.Single(dbContext.AreaOperationalStates);
+        Assert.Equal(snapshot.AggregateRiskScore, row.AggregateRiskScore);
     }
 
     private static PostgresAreaOperationalProjectionStore CreateStore(SqliteControlDbContextScope scope)

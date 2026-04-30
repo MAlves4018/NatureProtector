@@ -29,6 +29,7 @@ public sealed class ReadingEventProcessingService(
     IOptions<PreventionHostOptions> preventionHostOptions,
     ReadingRiskPipeline readingRiskPipeline,
     IReadingEventInbox readingEventInbox,
+    IReadingSemanticValidator readingSemanticValidator,
     IProcessingFailureClassifier failureClassifier)
 {
     private readonly PreventionHostOptions _options = preventionHostOptions.Value;
@@ -53,6 +54,41 @@ public sealed class ReadingEventProcessingService(
 
         try
         {
+            var semanticValidation = await readingSemanticValidator.ValidateAsync(
+                envelope,
+                cancellationToken);
+
+            if (!semanticValidation.IsValid)
+            {
+                processingStopwatch.Stop();
+                var errorCode = semanticValidation.ReasonCode;
+                var errorMessage = semanticValidation.Message ?? "Reading failed semantic validation.";
+
+                await readingEventInbox.QuarantineProcessingAsync(
+                    lease,
+                    errorCode,
+                    errorMessage,
+                    errorCode,
+                    errorMessage,
+                    cancellationToken);
+                PreventionHostTelemetry.QuarantinedEvents.Add(1, new TagList
+                {
+                    { TelemetryTags.ErrorCode, errorCode },
+                    { TelemetryTags.QuarantineCode, errorCode }
+                });
+                PreventionHostTelemetry.ProcessingDurationMs.Record(processingStopwatch.Elapsed.TotalMilliseconds, new TagList { { TelemetryTags.Outcome, "quarantined" } });
+
+                logger.LogWarning(
+                    "processing_total_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | InboxEventId={InboxEventId} | Attempt={AttemptNumber} | Outcome=quarantined | ReasonCode={ReasonCode}",
+                    processingStopwatch.ElapsedMilliseconds,
+                    envelope.EventId,
+                    envelope.CorrelationId,
+                    lease.InboxEventId,
+                    lease.AttemptNumber,
+                    errorCode);
+                return;
+            }
+
             await readingRiskPipeline.ProcessAcceptedReadingAsync(
                 envelope,
                 cancellationToken);

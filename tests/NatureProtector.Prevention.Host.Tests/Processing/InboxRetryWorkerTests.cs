@@ -46,6 +46,7 @@ public sealed class InboxRetryWorkerTests
     {
         var pipeline = new ReadingRiskPipeline(
             new InMemoryAcceptedReadingRepository(),
+            new RiskEligibilityService(),
             new SimpleRiskScoringService(),
             new InMemoryRiskAssessmentRepository(),
             new AreaRiskSnapshotService(),
@@ -65,6 +66,7 @@ public sealed class InboxRetryWorkerTests
             }),
             pipeline,
             new InMemoryReadingEventInbox(),
+            new PassThroughReadingSemanticValidator(),
             new DefaultProcessingFailureClassifier());
     }
 

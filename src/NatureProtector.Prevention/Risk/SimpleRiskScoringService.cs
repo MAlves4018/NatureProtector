@@ -24,23 +24,19 @@ public sealed class SimpleRiskScoringService : ISimpleRiskScoringService
     /// Cria uma avaliação de risco a partir de uma leitura já aceite pela
     /// pipeline.
     /// </summary>
-    public RiskAssessment CreateAssessment(
-        Guid areaId,
-        Guid sensorId,
-        Guid sourceEventId,
-        SensorMetricType metricType,
-        double value,
-        DateTimeOffset assessedAt)
+    public RiskAssessment CreateAssessment(RiskInput input)
     {
-        var score = CalculateScore(metricType, value);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var score = CalculateScore(input.MetricType, input.Value);
 
         var explanation =
-            $"Area={areaId}; Sensor={sensorId}; Event={sourceEventId}; " +
-            $"Metric={metricType}; Value={value:F2}; Score={score:F2}.";
+            $"Area={input.AreaId}; Sensor={input.SensorId}; Event={input.SourceEventId}; " +
+            $"Metric={input.MetricType}; Value={input.Value:F2}; Score={score:F2}.";
 
         return new RiskAssessment(
             id: Guid.NewGuid(),
-            timestamp: assessedAt,
+            timestamp: input.EventTime,
             riskScore: score,
             explanationSummary: explanation);
     }

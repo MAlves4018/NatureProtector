@@ -466,6 +466,8 @@ Começar pelos três `Program.cs` e só depois olhar para os serviços concretos
 | `Prevention.Host` inbox | [Program.cs](../../src/NatureProtector.Prevention.Host/Program.cs) | `PreventionHostOptions.PipelinePersistenceEnabled` | `PostgresReadingEventInbox` ou `InMemoryReadingEventInbox` | `PostgresReadingEventInbox` |
 | `Prevention.Host` repositórios e projeções | [Program.cs](../../src/NatureProtector.Prevention.Host/Program.cs) | `PipelinePersistenceEnabled` | `PostgresAreaOperationalProjectionStore`, `PostgresAcceptedReadingRepository`, `PostgresRiskAssessmentRepository`, `PostgresAreaRiskSnapshotRepository` ou `InMemoryAreaOperationalProjectionStore`, `InMemoryAcceptedReadingRepository`, `InMemoryRiskAssessmentRepository`, `InMemoryAreaRiskSnapshotRepository` | stack persistente |
 | `Prevention.Host` retries | [Program.cs](../../src/NatureProtector.Prevention.Host/Program.cs) | `PipelinePersistenceEnabled` | `InboxRetryWorker` existe só no modo persistente | ativo |
+| `Prevention.Host` validação semântica | [Program.cs](../../src/NatureProtector.Prevention.Host/Program.cs) | `PreventionHostOptions.PipelinePersistenceEnabled` | `ReadingSemanticValidator` ou `PassThroughReadingSemanticValidator` | `ReadingSemanticValidator` |
+| `Prevention.Host` escrita InfluxDB | [ServiceCollectionExtensions.cs](../../src/NatureProtector.Infrastructure.Influx/DependencyInjection/ServiceCollectionExtensions.cs) | `InfluxDb:Enabled` e opções de escrita | `SafeInfluxWriteService`, `NoOpInfluxWriteService` e writer real | `NoOpInfluxWriteService` no default local atual, se `Enabled=false` |
 | `Backoffice.Api` | [Program.cs](../../src/NatureProtector.Backoffice.Api/Program.cs) | `BackofficeApiOptions.ControlPlaneEnabled` | `PostgresControlPlaneService` ou `UnavailableControlPlaneService` | `PostgresControlPlaneService` |
 
 ### Detalhe da stack da prevenção
@@ -489,6 +491,10 @@ No caminho em memória, o mesmo ficheiro troca essas implementações por:
 - `InMemoryAreaRiskSnapshotRepository`.
 
 Isto é importante para onboarding porque o modo in-memory preserva a lógica de pipeline, mas retira inbox durável, retry worker persistente e projeções guardadas em PostgreSQL.
+
+A stack persistente da prevenção inclui também validação semântica contra o plano de controlo. No modo persistente, `ReadingSemanticValidator` confirma que o `sensor_id` do payload existe, está ativo e pertence ao `area_id` do envelope. No modo in-memory, em que não há plano de controlo relacional carregado, é usado `PassThroughReadingSemanticValidator`, preservando o comportamento de execução local sem PostgreSQL.
+
+A escrita para InfluxDB também é selecionada por configuração. Quando `InfluxDb:Enabled=false`, o host usa `NoOpInfluxWriteService`. Quando `InfluxDb:Enabled=true`, a escrita passa pela camada segura de Influx, que aplica a política de falha e as flags por measurement. Esta decisão mantém PostgreSQL como estado operacional durável e trata InfluxDB como observabilidade temporal.
 
 ### Origem dos valores e precedência
 
@@ -803,32 +809,43 @@ Em `HandleReceivedAsync`, a ordem factual é esta:
 
 O broker só é confirmado depois de o evento ficar materializado na inbox. Isto significa que a recuperação posterior deixa de depender do RabbitMQ e passa a depender da inbox em PostgreSQL.
 
-O orquestrador do caminho nominal é [ReadingEventProcessingService.ProcessAsync](../../src/NatureProtector.Prevention.Host/Processing/ReadingEventProcessingService.cs). Quando tudo corre bem, o serviço chama [ReadingRiskPipeline.ProcessAcceptedReadingAsync](../../src/NatureProtector.Prevention.Host/Processing/ReadingRiskPipeline.cs) e depois marca o evento como concluído na inbox. `DefaultProcessingFailureClassifier` não faz parte do caminho nominal: só entra quando o pipeline falha.
+O orquestrador do caminho nominal é [ReadingEventProcessingService.ProcessAsync](../../src/NatureProtector.Prevention.Host/Processing/ReadingEventProcessingService.cs). Antes de chamar a pipeline de risco, este serviço valida semanticamente o evento contra o plano de controlo através de `IReadingSemanticValidator`. No modo persistente, essa validação confirma que o sensor existe, está ativo e pertence à área declarada no envelope. Se a validação falhar, o evento é colocado em quarentena com motivo explícito e não chega à `ReadingRiskPipeline`.
 
-Dentro de `ReadingRiskPipeline.ProcessAcceptedReadingAsync`, a ordem factual de escrita é esta:
+Quando a validação semântica passa, o serviço chama [ReadingRiskPipeline.ProcessAcceptedReadingAsync](../../src/NatureProtector.Prevention.Host/Processing/ReadingRiskPipeline.cs) e depois marca o evento como concluído na inbox. `DefaultProcessingFailureClassifier` não faz parte do caminho nominal: só entra quando uma exceção operacional é lançada durante o processamento.
 
-1. `PostgresAcceptedReadingRepository.AddAsync`
-2. `InfluxWriteService.WriteAcceptedReadingAsync`
-3. `SimpleRiskScoringService.CreateAssessment`
-4. `PostgresRiskAssessmentRepository.AddAsync`
-5. `PostgresAreaOperationalProjectionStore.SaveCellAsync`
-6. `InfluxWriteService.WriteRiskAssessmentAsync`
-7. `PostgresRiskAssessmentRepository.GetLatestByAreaAsync`
-8. `AreaRiskSnapshotService.BuildSnapshot`
-9. `PostgresAreaRiskSnapshotRepository.SaveAsync`
-10. `InfluxWriteService.WriteAreaRiskSnapshotAsync`
-11. `PostgresAreaOperationalProjectionStore.SaveAsync`
+Dentro de `ReadingRiskPipeline.ProcessAcceptedReadingAsync`, a ordem factual atual é esta:
+
+1. construir `NormalizedReading` a partir do envelope validado;
+2. persistir a leitura aceite em `PostgresAcceptedReadingRepository.AddAsync`;
+3. avaliar elegibilidade através de `IRiskEligibilityService`;
+4. se a leitura não for elegível, terminar o processamento com sucesso sem score, sem `RiskAssessment`, sem `AreaRiskSnapshot` e sem atualização de projeções de risco;
+5. se a leitura for elegível, construir `RiskInput`;
+6. calcular `RiskAssessment` através de `IRiskScoringService`;
+7. persistir o assessment em `PostgresRiskAssessmentRepository.AddAsync`;
+8. atualizar projeção operacional da célula em `PostgresAreaOperationalProjectionStore.SaveCellAsync`;
+9. obter as avaliações mais recentes da área através de `PostgresRiskAssessmentRepository.GetLatestByAreaAsync`;
+10. construir o snapshot agregado com `AreaRiskSnapshotService.BuildSnapshot`;
+11. persistir o snapshot em `PostgresAreaRiskSnapshotRepository.SaveAsync`;
+12. atualizar a projeção operacional agregada da área em `PostgresAreaOperationalProjectionStore.SaveAsync`;
+13. emitir telemetria InfluxDB conforme a configuração ativa, usando writer real, writer seguro ou writer no-op.
+
+A fronteira interna atual fica, portanto:
+
+`EventEnvelope<SensorReadingProducedPayload> -> NormalizedReading -> RiskEligibilityResult -> RiskInput -> IRiskScoringService -> RiskAssessment`.
+
+O motor de risco continua a ser a baseline simples por thresholds, mas já não recebe diretamente o envelope bruto como input principal.
 
 ### Etapas do caminho nominal
 
 | Etapa | Classe | Método | Papel factual |
 | --- | --- | --- | --- |
 | Receção do broker | `PreventionWorker` | `ExecuteAsync` | abre canal, aplica `prefetch` e consome `np.ingestion.readings` |
-| Validação técnica e semântica | `PreventionWorker` | `HandleReceivedAsync`, `TryValidateEnvelope` | rejeita JSON inválido, envelope nulo, contrato inválido e `OperationalState.Invalid` |
+| Validação técnica | `PreventionWorker` | `HandleReceivedAsync`, `TryValidateEnvelope` | rejeita JSON inválido, envelope nulo, contrato inválido e `OperationalState.Invalid` antes da inbox |
+| Validação semântica | `ReadingEventProcessingService` + `IReadingSemanticValidator` | `ProcessAsync`, `ValidateAsync` | confirma sensor existente, ativo e pertencente à área no modo persistente; invalidez semântica vai para quarentena |
 | Materialização mínima | `PostgresReadingEventInbox` | `StoreIncomingAsync` | cria `pipeline.event_inbox` e a primeira linha em `pipeline.processing_attempts` |
 | `ack` do broker | `PreventionWorker` | `HandleReceivedAsync` | acontece depois da inbox e antes do processamento |
 | Orquestração transacional | `ReadingEventProcessingService` | `ProcessAsync` | completa, reage a falhas, agenda retry ou quarentena |
-| Pipeline nominal | `ReadingRiskPipeline` | `ProcessAcceptedReadingAsync` | escreve logs PostgreSQL, Influx e projeções |
+| Pipeline nominal | `ReadingRiskPipeline` | `ProcessAcceptedReadingAsync` | normaliza leitura, avalia elegibilidade, constrói `RiskInput`, calcula risco quando aplicável, escreve PostgreSQL, projeções e telemetria configurada |
 
 ### Bifurcações relevantes
 
@@ -858,7 +875,8 @@ Dentro de `ReadingRiskPipeline.ProcessAcceptedReadingAsync`, a ordem factual de 
 ### Estado atual
 
 - o `ack` nominal acontece depois da inbox e antes do processamento;
-- o processamento nominal escreve tanto em PostgreSQL como em InfluxDB;
+- o processamento nominal escreve estado durável em PostgreSQL e escreve telemetria em InfluxDB apenas quando a configuração ativa o permite;
+- a pipeline já distingue leitura aceite, leitura elegível para risco e leitura efetivamente avaliada;
 - `DefaultProcessingFailureClassifier` é apenas caminho de falha.
 
 ## 12. Rejeição, retry e quarentena
@@ -900,6 +918,10 @@ Primeiro separar o que nunca entra na inbox do que já ficou materializado em `p
 | Envelope nulo | `PreventionWorker` | `HandleReceivedAsync` + `RejectBeforeInboxAsync` | `pipeline.rejected_events` | `ack`, nunca entra na inbox |
 | Falha de contrato ou schema | `PreventionWorker` | `TryValidateEnvelope` + `RejectBeforeInboxAsync` | `pipeline.rejected_events` | `ack`, nunca entra na inbox |
 | `OperationalState.Invalid` | `PreventionWorker` | `TryValidateEnvelope` | `pipeline.rejected_events` | `ack`, nunca entra na inbox |
+| Sensor inexistente | `ReadingEventProcessingService` | `IReadingSemanticValidator.ValidateAsync` | `pipeline.event_inbox`, `pipeline.processing_attempts`, `pipeline.quarantined_events` | tecnicamente válido, mas semanticamente inválido; vai para quarentena com `sensor_not_found` |
+| Sensor inativo | `ReadingEventProcessingService` | `IReadingSemanticValidator.ValidateAsync` | `pipeline.event_inbox`, `pipeline.processing_attempts`, `pipeline.quarantined_events` | tecnicamente válido, mas não processável; vai para quarentena com `sensor_inactive` |
+| Sensor pertence a outra área | `ReadingEventProcessingService` | `IReadingSemanticValidator.ValidateAsync` | `pipeline.event_inbox`, `pipeline.processing_attempts`, `pipeline.quarantined_events` | tecnicamente válido, mas incompatível com o `area_id`; vai para quarentena com `sensor_area_mismatch` |
+| Leitura aceite mas não elegível para risco | `ReadingRiskPipeline` | `IRiskEligibilityService.EvaluateAsync` | `projection.accepted_reading_log`; sem assessment, snapshot ou projeção de risco | processamento concluído com sucesso; não é rejeição, retry nem quarentena |
 | Duplicado exato | `PostgresReadingEventInbox` | `StoreIncomingAsync` | consulta `pipeline.event_inbox`; sem nova tentativa | `ack`, não reprocessa |
 | Duplicado com payload diferente | `PostgresReadingEventInbox` | `StoreIncomingAsync` | `pipeline.rejected_events` ligado ao evento já existente | `ack`, não reprocessa |
 | Falha transitória ou desconhecida com tentativas restantes | `ReadingEventProcessingService` | `DefaultProcessingFailureClassifier.Classify` + `ShouldRetry` + `ScheduleRetryAsync` | atualização de `pipeline.event_inbox` e `pipeline.processing_attempts` | fica em `RetryPending` |
@@ -934,6 +956,10 @@ Se ambas forem verdadeiras, `ProcessAsync` chama `readingEventInbox.ScheduleRetr
 No caminho do retry, [InboxRetryWorker.ExecuteAsync](../../src/NatureProtector.Prevention.Host/Processing/InboxRetryWorker.cs) faz polling do inbox e chama `TryStartDueRetryAsync("reading_risk_pipeline", ...)`. Este método é o ponto exato onde a inbox deixa de apenas registar e volta a conceder lease: muda o evento para `Processing`, incrementa `AttemptCount`, cria uma nova linha em `processing_attempts` e devolve `InboxRetryWorkItem` com envelope e lease.
 
 Se o envelope persistido já não puder ser desserializado, a decisão terminal não passa por `ReadingEventProcessingService`: acontece dentro de `TryStartDueRetryAsync`, que chama `QuarantineMalformedRetryAsync` e cria diretamente a quarentena `invalid_retry_payload`.
+
+A validação semântica sensor-área fica depois da inbox e antes da pipeline de risco. Isto é intencional: o evento é tecnicamente válido e deve ficar auditável na inbox, mas não deve contaminar accepted readings, assessments, snapshots ou projeções se o sensor não existir, estiver inativo ou pertencer a outra área.
+
+A inelegibilidade de risco é diferente. Uma leitura pode ser aceite e persistida para auditoria, mas não produzir cálculo de risco. Nesse caso, a pipeline termina com sucesso e o evento é marcado como processado. Não há retry nem quarentena, porque não ocorreu falha operacional nem inconsistência semântica do deployment.
 
 ### Quando a inbox apenas regista e quando também concede lease
 
@@ -1038,9 +1064,9 @@ No centro está [NatureProtectorControlDbContext](../../src/NatureProtector.Infr
 | `PostgresAreaRiskSnapshotRepository` | `SaveAsync` | `projection.area_risk_snapshot_log` | após agregação da área |
 | `PostgresAreaOperationalProjectionStore` | `SaveCellAsync` | `projection.cell_operational_state` | projeção por célula |
 | `PostgresAreaOperationalProjectionStore` | `SaveAsync` | `projection.area_operational_state`, `projection.alert_state` | projeção agregada e alertas |
-| `InfluxWriteService` | `WriteAcceptedReadingAsync` | `accepted_readings` | após persistência da leitura aceite |
-| `InfluxWriteService` | `WriteRiskAssessmentAsync` | `risk_assessments` | após persistência do assessment |
-| `InfluxWriteService` | `WriteAreaRiskSnapshotAsync` | `area_risk_snapshots` | após persistência do snapshot |
+| `IInfluxWriteService` | métodos de escrita temporal da interface | `accepted_readings`, `risk_assessments`, `area_risk_snapshots`, conforme configuração | telemetria temporal derivada do processamento, quando InfluxDB está ativo |
+| `NoOpInfluxWriteService` | implementação no-op da interface | nenhuma série | modo local ou execução sem telemetria temporal |
+| `SafeInfluxWriteService` | wrapper de política de escrita | séries permitidas por configuração | aplica tolerância a falhas e flags por measurement |
 
 ### Ligação entre migrations, `DbContext`, records e writers
 
@@ -1048,14 +1074,18 @@ No centro está [NatureProtectorControlDbContext](../../src/NatureProtector.Infr
 - As migrations em [src/NatureProtector.Infrastructure.Postgres/Migrations/](../../src/NatureProtector.Infrastructure.Postgres/Migrations/) dão corpo físico a esse modelo.
 - Os writers dos hosts trabalham sempre por cima de `IDbContextFactory<NatureProtectorControlDbContext>` e dos records mapeados em `Infrastructure.Postgres.Control`, `Infrastructure.Postgres.Pipeline` e `Infrastructure.Postgres.Projection`.
 
+A persistência da pipeline foi endurecida para tratar duplicados concorrentes esperados como resultados idempotentes. A inbox usa `EventId` como chave lógica de deduplicação. `accepted_reading_log` usa o evento de origem para evitar duplicação lógica de leituras aceites, e `risk_assessment_log` usa o evento de origem para evitar duplicação de assessments. O snapshot de área derivado de uma leitura passou a usar identidade estável baseada no `EventId`, evitando duplicados lógicos em retries ou reentregas do mesmo evento.
+
 ### Papel de Influx face a PostgreSQL
 
-InfluxDB entra como eixo temporal paralelo. [InfluxWriteService](../../src/NatureProtector.Infrastructure.Influx/Services/InfluxWriteService.cs) escreve `accepted_readings`, `risk_assessments` e `area_risk_snapshots`. A diferença é clara:
+InfluxDB entra como eixo temporal paralelo e configurável. A diferença entre PostgreSQL e InfluxDB é intencional:
 
-- PostgreSQL é estado durável relacional, auditável e consultável pela API;
-- InfluxDB é telemetria temporal para observabilidade, séries e dashboards.
+- PostgreSQL é o estado durável relacional, auditável e consultável pela API;
+- InfluxDB é telemetria temporal para observabilidade, séries e dashboards;
+- nenhum componente do runtime atual lê de InfluxDB para decidir negócio;
+- a pipeline pode correr com InfluxDB desligado através de `NoOpInfluxWriteService`.
 
-Nenhum componente do runtime atual lê de InfluxDB para decidir negócio. A única escrita atual em Influx é iniciada pelo `Prevention.Host`, através de `InfluxWriteService`.
+Quando uma leitura é aceite mas não é elegível para risco, apenas a leitura aceite deve permanecer como artefacto operacional. Nessa situação não existem `RiskAssessment` nem `AreaRiskSnapshot`, logo também não deve existir telemetria derivada desses artefactos.
 
 ### Notas de compreensão ou armadilhas
 
@@ -1143,15 +1173,19 @@ No estado atual, a observabilidade nasce dentro do runtime e só depois pode ser
 
 ### Telemetria em Influx
 
-O único writer atual em Influx é [InfluxWriteService](../../src/NatureProtector.Infrastructure.Influx/Services/InfluxWriteService.cs), registado por [AddInfluxPersistence](../../src/NatureProtector.Infrastructure.Influx/DependencyInjection/ServiceCollectionExtensions.cs) e usado exclusivamente pelo `Prevention.Host`.
+A fronteira de escrita temporal é `IInfluxWriteService`, registada por [AddInfluxPersistence](../../src/NatureProtector.Infrastructure.Influx/DependencyInjection/ServiceCollectionExtensions.cs) e usada exclusivamente pelo `Prevention.Host`.
+
+Consoante a configuração, essa interface pode resolver para escrita real, escrita segura com política de falha ou implementação no-op. Quando `InfluxDb:Enabled=false`, o host usa `NoOpInfluxWriteService` e não tenta escrever séries temporais. Quando `InfluxDb:Enabled=true`, a escrita passa pela política configurada, incluindo tolerância a falhas e ativação/desativação por measurement.
 
 ### Quem escreve em Influx, quando e para quê
 
-| Writer | Método que escreve | Chamado por | Momento do fluxo | Série real | Papel factual |
-| --- | --- | --- | --- | --- | --- |
-| `InfluxWriteService` | `WriteAcceptedReadingAsync` | `ReadingRiskPipeline.ProcessAcceptedReadingAsync` | logo após `PostgresAcceptedReadingRepository.AddAsync` | `accepted_readings` | evidência temporal da leitura aceite |
-| `InfluxWriteService` | `WriteRiskAssessmentAsync` | `ReadingRiskPipeline.ProcessAcceptedReadingAsync` | depois do scoring e da escrita do assessment relacional | `risk_assessments` | série temporal do risco calculado |
-| `InfluxWriteService` | `WriteAreaRiskSnapshotAsync` | `ReadingRiskPipeline.ProcessAcceptedReadingAsync` | depois da construção e persistência do snapshot agregado | `area_risk_snapshots` | série temporal do estado agregado por área |
+| Measurement | Origem lógica | Quando pode ser emitida | Papel factual |
+| --- | --- | --- | --- |
+| `accepted_readings` | leitura aceite | depois da persistência da accepted reading, se a measurement estiver ativa | evidência temporal da leitura aceite |
+| `risk_assessments` | avaliação de risco | apenas quando a leitura é elegível e produz `RiskAssessment` | série temporal do risco calculado |
+| `area_risk_snapshots` | snapshot agregado da área | apenas quando existe snapshot derivado de uma avaliação de risco | série temporal do estado agregado por área |
+
+Em leituras aceites mas não elegíveis para risco, não há `risk_assessments` nem `area_risk_snapshots`, porque esses artefactos não existem nesse fluxo.
 
 O bucket nominal vem de [src/NatureProtector.Prevention.Host/appsettings.json](../../src/NatureProtector.Prevention.Host/appsettings.json): `InfluxDb:Bucket = np_telemetry`. [InfluxDbSettingsLoader](../../src/NatureProtector.Infrastructure.Influx/Configuration/InfluxDbSettingsLoader.cs) completa `Url`, `Token`, `Organization` e `Bucket` com ambiente e `.env` quando necessário.
 
@@ -1178,12 +1212,12 @@ Sem dados em Influx, o Grafana arranca, mas não fornece evidência operacional 
 | logs do simulador | `Simulator.Host` | `SimulationRunner`, `RabbitMqReadingPublisher` | `ExecuteAsync`, `EnsureChannel`, `PublishAsync` | arranque, resolução de contexto, criação de run, ciclos, publicação; falhas ficam visíveis sobretudo pela atualização da run e pela exceção relançada |
 | logs da prevenção | `Prevention.Host` | `PreventionWorker`, `ReadingEventProcessingService`, `InboxRetryWorker`, `ReadingRiskPipeline`, `PostgresAreaOperationalProjectionStore` | `HandleReceivedAsync`, `ProcessAsync`, `ExecuteAsync`, `ProcessAcceptedReadingAsync`, `SaveCellAsync`, `SaveAsync` | receção, rejeição, inbox, `ack`, retry, quarentena, pipeline e projeções |
 | logs da API | `Backoffice.Api` | hosting ASP.NET Core e respostas 503 do controller base | `Program.cs`, `EnsureControlPlaneAvailable` | arranque do host e indisponibilidade do control plane |
-| telemetria temporal | InfluxDB | `InfluxWriteService` | `WriteAcceptedReadingAsync`, `WriteRiskAssessmentAsync`, `WriteAreaRiskSnapshotAsync` | séries temporais paralelas ao estado relacional |
+| telemetria temporal | InfluxDB | `IInfluxWriteService` | writer real, writer seguro ou writer no-op conforme configuração | séries temporais paralelas ao estado relacional, quando ativas |
 | dashboarding | Grafana | datasource `NatureProtectorInfinityJson` e dashboard `natureprotector-overview` | provisioning + painel textual | apoio externo à exploração de Influx, não lógica de runtime |
 
 ### Distinção entre observabilidade interna e apoio externo
 
-- observabilidade interna do runtime: logs aplicacionais emitidos pelos hosts e `InfluxWriteService`;
+- observabilidade interna do runtime: logs aplicacionais emitidos pelos hosts e `IInfluxWriteService`;
 - apoio externo: Grafana, dashboards e guia de exploração;
 
 ### Notas de compreensão ou armadilhas
@@ -1195,7 +1229,7 @@ Sem dados em Influx, o Grafana arranca, mas não fornece evidência operacional 
 ### Estado atual
 
 - os três hosts têm pelo menos logs de arranque e operação básica;
-- a única escrita temporal confirmada no runtime atual passa por `InfluxWriteService`, chamado pelo `Prevention.Host`;
+- a escrita temporal confirmada no runtime atual passa pela fronteira `IInfluxWriteService`, chamada pelo `Prevention.Host` e configurável como real, segura ou no-op;
 - Grafana funciona como apoio externo à leitura de Influx e não como componente da lógica operacional;
 - a existência de `np.observability.raw` foi confirmada na topologia, mas não o seu consumo por um componente vivo desta branch.
 
@@ -1353,8 +1387,8 @@ Os testes não servem todos o mesmo propósito. Alguns fecham regras de domínio
 | Domínio base | `NatureProtector.Core.Tests` | áreas, grelha, sensores, risco, cenários, runs e primitivas | invariantes e semântica de domínio |
 | Contratos partilhados | `NatureProtector.Shared.Tests` | envelope, serialização, constantes de mensagens e opções RabbitMQ | compatibilidade entre produtor, consumidor e testes |
 | Simulação | `NatureProtector.Simulator.Host.Tests` | validação de opções, contexto, publishers, geração, run store e runner | explicação do caminho do simulador e das bifurcações de contexto |
-| Domínio de prevenção | `NatureProtector.Prevention.Tests` | scoring simples, snapshot service e repositórios in-memory | semântica do risco antes do host |
-| Host de prevenção | `NatureProtector.Prevention.Host.Tests` | worker, inbox, classifier, retry worker, pipeline e persistência host-specific | comportamento de receção, falha e projeções |
+| Domínio de prevenção | `NatureProtector.Prevention.Tests` | scoring simples, normalização, `RiskInput`, elegibilidade de risco, snapshot service e repositórios in-memory | semântica do risco antes do host |
+| Host de prevenção | `NatureProtector.Prevention.Host.Tests` | worker, inbox, idempotência concorrente, validação semântica, classifier, retry worker, pipeline, elegibilidade operacional e persistência host-specific | comportamento de receção, falha e projeções |
 | API | `NatureProtector.Backoffice.Api.Tests` | serviço PostgreSQL e endpoints HTTP | ponte entre `control.*`, `projection.*` e contratos de resposta |
 | Influx | `NatureProtector.Infrastructure.Influx.Tests` | opções, DI e tentativas de escrita remota | semântica da fronteira temporal e requisitos de configuração |
 | Integração | `NatureProtector.IntegrationTests` | compatibilidade entre envelopes do simulador e pipeline de prevenção | prova curta de encadeamento end-to-end sem broker real |
@@ -1382,6 +1416,14 @@ Os testes não servem todos o mesmo propósito. Alguns fecham regras de domínio
   Mostra a ordem útil do pipeline nominal: accepted reading, assessment, snapshot, projeções e escrita em Influx. Para onboarding, este ficheiro é mais rápido do que saltar logo entre cinco repositórios concretos.
 - [DefaultProcessingFailureClassifierTests.cs](../../tests/NatureProtector.Prevention.Host.Tests/Processing/DefaultProcessingFailureClassifierTests.cs)
   É a melhor forma de perceber como SQLSTATEs concretos viram falha transitória ou permanente e onde termina a semântica do classificador.
+- [ReadingSemanticValidatorTests.cs](../../tests/NatureProtector.Prevention.Host.Tests/Processing/ReadingSemanticValidatorTests.cs)
+  Mostra a nova fronteira semântica entre inbox e pipeline de risco: sensor válido, sensor inexistente, sensor inativo e sensor pertencente a outra área.
+- [NormalizedReadingTests.cs](../../tests/NatureProtector.Prevention.Tests/Readings/NormalizedReadingTests.cs)
+  Mostra como o envelope validado é convertido numa leitura interna normalizada sem mudar o contrato RabbitMQ.
+- [RiskInputTests.cs](../../tests/NatureProtector.Prevention.Tests/Risk/RiskInputTests.cs)
+  Mostra a fronteira mínima que o motor de risco consome atualmente.
+- [RiskEligibilityServiceTests.cs](../../tests/NatureProtector.Prevention.Tests/Risk/RiskEligibilityServiceTests.cs)
+  Mostra que a elegibilidade default continua permissiva e que já existe resultado explícito para leituras não elegíveis.
 - [PostgresSimulationContextSourceTests.cs](../../tests/NatureProtector.Simulator.Host.Tests/Services/PostgresSimulationContextSourceTests.cs)
   Explica melhor do que o serviço como `ParametersJson`, perfis de sensor e mecanismos de recurso de perfil são convertidos em `SimulationContext`.
 - [SimulationRunnerTests.cs](../../tests/NatureProtector.Simulator.Host.Tests/Services/SimulationRunnerTests.cs)
@@ -1397,7 +1439,11 @@ Os testes não servem todos o mesmo propósito. Alguns fecham regras de domínio
 
 ### Estado factual atual da bateria
 
-Na execução de validação usada nesta leitura, depois de [scripts/dotnet/Use-RepoDotnetEnvironment.ps1](../../scripts/dotnet/Use-RepoDotnetEnvironment.ps1), a suite completa passou com `586` testes através de `dotnet test .\NatureProtector.sln --nologo -v minimal -m:1 --no-restore`. A suite da API passou com `12` testes. Isto importa porque havia uma falha conhecida antiga em `PostgresControlPlaneServiceTests.cs`, mas ela não foi reproduzida na branch atual.
+Na execução de validação mais recente desta branch, a suite completa passou com `647` testes através de:
+
+`dotnet test .\NatureProtector.sln --nologo -v minimal -m:1 --no-restore`
+
+A suite `NatureProtector.Prevention.Host.Tests` passou com `78` testes e a suite `NatureProtector.Prevention.Tests` passou com `37` testes. Estes números são relevantes porque cobrem agora, além do fluxo anterior, idempotência concorrente, validação semântica sensor-área, `NormalizedReading`, `RiskInput`, elegibilidade de risco e o caminho de leitura aceite mas não elegível para risco.
 
 ### Porque esta camada é melhor ponto de entrada do que muita leitura dispersa de código
 
@@ -1427,9 +1473,10 @@ Para onboarding técnico, há três padrões úteis:
 
 ### Estado atual verificado
 
-- `dotnet test .\NatureProtector.sln --nologo -v minimal -m:1 --no-restore` passou com `586` testes;
-- `NatureProtector.Backoffice.Api.Tests` passou com `12` testes;
-- a falha antiga da API não foi confirmada na branch atual.
+- `dotnet build .\NatureProtector.sln --nologo --no-restore -m:1` passou;
+- `dotnet test .\NatureProtector.sln --nologo -v minimal -m:1 --no-restore` passou com `647` testes;
+- `NatureProtector.Prevention.Tests` passou com `37` testes;
+- `NatureProtector.Prevention.Host.Tests` passou com `78` testes.
 
 ## 17. Pontos de confusão, dívida e riscos de compreensão
 
@@ -1457,14 +1504,19 @@ Há vários pontos que continuam a justificar atenção especial. Aqui a ordem �
 
 - o ciclo de vida do evento na prevenção está repartido por `PreventionWorker`, `PostgresReadingEventInbox`, `ReadingEventProcessingService`, `InboxRetryWorker` e `DefaultProcessingFailureClassifier`;
 - a precedência do cenário está dividida entre `appsettings`, `GeneratedScenarioManifestLoader` e `PostgresSimulationContextSource`;
-- a ponte bootstrap -> API só fica totalmente clara quando se lê `ControlPlaneBootstrapper`, `NatureProtectorControlDbContext` e `PostgresControlPlaneService` em conjunto.
+- a ponte bootstrap -> API só fica totalmente clara quando se lê `ControlPlaneBootstrapper`, `NatureProtectorControlDbContext` e `PostgresControlPlaneService` em conjunto;
+- a semântica atual do risco está distribuída por `NormalizedReading`, `IRiskEligibilityService`, `RiskInput`, `IRiskScoringService`, `ReadingRiskPipeline` e pelos repositórios de persistência;
+- a política de observabilidade temporal está distribuída por `InfluxDbOptions`, `AddInfluxPersistence`, `NoOpInfluxWriteService`, `SafeInfluxWriteService` e o writer real.
 
 ### Riscos de compreensão para alguém novo
 
 - assumir que o simulador lê sempre manifestos locais, quando o caminho nominal atual reconstrói o cenário a partir de `ParametersJson` em PostgreSQL;
 - assumir que o `ack` do broker acontece depois do pipeline completo, quando na prática acontece depois da inbox e antes do processamento;
 - assumir que Grafana prova o estado do sistema por si só, quando hoje depende de Influx já estar a receber séries reais;
-- assumir que a API consegue materializar control plane, quando isso continua dependente do bootstrap e de acesso à base.
+- assumir que a API consegue materializar control plane, quando isso continua dependente do bootstrap e de acesso à base;
+- assumir que toda a invalidez de evento é rejeitada antes da inbox, quando agora a distinção é mais fina: invalidez técnica é rejeitada antes da inbox; incompatibilidade semântica com o plano de controlo é materializada e depois enviada para quarentena;
+- assumir que uma leitura aceite produz sempre score, quando agora existe uma fronteira explícita de elegibilidade. Uma leitura pode ser aceite para auditoria e terminar sem `RiskAssessment`;
+- assumir que InfluxDB é obrigatório para a pipeline funcionar, quando a baseline local pode correr com `InfluxDb:Enabled=false` e manter PostgreSQL como estado durável.
 
 ### Documentação auxiliar que pode induzir atraso de leitura
 
@@ -1484,3 +1536,4 @@ Há vários pontos que continuam a justificar atenção especial. Aqui a ordem �
 
 - Não ficou fechada nesta execução uma demonstração integral com bootstrap novo e os três hosts ativos ao mesmo tempo.
 - Não foi feita validação visual de Grafana durante uma run viva, apesar de a baseline local e a escrita para InfluxDB estarem suportadas pelo código e pelos testes.
+- Ficou preparada internamente a fronteira para evolução do motor de risco, mas ainda não foi implementado nenhum índice real como FWI, KBDI ou Haines.

@@ -6,7 +6,7 @@ O NatureProtector é uma plataforma orientada à prevenção e apoio operacional
 
 Hoje já existe uma baseline funcional e reproduzível com `RabbitMQ`, `PostgreSQL`, `InfluxDB`, `Grafana`, `Backoffice.Api`, `Simulator.Host` e `Prevention.Host`. Também já existe uma base de dados preparada e harmonizada para a área piloto de `Proença-a-Nova`, com artefactos territoriais, meteorológicos e de cenários que o simulador consegue consumir.
 
-Ao mesmo tempo, a arquitetura-alvo ainda não está totalmente fechada. O simulador já executa cenários e produz leituras determinísticas, mas ainda não está separado nas camadas que a investigação pede: verdade física, erro de medição e falha de transporte. O fluxo operacional já é durável e auditável na primeira vaga, mas ainda não expõe toda a semântica `accepted / rejected / normalized` como estados arquiteturais plenamente separados.
+Ao mesmo tempo, a arquitetura-alvo ainda não está totalmente fechada. O simulador já executa cenários e produz leituras determinísticas, mas ainda não está separado nas camadas que a investigação pede: verdade física, erro de medição e falha de transporte. O fluxo operacional já é durável, auditável e mais explícito do que na versão inicial: já existe validação semântica do sensor face à área, idempotência reforçada, fronteira interna `NormalizedReading -> RiskInput` e uma decisão explícita de elegibilidade para risco. Ainda falta, porém, transformar toda a semântica `accepted / rejected / normalized` em famílias de eventos e artefactos arquiteturais plenamente estabilizados.
 
 Este documento assume explicitamente essa dupla realidade. O objetivo não é apenas descrever o desenho ideal, nem apenas catalogar ficheiros. O objetivo é explicar, de forma progressiva, como o projeto funciona hoje, qual é a arquitetura-alvo e onde estão os principais desvios, prioridades e próximos passos.
 
@@ -41,6 +41,11 @@ Este documento pode ser lido de três formas.
 - `Modo autónomo local`: modo em que o simulador usa `appsettings` e ficheiros de definição locais, sem depender do plano de controlo em `PostgreSQL`.
 - `Baseline`: conjunto preparado e harmonizado de dados de entrada usado como base canónica da demonstração.
 - `Proveniência`: capacidade de rastrear um dado derivado até à sua origem, transformação, versão e contexto de utilização.
+- `NormalizedReading`: modelo interno da prevenção que representa uma leitura já validada tecnicamente e semanticamente, antes de ser convertida em input de risco.
+- `RiskInput`: fronteira mínima entre a pipeline operacional e o motor de scoring; impede que o motor de risco dependa diretamente do envelope bruto.
+- `Elegibilidade para risco`: decisão explícita que separa uma leitura aceite para auditoria de uma leitura que deve gerar avaliação de risco.
+- `Observabilidade temporal`: séries e medições escritas em InfluxDB para análise, diagnóstico e dashboards; não substitui o estado operacional durável em PostgreSQL.
+- `Idempotência operacional`: capacidade de tratar duplicados, retries e colisões concorrentes sem criar efeitos lógicos repetidos.
 
 ## Enquadramento e Escopo
 
@@ -82,11 +87,13 @@ Os drivers que mais condicionam a arquitetura são estes.
 As decisões de base já fechadas pelo projeto são estas.
 
 - `PostgreSQL` é a fonte de verdade do plano de controlo e do estado operacional persistido.
-- `InfluxDB` armazena telemetria e séries temporais operacionais.
+- `InfluxDB` armazena telemetria e séries temporais operacionais, mas não é condição obrigatória por defeito para considerar uma leitura operacionalmente processada.
 - `RabbitMQ` desacopla produção e consumo de eventos.
 - O simulador faz parte da fase atual e não é um extra periférico.
 - Os datasets e cenários devem ser rastreáveis, versionados e legíveis.
 - O fluxo técnico deve ser explicável desde a origem dos dados até à visualização operacional.
+- A validação técnica e a validação semântica são fronteiras distintas: contrato inválido é rejeitado antes da inbox; sensor inexistente, inativo ou fora da área é materializado e depois colocado em quarentena.
+- O cálculo de risco deve depender de inputs internos normalizados e elegíveis, não diretamente do envelope operacional bruto.
 
 O principal tradeoff da fase atual é claro: a equipa privilegiou uma cadeia demonstrável e funcional antes de fechar a modularização ideal. Isso acelerou a construção da baseline, dos cenários e da runtime, mas deixou alguns desvios entre a decomposição lógica desejada e a estrutura atual do código.
 
@@ -526,7 +533,7 @@ Quando o sensor falha, a leitura é emitida com valor `0.0` e estado operacional
 
 - o cenário `C` já existe como artefacto de configuração, mas a injeção completa de falhas no fluxo operacional ainda é sobretudo alvo;
 - o gerador atual é suficientemente útil para demonstração, mas ainda simplifica a passagem entre base física e observação de sensor;
-- quando uma leitura é emitida com estado `Invalid`, o fluxo operacional atual ainda a trata como input para scoring; isso deve ser lido como limitação conhecida do estado atual e não como semântica final desejada;
+- quando uma leitura é emitida com estado `Invalid`, o `PreventionWorker` rejeita-a antes da inbox como invalidez técnica/operacional de entrada; isso evita que a leitura contamine accepted readings, score, snapshots ou projeções;
 - a coerência temporal já é explícita ao nível do `event_time`.
 
 **Estado atual.** O simulador já é executável, determinístico e útil para a demonstração.
@@ -549,12 +556,12 @@ No estado atual, o caminho principal é este.
 
 1. o simulador publica `SensorReadingProduced` em `np.events` com a routing key `simulation.reading.produced`;
 2. a fila `np.ingestion.readings` é consumida pelo `Prevention.Host`;
-3. o worker valida estrutura mínima, persiste o envelope na inbox durável e só depois faz `ack`;
-4. o fluxo operacional processa a leitura;
-5. a leitura aceite é persistida e escrita em `InfluxDB`;
-6. é calculado um `RiskAssessment`;
-7. é calculado ou atualizado o `AreaRiskSnapshot`;
-8. são atualizados o estado operacional da área, o estado por célula e um alerta simples.
+3. o worker valida o contrato técnico, rejeita casos inválidos antes da inbox quando necessário, persiste o envelope tecnicamente válido na inbox durável e só depois faz `ack` ao broker;
+4. o serviço de processamento valida semanticamente o sensor contra o plano de controlo, confirmando existência, estado ativo e pertença à área declarada;
+5. eventos semanticamente inválidos são colocados em quarentena com motivo explícito, sem chegar à pipeline de risco;
+6. eventos semanticamente válidos atravessam a fronteira interna `NormalizedReading -> RiskEligibilityResult -> RiskInput`;
+7. se a leitura for aceite mas inelegível para risco, fica persistida como accepted reading e o processamento termina com sucesso, sem score nem projeções de risco;
+8. se for elegível, é calculado um `RiskAssessment`, atualizado o snapshot de área, atualizadas as projeções operacionais e escrita a telemetria temporal configurada.
 
 ### Broker e topologia
 
@@ -572,17 +579,22 @@ Os blocos operacionais que já existem em runtime são estes.
 
 | Bloco | Responsabilidade principal |
 | --- | --- |
-| `PreventionWorker` | consumo da fila principal, validação estrutural mínima e persistência inicial na inbox |
-| `PostgresReadingEventInbox` | deduplicação, registo do envelope, tentativas, novas tentativas e quarentena |
-| `ReadingEventProcessingService` | coordenação do processamento e decisão sobre nova tentativa ou quarentena |
-| `ReadingRiskPipeline` | persistência de leitura aceite, cálculo de risco, atualização de snapshots e escrita em `InfluxDB` |
+| `PreventionWorker` | consumo da fila principal, validação técnica, rejeição pré-inbox e materialização durável antes do `ack` |
+| `PostgresReadingEventInbox` | deduplicação, registo do envelope, tentativas, retries, quarentena e idempotência perante duplicados concorrentes esperados |
+| `ReadingEventProcessingService` | coordenação do processamento, validação semântica sensor-área e decisão entre sucesso, retry ou quarentena |
+| `ReadingSemanticValidator` | valida existência do sensor, estado ativo e pertença à área declarada antes da pipeline de risco |
+| `ReadingRiskPipeline` | normalização interna, persistência da leitura aceite, decisão de elegibilidade, scoring, snapshots, projeções e telemetria |
+| `RiskEligibilityService` | fronteira explícita entre leitura aceite e leitura elegível para cálculo de risco |
 | `InboxRetryWorker` | retoma e reprocessa eventos cuja próxima tentativa já é devida |
 | `PostgresAreaOperationalProjectionStore` | atualiza estado por célula, estado por área e alerta ativo simples |
-| `SimpleRiskScoringService` | scoring de risco por leitura com limiares simples e explicáveis |
+| `SimpleRiskScoringService` | scoring de risco por leitura elegível com limiares simples e explicáveis |
 
 ### Scoring atual, projeções e outputs operacionais
 
 O risco atual ainda não corresponde ao motor final da arquitetura-alvo, mas já existe um caminho real e explicável.
+
+A diferença arquitetural mais importante face à versão anterior é que o scoring já não deve ser lido como cálculo direto sobre o envelope RabbitMQ. O fluxo interno atual passa por `NormalizedReading`, depois por `RiskEligibilityResult`, depois por `RiskInput` e só então por `IRiskScoringService`. Esta alteração não muda os limiares atuais, mas prepara a substituição futura por motores mais ricos, como FWI, KBDI ou Haines, sem acoplar esses modelos ao contrato bruto de transporte.
+
 
 | Métrica | Lógica de scoring atualmente ativa |
 | --- | --- |
@@ -611,6 +623,8 @@ Isto já está implementado no código atual. Em particular:
 
 - `PreventionWorker` rejeita e persiste mensagens inválidas em `pipeline.rejected_events` quando o corpo não pode ser desserializado ou quando o envelope é nulo;
 - `ReadingEventProcessingService` decide se um evento válido deve ser concluído, reagendado para nova tentativa ou colocado em quarentena;
+- eventos tecnicamente válidos mas semanticamente incompatíveis com o plano de controlo, como `sensor_not_found`, `sensor_inactive` e `sensor_area_mismatch`, são colocados em quarentena depois da inbox;
+- leituras aceites mas inelegíveis para risco terminam como sucesso sem `RiskAssessment`, sem snapshot e sem projeções de risco;
 - `InboxRetryWorker` retoma eventos cujo momento de nova tentativa já chegou.
 
 - `pipeline.event_inbox`
@@ -621,6 +635,7 @@ Isto já está implementado no código atual. Em particular:
 Esta estrutura já permite:
 
 - deduplicação por `event_id`;
+- tratamento idempotente de unique violations esperadas em duplicados concorrentes;
 - registo de tentativas;
 - classificação de falhas;
 - reprocessamento de eventos cujo momento de nova tentativa já chegou;
@@ -628,11 +643,11 @@ Esta estrutura já permite:
 
 ### Limites atuais
 
-A arquitetura ainda não expõe por completo a semântica arquitetural `ReadingAccepted`, `ReadingRejected` e `ReadingNormalized` como famílias de eventos explícitas e estáveis. Hoje o fluxo operacional já consegue rejeitar, persistir, reprocessar e produzir efeitos de negócio, mas a normalização ainda não foi isolada como etapa e artefacto próprio com o mesmo nível de clareza. Além disso, uma interrupção durante o processamento ainda pode deixar eventos presos em `Processing`, porque não existe recuperação automática de tentativas interrompidas.
+A arquitetura ainda não expõe por completo a semântica arquitetural `ReadingAccepted`, `ReadingRejected` e `ReadingNormalized` como famílias de eventos explícitas e estáveis no broker ou como artefactos persistidos próprios. Hoje o fluxo operacional já consegue rejeitar, persistir, validar semanticamente, normalizar internamente, decidir elegibilidade, reprocessar e produzir efeitos de negócio, mas `NormalizedReading`, `RiskInput` e `RiskEligibilityResult` são fronteiras internas de código, não eventos publicados. Além disso, uma interrupção durante o processamento ainda pode deixar eventos presos em `Processing`, porque não existe recuperação automática de tentativas interrompidas.
 
-**Estado atual.** O fluxo operacional já é funcional, durável e mais sério do que uma simples cadeia em memória.
+**Estado atual.** O fluxo operacional já é funcional, durável, idempotente nos duplicados principais e mais explícito do que uma simples cadeia em memória.
 
-**Arquitetura-alvo.** Aceitação, rejeição, normalização, risco e alertas devem aparecer como etapas arquiteturais explicitamente separadas.
+**Arquitetura-alvo.** Aceitação, rejeição, normalização, elegibilidade, risco e alertas devem aparecer como etapas arquiteturais explicitamente separadas e observáveis.
 
 **Evolução futura.** A semântica de alertas, DLQ externa, replay e observabilidade detalhada deve enriquecer esta base.
 
@@ -672,6 +687,19 @@ O payload de `SensorReadingProduced` já transporta, entre outros, os campos:
 - `Longitude`
 - `OperationalState`
 
+### Modelos internos da prevenção
+
+A prevenção já introduz fronteiras internas que não mudam o contrato RabbitMQ, mas tornam o caminho de risco mais claro:
+
+| Modelo | Papel | Estado |
+| --- | --- | --- |
+| `NormalizedReading` | representa a leitura tecnicamente e semanticamente válida antes do cálculo de risco | `Implementado` como modelo interno |
+| `RiskEligibilityResult` | decide se uma leitura aceite deve gerar risco | `Implementado`; serviço default ainda permissivo |
+| `RiskInput` | input mínimo do motor de scoring | `Implementado` |
+| `RiskAssessment` | resultado persistido do scoring atual | `Implementado` |
+
+Isto é uma preparação importante para índices reais. O motor futuro não deve consumir `EventEnvelope<SensorReadingProducedPayload>` diretamente; deve consumir um input de risco já normalizado, validado e enriquecido com o estado necessário.
+
 ### Persistência operacional em PostgreSQL
 
 Os schemas atualmente relevantes são:
@@ -692,7 +720,7 @@ As tabelas mais relevantes já materializadas por schema são estas.
 
 ### Persistência temporal em InfluxDB
 
-As medições atualmente escritas são:
+As medições atualmente previstas para escrita são:
 
 - `accepted_readings`
 - `risk_assessments`
@@ -702,6 +730,10 @@ Esta divisão é arquiteturalmente relevante porque impede que o projeto trate `
 
 - `PostgreSQL` fixa estado de controlo, estado operacional durável e rasto de processamento;
 - `InfluxDB` concentra séries temporais úteis para observabilidade, dashboards e leitura histórica leve.
+
+A fronteira InfluxDB também já é configurável. Quando `InfluxDb:Enabled=false`, o host usa `NoOpInfluxWriteService` e não tenta escrever séries temporais. Quando `Enabled=true`, a política de falha e as measurements ativas são controladas pela infraestrutura de InfluxDB. Por defeito arquitetural, uma falha de InfluxDB pode ser tratada como falha de observabilidade tolerável, não como falha de negócio, desde que `FailPipelineOnWriteError=false`.
+
+A escrita temporal também evoluiu para um batch lógico por evento. A pipeline pode agrupar os pontos derivados de uma leitura processada numa operação de escrita, reduzindo overhead sem alterar RabbitMQ, PostgreSQL, `BasicAck`, scoring ou contratos externos.
 
 ### Semântica temporal
 
@@ -771,6 +803,9 @@ Há três opções de runtime que ajudam a explicar o estado real do sistema.
 | `Simulator.Host` | `ControlPlaneEnabled` | permite resolver contexto de simulação a partir do plano de controlo em `PostgreSQL` em vez de depender apenas de `appsettings` ou de um ficheiro de definição |
 | `Prevention.Host` | `PipelinePersistenceEnabled` | ativa a inbox durável, retries e persistência operacional em `PostgreSQL` |
 | `Backoffice.Api` | `BackofficeApi.ControlPlaneEnabled` | expõe a primeira superfície HTTP ligada ao plano de controlo real |
+| `Prevention.Host` | `InfluxDb.Enabled` | permite correr a pipeline sem dependência operacional de InfluxDB |
+| `Prevention.Host` | `InfluxDb.FailPipelineOnWriteError` | decide se falhas de observabilidade temporal falham ou não o processamento operacional |
+| `Prevention.Host` | `InfluxDb.Writes.*` | permite ativar ou desativar measurements específicas |
 
 Isto ajuda a distinguir duas coisas que a documentação precisa de refletir com honestidade:
 
@@ -850,7 +885,7 @@ O caminho de observabilidade já existe, mas ainda está numa vaga inicial.
 | datasource `Infinity` | `Implementado` | consulta de `InfluxDB` por HTTP/SQL |
 | dashboards operacionais finais | `Parcial` | ainda em maturação |
 
-Na prática, a arquitetura já suporta observação, mas ainda não fecha a superfície final de produto. Esta nuance tem de ficar clara: existe observabilidade real, mas não existe ainda um cockpit operacional maduro.
+Na prática, a arquitetura já suporta observação, mas ainda não fecha a superfície final de produto. Esta nuance tem de ficar clara: existe observabilidade real, mas não existe ainda um cockpit operacional maduro. Também é importante separar observabilidade disponível de observabilidade obrigatória: em ambiente local, InfluxDB pode ser desligado para isolar a pipeline operacional, mantendo PostgreSQL como fonte durável.
 
 ### Evidência arquitetural e valor demonstrável
 
@@ -860,7 +895,7 @@ O sistema já consegue gerar evidência em vários pontos:
 - eventos com envelope comum e semântica temporal;
 - inbox durável, retries e quarentena em `PostgreSQL`;
 - logs duráveis de leituras aceites, avaliações de risco e snapshots;
-- medições em `InfluxDB`;
+- medições em `InfluxDB`, quando a observabilidade temporal está ativa;
 - leitura por API;
 - visualização preliminar por `Grafana`.
 
@@ -890,8 +925,8 @@ Isto significa que a demonstração não depende apenas de logs de consola ou de
 | --- | --- |
 | domínio e modelos base | `src/NatureProtector.Core` |
 | contratos e mensagens partilhadas | `src/NatureProtector.Shared` |
-| lógica de risco e agregação | `src/NatureProtector.Prevention` |
-| host de execução da prevenção | `src/NatureProtector.Prevention.Host` |
+| lógica de risco, normalização mínima, elegibilidade e agregação | `src/NatureProtector.Prevention` |
+| host de execução da prevenção, validação semântica, inbox e pipeline operacional | `src/NatureProtector.Prevention.Host` |
 | host de execução da simulação | `src/NatureProtector.Simulator.Host` |
 | persistência em PostgreSQL | `src/NatureProtector.Infrastructure.Postgres` |
 | persistência em InfluxDB | `src/NatureProtector.Infrastructure.Influx` |
@@ -905,9 +940,11 @@ Isto significa que a demonstração não depende apenas de logs de consola ou de
 - `SimulationRunner` controla a execução temporal da simulação.
 - `ReadingGenerationService` contém hoje a lógica efetiva de geração de leituras, combinando base do cenário, variação temporal, ruído e indisponibilidade do sensor.
 - `Prevention.Host/Program.cs` compõe inbox, retry worker, fluxo operacional e persistência.
-- `ReadingRiskPipeline` concentra hoje o fluxo de persistência e avaliação de risco.
+- `ReadingRiskPipeline` concentra hoje o fluxo de normalização interna, persistência, elegibilidade, avaliação de risco, projeções e telemetria.
+- `ReadingSemanticValidator` valida o deployment do sensor contra o plano de controlo antes de permitir entrada na pipeline de risco.
+- `RiskEligibilityService` separa leitura aceite de leitura elegível para cálculo de risco.
 - `NatureProtectorControlDbContext` materializa os schemas `control`, `pipeline` e `projection`.
-- `InfluxWriteService` fixa as medições escritas em `InfluxDB`.
+- `InfluxWriteService`, `SafeInfluxWriteService` e `NoOpInfluxWriteService` fixam a fronteira temporal configurável de `InfluxDB`.
 
 ### Correspondência entre níveis de abstração e artefactos reais
 
@@ -916,9 +953,9 @@ Isto significa que a demonstração não depende apenas de logs de consola ou de
 | contexto e fronteira | `docs/architecture/`, `docs/planning/`, `src/README.md` |
 | preparação de dados | `scripts/data/*.py`, `scripts/data/README.md`, `data/baseline/`, `data/manifests/` |
 | simulador | `src/NatureProtector.Simulator.Host/Program.cs`, `SimulationRunner`, `ReadingGenerationService` |
-| fluxo operacional | `src/NatureProtector.Prevention.Host/PreventionWorker.cs`, `ReadingEventProcessingService`, `ReadingRiskPipeline` |
+| fluxo operacional | `src/NatureProtector.Prevention.Host/PreventionWorker.cs`, `ReadingEventProcessingService`, `ReadingSemanticValidator`, `ReadingRiskPipeline` |
 | persistência relacional | `src/NatureProtector.Infrastructure.Postgres/` e `NatureProtectorControlDbContext` |
-| persistência temporal | `src/NatureProtector.Infrastructure.Influx/InfluxWriteService.cs` |
+| persistência temporal | `src/NatureProtector.Infrastructure.Influx/InfluxWriteService.cs`, `SafeInfluxWriteService`, `NoOpInfluxWriteService` |
 | consulta e backoffice | `src/NatureProtector.Backoffice.Api/` |
 | validação automática | `tests/NatureProtector.*.Tests/` e `tests/NatureProtector.IntegrationTests/` |
 
@@ -958,8 +995,8 @@ Isto significa que a demonstração não depende apenas de logs de consola ou de
 | Contexto territorial e meteorológico | operacional na área piloto | distinguir melhor estático e dinâmico | expandir áreas e fontes |
 | Cenários | `A/B/C` materializados | ligar formalmente perfis, rede de sensores e runs | calibração e validação mais fortes |
 | Simulador | determinístico e funcional | separar três camadas | modelos mais ricos e maior variedade de sensores |
-| Fluxo operacional | inbox durável, retries e quarentena | normalização explícita e semântica mais rica | replay, DLQ e métricas operacionais |
-| Persistência e API | primeira vaga já funcional | alargar superfície de consulta | histórico e queries agregadas mais maduras |
+| Fluxo operacional | inbox durável, retries, quarentena, validação semântica, idempotência reforçada, normalização interna e elegibilidade | eventos/artefactos explícitos para accepted, rejected, normalized, eligibility e risk | replay, DLQ e métricas operacionais |
+| Persistência e API | primeira vaga já funcional; InfluxDB configurável e não crítico por defeito | alargar superfície de consulta e observabilidade | histórico, queries agregadas e dashboards mais maduros |
 | Visualização | base técnica pronta | dashboards operacionais reais | produto mais completo |
 
 Em síntese, o projeto já ultrapassou a fase puramente conceptual, mas ainda não atingiu a forma modular e metodológica final descrita nos documentos de investigação. A documentação deve, por isso, mostrar com clareza o que já existe, o que está em consolidação e o que permanece como evolução futura.
@@ -991,7 +1028,7 @@ Esta fase só deve ser considerada arquiteturalmente fechada quando as condiçõ
 
 1. existe rastreio claro entre artefactos de dataset, cenário escolhido, `simulation_run` e outputs operacionais;
 2. o simulador separa explicitamente a base física, a observação de sensor e a degradação de transporte;
-3. o fluxo operacional distingue de forma estável `accepted`, `rejected` e `normalized`;
+3. o fluxo operacional distingue de forma estável `accepted`, `rejected`, `normalized` e `risk eligibility`;
 4. o risco, os alertas e as projeções operacionais dependem de inputs canónicos e não diretamente de eventos raw;
 5. a superfície de consulta por API e dashboards consegue demonstrar o fluxo end-to-end com evidência suficiente.
 
@@ -1006,7 +1043,7 @@ Esta fase só deve ser considerada arquiteturalmente fechada quando as condiçõ
 ### Evidência técnica já verificada
 
 - a solução compila com sucesso;
-- a solução passa os testes automáticos existentes;
+- a solução passa os testes automáticos existentes, com validação recente da suite completa após as alterações de pipeline;
 - a área piloto e os artefactos de baseline já existem em ficheiros reais;
 - os cenários `A/B/C` já existem como ficheiros de definição consumíveis;
 - a runtime já usa `RabbitMQ`, `PostgreSQL`, `InfluxDB` e `Backoffice.Api`.
@@ -1027,7 +1064,8 @@ Ao nível da validação automática já existente, a solução também tem cobe
 - os alertas ainda são simples e sem ciclo de vida rico;
 - há fontes externas importantes ainda bloqueadas;
 - os dashboards ainda estão atrás da maturidade do fluxo operacional;
-- a modularização arquitetural ainda não acompanha totalmente a evolução funcional já alcançada.
+- a modularização arquitetural ainda não acompanha totalmente a evolução funcional já alcançada;
+- `NormalizedReading`, `RiskInput` e elegibilidade já existem como fronteiras internas, mas ainda não são eventos publicados nem artefactos persistidos próprios.
 
 ## Checklist de Consistência Arquitetural
 
@@ -1055,8 +1093,9 @@ Os próximos passos arquiteturais recomendados são estes.
 1. refazer e consolidar os diagramas para que reflitam o estado atual e a arquitetura-alvo sem misturar níveis;
 2. fechar melhor a ponte entre datasets, cenários e `simulation_runs`;
 3. separar o simulador em verdade física, erro de sensor e falha de transporte;
-4. tornar explícita a semântica `accepted / rejected / normalized`;
-5. enriquecer alertas, projeções, dashboards e superfície de consulta.
+4. evoluir a semântica interna `accepted / rejected / normalized / eligible` para artefactos e eventos arquiteturais mais explícitos;
+5. ativar regras reais de elegibilidade e preparar o input necessário para índices como FWI, KBDI ou Haines sem criar pseudo-implementações;
+6. enriquecer alertas, projeções, dashboards e superfície de consulta.
 
 ## Fecho
 
