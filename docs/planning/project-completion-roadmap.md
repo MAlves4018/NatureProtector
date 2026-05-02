@@ -121,12 +121,15 @@ Estas decisões devem ser tratadas como fixas, exceto se uma ADR deliberada as a
 * `SimulationRun` persistida em `control.simulation_runs`;
 * `Prevention.Host` com inbox durável;
 * retry interno e quarentena persistida;
+* rejeição pré-inbox de eventos tecnicamente inválidos, incluindo `OperationalState = Invalid`;
+* validação semântica sensor-área contra o plano de controlo antes da pipeline de risco;
 * persistência de leituras aceites;
 * persistência de avaliações de risco;
 * persistência de snapshots de risco por área;
 * persistência de projeções operacionais;
 * `Backoffice.Api` de leitura sobre `control` e `projection`;
 * observabilidade inicial com `OpenTelemetry`, `InfluxDB`, `Grafana` e documentação técnica complementar;
+* modo local com `InfluxDb:Enabled=false`, writer `NoOp` e batch síncrono por evento quando `InfluxDB` está ativo;
 * documentação de implementação em `docs/`;
 * testes reforçados nos adaptadores PostgreSQL da `NatureProtector.Prevention.Host`;
 * coverage consolidada recente:
@@ -142,9 +145,6 @@ Estas decisões devem ser tratadas como fixas, exceto se uma ADR deliberada as a
 * score operacional final;
 * alertas finais com histerese, cooldown, acknowledgement e justificação rica;
 * agregação de área mais avançada;
-* modo local explícito para reduzir ou desligar `InfluxDB`;
-* validação cruzada forte entre `AreaId` do envelope e deployment do sensor;
-* idempotência concorrente robusta nos adaptadores `read-then-insert`;
 * camada Aspire/AppHost para desenvolvimento local, ainda experimental.
 
 ### 4.3 Pendente ou dependente de pesquisa
@@ -221,10 +221,9 @@ Estas decisões devem ser tratadas como fixas, exceto se uma ADR deliberada as a
 
 ### 5.3 Lacunas atuais face à fase alvo
 
-* já existe integração runtime com `PostgreSQL` para `control`, pipeline durável e projeções, mas ainda há pontos de concorrência a estabilizar;
+* já existe integração runtime com `PostgreSQL` para `control`, pipeline durável e projeções, com mitigação de duplicados concorrentes nos adaptadores principais; ainda falta validar esta política em cenários end-to-end mais longos;
 * já existe baseline preparada em ficheiros e documentação de datasets/manifests, mas ainda falta fechar a rastreabilidade completa entre datasets, cenários, runs e resultados;
-* já existe inbox durável e store básica de idempotência, mas ainda falta fechar a semântica completa `accepted / rejected / normalized`;
-* ainda não existe `RiskInput` como fronteira totalmente explícita;
+* já existe inbox durável, rejeição técnica, validação semântica, normalização interna e `RiskInput`; ainda falta fechar a semântica completa `accepted / rejected / normalized` como eventos ou artefactos arquiteturais estáveis;
 * a API já expõe a superfície principal de leitura, mas ainda não fecha comandos e estados operacionais mais ricos;
 * o simulador é útil e determinístico, mas ainda não está formalmente separado em verdade física, observação e falha de transporte;
 * a prevenção ainda contém lógica de runtime no host que futuramente poderá migrar para módulo próprio de pipeline;
@@ -242,7 +241,7 @@ Este marco não tem como objetivo implementar toda a V1 final. O objetivo é est
 
 * README principal atualizado;
 * roadmap atualizado;
-* code/design review documentada;
+* revisão de código e desenho documentada nos documentos arquiteturais existentes;
 * build limpo e repetível;
 * testes verdes;
 * coverage consolidada atualizada;
@@ -266,13 +265,12 @@ Este marco não tem como objetivo implementar toda a V1 final. O objetivo é est
 
 ### 6.4 Riscos prioritários após este marco
 
-1. idempotência baseada em `read-then-insert` ainda vulnerável a corridas de concorrência;
-2. validação cruzada incompleta entre `AreaId` do envelope e deployment do sensor;
-3. custo síncrono das escritas para `InfluxDB`;
-4. ausência de modo local explícito para reduzir/desligar observabilidade temporal;
-5. simulador ainda não separado em camadas metodológicas;
-6. semântica `accepted/rejected/normalized` ainda incompleta;
-7. score e alertas finais bloqueados por maturação da pesquisa.
+1. custo síncrono das escritas para `InfluxDB` quando a observabilidade temporal está ativa;
+2. ausência de recuperação automática para eventos que fiquem em `Processing` após interrupção do host;
+3. validação end-to-end da idempotência concorrente em execuções mais longas;
+4. simulador ainda não separado em camadas metodológicas;
+5. semântica `accepted/rejected/normalized` ainda incompleta como eventos ou artefactos estáveis;
+6. score e alertas finais bloqueados por maturação da pesquisa.
 
 ## 7. Objetivos de Entrega da Fase Atual
 
@@ -722,7 +720,7 @@ Parcialmente concluída. Já existe documentação útil para navegação, imple
 * criar ou atualizar `docs/simulation/simulation-spec.md`;
 * documentar estado do `AppHost`;
 * documentar InfluxDB como potencial gargalo local;
-* manter `code-and-design-review.md` atualizado.
+* manter a revisão técnica alinhada nos documentos arquiteturais existentes.
 
 ### Critérios de saída
 
@@ -855,12 +853,12 @@ Consolidar um fluxo durável, idempotente, auditável e semanticamente explícit
 
 ### Estado atual
 
-Materialmente adiantada em durabilidade, retries, quarentena e persistência. Parcial na semântica `accepted/rejected/normalized`.
+Materialmente adiantada em durabilidade, retries, quarentena, rejeição técnica, validação semântica, normalização interna e persistência. Parcial na semântica `accepted/rejected/normalized` como superfície arquitetural estável.
 
 ### Tarefas
 
-* corrigir ou mitigar idempotência concorrente baseada em `read-then-insert`;
-* introduzir validação cruzada entre `AreaId` do envelope e deployment do sensor;
+* manter a mitigação de idempotência concorrente já aplicada nos adaptadores principais e validá-la em cenários end-to-end;
+* manter a validação cruzada entre `AreaId` do envelope e deployment do sensor;
 * consolidar estados:
 
   * `Accepted`;
@@ -870,8 +868,7 @@ Materialmente adiantada em durabilidade, retries, quarentena e persistência. Pa
   * `RetryPending`;
   * `Quarantined`;
   * `ExcludedFromRisk`;
-* implementar ou formalizar `NormalizedReading`;
-* implementar ou formalizar `RiskInput`;
+* evoluir `NormalizedReading` e `RiskInput` de fronteiras internas implementadas para contratos semânticos plenamente documentados;
 * emitir ou registar explicitamente:
 
   * `ReadingAccepted`;
@@ -961,7 +958,7 @@ Parcialmente adiantada. Já existe observabilidade inicial, InfluxDB e Grafana, 
 
 ### Tarefas
 
-* criar modo local para reduzir/desligar escritas em `InfluxDB`;
+* manter documentado e testado o modo local com `InfluxDb:Enabled=false`;
 * avaliar batching ou desacoplamento das escritas para `InfluxDB`;
 * manter measurements e tags documentados;
 * adicionar dashboards para:
@@ -1053,7 +1050,7 @@ Significativamente melhorado. A coverage global e a coverage da `Prevention.Host
 * `PG-10` Consolidar `pipeline.event_processing_attempts`.
 * `PG-11` Consolidar rejeições e quarentena.
 * `PG-12` Consolidar projeções operacionais.
-* `PG-13` Corrigir idempotência concorrente nos adaptadores `read-then-insert`.
+* `PG-13` Validar idempotência concorrente dos adaptadores principais em cenários end-to-end.
 
 ## SIM
 
@@ -1074,10 +1071,10 @@ Significativamente melhorado. A coverage global e a coverage da `Prevention.Host
 
 * `PIPE-01` Validar envelope.
 * `PIPE-02` Validar semântica.
-* `PIPE-03` Validar `AreaId` do envelope contra deployment do sensor.
-* `PIPE-04` Implementar normalização explícita.
-* `PIPE-05` Formalizar `NormalizedReading`.
-* `PIPE-06` Formalizar `RiskInput`.
+* `PIPE-03` Manter validação `AreaId` do envelope contra deployment do sensor.
+* `PIPE-04` Consolidar normalização explícita.
+* `PIPE-05` Formalizar semanticamente `NormalizedReading`.
+* `PIPE-06` Formalizar semanticamente `RiskInput`.
 * `PIPE-07` Garantir idempotência por `event_id`.
 * `PIPE-08` Consolidar persistência da inbox.
 * `PIPE-09` Consolidar logging de tentativas.
@@ -1112,7 +1109,7 @@ Significativamente melhorado. A coverage global e a coverage da `Prevention.Host
 ## OBS
 
 * `OBS-01` Documentar custo atual das escritas em `InfluxDB`.
-* `OBS-02` Criar modo local para reduzir/desligar `InfluxDB`.
+* `OBS-02` Manter modo local para reduzir/desligar `InfluxDB`.
 * `OBS-03` Avaliar batching ou desacoplamento.
 * `OBS-04` Rastrear supressão de duplicados.
 * `OBS-05` Rastrear accepted/rejected/normalized.
@@ -1137,7 +1134,7 @@ Significativamente melhorado. A coverage global e a coverage da `Prevention.Host
 * `DOC-01` Manter README principal atualizado.
 * `DOC-02` Manter `implementation.md` atualizado.
 * `DOC-03` Manter roadmap sincronizado com código e pesquisa.
-* `DOC-04` Manter code/design review atualizada.
+* `DOC-04` Manter a revisão de código e desenho alinhada nos documentos arquiteturais existentes.
 * `DOC-05` Documentar decisões arquiteturais em ADRs quando estabilizadas.
 * `DOC-06` Documentar limitações conhecidas da baseline local.
 
@@ -1274,7 +1271,7 @@ O primeiro marco recomendado é:
 * repositório com build/test/coverage limpos;
 * README principal atualizado;
 * roadmap fundido e atualizado;
-* code/design review registada;
+* revisão de código e desenho registada nos documentos arquiteturais existentes;
 * coverage forte nos adaptadores PostgreSQL da pipeline;
 * riscos técnicos priorizados;
 * decisão explícita sobre AppHost;
@@ -1283,11 +1280,11 @@ O primeiro marco recomendado é:
 
 Depois deste marco, a equipa deve avançar para:
 
-1. corrigir idempotência concorrente nos adaptadores PostgreSQL;
-2. validar `AreaId` do envelope contra deployment do sensor;
-3. criar modo local/reduzido para InfluxDB;
+1. validar idempotência concorrente dos adaptadores PostgreSQL em cenários end-to-end;
+2. manter a validação `AreaId` do envelope contra deployment do sensor coberta por testes;
+3. medir novamente o modo InfluxDB ativo após o batch por evento;
 4. consolidar semântica `accepted/rejected/normalized`;
-5. preparar `NormalizedReading`, `RiskInput` e casos canónicos;
+5. preparar casos canónicos sobre `NormalizedReading`, `RiskInput` e elegibilidade;
 6. só depois retomar modularização estrutural maior.
 
 ## 20. Definition of Done para a Fase Atual
@@ -1298,7 +1295,7 @@ A fase atual está concluída quando o projeto consegue demonstrar:
 2. um cenário associado a artefactos de dataset versionados;
 3. uma simulation run determinística;
 4. fluxo de eventos com idempotência;
-5. distinção explícita entre aceitação, rejeição, normalização, retry e quarentena;
+5. distinção explícita entre aceitação, rejeição, normalização interna, retry e quarentena;
 6. risco por célula e por área;
 7. warnings e alarms com justificação;
 8. projeções servidas à API/UI;

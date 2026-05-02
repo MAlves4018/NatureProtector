@@ -35,4 +35,8 @@ docs/structurizr/output/*
 docs/structurizr/.structurizr/
 docs/structurizr/workspace.json
 
+webUI/node_modules/
+webUI/dist/
+webUI/.vite/
+
 .env

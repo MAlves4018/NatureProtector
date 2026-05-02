@@ -26,6 +26,8 @@ Assim evitamos dois extremos: nem tudo fica espalhado por pequenos ficheiros loc
   - visão operacional do que já pode ser corrido e observado hoje;
 - [architecture/grafana-influx-dashboard-guide.md](architecture/grafana-influx-dashboard-guide.md)
   - guia prático para ligar o `Grafana` ao `InfluxDB`, descobrir tabelas e construir dashboards;
+- [architecture/pipeline-influx-options.md](architecture/pipeline-influx-options.md)
+  - estado atual da escrita temporal em `InfluxDB`, modos locais e impacto na pipeline;
 - [architecture/postgresql-architecture.md](architecture/postgresql-architecture.md)
   - referência consolidada do papel atual do `PostgreSQL`, cobrindo `control`, `pipeline`, `projection`, bootstrap, runtime e API;
 - [structurizr/README.md](structurizr/README.md)

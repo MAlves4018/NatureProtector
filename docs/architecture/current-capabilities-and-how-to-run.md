@@ -42,7 +42,7 @@ Este documento não cobre:
 | consumir eventos e materializar estado operacional durável | `Implementado` | [`../../src/NatureProtector.Prevention.Host/Program.cs`](../../src/NatureProtector.Prevention.Host/Program.cs) |
 | observar o broker e a topologia principal | `Implementado` | `RabbitMQ Management` |
 | observar schemas `control`, `pipeline` e `projection` | `Implementado` | `PostgreSQL` |
-| observar telemetria em `InfluxDB` | `Implementado`, mas depende de token válido | `Prevention.Host` + `InfluxDB` |
+| observar telemetria em `InfluxDB` | `Implementado`, quando `InfluxDb:Enabled=true` e existe token válido | `Prevention.Host` + `InfluxDB` |
 | usar Grafana como observabilidade de apoio | `Parcial` | baseline local |
 
 ## Pré-condições mínimas
@@ -55,12 +55,12 @@ Antes de arrancar o sistema, assume estas condições.
 - A baseline de dados da área piloto já existe no repositório em [`../../data/baseline/areas/proenca-a-nova/`](../../data/baseline/areas/proenca-a-nova/).
 - Os manifests de cenário já existem em [`../../data/manifests/scenarios/`](../../data/manifests/scenarios/).
 
-Pré-condição importante para o `Prevention.Host`:
+Nota importante para o `Prevention.Host`:
 
 - o ficheiro [`../../src/NatureProtector.Prevention.Host/appsettings.json`](../../src/NatureProtector.Prevention.Host/appsettings.json) vem com `InfluxDb:Token` vazio;
-- no entanto, o host aplica fallback por variáveis de ambiente e por `.env` através de [`../../src/NatureProtector.Infrastructure.Influx/Configuration/InfluxDbSettingsLoader.cs`](../../src/NatureProtector.Infrastructure.Influx/Configuration/InfluxDbSettingsLoader.cs);
-- se já levantaste a baseline com [`../../infra/scripts/up.ps1`](../../infra/scripts/up.ps1), o `.env` costuma já existir e, por omissão, herda o token de [`.env.example`](../../.env.example);
-- se o `.env` não existir, ou se o token tiver sido removido, o `Prevention.Host` falha cedo na configuração do `InfluxDB`.
+- por omissão, `InfluxDb:Enabled=false`, pelo que o host usa `NoOpInfluxWriteService` e consegue processar a pipeline operacional sem token de `InfluxDB`;
+- quando `InfluxDb:Enabled=true`, o host aplica fallback por variáveis de ambiente e por `.env` através de [`../../src/NatureProtector.Infrastructure.Influx/Configuration/InfluxDbSettingsLoader.cs`](../../src/NatureProtector.Infrastructure.Influx/Configuration/InfluxDbSettingsLoader.cs);
+- nesse modo ativo, se o token efetivo não existir, o writer real de `InfluxDB` falha cedo na configuração.
 
 Pré-condição importante para os comandos `dotnet`:
 
@@ -166,11 +166,13 @@ dotnet run --project .\src\NatureProtector.Prevention.Host
 
 Condição prática:
 
-- confirma primeiro que existe token efetivo para `InfluxDb` por `appsettings`, variável de ambiente ou `.env`.
+- não é necessário token de `InfluxDB` para a baseline operacional por omissão, porque `InfluxDb:Enabled=false`;
+- se ativares `InfluxDb:Enabled=true`, confirma primeiro que existe token efetivo por `appsettings`, variável de ambiente ou `.env`.
 
 Por omissão, [`../../src/NatureProtector.Prevention.Host/appsettings.json`](../../src/NatureProtector.Prevention.Host/appsettings.json) usa:
 
 - `PipelinePersistenceEnabled = true`
+- `InfluxDb:Enabled = false`
 - `MaxProcessingAttempts = 3`
 - `RetryDelaySeconds = [5, 30]`
 - `RetryPollingIntervalSeconds = 5`
@@ -215,7 +217,7 @@ Como observar:
 
 ### PostgreSQL
 
-O que já existe hoje:
+O que já existe hoje, quando a escrita temporal está ativa:
 
 - schema `control` para configuração e runs;
 - schema `pipeline` para inbox, tentativas, rejeições e quarentena;
@@ -351,10 +353,10 @@ Invoke-RestMethod 'http://localhost:5254/api/control/simulation-runs?areaCode=pr
 
 ### Percurso D. Arrancar o Prevention.Host
 
-1. Confirmar token válido de `InfluxDb`.
-2. Correr `.\scripts\dotnet\Use-RepoDotnetEnvironment.ps1`.
-3. Correr `dotnet run --project .\src\NatureProtector.Prevention.Host`.
-4. Esperar o host em escuta, sem falhas de configuração.
+1. Correr `.\scripts\dotnet\Use-RepoDotnetEnvironment.ps1`.
+2. Correr `dotnet run --project .\src\NatureProtector.Prevention.Host`.
+3. Esperar o host em escuta, sem falhas de configuração.
+4. Se quiseres observar `InfluxDB`, ativar `InfluxDb:Enabled=true` e confirmar token válido antes de arrancar o host.
 
 ### Percurso E. Arrancar o Simulator.Host
 
@@ -408,17 +410,17 @@ Leitura correta deste modo:
 | que o risco já foi materializado | correr simulador com prevenção ativa | crescimento de `projection.risk_assessment_log` e `projection.area_risk_snapshot_log` |
 | que a run ficou persistida | arrancar simulador em modo com plano de controlo | `GET /api/control/simulation-runs` |
 | se existem retries ou quarentena | correr a pipeline e depois consultar `pipeline.event_inbox`, `pipeline.processing_attempts`, `pipeline.quarantined_events` | `PostgreSQL` |
-| que a escrita para Influx está ligada | correr prevenção com token válido | ausência de erro de configuração e observação por `Grafana` |
+| que a escrita para Influx está ligada | correr prevenção com `InfluxDb:Enabled=true` e token válido | ausência de erro de configuração e observação por `Grafana` |
 
 ## Limites atuais e notas práticas
 
-- O `Prevention.Host` depende de token válido para `InfluxDB`; o `appsettings.json` do repositório não vem pronto para isso.
-- Se existir `.env` criado a partir de [`.env.example`](../../.env.example), esse token já pode ser resolvido automaticamente sem edição manual do `appsettings.json`.
+- O `Prevention.Host` não depende de `InfluxDB` para completar a pipeline operacional por omissão; nessa configuração, `PostgreSQL` permanece o estado durável e `InfluxDB` fica desligado.
+- Se `InfluxDb:Enabled=true`, é necessário token válido por `appsettings`, variável de ambiente ou `.env`.
 - `Grafana` já sobe, mas a frente de dashboards ainda é mais útil como prova de baseline do que como consola operacional final.
 - O modo por omissão do simulador usa `ControlPlaneEnabled = true`; se o bootstrap do `PostgreSQL` não tiver sido feito, esse caminho falha.
 - Existe um modo autónomo local para o simulador, mas não é o caminho principal recomendado nesta fase.
 - O estado semântico completo `accepted / rejected / normalized` ainda não está exposto como famílias autónomas de eventos; o que existe hoje é inbox durável, rejeição técnica, retries, quarentena e materialização operacional.
-- Leituras emitidas pelo simulador com `OperationalState = Invalid` ainda entram na pipeline de scoring; isto deve ser entendido como limitação conhecida do estado atual.
+- Leituras emitidas pelo simulador com `OperationalState = Invalid` são rejeitadas pelo `PreventionWorker` antes da inbox e não entram na pipeline de scoring.
 - Se o host for interrompido a meio do processamento de um evento já aceite pela inbox, esse registo pode ficar em `Processing` até intervenção manual, porque ainda não existe recuperação automática dessas tentativas interrompidas.
 - Para o detalhe consolidado de `control`, `pipeline` e `projection`, ver [postgresql-architecture.md](postgresql-architecture.md).
 

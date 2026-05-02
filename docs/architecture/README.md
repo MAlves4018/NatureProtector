@@ -14,6 +14,8 @@ Esta pasta concentra a documentação de arquitetura do projeto, com foco princi
   - documento operacional focado apenas no que já é possível correr, observar e demonstrar hoje;
 - [grafana-influx-dashboard-guide.md](grafana-influx-dashboard-guide.md)
   - guia prático para datasource, queries, painéis e desenho dos dashboards sobre `InfluxDB`;
+- [pipeline-influx-options.md](pipeline-influx-options.md)
+  - referência do modo configurável de escrita em `InfluxDB`, incluindo `NoOp`, tolerância a falhas e batch por evento;
 - [postgresql-architecture.md](postgresql-architecture.md)
   - referência consolidada do papel do `PostgreSQL` na arquitetura atual, unificando a leitura das fases 1 a 9;
 - [diagrams/](diagrams/)

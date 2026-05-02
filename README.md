@@ -155,7 +155,7 @@ O relatório consolidado fica em `coveragereport_core/index.html`.
 * [docs/README.md](docs/README.md)
 * [docs/architecture/README.md](docs/architecture/README.md)
 * [docs/architecture/implementation.md](docs/architecture/implementation.md)
-* [docs/architecture/code-and-design-review.md](docs/architecture/code-and-design-review.md)
+* [docs/architecture/pipeline-influx-options.md](docs/architecture/pipeline-influx-options.md)
 * [docs/doxygen/pages/mainpage.md](docs/doxygen/pages/mainpage.md)
 * [docs/docfx/docfx.json](docs/docfx/docfx.json)
 * [docs/structurizr/README.md](docs/structurizr/README.md)

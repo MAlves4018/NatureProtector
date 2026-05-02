@@ -1532,7 +1532,7 @@ Há vários pontos que continuam a justificar atenção especial. Aqui a ordem �
 - o `Prevention.Host` implementa rejeição pré-inbox, retry, quarentena e projeções duráveis;
 - InfluxDB é escrita paralela pelo `Prevention.Host` e não fonte de decisão de negócio.
 
-### Melhorias possiveis
+### Melhorias possíveis
 
 - Não ficou fechada nesta execução uma demonstração integral com bootstrap novo e os três hosts ativos ao mesmo tempo.
 - Não foi feita validação visual de Grafana durante uma run viva, apesar de a baseline local e a escrita para InfluxDB estarem suportadas pelo código e pelos testes.

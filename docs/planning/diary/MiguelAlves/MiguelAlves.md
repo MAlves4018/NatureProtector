@@ -317,6 +317,8 @@ Registar, de forma primeiro estruturada e só depois mais detalhada, o trabalho 
 16. Foram revistos componentes da Backoffice API e testes associados, incluindo compatibilidade com contratos atualizados e alinhamento com a leitura de `control.*` e `projection.*`.
 17. Foi feita manutenção do repositório, incluindo resolução de conflitos após `git pull`, atualização do `.gitignore`, validação de build, análise de artefactos gerados e separação entre código demonstrável e frentes experimentais.
 18. Foram executadas validações sucessivas com `dotnet build --no-restore` e `dotnet test --no-restore`; no final das alterações da pipeline, a solução passou com 647 testes.
+19. Foi feita uma atualização documental transversal para alinhar melhor o estado descrito do projeto com o estado real da branch, incluindo README, documentação de arquitetura, documentação de implementação, roadmap, documentação de testes e capacidades atuais da baseline.
+20. Foram criados scripts de setup e validação local para verificar pré-requisitos do ambiente e o estado da baseline, incluindo .NET, Docker, Docker Compose, Git, Node/npm, Perl, MiKTeX, ficheiros `.env`, serviços Docker, RabbitMQ, PostgreSQL, InfluxDB, Grafana e Backoffice API.
 
 ### Resultado principal da quinzena
 
@@ -354,6 +356,8 @@ Em paralelo, foi expandido o conjunto de diagramas de implementação em `docs/a
 
 Esta separação tornou os diagramas mais úteis, porque cada um passou a responder a uma pergunta técnica concreta. O foco principal foi alinhar os diagramas com o comportamento real da runtime, sobretudo nos pontos onde a leitura errada poderia levar a conclusões incorretas: momento do `BasicAck`, papel da inbox, caminho da quarentena, diferença entre observabilidade e estado operacional, e nova fronteira de cálculo de risco.
 
+Além do `implementation.md` e do `architecture.md`, foram também atualizados documentos auxiliares para reduzir desalinhamentos entre documentação e branch atual. Isto incluiu o `README.md`, `docs/README.md`, `docs/architecture/README.md`, `current-capabilities-and-how-to-run.md`, `project-completion-roadmap.md` e `tests/README.md`. O objetivo foi tornar mais claro o que já é baseline demonstrável, o que é experimental, o que depende de setup local e que partes ainda devem ser tratadas como trabalho futuro.
+
 ---
 
 ## 3. Organização das ferramentas de documentação técnica
@@ -370,6 +374,9 @@ No Structurizr, o trabalho foi mais corretivo. A primeira validação mostrou pr
 
 Também foram organizados scripts auxiliares em `scripts/docs`, para tornar a geração, limpeza e validação da documentação menos dependente de comandos manuais dispersos. Esta organização ajuda a tornar o processo documental mais repetível e mais fácil de recuperar no futuro.
 
+Foi também criada uma primeira camada de documentação operacional em `docs/setup/`, focada na configuração da baseline local. Esta documentação descreve os pré-requisitos, o ficheiro `.env`, o arranque dos serviços Docker, o bootstrap do control plane, a execução dos hosts .NET, os modos de InfluxDB, o estado atual do candidato de frontend em `webUI` e problemas frequentes de setup.
+
+Em paralelo, foram criados scripts em `scripts/setup/` para validar o ambiente local de forma assistida. O `Test-LocalPrerequisites.ps1` verifica ferramentas e ficheiros necessários ou recomendados, como .NET SDK, Docker, Docker Compose, PowerShell, Git, `.env`, Node/npm, Strawberry Perl e MiKTeX. O `Test-LocalBaseline.ps1` verifica o estado da baseline depois de os serviços estarem ativos, incluindo RabbitMQ, PostgreSQL, InfluxDB, Grafana e Backoffice API.
 ---
 
 ## 4. Diagnóstico operacional da pipeline em execução real
@@ -536,6 +543,7 @@ A correção do teste foi integrada, mas o `AppHost` ficou identificado como fre
 
 Ao longo das alterações da pipeline, foram feitas validações sucessivas. A contagem de testes aumentou com a introdução de novos testes de idempotência, validação semântica, normalização, input de risco e elegibilidade. No estado final desta sequência, a solução passou com 647 testes.
 
+Nesta fase também foram revistos ficheiros de documentação e suporte que não alteram a lógica de negócio, mas melhoram a operabilidade do projeto. As alterações incluíram documentação de topo, documentação de arquitetura, roadmap, documentação de testes, documentação de setup e scripts de validação local. Foi ainda atualizado o `package-lock.json` do `webUI` na sequência da instalação de dependências com `npm install`, embora o frontend continue a ser tratado como candidato em configuração e não como parte final estabilizada da baseline.
 ---
 
 ## 13. Resultado da quinzena e próximos passos

@@ -121,7 +121,8 @@ Isto reforça a decisão arquitetural atual: `PostgreSQL` permanece o estado dur
 
 O roadmap em [../docs/planning/project-completion-roadmap.md](../docs/planning/project-completion-roadmap.md) continua a orientar as próximas vagas de testes, nomeadamente:
 
-* semântica completa de rejeição, retry e quarentena;
-* modos locais e falhas em `InfluxDB`;
+* semântica final de `accepted`, `rejected` e `normalized`;
+* recuperação de tentativas interrompidas e casos canónicos de retry/quarentena;
+* modos locais, batch e falhas em `InfluxDB`;
 * casos canónicos end-to-end;
 * superfície da `Backoffice.Api` e comportamento sem dados.
