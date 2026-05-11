@@ -377,6 +377,7 @@ Também foram organizados scripts auxiliares em `scripts/docs`, para tornar a ge
 Foi também criada uma primeira camada de documentação operacional em `docs/setup/`, focada na configuração da baseline local. Esta documentação descreve os pré-requisitos, o ficheiro `.env`, o arranque dos serviços Docker, o bootstrap do control plane, a execução dos hosts .NET, os modos de InfluxDB, o estado atual do candidato de frontend em `webUI` e problemas frequentes de setup.
 
 Em paralelo, foram criados scripts em `scripts/setup/` para validar o ambiente local de forma assistida. O `Test-LocalPrerequisites.ps1` verifica ferramentas e ficheiros necessários ou recomendados, como .NET SDK, Docker, Docker Compose, PowerShell, Git, `.env`, Node/npm, Strawberry Perl e MiKTeX. O `Test-LocalBaseline.ps1` verifica o estado da baseline depois de os serviços estarem ativos, incluindo RabbitMQ, PostgreSQL, InfluxDB, Grafana e Backoffice API.
+
 ---
 
 ## 4. Diagnóstico operacional da pipeline em execução real
@@ -544,6 +545,7 @@ A correção do teste foi integrada, mas o `AppHost` ficou identificado como fre
 Ao longo das alterações da pipeline, foram feitas validações sucessivas. A contagem de testes aumentou com a introdução de novos testes de idempotência, validação semântica, normalização, input de risco e elegibilidade. No estado final desta sequência, a solução passou com 647 testes.
 
 Nesta fase também foram revistos ficheiros de documentação e suporte que não alteram a lógica de negócio, mas melhoram a operabilidade do projeto. As alterações incluíram documentação de topo, documentação de arquitetura, roadmap, documentação de testes, documentação de setup e scripts de validação local. Foi ainda atualizado o `package-lock.json` do `webUI` na sequência da instalação de dependências com `npm install`, embora o frontend continue a ser tratado como candidato em configuração e não como parte final estabilizada da baseline.
+
 ---
 
 ## 13. Resultado da quinzena e próximos passos
@@ -577,3 +579,168 @@ O cálculo atual de risco continua a ser uma baseline demonstrativa. A decisão 
 11. Garantir que catálogo de cenários, bootstrap do plano de controlo e runtime do simulador permanecem sincronizados, especialmente no número de sensores ativos.
 12. Manter o `AppHost`/Aspire como frente exploratória até estar estável, evitando que contamine a baseline demonstrável.
 13. Continuar a atualizar `implementation.md`, `architecture.md` e os diagramas sempre que uma fronteira semântica passar de intenção para código.
+
+# Recapitulação Quinzenal
+
+## Período
+
+6 de maio a 18 de maio de 2026
+
+## Objetivo desta entrada
+
+Registar o trabalho de consolidação da segunda fase de pesquisa do NatureProtector, com foco na transformação da investigação dispersa numa base metodológica e técnica para orientar a V1 do subsistema de prevenção, o `Proposal`, a implementação futura, os anexos, a bibliografia e a validação.
+
+## Índice
+
+* Resumo Estruturado
+* 1. Reenquadramento da pesquisa
+* 2. Cadeia metodológica da V1
+* 3. Índices, variáveis e fontes
+* 4. Simulação, sensores e cenários
+* 5. Pipeline, normalização e elegibilidade
+* 6. `RiskInput`, `DailyCellState` e score
+* 7. Validação, anexos e bibliografia
+* 8. Resultado da quinzena e próximos passos
+
+## Resumo Estruturado
+
+### O que foi feito
+
+1. Foi consolidado o segundo momento de pesquisa do NatureProtector, passando de investigação dispersa para uma base metodológica orientada à V1.
+2. Foi clarificado que a V1 não deve ser apresentada como modelo científico final de previsão de incêndios, mas como baseline metodológica, técnica, rastreável e evolutiva.
+3. Foi estabilizada a decisão central de que o risco operacional não deve nascer diretamente de mensagens raw, envelopes RabbitMQ ou payloads técnicos.
+4. Foi definida a cadeia conceptual da V1: `ScenarioDefinition -> DailyCellState -> TruthSnapshot -> LocalObservation -> OperationalEvent -> NormalizedReading -> RiskInput -> RiskAssessment -> AlertState -> OperationalProjection`.
+5. Foi clarificada a relação entre a pesquisa anterior e a Pesquisa II: a primeira funciona como levantamento de índices, variáveis, fontes, sensores e validação; a segunda transforma esse levantamento em decisões implementáveis.
+6. Foi definido o papel dos principais índices: FWI como referência meteorológica principal, KBDI como complemento de secura persistente, PIR/RCM como enquadramento português, EFFIS como referência europeia, Haines e NFDRS como estado da arte ou trabalho futuro.
+7. Foi reforçado que o score NatureProtector não é equivalente a FWI, IPMA/PIR/RCM, EFFIS ou qualquer índice oficial.
+8. Foram organizadas as variáveis da V1 em grupos: observacionais mínimas, meteorológicas de contexto, territoriais, operacionais de qualidade e derivadas.
+9. Ficou definido que temperatura, humidade relativa e velocidade média do vento são o núcleo observacional mínimo da V1.
+10. A precipitação foi tratada como contexto diário necessário para FWI, KBDI e `DailyCellState`, mesmo que não seja sensor local obrigatório no MVP.
+11. Foi reforçada a separação entre verdade física, observação local e evento operacional, evitando que a simulação seja apenas geração direta de leituras.
+12. Ficou definido que o simulador deve gerar primeiro `TruthSnapshot`, depois `LocalObservation` com erro observacional, e só depois `OperationalEvent`.
+13. Foram clarificados os cenários A, B e C: A como dia normal plausível, B como dia severo plausível e C como versão degradada de A ou B, não como terceiro clima.
+14. Foi consolidada a lógica da pipeline: validade técnica, inbox, consistência semântica, duplicação, lateness, ordering, normalização, elegibilidade e construção de `RiskInput`.
+15. Foi reforçada a diferença entre persistir uma leitura para auditoria e usá-la no cálculo de risco.16. Foi formalizada a necessidade de `ClassifierResult`, quality flags, estados por camada e regras explícitas de elegibilidade.
+17. Foi definido `RiskInput` como fronteira entre pipeline e motor de prevenção.
+18. Ficou claro que `RiskInput` não deve conter resultados como `base_risk`, `adjusted_score`, `risk_level`, `alert_state` ou `operational_projection`.
+19. Foi introduzido `DailyCellState` como artefacto necessário para guardar memória temporal, estado antecedente, precipitação diária e suporte a índices como FWI e KBDI.
+20. O score operacional foi tratado como baseline interna, explicável e versionada, não como índice científico validado.
+21. Pesos, thresholds, normalizações, `FuelRisk`, janelas temporais, cooldown, retry, hold-last-valid e agregação por área foram classificados como `Candidate Parameter Set V1.0`.
+22. Foi reforçada a regra de que `Blocked` não significa risco zero, mas sim ausência de condições para calcular novo score válido.
+23. Foram revistos os alertas, com Warning, Alarm, histerese, persistência mínima e cooldown como práticas de engenharia, não como valores calibrados cientificamente.
+24. A validação foi reformulada de forma prudente, separando validação interna, critérios metodológicos, testes definidos e validação científica externa futura.
+25. Os anexos foram reorganizados para funcionarem como contrato técnico: glossário, schemas, flags, parâmetros, pseudocódigo, testes mínimos, matriz de evidência, auditoria ao repositório e checklist final.
+26. Foi reforçada a matriz de evidência, distinguindo o que cada fonte suporta e o que não suporta.
+27. Foram acrescentadas e revistas fontes para índices, QA/QC, RabbitMQ, idempotência, streaming, métricas estatísticas, forecast verification e validação.
+28. Foram feitas várias rondas de auditoria e correção ao `Proposal.tex`, ao PDF, aos anexos e ao BibTeX.
+29. Foram corrigidas regressões, especialmente no Anexo D, Anexo C, Anexo A e Anexo G.
+30. Ficou como pendência importante o preenchimento de H.0 com branch, commit, ambiente, comandos de build e testes reais.
+
+### Resultado principal da quinzena
+O principal resultado foi transformar a pesquisa numa base metodológica muito mais madura e implementável. O NatureProtector deixou de ser descrito apenas como uma pipeline que recebe leituras e calcula um score. Passou a ser descrito como uma cadeia causal e operacional que separa cenário, estado diário, verdade física, observação, evento, normalização, elegibilidade, input de risco, avaliação, alerta e projeção.
+Esta mudança torna o projeto mais defensável. Uma mensagem recebida pela pipeline não é automaticamente risco. Pode estar atrasada, duplicada, degradada, incompleta ou imprópria para cálculo. Por isso, a V1 deve calcular risco apenas a partir de dados canónicos, contextualizados, auditáveis e explicitamente elegíveis.
+Também ficou mais claro o papel dos índices. O FWI orienta a componente meteorológica, o KBDI apoia a secura persistente, o PIR/RCM enquadra o contexto português e o EFFIS funciona como referência europeia. No entanto, nenhum destes produtos valida automaticamente o score interno, os pesos, os thresholds ou os fatores de confiança do NatureProtector.
+
+---
+
+## 1. Reenquadramento da pesquisa
+
+Durante este período, a pesquisa deixou de ser apenas um conjunto de fontes e passou a funcionar como base de decisão para a V1. O objetivo passou a ser transformar o conhecimento recolhido em decisões concretas para o relatório, implementação, validação e apresentação.
+A pesquisa anterior manteve valor como levantamento de estado da arte. A Pesquisa II passou a ter uma função diferente: organizar esse conhecimento e decidir como ele entra no sistema. Assim, a primeira pesquisa responde ao que é relevante conhecer; a segunda responde a como esse conhecimento deve ser usado na V1.
+Esta mudança ajudou a evitar dois riscos: apresentar o projeto como se já tivesse validação científica completa ou, pelo contrário, deixar a pesquisa como uma lista de possibilidades sem consequência técnica.
+
+---
+
+## 2. Cadeia metodológica da V1
+
+A decisão mais importante foi estabilizar a cadeia metodológica da V1:
+`ScenarioDefinition -> DailyCellState -> TruthSnapshot -> LocalObservation -> OperationalEvent -> NormalizedReading -> RiskInput -> RiskAssessment -> AlertState -> OperationalProjection`
+Esta cadeia separa claramente o que pertence ao cenário, ao ambiente físico, ao sensor, ao transporte, à pipeline, ao cálculo e à projeção operacional.
+A consequência principal é que o sistema deixa de ser descrito como “sensor envia leitura, sistema calcula risco”. Essa descrição era frágil porque misturava ambiente, erro de sensor, transporte, processamento e decisão. A nova cadeia permite explicar onde nasce cada dado, onde pode surgir erro, onde se decide elegibilidade e onde se calcula o risco.
+Esta estrutura também tornou o `Proposal` mais implementável, porque cada conceito pode ser ligado a schemas, pseudocódigo, testes, parâmetros e roadmap.
+
+---
+
+## 3. Índices, variáveis e fontes
+
+A revisão dos índices permitiu delimitar melhor o que entra na V1.
+O FWI foi definido como a principal referência meteorológica, mas com a condição de não ser fingido se a implementação não tiver precipitação diária, continuidade temporal e estado antecedente.
+O KBDI foi tratado como complemento de secura acumulada, útil para representar défice hídrico persistente, mas ainda dependente de parametrização local e validação.
+O PIR/RCM foi tratado como enquadramento português e benchmark externo. A V1 não deve afirmar que calcula PIR ou RCM se não reproduzir a metodologia oficial.
+O EFFIS ficou como referência europeia. Haines e NFDRS foram mantidos como estado da arte ou trabalho futuro, por exigirem dados e pressupostos fora da baseline imediata.
+Também foi reorganizada a lista de variáveis. Temperatura, humidade relativa e vento ficaram como núcleo observacional mínimo. A precipitação passou a ser obrigatória como contexto diário, mesmo que não seja medida por sensor local no MVP. As variáveis territoriais, como altitude, declive, exposição, cobertura do solo e combustível dominante, ficaram ligadas ao contexto da célula.
+As variáveis de qualidade também passaram a ter importância própria: flags, estado do sensor, confiança observacional, integridade operacional, proveniência, duplicação, lateness e ordering.
+
+---
+
+## 4. Simulação, sensores e cenários
+
+A simulação foi reorganizada como modelo observacional em camadas. O simulador não deve gerar diretamente eventos operacionais. Deve primeiro gerar uma verdade física plausível por célula e por instante lógico.
+Depois, sensores lógicos observam essa verdade física e introduzem erro: bias, drift, ruído, quantização, clipping, lag, missing, stuck values, outliers ou efeitos de instalação. Só depois a observação local deve ser transformada em evento operacional.
+Esta separação permitiu distinguir erro de medição e falha de pipeline. Um stuck value pertence à camada de observação; duplicação, redelivery ou out-of-order pertencem à camada de transporte.
+Os cenários também foram clarificados. O Cenário A representa um dia normal plausível. O Cenário B representa um dia severo plausível. O Cenário C não deve ser um terceiro clima; deve reutilizar a mesma verdade física de A ou B e degradar apenas observação, sensor, transporte ou pipeline.
+Isto permite comparar cenário limpo e degradado sem confundir falha operacional com maior perigo real.
+
+---
+
+## 5. Pipeline, normalização e elegibilidade
+
+A pipeline passou a ser descrita como uma sequência de decisões, não apenas como infraestrutura.
+A ordem consolidada foi:
+`receção -> validade técnica -> inbox durável -> consistência semântica -> duplicação -> lateness -> ordering -> normalização -> elegibilidade -> RiskInput -> RiskAssessment`
+Esta ordem impede que o cálculo de risco aconteça antes de existir uma decisão clara sobre validade, qualidade e elegibilidade.
+Também foi reforçada a distinção entre persistir e usar. Uma leitura pode ser guardada para auditoria e, mesmo assim, não entrar no cálculo de risco. Isto é essencial para duplicados, leituras stale, payloads incompletos, falhas semânticas ou eventos fora da janela operacional.
+Foram formalizados classificadores mínimos e a ideia de `ClassifierResult`, para que cada decisão da pipeline tenha nome, resultado, flags, estado, próxima ação e razão auditável.
+
+---
+
+## 6. `RiskInput`, `DailyCellState` e score
+
+O `RiskInput` foi definido como a entrada legítima do motor de risco. Ele só deve nascer depois de validação, classificação, normalização e elegibilidade.
+Também ficou definido o que ele não deve conter: `base_risk`, `adjusted_score`, `risk_level`, `alert_state` ou `operational_projection`. Esses campos pertencem ao resultado ou à projeção, não ao input.
+O `DailyCellState` foi introduzido como estado diário por célula. A sua função é suportar índices com memória temporal, especialmente FWI e KBDI, guardando precipitação diária, temperatura máxima, estado antecedente, parâmetros e proveniência.
+O score operacional foi mantido como baseline interna. A fórmula com componentes meteorológica, secura e território, os fatores `C/I`, os thresholds de alerta, as janelas temporais e a agregação por área foram tratados como `Candidate Parameter Set V1.0`.
+A regra importante foi manter honestidade metodológica: estes valores tornam a V1 executável e testável, mas não são calibração científica final.
+Também foi protegida a semântica de `Blocked`: não significa risco zero. Significa que não existem condições para calcular novo score válido.
+
+---
+
+## 7. Validação, anexos e bibliografia
+
+A validação foi reformulada com linguagem mais cautelosa. O documento passou a distinguir validação interna, critérios de avaliação, testes executáveis e validação científica externa futura.
+A V1 pode demonstrar plausibilidade, rastreabilidade, determinismo, robustez da pipeline, classificação, elegibilidade, score completo/parcial/bloqueado e comportamento dos alertas. Não deve afirmar previsão real de incêndios, calibração científica final, equivalência com produtos oficiais ou generalização multiárea.
+Os anexos foram reforçados para funcionarem como parte normativa do documento:
+
+* Anexo A: glossário e siglas;
+* Anexo B: schemas mínimos;
+* Anexo C: flags, classificadores e estados;
+* Anexo D: parâmetros V1;
+* Anexo E: pseudocódigo;
+* Anexo F: testes mínimos;
+* Anexo G: matriz de evidência;
+* Anexo H: auditoria técnica ao repositório;
+* Anexo I: backlog e checklist.
+A bibliografia também foi trabalhada para evitar fontes mal usadas. A regra principal ficou clara: uma fonte pode sustentar um conceito, método, variável ou prática, mas não valida automaticamente os valores internos do NatureProtector.
+Foram acrescentadas fontes para RabbitMQ, idempotência, streaming, QA/QC, métricas estatísticas e forecast verification. Também foram corrigidas pendências de BibTeX, citações indefinidas e entradas não citadas.
+
+---
+
+## 8. Resultado da quinzena e próximos passos
+
+Em síntese, esta quinzena consolidou a Pesquisa II como base metodológica e técnica do NatureProtector V1. O documento passou a explicar melhor o que o sistema faz, o que ainda não faz, que decisões estão fechadas, que parâmetros são apenas candidatos e que validação ainda falta.
+O resultado mais importante foi a definição de uma cadeia defensável entre cenário, verdade física, observação, evento, leitura normalizada, input de risco, avaliação, alerta e projeção. Esta cadeia permite defender que o sistema não calcula risco a partir de mensagens raw, mas sim a partir de dados canónicos, elegíveis, contextualizados e auditáveis.
+O documento ficou mais forte, mas ainda há trabalho antes de considerar tudo fechado. A principal pendência continua a ser H.0, porque falta registar branch, commit, ambiente, comandos e resultados reais de build/testes. Sem isso, a auditoria ao repositório continua parcialmente reportada, não totalmente reproduzível.
+
+### Trabalho a fazer na continuação desta frente
+
+1. Fazer uma auditoria adversarial final ao documento consolidado.
+2. Preencher H.0 com branch, commit, ambiente, SDK, comandos de build, comandos de teste e resultados reais.
+3. Evitar novas reescritas grandes; a partir daqui, fazer apenas microcorreções controladas.
+4. Rever visualmente tabelas densas, sobretudo Anexo G e anexos técnicos.
+5. Confirmar que `Proposal.tex`, PDF e BibTeX estão sincronizados.
+6. Confirmar que não existem citações indefinidas, referências indefinidas, entradas não citadas ou marcas internas.
+7. Garantir que `RiskInput` continua sem campos de resultado.
+8. Garantir que `Blocked` continua a significar ausência de score válido, não risco zero.
+9. Traduzir o roadmap em TODOs técnicos para implementação incremental.
+10. Começar a implementação pelos contratos e vocabulário único: flags, estados, `ClassifierResult`, `RiskInput`, `RiskAssessment`, `DailyCellState` e versões de parâmetros.
+11. Só depois avançar para FWI/KBDI, alertas finais, agregação por área e validação externa.
