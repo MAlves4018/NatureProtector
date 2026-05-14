@@ -51,7 +51,8 @@ public sealed class ReadingRiskPipeline(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(envelope);
-        var normalizedReading = NormalizedReading.FromEnvelope(envelope);
+        var operationalEvent = OperationalEvent.FromEnvelope(envelope);
+        var normalizedReading = NormalizedReading.FromOperationalEvent(operationalEvent);
         using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.pipeline.process");
         activity?.SetTag(TelemetryTags.EventId, normalizedReading.EventId);
         activity?.SetTag(TelemetryTags.CorrelationId, normalizedReading.CorrelationId);
@@ -83,7 +84,7 @@ public sealed class ReadingRiskPipeline(
             normalizedReading,
             cancellationToken);
 
-        if (!eligibility.IsEligible)
+        if (eligibility.Status == RiskInputStatus.Blocked || !eligibility.IsEligible)
         {
             var acceptedOnlyInfluxWriteStopwatch = Stopwatch.StartNew();
             await influxWriteService.WriteBatchAsync(influxBatch, cancellationToken);
@@ -108,7 +109,7 @@ public sealed class ReadingRiskPipeline(
             return;
         }
 
-        var riskInput = RiskInput.FromNormalizedReading(normalizedReading);
+        var riskInput = RiskInput.FromNormalizedReading(normalizedReading, eligibility);
         var assessment = riskScoringService.CreateAssessment(riskInput);
 
         var riskAssessmentPersistStopwatch = Stopwatch.StartNew();

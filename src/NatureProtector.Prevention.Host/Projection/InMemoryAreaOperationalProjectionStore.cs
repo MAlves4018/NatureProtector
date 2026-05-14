@@ -55,6 +55,17 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         {
             var updatedAt = DateTimeOffset.UtcNow;
             var severity = SeverityExtensions.FromRiskLevel(snapshot.AggregateRiskLevel);
+            var previousAdjustedScore = _states.TryGetValue(areaId, out var existingStateBeforeUpdate)
+                ? existingStateBeforeUpdate.AggregateRiskScore
+                : snapshot.AggregateRiskScore;
+            var hasOpenAlert = _alerts.TryGetValue(areaId, out var existingAlert) && existingAlert.Status == "Open";
+            var existingOpenAlert = hasOpenAlert
+                ? existingAlert
+                : null;
+            var currentState = V1AlertPolicy.InferCurrentState(
+                hasOpenAlert,
+                previousAdjustedScore);
+            var nextState = V1AlertPolicy.EvaluateTransition(currentState, snapshot.AggregateRiskScore);
 
             _states[areaId] = new InMemoryAreaOperationalState(
                 areaId,
@@ -66,19 +77,20 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
                 assessmentCount,
                 updatedAt);
 
-            if (snapshot.AggregateRiskLevel.IsHighOrAbove())
+            if (nextState is V1AlertState.Warning or V1AlertState.Alarm)
             {
                 _alerts[areaId] = new InMemoryAlertState(
                     areaId,
                     "area-risk-high",
+                    nextState.ToString(),
                     severity.ToString(),
                     "Open",
-                    BuildAlertMessage(snapshot),
-                    _alerts.TryGetValue(areaId, out var existing) ? existing.TriggeredAt : snapshot.Timestamp,
+                    BuildAlertMessage(snapshot, nextState),
+                    existingOpenAlert is null ? snapshot.Timestamp : existingOpenAlert.TriggeredAt,
                     updatedAt,
                     null);
             }
-            else if (_alerts.TryGetValue(areaId, out var existingAlert))
+            else if (existingAlert is not null)
             {
                 _alerts[areaId] = existingAlert with
                 {
@@ -94,8 +106,8 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         }
     }
 
-    private static string BuildAlertMessage(AreaRiskSnapshot snapshot)
-        => $"Area risk is {snapshot.AggregateRiskLevel} with score {snapshot.AggregateRiskScore:F2}.";
+    private static string BuildAlertMessage(AreaRiskSnapshot snapshot, V1AlertState state)
+        => $"AlertState={state}; Area risk is {snapshot.AggregateRiskLevel} with adjusted score {snapshot.AggregateRiskScore:F2}. Candidate Parameter Set V1.0 (non-official).";
 
     public sealed record InMemoryAreaOperationalState(
         Guid AreaId,
@@ -120,6 +132,7 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
     public sealed record InMemoryAlertState(
         Guid AreaId,
         string AlertCode,
+        string AlertState,
         string Severity,
         string Status,
         string Message,

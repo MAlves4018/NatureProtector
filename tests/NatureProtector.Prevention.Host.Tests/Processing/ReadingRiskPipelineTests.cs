@@ -319,6 +319,41 @@ public sealed class ReadingRiskPipelineTests
     }
 
     [Fact]
+    public async Task ProcessAcceptedReadingAsync_PassesEligibilityMetadataToRiskInput()
+    {
+        var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
+        var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
+        var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
+        var projectionStore = new InMemoryAreaOperationalProjectionStore();
+        var influxWriteService = new FakeInfluxWriteService();
+        var scoringService = new CapturingRiskScoringService();
+        var pipeline = CreatePipeline(
+            acceptedReadingRepository,
+            riskAssessmentRepository,
+            areaRiskSnapshotRepository,
+            projectionStore,
+            influxWriteService,
+            new PartialEligibleRiskEligibilityService(),
+            scoringService);
+        var envelope = EnvelopeFactory.Create(
+            metricType: SensorMetricType.WindSpeed,
+            unit: MeasurementUnit.MetersPerSecond,
+            value: 12.0,
+            eventTime: new DateTimeOffset(2026, 5, 12, 9, 0, 0, TimeSpan.Zero));
+
+        await pipeline.ProcessAcceptedReadingAsync(envelope, CancellationToken.None);
+
+        Assert.NotNull(scoringService.LastInput);
+        Assert.Equal(RiskInputStatus.PartialButUsable, scoringService.LastInput!.InputStatus);
+        Assert.Equal(RiskEligibilityReason.DelayedReading, scoringService.LastInput.EligibilityReason);
+        Assert.Equal(ObservationalConfidenceLevel.Medium, scoringService.LastInput.ObservationalConfidence);
+        Assert.Equal(OperationalIntegrityLevel.Degraded, scoringService.LastInput.OperationalIntegrity);
+        Assert.Equal(["Delayed"], scoringService.LastInput.QualityFlags);
+        var carried = Assert.Single(scoringService.LastInput.ClassifierResults);
+        Assert.Equal("temporal_classifier", carried.ClassifierName);
+    }
+
+    [Fact]
     public async Task ProcessAcceptedReadingAsync_CompletesWithoutRiskArtifacts_WhenReadingIsNotEligible()
     {
         var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
@@ -356,6 +391,41 @@ public sealed class ReadingRiskPipelineTests
         Assert.Single(influxWriteService.AcceptedReadings);
         Assert.Empty(influxWriteService.RiskAssessments);
         Assert.Empty(influxWriteService.AreaSnapshots);
+    }
+
+    [Fact]
+    public async Task Blocked_DoesNotCreateNumericRiskAssessment()
+    {
+        var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
+        var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
+        var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
+        var projectionStore = new InMemoryAreaOperationalProjectionStore();
+        var influxWriteService = new FakeInfluxWriteService();
+        var scoringService = new ThrowingRiskScoringService();
+        var pipeline = CreatePipeline(
+            acceptedReadingRepository,
+            riskAssessmentRepository,
+            areaRiskSnapshotRepository,
+            projectionStore,
+            influxWriteService,
+            new BlockedRiskEligibilityService(),
+            scoringService);
+        var envelope = EnvelopeFactory.Create(
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 22.0,
+            eventTime: new DateTimeOffset(2026, 5, 1, 10, 0, 0, TimeSpan.Zero));
+
+        await pipeline.ProcessAcceptedReadingAsync(envelope, CancellationToken.None);
+
+        Assert.Single(await acceptedReadingRepository.GetAllAsync(CancellationToken.None));
+        Assert.Empty(await riskAssessmentRepository.GetByAreaAsync(envelope.AreaId, CancellationToken.None));
+        Assert.Null(await areaRiskSnapshotRepository.GetLatestAsync(envelope.AreaId, CancellationToken.None));
+        Assert.Equal(0, scoringService.CallCount);
+        var batch = Assert.Single(influxWriteService.Batches);
+        Assert.Equal(1, batch.AcceptedReadingCount);
+        Assert.Equal(0, batch.RiskAssessmentCount);
+        Assert.Equal(0, batch.AreaRiskSnapshotCount);
     }
 
     private static ReadingRiskPipeline CreatePipeline(
@@ -404,6 +474,22 @@ public sealed class ReadingRiskPipelineTests
         }
     }
 
+    private sealed class CapturingRiskScoringService : IRiskScoringService
+    {
+        public RiskInput? LastInput { get; private set; }
+
+        public RiskAssessment CreateAssessment(RiskInput input)
+        {
+            LastInput = input;
+
+            return new RiskAssessment(
+                id: Guid.NewGuid(),
+                timestamp: input.EventTime,
+                riskScore: 0.42,
+                explanationSummary: "captured");
+        }
+    }
+
     private sealed class NotEligibleRiskEligibilityService : IRiskEligibilityService
     {
         public Task<RiskEligibilityResult> EvaluateAsync(
@@ -424,6 +510,42 @@ public sealed class ReadingRiskPipelineTests
         {
             CallCount++;
             throw new InvalidOperationException("Scoring should not be called for ineligible readings.");
+        }
+    }
+
+    private sealed class BlockedRiskEligibilityService : IRiskEligibilityService
+    {
+        public Task<RiskEligibilityResult> EvaluateAsync(
+            NormalizedReading reading,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(RiskEligibilityResult.Blocked(
+                RiskEligibilityReason.MissingRequiredValue,
+                "Critical metric is missing for risk scoring.",
+                ["MissingValue"]));
+        }
+    }
+
+    private sealed class PartialEligibleRiskEligibilityService : IRiskEligibilityService
+    {
+        public Task<RiskEligibilityResult> EvaluateAsync(
+            NormalizedReading reading,
+            CancellationToken cancellationToken)
+        {
+            var classifierResult = ClassifierResult.Create(
+                classifierName: "temporal_classifier",
+                status: ClassifierStatus.Warning,
+                severity: ClassifierSeverity.Medium,
+                qualityFlags: ["Delayed"],
+                reasons: ["late_arrival"],
+                evaluatedAt: new DateTimeOffset(2026, 5, 12, 9, 0, 1, TimeSpan.Zero),
+                ruleSetVersion: "v1.0");
+
+            return Task.FromResult(RiskEligibilityResult.PartialButUsable(
+                RiskEligibilityReason.DelayedReading,
+                "Reading is delayed but still usable.",
+                qualityFlags: ["Delayed"],
+                classifierResults: [classifierResult]));
         }
     }
 }

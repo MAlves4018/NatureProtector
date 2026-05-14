@@ -43,6 +43,8 @@ public sealed class SimpleRiskScoringServiceTests
             metricType: SensorMetricType.Temperature,
             value: value));
 
+        Assert.Equal(expectedScore, assessment.BaseRisk, precision: 3);
+        Assert.Equal(expectedScore, assessment.AdjustedScore, precision: 3);
         Assert.Equal(expectedScore, assessment.RiskScore, precision: 3);
     }
 
@@ -54,6 +56,8 @@ public sealed class SimpleRiskScoringServiceTests
             metricType: SensorMetricType.Humidity,
             value: value));
 
+        Assert.Equal(expectedScore, assessment.BaseRisk, precision: 3);
+        Assert.Equal(expectedScore, assessment.AdjustedScore, precision: 3);
         Assert.Equal(expectedScore, assessment.RiskScore, precision: 3);
     }
 
@@ -65,6 +69,8 @@ public sealed class SimpleRiskScoringServiceTests
             metricType: SensorMetricType.WindSpeed,
             value: value));
 
+        Assert.Equal(expectedScore, assessment.BaseRisk, precision: 3);
+        Assert.Equal(expectedScore, assessment.AdjustedScore, precision: 3);
         Assert.Equal(expectedScore, assessment.RiskScore, precision: 3);
     }
 
@@ -76,6 +82,8 @@ public sealed class SimpleRiskScoringServiceTests
             value: 180.0,
             unit: MeasurementUnit.Degrees));
 
+        Assert.Equal(0.20, assessment.BaseRisk, precision: 3);
+        Assert.Equal(0.20, assessment.AdjustedScore, precision: 3);
         Assert.Equal(0.20, assessment.RiskScore, precision: 3);
     }
 
@@ -102,6 +110,57 @@ public sealed class SimpleRiskScoringServiceTests
         Assert.Contains(sensorId.ToString(), assessment.ExplanationSummary);
         Assert.Contains(eventId.ToString(), assessment.ExplanationSummary);
         Assert.Contains(nameof(SensorMetricType.Temperature), assessment.ExplanationSummary);
+        Assert.Contains("BaseRisk=", assessment.ExplanationSummary);
+        Assert.Contains("AdjustedScore=", assessment.ExplanationSummary);
+        Assert.Contains("C=", assessment.ExplanationSummary);
+        Assert.Contains("I=", assessment.ExplanationSummary);
+        Assert.Contains("Candidate Parameter Set V1.0", assessment.ExplanationSummary);
+    }
+
+    [Fact]
+    public void CreateAssessment_AdjustsScore_ForPartialButUsableInput()
+    {
+        var input = new RiskInput(
+            AreaId: Guid.NewGuid(),
+            SensorId: Guid.NewGuid(),
+            SourceEventId: Guid.NewGuid(),
+            MetricType: SensorMetricType.Temperature,
+            Value: 35.0,
+            Unit: MeasurementUnit.Celsius,
+            EventTime: DateTimeOffset.UtcNow)
+        {
+            InputStatus = RiskInputStatus.PartialButUsable,
+            ObservationalConfidence = ObservationalConfidenceLevel.Medium,
+            OperationalIntegrity = OperationalIntegrityLevel.Degraded
+        };
+
+        var assessment = _service.CreateAssessment(input);
+
+        var expectedBaseRisk = 0.85;
+        var expectedAdjusted = expectedBaseRisk * 0.97 * 0.90 * 0.95;
+        Assert.Equal(expectedBaseRisk, assessment.BaseRisk, precision: 3);
+        Assert.Equal(expectedAdjusted, assessment.AdjustedScore, precision: 3);
+        Assert.Equal(assessment.AdjustedScore, assessment.RiskScore, precision: 6);
+    }
+
+    [Fact]
+    public void CreateAssessment_Throws_WhenInputIsBlocked()
+    {
+        var blockedInput = new RiskInput(
+            AreaId: Guid.NewGuid(),
+            SensorId: Guid.NewGuid(),
+            SourceEventId: Guid.NewGuid(),
+            MetricType: SensorMetricType.Temperature,
+            Value: 30.0,
+            Unit: MeasurementUnit.Celsius,
+            EventTime: DateTimeOffset.UtcNow)
+        {
+            InputStatus = RiskInputStatus.Blocked,
+            EligibilityReason = RiskEligibilityReason.MissingRequiredValue
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => _service.CreateAssessment(blockedInput));
+        Assert.Contains("Blocked risk inputs", ex.Message);
     }
 
     private static RiskInput CreateRiskInput(

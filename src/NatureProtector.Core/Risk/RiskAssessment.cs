@@ -13,7 +13,8 @@ using NatureProtector.Core.Readings;
  * - It separates analytical state from the structural spatial model of RiskCell.
  *
  * Design considerations:
- * - The class stores both the numeric score and the derived qualitative level.
+ * - The class stores the baseline score, the adjusted score and a legacy
+ *   compatibility score (`RiskScore`) that mirrors the adjusted score.
  * - The score is constrained to the range [0, 1] for consistency with the
  *   current preliminary rule model.
  * - ExplanationSummary is optional because some pipeline stages may choose
@@ -35,7 +36,18 @@ public sealed class RiskAssessment
     public DateTimeOffset Timestamp { get; }
 
     /// <summary>
-    /// Normalised preventive risk score in the range [0, 1].
+    /// Baseline risk component before contextual adjustment.
+    /// </summary>
+    public double BaseRisk { get; }
+
+    /// <summary>
+    /// Adjusted risk component after applying contextual candidate factors.
+    /// </summary>
+    public double AdjustedScore { get; }
+
+    /// <summary>
+    /// Legacy compatibility score used by the current persistence and projection
+    /// pipeline. Mirrors <see cref="AdjustedScore"/>.
     /// </summary>
     public double RiskScore { get; }
 
@@ -50,7 +62,7 @@ public sealed class RiskAssessment
     public string? ExplanationSummary { get; }
 
     /// <summary>
-    /// Creates a new RiskAssessment instance from a known score.
+    /// Creates a new RiskAssessment instance from a known legacy score.
     /// </summary>
     /// <param name="id">
     /// Globally unique identifier of the assessment.
@@ -59,7 +71,8 @@ public sealed class RiskAssessment
     /// Instant at which the assessment applies.
     /// </param>
     /// <param name="riskScore">
-    /// Normalised preventive risk score in the range [0, 1].
+    /// Legacy risk score in the range [0, 1]. Used as both baseline and
+    /// adjusted score to preserve backward compatibility.
     /// </param>
     /// <param name="explanationSummary">
     /// Optional short explanation of the assessment result.
@@ -84,25 +97,67 @@ public sealed class RiskAssessment
                 nameof(timestamp));
         }
 
-        if (double.IsNaN(riskScore) || double.IsInfinity(riskScore))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(riskScore),
-                riskScore,
-                "Risk score must be a finite value.");
-        }
-
-        if (riskScore is < 0.0 or > 1.0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(riskScore),
-                riskScore,
-                "Risk score must be in the range [0, 1].");
-        }
+        ValidateNormalizedScore(riskScore, nameof(riskScore));
 
         Id = id;
         Timestamp = timestamp;
+        BaseRisk = riskScore;
+        AdjustedScore = riskScore;
         RiskScore = riskScore;
+        RiskLevel = CalculateLevel();
+        ExplanationSummary = string.IsNullOrWhiteSpace(explanationSummary)
+            ? null
+            : explanationSummary.Trim();
+    }
+
+    /// <summary>
+    /// Creates a new RiskAssessment instance from explicit baseline and adjusted
+    /// scores.
+    /// </summary>
+    /// <param name="id">
+    /// Globally unique identifier of the assessment.
+    /// </param>
+    /// <param name="timestamp">
+    /// Instant at which the assessment applies.
+    /// </param>
+    /// <param name="baseRisk">
+    /// Baseline risk component in the range [0, 1].
+    /// </param>
+    /// <param name="adjustedScore">
+    /// Adjusted risk component in the range [0, 1].
+    /// </param>
+    /// <param name="explanationSummary">
+    /// Optional short explanation of the assessment result.
+    /// </param>
+    public RiskAssessment(
+        Guid id,
+        DateTimeOffset timestamp,
+        double baseRisk,
+        double adjustedScore,
+        string? explanationSummary = null)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Risk assessment identifier must not be an empty GUID.",
+                nameof(id));
+        }
+
+        if (timestamp == default)
+        {
+            throw new ArgumentException(
+                "Assessment timestamp must be a valid, non-default value.",
+                nameof(timestamp));
+        }
+
+        ValidateNormalizedScore(baseRisk, nameof(baseRisk));
+        ValidateNormalizedScore(adjustedScore, nameof(adjustedScore));
+
+        Id = id;
+        Timestamp = timestamp;
+        BaseRisk = baseRisk;
+        AdjustedScore = adjustedScore;
+        RiskScore = adjustedScore;
         RiskLevel = CalculateLevel();
         ExplanationSummary = string.IsNullOrWhiteSpace(explanationSummary)
             ? null
@@ -117,7 +172,7 @@ public sealed class RiskAssessment
     /// </returns>
     public RiskLevel CalculateLevel()
     {
-        return RiskLevelExtensions.FromScore(RiskScore);
+        return RiskLevelExtensions.FromScore(AdjustedScore);
     }
 
     /// <summary>
@@ -160,5 +215,24 @@ public sealed class RiskAssessment
             timestamp: timestamp,
             riskScore: score,
             explanationSummary: explanation);
+    }
+
+    private static void ValidateNormalizedScore(double score, string paramName)
+    {
+        if (double.IsNaN(score) || double.IsInfinity(score))
+        {
+            throw new ArgumentOutOfRangeException(
+                paramName,
+                score,
+                "Score must be a finite value.");
+        }
+
+        if (score is < 0.0 or > 1.0)
+        {
+            throw new ArgumentOutOfRangeException(
+                paramName,
+                score,
+                "Score must be in the range [0, 1].");
+        }
     }
 }

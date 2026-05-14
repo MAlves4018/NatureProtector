@@ -59,10 +59,12 @@ public sealed class ControlPlaneApiTests
         Assert.Equal(2, sensorsDocument.RootElement.GetArrayLength());
         Assert.Equal("VeryHigh", stateDocument.RootElement.GetProperty("aggregateRiskLevel").GetString());
         Assert.Equal("Critical", stateDocument.RootElement.GetProperty("severity").GetString());
+        Assert.Equal("Alarm", stateDocument.RootElement.GetProperty("alertState").GetString());
         Assert.Equal(2, cellStatesDocument.RootElement.GetArrayLength());
         Assert.Equal("PRO-001", cellStatesDocument.RootElement[0].GetProperty("cellCode").GetString());
         Assert.Equal(1, alertsDocument.RootElement.GetArrayLength());
         Assert.Equal("area-risk-high", alertsDocument.RootElement[0].GetProperty("alertCode").GetString());
+        Assert.Equal("Alarm", alertsDocument.RootElement[0].GetProperty("alertState").GetString());
     }
 
     [Fact]

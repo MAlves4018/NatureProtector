@@ -93,7 +93,8 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
             "Critical",
             "Aggregated from 12 assessments; 8 at High or above.",
             12,
-            new DateTimeOffset(2026, 4, 7, 20, 14, 30, TimeSpan.Zero));
+            new DateTimeOffset(2026, 4, 7, 20, 14, 30, TimeSpan.Zero),
+            "Alarm");
 
         private readonly IReadOnlyList<CellOperationalStateResponse> _cellOperationalStates =
         [
@@ -132,10 +133,11 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
                 "area-risk-high",
                 "Critical",
                 "Open",
-                "Area risk is VeryHigh with score 0.78.",
+                "AlertState=Alarm; Area risk is VeryHigh with adjusted score 0.78. Candidate Parameter Set V1.0 (non-official).",
                 new DateTimeOffset(2026, 4, 7, 20, 10, 0, TimeSpan.Zero),
                 new DateTimeOffset(2026, 4, 7, 20, 14, 30, TimeSpan.Zero),
-                null)
+                null,
+                "Alarm")
         ];
 
         public bool IsAvailable => true;
