@@ -650,6 +650,10 @@ Registar o trabalho de consolidação da segunda fase de pesquisa do NatureProte
 41. O `Simulator.Host` passou a aceitar `RunOverrides` para `sensorCount`, `numberOfCycles`, `intervalSeconds`, `seed`, `degradationProfile` e `orchestratorCorrelationId`.
 42. Foi validada uma run curta de `scenario_b` em `proenca-a-nova`, com 6 sensores, 5 ciclos, intervalo de 5 segundos e seed 12345, terminando com `Completed` e overrides como `observed_match`.
 43. A orquestração passou a gravar evidência por run, incluindo `summary.md`, `run-spec.resolved.json`, logs do simulador e relatório runtime.
+44. Foi realizada uma vaga adicional de testes para proteger as alterações da V1 e aumentar a cobertura da suite.
+45. A cobertura consolidada passou para `97.6%` de line coverage, `90.1%` de branch coverage e `97.1%` de method coverage.
+46. Os testes passaram a cobrir melhor domínio, validações, elegibilidade, `RiskInput`, `DailyCellState`, `RiskAssessment`, alertas V1, API/Backoffice, Influx configurável, inbox, contexto do simulador e orquestração de runs.
+47. Ficou definido que a cobertura não deve ser aumentada artificialmente à custa de testes frágeis sobre telemetry glue, RabbitMQ real, Influx real ou branches de observabilidade sem valor funcional.
 
 ### Resultado principal da quinzena
 
@@ -660,6 +664,8 @@ Esta mudança torna o projeto mais defensável. Uma mensagem recebida pela pipel
 Também ficou mais claro o papel dos índices. O FWI orienta a componente meteorológica, o KBDI apoia a secura persistente, o PIR/RCM enquadra o contexto português e o EFFIS funciona como referência europeia. No entanto, nenhum destes produtos valida automaticamente o score interno, os pesos, os thresholds ou os fatores de confiança do NatureProtector.
 
 Na fase final da quinzena, esta base metodológica foi parcialmente materializada em código e evidência runtime. A implementação passou a incluir camadas e contratos internos compatíveis com a V1, alertas operacionais internos, projeções expostas pela API e uma primeira camada de orquestração de runs. A validação continua a ser técnica/runtime, não científica, mas passou a ser mais reprodutível e auditável.
+
+Também foi reforçada a base de testes automatizados. A suite passou a cobrir de forma mais completa os comportamentos de domínio, validação, elegibilidade, scoring interno, alertas, projeções, API, Influx configurável e execução de cenários. A cobertura consolidada atingiu `97.6%` de line coverage, `90.1%` de branch coverage e `97.1%` de method coverage, mantendo a opção de não perseguir `100%` artificial em componentes de observabilidade ou integrações externas difíceis de testar sem infraestrutura real.
 
 ---
 
@@ -783,6 +789,8 @@ Foram acrescentadas fontes para RabbitMQ, idempotência, streaming, QA/QC, métr
 
 A validação técnica foi complementada com recolha runtime. Esta evidência demonstrou funcionamento operacional da baseline, mas continuou a ser tratada como validação técnica e não como validação científica do modelo.
 
+A validação automatizada também foi reforçada através de várias rondas de testes. Foram cobertos casos de domínio, limites, invariantes, caminhos negativos, indisponibilidade da API, validações de configuração, política de alertas, classificadores de falha, inbox em memória, parsing de configuração de InfluxDB e execução controlada do simulador. Esta melhoria aumentou a confiança técnica na implementação, sem ser apresentada como validação científica do modelo de risco.
+
 ---
 
 ## 8. Implementação, evidência runtime e orquestração de runs
@@ -799,6 +807,10 @@ Na parte final, foi criada a primeira versão do Scenario Run Orchestrator. A ve
 
 Foi validada uma run curta do `scenario_b` para `proenca-a-nova`, com 6 sensores, 5 ciclos, intervalo de 5 segundos e seed 12345. A run terminou com `Completed`, os overrides ficaram como `observed_match`, o `MetadataJson` passou a registar valores pedidos e resolvidos, e a evidência foi gravada numa pasta própria da run. Esta abordagem prepara o caminho para futura orquestração pelo Backoffice/site, onde será possível lançar runs, acompanhar estado e consultar dashboards/evidência a partir do mesmo ponto.
 
+Em paralelo, foi feita uma ronda de reforço da suite de testes. Foram acrescentados testes para `Area`, `GridCell`, `SensorDeployment`, `ClassifierResult`, `RiskEligibilityResult`, `RiskInput`, `DailyCellState`, `RiskAssessment`, `RiskCell`, `SimulationRun`, `DefaultProcessingFailureClassifier`, `V1AlertPolicy`, `ExpectedUniqueViolationDetector`, `PreventionHostOptionsValidator`, controllers da Backoffice API, `SafeInfluxWriteService`, `PostgresSimulationContextSource`, `SimulationRunner`, `InMemoryReadingEventInbox` e `InfluxDbSettingsLoader`.
+
+A cobertura consolidada passou para `97.6%` de line coverage, `90.1%` de branch coverage e `97.1%` de method coverage. A melhoria foi feita apenas com testes, sem alterar contratos RabbitMQ, scoring, alert policy, schemas ou comportamento de produção. Ficaram assumidas como limites saudáveis algumas zonas de baixa cobertura residual, sobretudo `PostgresBootstrapTelemetry`, branches de `ActivitySource`, integração RabbitMQ real e escrita Influx real, por serem áreas de observabilidade ou integração que exigiriam testes frágeis, infraestrutura externa ou refactor específico.
+
 ---
 
 ## 9. Resultado da quinzena e próximos passos
@@ -807,7 +819,7 @@ Em síntese, esta quinzena consolidou a Pesquisa II como base metodológica e t�
 
 O resultado mais importante foi a definição de uma cadeia defensável entre cenário, verdade física, observação, evento, leitura normalizada, input de risco, avaliação, alerta e projeção. Esta cadeia permite defender que o sistema não calcula risco a partir de mensagens raw, mas sim a partir de dados canónicos, elegíveis, contextualizados e auditáveis.
 
-A fase final da quinzena também transformou parte desta visão em execução técnica: a pipeline ganhou fronteiras mais explícitas, os alertas passaram a ter política interna testável, a API passou a expor estado operacional sem recalcular risco, e foi criada uma primeira camada de orquestração de runs com evidência por execução.
+A fase final da quinzena também transformou parte desta visão em execução técnica: a pipeline ganhou fronteiras mais explícitas, os alertas passaram a ter política interna testável, a API passou a expor estado operacional sem recalcular risco, foi criada uma primeira camada de orquestração de runs com evidência por execução, e a suite de testes foi reforçada até uma cobertura consolidada de `97.6%` em linhas, `90.1%` em branches e `97.1%` em métodos.
 
 O documento ficou mais forte, mas ainda há trabalho antes de considerar tudo fechado. A principal pendência documental continua a ser manter `Proposal.tex`, PDF, anexos, documentação técnica e evidência sincronizados com o estado real do código.
 
@@ -823,8 +835,9 @@ O documento ficou mais forte, mas ainda há trabalho antes de considerar tudo fe
 8. Garantir que `Blocked` continua a significar ausência de score válido, não risco zero.
 9. Confirmar que a documentação técnica reflete o estado real de C0-C7 e O1/O1.2.
 10. Fazer limpeza pré-commit de ficheiros acidentais, evidência duplicada e outputs fora da pasta esperada.
-11. Correr `dotnet test` final e guardar a evidência relevante.
+11. Correr `dotnet test` final, gerar o relatório de coverage consolidado e guardar a evidência relevante.
 12. Decidir se a evidência runtime final deve ser versionada na totalidade ou reduzida aos ficheiros essenciais.
 13. Separar commits, se possível, entre código/testes e documentação/evidência.
 14. Continuar a evolução do orquestrador apenas depois de fechar a frente atual, preparando futura integração no Backoffice/API.
 15. Só depois avançar para FWI/KBDI, alertas finais com política operacional mais completa, agregação por área calibrada e validação externa.
+16. Manter a política de coverage saudável: cobrir comportamento funcional e caminhos críticos, mas não perseguir `100%` artificial em telemetry glue, branches de observabilidade ou integrações externas sem infraestrutura própria.

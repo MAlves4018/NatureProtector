@@ -98,6 +98,32 @@ public sealed class PostgresSimulationContextSourceTests
     }
 
     [Fact]
+    public async Task CreateAsync_AreaIdAndScenarioIdProvided_ResolveByIdsBeforeCodes()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var ids = await SeedControlPlaneAsync(scope, includeActiveSensor: true);
+        var options = Options.Create(new SimulatorOptions
+        {
+            AreaId = ids.AreaId,
+            ScenarioId = ids.ScenarioId,
+            ControlPlaneAreaCode = "wrong-area-code",
+            ControlPlaneScenarioCode = "wrong-scenario-code",
+            NumberOfCycles = 99,
+            IntervalSeconds = 99
+        });
+
+        var source = new PostgresSimulationContextSource(scope.Factory, options);
+
+        var context = await source.CreateAsync(CancellationToken.None);
+
+        Assert.Equal(ids.AreaId, context.AreaId);
+        Assert.Equal(ids.ScenarioId, context.Scenario.Id);
+        Assert.Equal("scenario_b", context.ScenarioCode);
+        Assert.Equal(TimeSpan.FromSeconds(15), context.Interval);
+        Assert.Equal(6, context.NumberOfCycles);
+    }
+
+    [Fact]
     public async Task CreateAsync_Throws_WhenRunOverrideSensorCountExceedsActiveSensors()
     {
         await using var scope = new SqliteControlDbContextScope();
@@ -119,6 +145,158 @@ public sealed class PostgresSimulationContextSourceTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => source.CreateAsync(CancellationToken.None));
         Assert.Contains("SensorCount", exception.Message);
         Assert.Contains("exceeds active sensor count", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Throws_WhenRunOverrideSensorCountIsNotPositive()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedControlPlaneAsync(scope, includeActiveSensor: true);
+        var options = Options.Create(new SimulatorOptions
+        {
+            AreaId = Guid.Empty,
+            ScenarioId = Guid.Empty,
+            ControlPlaneAreaCode = "proenca-a-nova",
+            ControlPlaneScenarioCode = "scenario_b",
+            RunOverrides = new SimulatorRunOverridesOptions
+            {
+                SensorCount = 0
+            }
+        });
+
+        var source = new PostgresSimulationContextSource(scope.Factory, options);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => source.CreateAsync(CancellationToken.None));
+        Assert.Contains("Run override 'SensorCount' must be greater than zero.", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Throws_WhenRunOverrideIntervalIsNotPositive()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedControlPlaneAsync(scope, includeActiveSensor: true);
+        var options = Options.Create(new SimulatorOptions
+        {
+            AreaId = Guid.Empty,
+            ScenarioId = Guid.Empty,
+            ControlPlaneAreaCode = "proenca-a-nova",
+            ControlPlaneScenarioCode = "scenario_b",
+            RunOverrides = new SimulatorRunOverridesOptions
+            {
+                IntervalSeconds = 0
+            }
+        });
+
+        var source = new PostgresSimulationContextSource(scope.Factory, options);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => source.CreateAsync(CancellationToken.None));
+        Assert.Contains("Run override 'IntervalSeconds' must be greater than zero.", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Throws_WhenScenarioIntervalIsNotPositive()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedControlPlaneAsync(
+            scope,
+            includeActiveSensor: true,
+            scenarioParametersJson:
+                """
+                {
+                  "simulator_options": {
+                    "FailureRate": 0.15,
+                    "NoiseLevel": 0.22,
+                    "TimeAcceleration": 2.5,
+                    "IntervalSeconds": 0,
+                    "NumberOfCycles": 6
+                  }
+                }
+                """);
+        var options = Options.Create(new SimulatorOptions
+        {
+            AreaId = Guid.Empty,
+            ScenarioId = Guid.Empty,
+            ControlPlaneAreaCode = "proenca-a-nova",
+            ControlPlaneScenarioCode = "scenario_b"
+        });
+
+        var source = new PostgresSimulationContextSource(scope.Factory, options);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => source.CreateAsync(CancellationToken.None));
+        Assert.Contains("Scenario simulator option 'IntervalSeconds' must be greater than zero.", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Throws_WhenFallbackNumberOfCyclesIsNotPositive()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedControlPlaneAsync(
+            scope,
+            includeActiveSensor: true,
+            scenarioParametersJson:
+                """
+                {
+                  "simulator_options": {
+                    "FailureRate": 0.15,
+                    "NoiseLevel": 0.22,
+                    "TimeAcceleration": 2.5,
+                    "IntervalSeconds": 15
+                  }
+                }
+                """);
+        var options = Options.Create(new SimulatorOptions
+        {
+            AreaId = Guid.Empty,
+            ScenarioId = Guid.Empty,
+            ControlPlaneAreaCode = "proenca-a-nova",
+            ControlPlaneScenarioCode = "scenario_b",
+            NumberOfCycles = 0
+        });
+
+        var source = new PostgresSimulationContextSource(scope.Factory, options);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => source.CreateAsync(CancellationToken.None));
+        Assert.Contains("Simulator fallback option 'NumberOfCycles' must be greater than zero.", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Throws_WhenScenarioParametersJsonIsEmpty()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedControlPlaneAsync(
+            scope,
+            includeActiveSensor: true,
+            scenarioParametersJson: string.Empty);
+        var options = Options.Create(new SimulatorOptions
+        {
+            AreaId = Guid.Empty,
+            ScenarioId = Guid.Empty,
+            ControlPlaneAreaCode = "proenca-a-nova",
+            ControlPlaneScenarioCode = "scenario_b"
+        });
+
+        var source = new PostgresSimulationContextSource(scope.Factory, options);
+
+        await Assert.ThrowsAnyAsync<System.Text.Json.JsonException>(() => source.CreateAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CreateAsync_Throws_WhenScenarioCannotBeResolved()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedControlPlaneAsync(scope, includeActiveSensor: true);
+        var options = Options.Create(new SimulatorOptions
+        {
+            AreaId = Guid.Empty,
+            ScenarioId = Guid.NewGuid(),
+            ControlPlaneAreaCode = "proenca-a-nova",
+            ControlPlaneScenarioCode = "missing-scenario"
+        });
+
+        var source = new PostgresSimulationContextSource(scope.Factory, options);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => source.CreateAsync(CancellationToken.None));
+        Assert.Contains("Control plane scenario could not be resolved", exception.Message);
     }
 
     [Fact]
@@ -161,7 +339,8 @@ public sealed class PostgresSimulationContextSourceTests
 
     private static async Task<SeededIds> SeedControlPlaneAsync(
         SqliteControlDbContextScope scope,
-        bool includeActiveSensor)
+        bool includeActiveSensor,
+        string? scenarioParametersJson = null)
     {
         var configurationVersionId = Guid.Parse("de000000-0000-0000-0000-000000000001");
         var areaId = Guid.Parse("de000000-0000-0000-0000-000000000002");
@@ -220,7 +399,7 @@ public sealed class PostgresSimulationContextSourceTests
                 Name = "Scenario B",
                 ScenarioKind = ScenarioCategory.HighRisk,
                 Description = "Critical weather context",
-                ParametersJson =
+                ParametersJson = scenarioParametersJson ??
                     """
                     {
                       "simulator_options": {
@@ -285,8 +464,8 @@ public sealed class PostgresSimulationContextSourceTests
             await Task.CompletedTask;
         });
 
-        return new SeededIds(configurationVersionId, areaId);
+        return new SeededIds(configurationVersionId, areaId, scenarioId);
     }
 
-    private sealed record SeededIds(Guid ConfigurationVersionId, Guid AreaId);
+    private sealed record SeededIds(Guid ConfigurationVersionId, Guid AreaId, Guid ScenarioId);
 }

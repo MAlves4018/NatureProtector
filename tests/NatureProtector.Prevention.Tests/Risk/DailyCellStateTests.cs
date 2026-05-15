@@ -58,6 +58,55 @@ public sealed class DailyCellStateTests
     }
 
     [Fact]
+    public void Constructor_Throws_WhenDayIsDefault()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => new DailyCellState(
+            areaId: Guid.NewGuid(),
+            sensorId: Guid.NewGuid(),
+            day: default,
+            antecedentState: "baseline",
+            candidateParameterSetVersion: "Candidate Parameter Set V1.0",
+            provenance: "pipeline",
+            lastUpdatedAt: new DateTimeOffset(2026, 5, 12, 12, 0, 0, TimeSpan.Zero)));
+
+        Assert.Equal("day", ex.ParamName);
+        Assert.Contains("Day must be a valid, non-default value.", ex.Message);
+    }
+
+    [Fact]
+    public void Constructor_Throws_WhenLastUpdatedAtIsDefault()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => new DailyCellState(
+            areaId: Guid.NewGuid(),
+            sensorId: Guid.NewGuid(),
+            day: new DateTimeOffset(2026, 5, 12, 0, 0, 0, TimeSpan.Zero),
+            antecedentState: "baseline",
+            candidateParameterSetVersion: "Candidate Parameter Set V1.0",
+            provenance: "pipeline",
+            lastUpdatedAt: default));
+
+        Assert.Equal("lastUpdatedAt", ex.ParamName);
+        Assert.Contains("LastUpdatedAt must be a valid, non-default value.", ex.Message);
+    }
+
+    [Fact]
+    public void Constructor_Throws_WhenLastSourceEventIdIsEmpty()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => new DailyCellState(
+            areaId: Guid.NewGuid(),
+            sensorId: Guid.NewGuid(),
+            day: new DateTimeOffset(2026, 5, 12, 0, 0, 0, TimeSpan.Zero),
+            antecedentState: "baseline",
+            candidateParameterSetVersion: "Candidate Parameter Set V1.0",
+            provenance: "pipeline",
+            lastUpdatedAt: new DateTimeOffset(2026, 5, 12, 12, 0, 0, TimeSpan.Zero),
+            lastSourceEventId: Guid.Empty));
+
+        Assert.Equal("lastSourceEventId", ex.ParamName);
+        Assert.Contains("LastSourceEventId must not be an empty GUID.", ex.Message);
+    }
+
+    [Fact]
     public void Constructor_Throws_WhenPrecipitationIsNegative()
     {
         var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new DailyCellState(
@@ -71,6 +120,70 @@ public sealed class DailyCellStateTests
             dailyPrecipitationMillimeters: -0.1));
 
         Assert.Equal("dailyPrecipitationMillimeters", ex.ParamName);
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void Constructor_Throws_WhenPrecipitationIsNotFinite(double precipitation)
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new DailyCellState(
+            areaId: Guid.NewGuid(),
+            sensorId: Guid.NewGuid(),
+            day: new DateTimeOffset(2026, 5, 12, 0, 0, 0, TimeSpan.Zero),
+            antecedentState: "baseline",
+            candidateParameterSetVersion: "Candidate Parameter Set V1.0",
+            provenance: "pipeline",
+            lastUpdatedAt: new DateTimeOffset(2026, 5, 12, 12, 0, 0, TimeSpan.Zero),
+            dailyPrecipitationMillimeters: precipitation));
+
+        Assert.Equal("dailyPrecipitationMillimeters", ex.ParamName);
+        Assert.Contains("finite number", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void Constructor_Throws_WhenMaxTemperatureIsNotFinite(double temperature)
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new DailyCellState(
+            areaId: Guid.NewGuid(),
+            sensorId: Guid.NewGuid(),
+            day: new DateTimeOffset(2026, 5, 12, 0, 0, 0, TimeSpan.Zero),
+            antecedentState: "baseline",
+            candidateParameterSetVersion: "Candidate Parameter Set V1.0",
+            provenance: "pipeline",
+            lastUpdatedAt: new DateTimeOffset(2026, 5, 12, 12, 0, 0, TimeSpan.Zero),
+            maxTemperatureCelsius: temperature));
+
+        Assert.Equal("maxTemperatureCelsius", ex.ParamName);
+        Assert.Contains("finite number", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void FromRiskInput_Throws_WhenTemperatureValueIsNotFinite(double temperature)
+    {
+        var input = new RiskInput(
+            AreaId: Guid.NewGuid(),
+            SensorId: Guid.NewGuid(),
+            SourceEventId: Guid.NewGuid(),
+            MetricType: SensorMetricType.Temperature,
+            Value: temperature,
+            Unit: MeasurementUnit.Celsius,
+            EventTime: new DateTimeOffset(2026, 5, 12, 14, 15, 0, TimeSpan.Zero));
+
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => DailyCellState.FromRiskInput(
+            input,
+            antecedentState: "baseline",
+            candidateParameterSetVersion: "Candidate Parameter Set V1.0",
+            provenance: "risk_input_v1"));
+
+        Assert.Equal("value", ex.ParamName);
     }
 
     [Fact]

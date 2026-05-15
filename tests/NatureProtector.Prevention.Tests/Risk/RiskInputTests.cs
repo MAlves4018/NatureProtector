@@ -83,4 +83,109 @@ public sealed class RiskInputTests
         var carried = Assert.Single(input.ClassifierResults);
         Assert.Equal(classifierResult.ClassifierName, carried.ClassifierName);
     }
+
+    [Fact]
+    public void FromNormalizedReading_WithEligibilityFallsBackToReadingClassifiers_WhenEligibilityHasNone()
+    {
+        var readingClassifier = ClassifierResult.Create(
+            classifierName: "semantic_classifier",
+            status: ClassifierStatus.Warning,
+            severity: ClassifierSeverity.Low,
+            qualityFlags: ["ReadingFlag"],
+            reasons: ["reading_reason"],
+            evaluatedAt: new DateTimeOffset(2026, 5, 12, 11, 30, 0, TimeSpan.Zero),
+            ruleSetVersion: "v1.0");
+        var reading = CreateReading() with
+        {
+            ClassifierResults = [readingClassifier]
+        };
+        var eligibility = RiskEligibilityResult.PartialButUsable(
+            RiskEligibilityReason.DelayedReading,
+            "Reading is delayed but still usable.");
+
+        var input = RiskInput.FromNormalizedReading(reading, eligibility);
+
+        var carried = Assert.Single(input.ClassifierResults);
+        Assert.Equal(readingClassifier.ClassifierName, carried.ClassifierName);
+        Assert.Equal(RiskInputStatus.PartialButUsable, input.InputStatus);
+        Assert.Equal(RiskEligibilityReason.DelayedReading, input.EligibilityReason);
+    }
+
+    [Fact]
+    public void FromNormalizedReading_WithEligibilityNormalizesAndDeduplicatesQualityFlags()
+    {
+        var reading = CreateReading() with
+        {
+            QualityFlags = [" Delayed ", "", "OutOfOrder", "Delayed", "   "]
+        };
+        var eligibility = RiskEligibilityResult.PartialButUsable(
+            RiskEligibilityReason.DelayedReading,
+            "Reading is delayed but still usable.",
+            qualityFlags: ["OutOfOrder", " SensorDegraded ", "Delayed"]);
+
+        var input = RiskInput.FromNormalizedReading(reading, eligibility);
+
+        Assert.Equal(["Delayed", "OutOfOrder", "SensorDegraded"], input.QualityFlags);
+        Assert.Equal(RiskInputStatus.PartialButUsable, input.InputStatus);
+    }
+
+    [Fact]
+    public void FromNormalizedReading_NullFlagsAndClassifiers_ReturnsEmptyCollections()
+    {
+        var reading = CreateReading() with
+        {
+            QualityFlags = null!,
+            ClassifierResults = null!
+        };
+
+        var input = RiskInput.FromNormalizedReading(reading);
+
+        Assert.Empty(input.QualityFlags);
+        Assert.Empty(input.ClassifierResults);
+        Assert.Equal(RiskInputStatus.CompleteEligible, input.InputStatus);
+    }
+
+    [Theory]
+    [InlineData(RiskInputStatus.Blocked, RiskEligibilityReason.UnsupportedMetric)]
+    [InlineData(RiskInputStatus.PartialButUsable, RiskEligibilityReason.DelayedReading)]
+    [InlineData(RiskInputStatus.CompleteEligible, RiskEligibilityReason.Eligible)]
+    public void FromNormalizedReading_WithEligibilityPreservesStatusSemantics(
+        RiskInputStatus expectedStatus,
+        RiskEligibilityReason expectedReason)
+    {
+        var reading = CreateReading();
+        var eligibility = expectedStatus switch
+        {
+            RiskInputStatus.Blocked => RiskEligibilityResult.Blocked(
+                expectedReason,
+                "Blocked for risk scoring."),
+            RiskInputStatus.PartialButUsable => RiskEligibilityResult.PartialButUsable(
+                expectedReason,
+                "Partial but usable."),
+            _ => RiskEligibilityResult.CompleteEligible("Complete.")
+        };
+
+        var input = RiskInput.FromNormalizedReading(reading, eligibility);
+
+        Assert.Equal(expectedStatus, input.InputStatus);
+        Assert.Equal(expectedReason, input.EligibilityReason);
+    }
+
+    private static NormalizedReading CreateReading()
+    {
+        return new NormalizedReading(
+            EventId: Guid.NewGuid(),
+            CorrelationId: "corr-risk-input",
+            AreaId: Guid.NewGuid(),
+            SensorId: Guid.NewGuid(),
+            SensorName: "Sensor-PT-06",
+            MetricType: SensorMetricType.Temperature,
+            Value: 31.0,
+            Unit: MeasurementUnit.Celsius,
+            Latitude: 39.70,
+            Longitude: -7.90,
+            OperationalState: SensorOperationalState.Nominal,
+            EventTime: new DateTimeOffset(2026, 4, 30, 10, 45, 0, TimeSpan.Zero),
+            IngestTime: null);
+    }
 }

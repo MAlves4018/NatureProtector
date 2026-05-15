@@ -71,4 +71,84 @@ public sealed class SimulatorOptionsValidatorTests
             "Simulator:Sensors contains unsupported standalone sensor type 'Composite'. Use Temperature, Humidity or Wind.",
             result.Failures);
     }
+
+    [Fact]
+    public void Validate_StandaloneProfileMissingRequiredFields_ReturnsSpecificFailures()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.ControlPlaneEnabled = false;
+        options.AreaId = Guid.Empty;
+        options.ScenarioId = Guid.Empty;
+        options.ScenarioName = " ";
+        options.Sensors = [];
+
+        var result = _validator.Validate(name: null, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains("Simulator:AreaId is required when ControlPlaneEnabled=false.", result.Failures);
+        Assert.Contains("Simulator:ScenarioId is required when ControlPlaneEnabled=false.", result.Failures);
+        Assert.Contains("Simulator:ScenarioName is required when ControlPlaneEnabled=false.", result.Failures);
+        Assert.Contains("Simulator:Sensors must define at least one sensor when ControlPlaneEnabled=false.", result.Failures);
+    }
+
+    [Fact]
+    public void Validate_StandaloneProfileWithNullSensors_ReturnsSensorFailure()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.ControlPlaneEnabled = false;
+        options.Sensors = null!;
+
+        var result = _validator.Validate(name: null, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains(
+            "Simulator:Sensors must define at least one sensor when ControlPlaneEnabled=false.",
+            result.Failures);
+    }
+
+    [Theory]
+    [InlineData("SensorCount", "Simulator:RunOverrides:SensorCount must be greater than zero when provided.")]
+    [InlineData("NumberOfCycles", "Simulator:RunOverrides:NumberOfCycles must be greater than zero when provided.")]
+    [InlineData("IntervalSeconds", "Simulator:RunOverrides:IntervalSeconds must be greater than zero when provided.")]
+    public void Validate_RunOverrideIsZero_ReturnsSpecificFailure(
+        string overrideName,
+        string expectedFailure)
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.RunOverrides = new SimulatorRunOverridesOptions();
+
+        switch (overrideName)
+        {
+            case "SensorCount":
+                options.RunOverrides.SensorCount = 0;
+                break;
+            case "NumberOfCycles":
+                options.RunOverrides.NumberOfCycles = 0;
+                break;
+            case "IntervalSeconds":
+                options.RunOverrides.IntervalSeconds = 0;
+                break;
+        }
+
+        var result = _validator.Validate(name: null, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains(expectedFailure, result.Failures);
+    }
+
+    [Fact]
+    public void Validate_ValidStandaloneProfileWithRunOverrides_Succeeds()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.RunOverrides = new SimulatorRunOverridesOptions
+        {
+            SensorCount = 1,
+            NumberOfCycles = 2,
+            IntervalSeconds = 3
+        };
+
+        var result = _validator.Validate(name: null, options);
+
+        Assert.True(result.Succeeded);
+    }
 }

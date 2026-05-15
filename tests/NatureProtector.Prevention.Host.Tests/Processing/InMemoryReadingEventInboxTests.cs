@@ -22,8 +22,6 @@ public sealed class InMemoryReadingEventInboxTests
             "reading_risk_pipeline",
             CancellationToken.None);
 
-        await Task.Delay(20);
-
         var validStoreResult = await inbox.StoreIncomingAsync(
             validEnvelope,
             JsonEventSerializer.SerializeToUtf8Bytes(validEnvelope),
@@ -44,6 +42,14 @@ public sealed class InMemoryReadingEventInboxTests
             TimeSpan.Zero,
             CancellationToken.None);
 
+        SetNextAttemptNotBefore(
+            inbox,
+            malformedStoreResult.InboxEventId,
+            new DateTimeOffset(2026, 5, 12, 10, 0, 0, TimeSpan.Zero));
+        SetNextAttemptNotBefore(
+            inbox,
+            validStoreResult.InboxEventId,
+            new DateTimeOffset(2026, 5, 12, 10, 0, 1, TimeSpan.Zero));
         CorruptEnvelope(inbox, malformedStoreResult.InboxEventId, "{ invalid");
 
         var workItem = await inbox.TryStartDueRetryAsync(
@@ -73,6 +79,90 @@ public sealed class InMemoryReadingEventInboxTests
         Assert.Equal("invalid_retry_payload", quarantine.QuarantineCode);
     }
 
+    [Fact]
+    public async Task StoreIncomingAsync_DuplicateEventWithSamePayload_ReturnsExistingLeaseWithoutRejection()
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var envelope = EnvelopeFactory.Create();
+        var rawBody = JsonEventSerializer.SerializeToUtf8Bytes(envelope);
+
+        var first = await inbox.StoreIncomingAsync(
+            envelope,
+            rawBody,
+            "reading_risk_pipeline",
+            CancellationToken.None);
+        var duplicate = await inbox.StoreIncomingAsync(
+            envelope,
+            rawBody,
+            "reading_risk_pipeline",
+            CancellationToken.None);
+
+        Assert.False(first.IsDuplicate);
+        Assert.True(first.ShouldProcessNow);
+        Assert.True(duplicate.IsDuplicate);
+        Assert.False(duplicate.ShouldProcessNow);
+        Assert.Equal(first.InboxEventId, duplicate.InboxEventId);
+        Assert.Empty(inbox.Rejections);
+        Assert.Single(inbox.Events);
+    }
+
+    [Fact]
+    public async Task StoreIncomingAsync_DuplicateEventWithDifferentPayload_RecordsRejection()
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var eventId = Guid.NewGuid();
+        var original = EnvelopeFactory.Create(eventId: eventId, value: 31.0);
+        var conflicting = EnvelopeFactory.Create(eventId: eventId, value: 35.0);
+
+        var first = await inbox.StoreIncomingAsync(
+            original,
+            JsonEventSerializer.SerializeToUtf8Bytes(original),
+            "reading_risk_pipeline",
+            CancellationToken.None);
+        var duplicate = await inbox.StoreIncomingAsync(
+            conflicting,
+            JsonEventSerializer.SerializeToUtf8Bytes(conflicting),
+            "reading_risk_pipeline",
+            CancellationToken.None);
+
+        Assert.True(duplicate.IsDuplicate);
+        Assert.False(duplicate.ShouldProcessNow);
+        Assert.Equal(first.InboxEventId, duplicate.InboxEventId);
+        var rejection = Assert.Single(inbox.Rejections);
+        Assert.Equal(first.InboxEventId, rejection.InboxEventId);
+        Assert.Equal(eventId, rejection.EventId);
+        Assert.Equal("duplicate_payload_mismatch", rejection.RejectionCode);
+        Assert.Contains("different payload", rejection.RejectionReason);
+        Assert.Equal("reading_risk_pipeline", rejection.Metadata?.Stage);
+    }
+
+    [Fact]
+    public async Task TryStartDueRetryAsync_NoDueRetry_ReturnsNull()
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var envelope = EnvelopeFactory.Create();
+        var storeResult = await inbox.StoreIncomingAsync(
+            envelope,
+            JsonEventSerializer.SerializeToUtf8Bytes(envelope),
+            "reading_risk_pipeline",
+            CancellationToken.None);
+        await inbox.ScheduleRetryAsync(
+            storeResult.Lease!,
+            "timeout",
+            "temporary failure",
+            TimeSpan.FromHours(1),
+            CancellationToken.None);
+
+        var workItem = await inbox.TryStartDueRetryAsync(
+            "reading_risk_pipeline",
+            CancellationToken.None);
+
+        Assert.Null(workItem);
+        var inboxEvent = Assert.Single(inbox.Events);
+        Assert.Equal(InboxEventStatus.RetryPending, inboxEvent.Status);
+        Assert.NotNull(inboxEvent.NextAttemptNotBefore);
+    }
+
     private static void CorruptEnvelope(
         InMemoryReadingEventInbox inbox,
         Guid inboxEventId,
@@ -89,6 +179,24 @@ public sealed class InMemoryReadingEventInboxTests
 
         eventsByInboxId[inboxEventId] = corrupted;
         eventsByEventId[current.EventId] = corrupted;
+    }
+
+    private static void SetNextAttemptNotBefore(
+        InMemoryReadingEventInbox inbox,
+        Guid inboxEventId,
+        DateTimeOffset nextAttemptNotBefore)
+    {
+        var eventsByInboxId = GetPrivateDictionary(
+            inbox,
+            "_eventsByInboxId");
+        var eventsByEventId = GetPrivateDictionary(
+            inbox,
+            "_eventsByEventId");
+        var current = eventsByInboxId[inboxEventId];
+        var updated = current with { NextAttemptNotBefore = nextAttemptNotBefore };
+
+        eventsByInboxId[inboxEventId] = updated;
+        eventsByEventId[current.EventId] = updated;
     }
 
     private static ConcurrentDictionary<Guid, InMemoryReadingEventInbox.InMemoryInboxEvent> GetPrivateDictionary(
