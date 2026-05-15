@@ -1,0 +1,2157 @@
+Using launch settings from src\NatureProtector.Simulator.Host\Properties\launchSettings.json...
+Building...
+C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Shared\NatureProtector.Shared.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.10.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9 [C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host\NatureProtector.Simulator.Host.csproj]
+C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Shared\NatureProtector.Shared.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.10.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9
+info: NatureProtector.Simulator.Host.Services.SimulationRunner[0]
+      Simulation runner starting at 05/15/2026 21:44:34 +00:00.
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (40ms) [Parameters=[@___options_AreaId_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."Code", a."ConfigurationVersionId", a."CountryCode", a."GeometryGeoJson", a."MetadataJson", a."Name"
+      FROM control.areas AS a
+      WHERE a."Id" = @___options_AreaId_0
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (8ms) [Parameters=[@___options_ControlPlaneAreaCode_0='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."Code", a."ConfigurationVersionId", a."CountryCode", a."GeometryGeoJson", a."MetadataJson", a."Name"
+      FROM control.areas AS a
+      WHERE a."Code" = @___options_ControlPlaneAreaCode_0
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[@__areaId_0='?' (DbType = Guid), @___options_ScenarioId_1='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id", s."AreaId", s."BaseScenarioId", s."Code", s."ConfigurationVersionId", s."Description", s."Name", s."ParametersJson", s."ScenarioKind"
+      FROM control.scenario_definitions AS s
+      WHERE s."AreaId" = @__areaId_0 AND s."Id" = @___options_ScenarioId_1
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@__areaId_0='?' (DbType = Guid), @___options_ControlPlaneScenarioCode_1='?'], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id", s."AreaId", s."BaseScenarioId", s."Code", s."ConfigurationVersionId", s."Description", s."Name", s."ParametersJson", s."ScenarioKind"
+      FROM control.scenario_definitions AS s
+      WHERE s."AreaId" = @__areaId_0 AND s."Code" = @___options_ControlPlaneScenarioCode_1
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@__area_Id_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id", s."AltitudeMeters", s."AreaId", s."ConfigurationVersionId", s."GridCellId", s."InstallationProfile", s."IsActive", s."Latitude", s."Longitude", s."Name", s."NetworkId", s."ProfileId", s."Type", s0."Id", s0."AccuracyProfileJson", s0."ConfigurationVersionId", s0."FaultProfileJson", s0."Name", s0."NoiseProfileJson", s0."PublicationPolicyJson", s0."SensorFamily"
+      FROM control.sensor_nodes AS s
+      INNER JOIN control.sensor_profiles AS s0 ON s."ProfileId" = s0."Id"
+      WHERE s."AreaId" = @__area_Id_0 AND s."IsActive"
+      ORDER BY s."Name"
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             c0ed27dfb7fd50be
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       132272a51d552fca
+Activity.DisplayName:        natureprotector.simulator.context.create_from_postgres
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:34.3028081Z
+Activity.Duration:           00:00:01.2213790
+Activity.Tags:
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.scenario_id: 6034251c-b502-5f7b-a557-7187178cfb04
+    np.scenario_code: scenario_b
+    np.configuration_version: c03be3d5-1f70-15cb-2fc0-3c86a204a644
+    np.outcome: completed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Services.SimulationRunner[0]
+      Simulation context created | AreaId=b3f4fb84-bf17-5522-a5f3-70fd1212f381 | ScenarioId=6034251c-b502-5f7b-a557-7187178cfb04 | ScenarioName=Scenario B - High Risk Proenca-a-Nova | Seed=12345 | Cycles=5 | Interval=5s
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@__run_Id_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id", s."AreaId", s."ConfigurationVersionId", s."CreatedAt", s."EndedAt", s."ExecutionSeed", s."IntervalSeconds", s."LogicalStartTimestamp", s."MetadataJson", s."NumberOfCycles", s."ScenarioCode", s."ScenarioId", s."ScenarioName", s."StartedAt", s."Status"
+      FROM control.simulation_runs AS s
+      WHERE s."Id" = @__run_Id_0
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (6ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = Guid), @p2='?' (DbType = Guid), @p3='?' (DbType = DateTime), @p4='?' (DbType = DateTime), @p5='?' (DbType = Int32), @p6='?' (DbType = Int32), @p7='?' (DbType = DateTime), @p8='?', @p9='?' (DbType = Int32), @p10='?', @p11='?' (DbType = Guid), @p12='?', @p13='?' (DbType = DateTime), @p14='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO control.simulation_runs ("Id", "AreaId", "ConfigurationVersionId", "CreatedAt", "EndedAt", "ExecutionSeed", "IntervalSeconds", "LogicalStartTimestamp", "MetadataJson", "NumberOfCycles", "ScenarioCode", "ScenarioId", "ScenarioName", "StartedAt", "Status")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@__run_Id_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id", s."AreaId", s."ConfigurationVersionId", s."CreatedAt", s."EndedAt", s."ExecutionSeed", s."IntervalSeconds", s."LogicalStartTimestamp", s."MetadataJson", s."NumberOfCycles", s."ScenarioCode", s."ScenarioId", s."ScenarioName", s."StartedAt", s."Status"
+      FROM control.simulation_runs AS s
+      WHERE s."Id" = @__run_Id_0
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@p2='?' (DbType = Guid), @p0='?' (DbType = DateTime), @p1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      UPDATE control.simulation_runs SET "StartedAt" = @p0, "Status" = @p1
+      WHERE "Id" = @p2;
+info: NatureProtector.Simulator.Host.Services.SimulationRunner[0]
+      Simulation run started | SimulationRunId=28bdba51-2159-4aef-91ea-b746b0939f16 | StartedAt=05/15/2026 21:44:35 +00:00 | LogicalStartTimestamp=09/13/2020 12:00:00 +02:00
+info: NatureProtector.Simulator.Host.Services.SimulationRunner[0]
+      Starting simulation cycle 1/5 at logical time 09/13/2020 12:00:00 +02:00.
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      RabbitMQ publisher connected | Host=localhost | Port=5672 | Exchange=np.events
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=cfc68fbf-f1fb-4bb2-affe-dc13ceb55d4e | CorrelationId=28bdba5121594aef91eab746b0939f16-0000-22702eee75aa3cf431abb689bfb9a8bc | SensorId=22702eee-75aa-3cf4-31ab-b689bfb9a8bc | SensorName=pilot-humidity-0001 | Value=24.183303066870806
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             bffcfa5b69881d17
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       37b5e5475c89f6b7
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:35.7303900Z
+Activity.Duration:           00:00:00.1112058
+Activity.Tags:
+    np.event_id: cfc68fbf-f1fb-4bb2-affe-dc13ceb55d4e
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0000-22702eee75aa3cf431abb689bfb9a8bc
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 22702eee-75aa-3cf4-31ab-b689bfb9a8bc
+    np.sensor_name: pilot-humidity-0001
+    np.metric_type: Humidity
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=c4d8967f-c637-498b-bc03-b20de58f7d48 | CorrelationId=28bdba5121594aef91eab746b0939f16-0000-2f494582407786f29707780861949155 | SensorId=2f494582-4077-86f2-9707-780861949155 | SensorName=pilot-humidity-0230 | Value=25.02116461064255
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             1377d6aecf7efa3b
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       37b5e5475c89f6b7
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:35.8448820Z
+Activity.Duration:           00:00:00.0003617
+Activity.Tags:
+    np.event_id: c4d8967f-c637-498b-bc03-b20de58f7d48
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0000-2f494582407786f29707780861949155
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 2f494582-4077-86f2-9707-780861949155
+    np.sensor_name: pilot-humidity-0230
+    np.metric_type: Humidity
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=914dc000-eae9-46a3-a998-eff88ebdcec4 | CorrelationId=28bdba5121594aef91eab746b0939f16-0000-27bf9aad094f7dc645b2129a8cc0522e | SensorId=27bf9aad-094f-7dc6-45b2-129a8cc0522e | SensorName=pilot-temperature-0001 | Value=31.235661969536757
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             5f55a95269d6d120
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       37b5e5475c89f6b7
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:35.8481832Z
+Activity.Duration:           00:00:00.0001085
+Activity.Tags:
+    np.event_id: 914dc000-eae9-46a3-a998-eff88ebdcec4
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0000-27bf9aad094f7dc645b2129a8cc0522e
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 27bf9aad-094f-7dc6-45b2-129a8cc0522e
+    np.sensor_name: pilot-temperature-0001
+    np.metric_type: Temperature
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=ae94f9fe-dc94-432a-aab4-f79fdfc1704c | CorrelationId=28bdba5121594aef91eab746b0939f16-0000-8e6a3d8a7e654fa58c51fa4597b203b8 | SensorId=8e6a3d8a-7e65-4fa5-8c51-fa4597b203b8 | SensorName=pilot-temperature-0230 | Value=31.17001404891257
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             d84636c32c62b39a
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       37b5e5475c89f6b7
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:35.8529362Z
+Activity.Duration:           00:00:00.0001093
+Activity.Tags:
+    np.event_id: ae94f9fe-dc94-432a-aab4-f79fdfc1704c
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0000-8e6a3d8a7e654fa58c51fa4597b203b8
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 8e6a3d8a-7e65-4fa5-8c51-fa4597b203b8
+    np.sensor_name: pilot-temperature-0230
+    np.metric_type: Temperature
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=fea86b3a-6ba7-4c0d-a303-2f70601e1bf7 | CorrelationId=28bdba5121594aef91eab746b0939f16-0000-e7660606cadd4212e67b574c09ef789a | SensorId=e7660606-cadd-4212-e67b-574c09ef789a | SensorName=pilot-wind-0001 | Value=3.7836029106488462
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             6e2b076689bf9f2b
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       37b5e5475c89f6b7
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:35.8568832Z
+Activity.Duration:           00:00:00.0001489
+Activity.Tags:
+    np.event_id: fea86b3a-6ba7-4c0d-a303-2f70601e1bf7
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0000-e7660606cadd4212e67b574c09ef789a
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: e7660606-cadd-4212-e67b-574c09ef789a
+    np.sensor_name: pilot-wind-0001
+    np.metric_type: WindSpeed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=8fb99fa7-f5d2-4ca2-bce1-66163bd55fb2 | CorrelationId=28bdba5121594aef91eab746b0939f16-0000-17badc17792017acc213db1c12bedfb2 | SensorId=17badc17-7920-17ac-c213-db1c12bedfb2 | SensorName=pilot-wind-0230 | Value=3.712284265957905
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             384a56af9979a526
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       37b5e5475c89f6b7
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:35.8594956Z
+Activity.Duration:           00:00:00.0000857
+Activity.Tags:
+    np.event_id: 8fb99fa7-f5d2-4ca2-bce1-66163bd55fb2
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0000-17badc17792017acc213db1c12bedfb2
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 17badc17-7920-17ac-c213-db1c12bedfb2
+    np.sensor_name: pilot-wind-0230
+    np.metric_type: WindSpeed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             37b5e5475c89f6b7
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       132272a51d552fca
+Activity.DisplayName:        natureprotector.simulator.cycle
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:35.7254627Z
+Activity.Duration:           00:00:05.1397604
+Activity.Tags:
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.scenario_id: 6034251c-b502-5f7b-a557-7187178cfb04
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Services.SimulationRunner[0]
+      Starting simulation cycle 2/5 at logical time 09/13/2020 12:00:05 +02:00.
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=6bcee3ca-1425-4787-b9e1-8930d0219755 | CorrelationId=28bdba5121594aef91eab746b0939f16-0001-22702eee75aa3cf431abb689bfb9a8bc | SensorId=22702eee-75aa-3cf4-31ab-b689bfb9a8bc | SensorName=pilot-humidity-0001 | Value=22.780761894123312
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             c4d5cbf5f6dba39f
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       9913787bc615fd41
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:40.8684675Z
+Activity.Duration:           00:00:00.0001688
+Activity.Tags:
+    np.event_id: 6bcee3ca-1425-4787-b9e1-8930d0219755
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0001-22702eee75aa3cf431abb689bfb9a8bc
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 22702eee-75aa-3cf4-31ab-b689bfb9a8bc
+    np.sensor_name: pilot-humidity-0001
+    np.metric_type: Humidity
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=01c40599-e3a5-49dd-8615-102669f69eb8 | CorrelationId=28bdba5121594aef91eab746b0939f16-0001-2f494582407786f29707780861949155 | SensorId=2f494582-4077-86f2-9707-780861949155 | SensorName=pilot-humidity-0230 | Value=24.14880150658049
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             20225604ce72290b
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       9913787bc615fd41
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:40.8718734Z
+Activity.Duration:           00:00:00.0002517
+Activity.Tags:
+    np.event_id: 01c40599-e3a5-49dd-8615-102669f69eb8
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0001-2f494582407786f29707780861949155
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 2f494582-4077-86f2-9707-780861949155
+    np.sensor_name: pilot-humidity-0230
+    np.metric_type: Humidity
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=cb9e55ed-34b6-48d6-ab2b-1492bd5c9a19 | CorrelationId=28bdba5121594aef91eab746b0939f16-0001-27bf9aad094f7dc645b2129a8cc0522e | SensorId=27bf9aad-094f-7dc6-45b2-129a8cc0522e | SensorName=pilot-temperature-0001 | Value=31.769460532638128
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             131c93f2cfe71105
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       9913787bc615fd41
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:40.8757390Z
+Activity.Duration:           00:00:00.0002252
+Activity.Tags:
+    np.event_id: cb9e55ed-34b6-48d6-ab2b-1492bd5c9a19
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0001-27bf9aad094f7dc645b2129a8cc0522e
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 27bf9aad-094f-7dc6-45b2-129a8cc0522e
+    np.sensor_name: pilot-temperature-0001
+    np.metric_type: Temperature
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=1dc90bcb-d2f8-4584-89a0-598208429c12 | CorrelationId=28bdba5121594aef91eab746b0939f16-0001-8e6a3d8a7e654fa58c51fa4597b203b8 | SensorId=8e6a3d8a-7e65-4fa5-8c51-fa4597b203b8 | SensorName=pilot-temperature-0230 | Value=31.389174891133546
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             64ab5c1615be432c
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       9913787bc615fd41
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:40.8806621Z
+Activity.Duration:           00:00:00.0004812
+Activity.Tags:
+    np.event_id: 1dc90bcb-d2f8-4584-89a0-598208429c12
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0001-8e6a3d8a7e654fa58c51fa4597b203b8
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 8e6a3d8a-7e65-4fa5-8c51-fa4597b203b8
+    np.sensor_name: pilot-temperature-0230
+    np.metric_type: Temperature
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=87cb0bc4-09f8-471e-8793-d43dac48eb09 | CorrelationId=28bdba5121594aef91eab746b0939f16-0001-e7660606cadd4212e67b574c09ef789a | SensorId=e7660606-cadd-4212-e67b-574c09ef789a | SensorName=pilot-wind-0001 | Value=4.386700285182078
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             8c694ef3413e84ff
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       9913787bc615fd41
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:40.8860346Z
+Activity.Duration:           00:00:00.0002018
+Activity.Tags:
+    np.event_id: 87cb0bc4-09f8-471e-8793-d43dac48eb09
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0001-e7660606cadd4212e67b574c09ef789a
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: e7660606-cadd-4212-e67b-574c09ef789a
+    np.sensor_name: pilot-wind-0001
+    np.metric_type: WindSpeed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=305da371-35bd-438b-b040-efd77d4afe6b | CorrelationId=28bdba5121594aef91eab746b0939f16-0001-17badc17792017acc213db1c12bedfb2 | SensorId=17badc17-7920-17ac-c213-db1c12bedfb2 | SensorName=pilot-wind-0230 | Value=4.493453742941936
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             3a9d99db43c0cf6d
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       9913787bc615fd41
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:40.8896691Z
+Activity.Duration:           00:00:00.0002004
+Activity.Tags:
+    np.event_id: 305da371-35bd-438b-b040-efd77d4afe6b
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0001-17badc17792017acc213db1c12bedfb2
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 17badc17-7920-17ac-c213-db1c12bedfb2
+    np.sensor_name: pilot-wind-0230
+    np.metric_type: WindSpeed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+
+Metric Name: process.memory.usage, Description: The amount of physical memory in use., Unit: By
+(2026-05-15T21:44:34.2737130Z, 2026-05-15T21:44:44.2799018Z] LongSumNonMonotonic
+Value: 109559808
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.memory.virtual, Description: The amount of committed virtual memory., Unit: By
+(2026-05-15T21:44:34.2749630Z, 2026-05-15T21:44:44.2799355Z] LongSumNonMonotonic
+Value: 2481007869952
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.cpu.time, Description: Total CPU seconds broken down by different states., Unit: s
+(2026-05-15T21:44:34.2751673Z, 2026-05-15T21:44:44.2799544Z] process.cpu.state: user DoubleSum
+Value: 1.75
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2751673Z, 2026-05-15T21:44:44.2799544Z] process.cpu.state: system DoubleSum
+Value: 0.140625
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.cpu.count, Description: The number of processors (CPU cores) available to the current process., Unit: {processors}
+(2026-05-15T21:44:34.2751896Z, 2026-05-15T21:44:44.2799551Z] LongSumNonMonotonic
+Value: 16
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.thread.count, Description: Process threads count., Unit: {thread}
+(2026-05-15T21:44:34.2752038Z, 2026-05-15T21:44:44.2799556Z] LongSumNonMonotonic
+Value: 23
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.collections, Description: The number of garbage collections that have occurred since the process has started., Unit: {collection}
+(2026-05-15T21:44:34.2752122Z, 2026-05-15T21:44:44.2799560Z] gc.heap.generation: gen2 LongSum
+Value: 1
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752122Z, 2026-05-15T21:44:44.2799560Z] gc.heap.generation: gen1 LongSum
+Value: 1
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752122Z, 2026-05-15T21:44:44.2799560Z] gc.heap.generation: gen0 LongSum
+Value: 2
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.process.memory.working_set, Description: The number of bytes of physical memory mapped to the process context., Unit: By
+(2026-05-15T21:44:34.2752195Z, 2026-05-15T21:44:44.2799563Z] LongSumNonMonotonic
+Value: 109289472
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.heap.total_allocated, Description: The approximate number of bytes allocated on the managed GC heap since the process has started. The returned value does not include any native allocations., Unit: By
+(2026-05-15T21:44:34.2752294Z, 2026-05-15T21:44:44.2799566Z] LongSum
+Value: 38864432
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.last_collection.memory.committed_size, Description: The amount of committed virtual memory in use by the .NET GC, as observed during the latest garbage collection., Unit: By
+(2026-05-15T21:44:34.2752364Z, 2026-05-15T21:44:44.2799568Z] LongSumNonMonotonic
+Value: 20717568
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.last_collection.heap.size, Description: The managed GC heap size (including fragmentation), as observed during the latest garbage collection., Unit: By
+(2026-05-15T21:44:34.2752433Z, 2026-05-15T21:44:44.2799572Z] gc.heap.generation: gen0 LongSumNonMonotonic
+Value: 210064
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752433Z, 2026-05-15T21:44:44.2799572Z] gc.heap.generation: gen1 LongSumNonMonotonic
+Value: 4115352
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752433Z, 2026-05-15T21:44:44.2799572Z] gc.heap.generation: gen2 LongSumNonMonotonic
+Value: 906760
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752433Z, 2026-05-15T21:44:44.2799572Z] gc.heap.generation: loh LongSumNonMonotonic
+Value: 6986640
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752433Z, 2026-05-15T21:44:44.2799572Z] gc.heap.generation: poh LongSumNonMonotonic
+Value: 58240
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.last_collection.heap.fragmentation.size, Description: The heap fragmentation, as observed during the latest garbage collection., Unit: By
+(2026-05-15T21:44:34.2752533Z, 2026-05-15T21:44:44.2799575Z] gc.heap.generation: gen0 LongSumNonMonotonic
+Value: 201600
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752533Z, 2026-05-15T21:44:44.2799575Z] gc.heap.generation: gen1 LongSumNonMonotonic
+Value: 68256
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752533Z, 2026-05-15T21:44:44.2799575Z] gc.heap.generation: gen2 LongSumNonMonotonic
+Value: 0
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752533Z, 2026-05-15T21:44:44.2799575Z] gc.heap.generation: loh LongSumNonMonotonic
+Value: 1120
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752533Z, 2026-05-15T21:44:44.2799575Z] gc.heap.generation: poh LongSumNonMonotonic
+Value: 0
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.pause.time, Description: The total amount of time paused in GC since the process has started., Unit: s
+(2026-05-15T21:44:34.2752612Z, 2026-05-15T21:44:44.2799578Z] DoubleSum
+Value: 0.019938
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.jit.compiled_il.size, Description: Count of bytes of intermediate language that have been compiled since the process has started., Unit: By
+(2026-05-15T21:44:34.2752680Z, 2026-05-15T21:44:44.2799580Z] LongSum
+Value: 1024304
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.jit.compiled_methods, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: {method}
+(2026-05-15T21:44:34.2752779Z, 2026-05-15T21:44:44.2799584Z] LongSum
+Value: 13377
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.jit.compilation.time, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: s
+(2026-05-15T21:44:34.2752908Z, 2026-05-15T21:44:44.2799591Z] DoubleSum
+Value: 1.2273343
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.monitor.lock_contentions, Description: The number of times there was contention when trying to acquire a monitor lock since the process has started., Unit: {contention}
+(2026-05-15T21:44:34.2753058Z, 2026-05-15T21:44:44.2799600Z] LongSum
+Value: 14
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.thread_pool.thread.count, Description: The number of thread pool threads that currently exist., Unit: {thread}
+(2026-05-15T21:44:34.2753281Z, 2026-05-15T21:44:44.2799602Z] LongSum
+Value: 3
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.thread_pool.work_item.count, Description: The number of work items that the thread pool has completed since the process has started., Unit: {work_item}
+(2026-05-15T21:44:34.2753394Z, 2026-05-15T21:44:44.2799604Z] LongSum
+Value: 69
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.thread_pool.queue.length, Description: The number of work items that are currently queued to be processed by the thread pool., Unit: {work_item}
+(2026-05-15T21:44:34.2753516Z, 2026-05-15T21:44:44.2799611Z] LongSum
+Value: 0
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.timer.count, Description: The number of timer instances that are currently active. An active timer is registered to tick at some point in the future and has not yet been canceled., Unit: {timer}
+(2026-05-15T21:44:34.2753665Z, 2026-05-15T21:44:44.2799615Z] LongSumNonMonotonic
+Value: 6
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.assembly.count, Description: The number of .NET assemblies that are currently loaded., Unit: {assembly}
+(2026-05-15T21:44:34.2753768Z, 2026-05-15T21:44:44.2799618Z] LongSumNonMonotonic
+Value: 105
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.process.cpu.count, Description: The number of processors available to the process., Unit: {cpu}
+(2026-05-15T21:44:34.2798528Z, 2026-05-15T21:44:44.2799622Z] LongSumNonMonotonic
+Value: 16
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.process.cpu.time, Description: CPU time used by the process., Unit: s
+(2026-05-15T21:44:34.2798767Z, 2026-05-15T21:44:44.2799625Z] cpu.mode: user DoubleSum
+Value: 1.75
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2798767Z, 2026-05-15T21:44:44.2799625Z] cpu.mode: system DoubleSum
+Value: 0.15625
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.context.creations
+(2026-05-15T21:44:34.2940793Z, 2026-05-15T21:44:44.2799629Z] LongSum
+Value: 1
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.context.creation.duration, Unit: ms
+(2026-05-15T21:44:34.2945229Z, 2026-05-15T21:44:44.2800496Z] Histogram
+Value: Sum: 1217,0126 Count: 1 Min: 1217,0126 Max: 1217,0126 
+(-Infinity,0]:0
+(0,5]:0
+(5,10]:0
+(10,25]:0
+(25,50]:0
+(50,75]:0
+(75,100]:0
+(100,250]:0
+(250,500]:0
+(500,750]:0
+(750,1000]:0
+(1000,2500]:1
+(2500,5000]:0
+(5000,7500]:0
+(7500,10000]:0
+(10000,+Infinity]:0
+
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.runs
+(2026-05-15T21:44:34.2945446Z, 2026-05-15T21:44:44.2800502Z] np.outcome: started LongSum
+Value: 1
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.publish.messages
+(2026-05-15T21:44:34.2945614Z, 2026-05-15T21:44:44.2800510Z] LongSum
+Value: 12
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.publish.batch.size
+(2026-05-15T21:44:34.2949760Z, 2026-05-15T21:44:44.2800524Z] Histogram
+Value: Sum: 12 Count: 2 Min: 6 Max: 6 
+(-Infinity,0]:0
+(0,5]:0
+(5,10]:2
+(10,25]:0
+(25,50]:0
+(50,75]:0
+(75,100]:0
+(100,250]:0
+(250,500]:0
+(500,750]:0
+(750,1000]:0
+(1000,2500]:0
+(2500,5000]:0
+(5000,7500]:0
+(7500,10000]:0
+(10000,+Infinity]:0
+
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.publish.duration, Unit: ms
+(2026-05-15T21:44:34.2949922Z, 2026-05-15T21:44:44.2800531Z] Histogram
+Value: Sum: 274,86539999999997 Count: 14 Min: 0,077 Max: 135,8199 
+(-Infinity,0]:0
+(0,5]:11
+(5,10]:0
+(10,25]:0
+(25,50]:1
+(50,75]:0
+(75,100]:0
+(100,250]:2
+(250,500]:0
+(500,750]:0
+(750,1000]:0
+(1000,2500]:0
+(2500,5000]:0
+(5000,7500]:0
+(7500,10000]:0
+(10000,+Infinity]:0
+
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dns.lookup.duration, Description: Measures the time taken to perform a DNS lookup., Unit: s
+(2026-05-15T21:44:35.1375233Z, 2026-05-15T21:44:44.2800540Z] dns.question.name: localhost Histogram
+Value: Sum: 0,0084914 Count: 2 Min: 0,0003902 Max: 0,0081012 
+(-Infinity,0,005]:1
+(0,005,0,01]:1
+(0,01,0,025]:0
+(0,025,0,05]:0
+(0,05,0,075]:0
+(0,075,0,1]:0
+(0,1,0,25]:0
+(0,25,0,5]:0
+(0,5,0,75]:0
+(0,75,1]:0
+(1,2,5]:0
+(2,5,5]:0
+(5,7,5]:0
+(7,5,10]:0
+(10,+Infinity]:0
+
+Instrumentation scope (Meter):
+	Name: System.Net.NameResolution
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             9913787bc615fd41
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       132272a51d552fca
+Activity.DisplayName:        natureprotector.simulator.cycle
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:40.8683923Z
+Activity.Duration:           00:00:05.0339656
+Activity.Tags:
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.scenario_id: 6034251c-b502-5f7b-a557-7187178cfb04
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Services.SimulationRunner[0]
+      Starting simulation cycle 3/5 at logical time 09/13/2020 12:00:10 +02:00.
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=29c9199d-e22a-4613-83d8-83cdc575835f | CorrelationId=28bdba5121594aef91eab746b0939f16-0002-22702eee75aa3cf431abb689bfb9a8bc | SensorId=22702eee-75aa-3cf4-31ab-b689bfb9a8bc | SensorName=pilot-humidity-0001 | Value=22.75556260069929
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             939939ddd93a6abc
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       f1abce5ad29e3bb3
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:45.9057411Z
+Activity.Duration:           00:00:00.0001741
+Activity.Tags:
+    np.event_id: 29c9199d-e22a-4613-83d8-83cdc575835f
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0002-22702eee75aa3cf431abb689bfb9a8bc
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 22702eee-75aa-3cf4-31ab-b689bfb9a8bc
+    np.sensor_name: pilot-humidity-0001
+    np.metric_type: Humidity
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=30b5fae9-c208-4334-a7aa-d52a87284d74 | CorrelationId=28bdba5121594aef91eab746b0939f16-0002-2f494582407786f29707780861949155 | SensorId=2f494582-4077-86f2-9707-780861949155 | SensorName=pilot-humidity-0230 | Value=22.99749799370021
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             96f2cfe615fac5cb
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       f1abce5ad29e3bb3
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:45.9114881Z
+Activity.Duration:           00:00:00.0002297
+Activity.Tags:
+    np.event_id: 30b5fae9-c208-4334-a7aa-d52a87284d74
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0002-2f494582407786f29707780861949155
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 2f494582-4077-86f2-9707-780861949155
+    np.sensor_name: pilot-humidity-0230
+    np.metric_type: Humidity
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=9f1e5e70-8b21-44d6-b3b7-8519b63998db | CorrelationId=28bdba5121594aef91eab746b0939f16-0002-27bf9aad094f7dc645b2129a8cc0522e | SensorId=27bf9aad-094f-7dc6-45b2-129a8cc0522e | SensorName=pilot-temperature-0001 | Value=31.74413991733475
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             8789eefd97195ca4
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       f1abce5ad29e3bb3
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:45.9163613Z
+Activity.Duration:           00:00:00.0002627
+Activity.Tags:
+    np.event_id: 9f1e5e70-8b21-44d6-b3b7-8519b63998db
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0002-27bf9aad094f7dc645b2129a8cc0522e
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 27bf9aad-094f-7dc6-45b2-129a8cc0522e
+    np.sensor_name: pilot-temperature-0001
+    np.metric_type: Temperature
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=4ffa59f9-2f84-4f60-afe0-5ee0dfdff43a | CorrelationId=28bdba5121594aef91eab746b0939f16-0002-8e6a3d8a7e654fa58c51fa4597b203b8 | SensorId=8e6a3d8a-7e65-4fa5-8c51-fa4597b203b8 | SensorName=pilot-temperature-0230 | Value=31.719147964099168
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             7662ae40edd84484
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       f1abce5ad29e3bb3
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:45.9198433Z
+Activity.Duration:           00:00:00.0002379
+Activity.Tags:
+    np.event_id: 4ffa59f9-2f84-4f60-afe0-5ee0dfdff43a
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0002-8e6a3d8a7e654fa58c51fa4597b203b8
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 8e6a3d8a-7e65-4fa5-8c51-fa4597b203b8
+    np.sensor_name: pilot-temperature-0230
+    np.metric_type: Temperature
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=088db1c0-c0bf-4f39-b714-eda0cfe9cc9e | CorrelationId=28bdba5121594aef91eab746b0939f16-0002-e7660606cadd4212e67b574c09ef789a | SensorId=e7660606-cadd-4212-e67b-574c09ef789a | SensorName=pilot-wind-0001 | Value=4.8843002245984355
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             0c4d4fe946d18af1
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       f1abce5ad29e3bb3
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:45.9237182Z
+Activity.Duration:           00:00:00.0001901
+Activity.Tags:
+    np.event_id: 088db1c0-c0bf-4f39-b714-eda0cfe9cc9e
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0002-e7660606cadd4212e67b574c09ef789a
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: e7660606-cadd-4212-e67b-574c09ef789a
+    np.sensor_name: pilot-wind-0001
+    np.metric_type: WindSpeed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=b4a54df2-c2a1-4945-bc1c-929b4c453df1 | CorrelationId=28bdba5121594aef91eab746b0939f16-0002-17badc17792017acc213db1c12bedfb2 | SensorId=17badc17-7920-17ac-c213-db1c12bedfb2 | SensorName=pilot-wind-0230 | Value=5.055532955014659
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             80d19c1593f62cca
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       f1abce5ad29e3bb3
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:45.9276787Z
+Activity.Duration:           00:00:00.0001786
+Activity.Tags:
+    np.event_id: b4a54df2-c2a1-4945-bc1c-929b4c453df1
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0002-17badc17792017acc213db1c12bedfb2
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 17badc17-7920-17ac-c213-db1c12bedfb2
+    np.sensor_name: pilot-wind-0230
+    np.metric_type: WindSpeed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             f1abce5ad29e3bb3
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       132272a51d552fca
+Activity.DisplayName:        natureprotector.simulator.cycle
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:45.9056854Z
+Activity.Duration:           00:00:05.0324316
+Activity.Tags:
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.scenario_id: 6034251c-b502-5f7b-a557-7187178cfb04
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Services.SimulationRunner[0]
+      Starting simulation cycle 4/5 at logical time 09/13/2020 12:00:15 +02:00.
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=156803b6-c956-4df5-b78c-44073824d5df | CorrelationId=28bdba5121594aef91eab746b0939f16-0003-22702eee75aa3cf431abb689bfb9a8bc | SensorId=22702eee-75aa-3cf4-31ab-b689bfb9a8bc | SensorName=pilot-humidity-0001 | Value=0
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             97767c3c93154a17
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       ed6d24db646ec7ae
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:50.9428972Z
+Activity.Duration:           00:00:00.0001205
+Activity.Tags:
+    np.event_id: 156803b6-c956-4df5-b78c-44073824d5df
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0003-22702eee75aa3cf431abb689bfb9a8bc
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 22702eee-75aa-3cf4-31ab-b689bfb9a8bc
+    np.sensor_name: pilot-humidity-0001
+    np.metric_type: Humidity
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=069c68a4-b515-4ae1-b79b-8258c595f080 | CorrelationId=28bdba5121594aef91eab746b0939f16-0003-2f494582407786f29707780861949155 | SensorId=2f494582-4077-86f2-9707-780861949155 | SensorName=pilot-humidity-0230 | Value=21.53523607714356
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             d8aa105bc7271c24
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       ed6d24db646ec7ae
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:50.9464738Z
+Activity.Duration:           00:00:00.0001596
+Activity.Tags:
+    np.event_id: 069c68a4-b515-4ae1-b79b-8258c595f080
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0003-2f494582407786f29707780861949155
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 2f494582-4077-86f2-9707-780861949155
+    np.sensor_name: pilot-humidity-0230
+    np.metric_type: Humidity
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=99c5af0d-a4f5-4da0-a2ed-074dbdd40ea7 | CorrelationId=28bdba5121594aef91eab746b0939f16-0003-27bf9aad094f7dc645b2129a8cc0522e | SensorId=27bf9aad-094f-7dc6-45b2-129a8cc0522e | SensorName=pilot-temperature-0001 | Value=32.41454219848126
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             1e4ce034aba4e4bd
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       ed6d24db646ec7ae
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:50.9509904Z
+Activity.Duration:           00:00:00.0001693
+Activity.Tags:
+    np.event_id: 99c5af0d-a4f5-4da0-a2ed-074dbdd40ea7
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0003-27bf9aad094f7dc645b2129a8cc0522e
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 27bf9aad-094f-7dc6-45b2-129a8cc0522e
+    np.sensor_name: pilot-temperature-0001
+    np.metric_type: Temperature
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=21b0a910-af9e-46e4-9884-925478ba3694 | CorrelationId=28bdba5121594aef91eab746b0939f16-0003-8e6a3d8a7e654fa58c51fa4597b203b8 | SensorId=8e6a3d8a-7e65-4fa5-8c51-fa4597b203b8 | SensorName=pilot-temperature-0230 | Value=32.0965721742094
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             734e23d5e4ee3baf
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       ed6d24db646ec7ae
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:50.9548516Z
+Activity.Duration:           00:00:00.0003510
+Activity.Tags:
+    np.event_id: 21b0a910-af9e-46e4-9884-925478ba3694
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0003-8e6a3d8a7e654fa58c51fa4597b203b8
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 8e6a3d8a-7e65-4fa5-8c51-fa4597b203b8
+    np.sensor_name: pilot-temperature-0230
+    np.metric_type: Temperature
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=e401dbff-73c6-4cfa-baac-baa95daab3be | CorrelationId=28bdba5121594aef91eab746b0939f16-0003-e7660606cadd4212e67b574c09ef789a | SensorId=e7660606-cadd-4212-e67b-574c09ef789a | SensorName=pilot-wind-0001 | Value=5.375792604999472
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             7a50ecfbb26a918f
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       ed6d24db646ec7ae
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:50.9594890Z
+Activity.Duration:           00:00:00.0001302
+Activity.Tags:
+    np.event_id: e401dbff-73c6-4cfa-baac-baa95daab3be
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0003-e7660606cadd4212e67b574c09ef789a
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: e7660606-cadd-4212-e67b-574c09ef789a
+    np.sensor_name: pilot-wind-0001
+    np.metric_type: WindSpeed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=c7fcb2b5-e872-4dd8-ba66-3cabe970f7d0 | CorrelationId=28bdba5121594aef91eab746b0939f16-0003-17badc17792017acc213db1c12bedfb2 | SensorId=17badc17-7920-17ac-c213-db1c12bedfb2 | SensorName=pilot-wind-0230 | Value=5.216367930414279
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             5dd8e0dce44f78e8
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       ed6d24db646ec7ae
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:50.9632494Z
+Activity.Duration:           00:00:00.0001523
+Activity.Tags:
+    np.event_id: c7fcb2b5-e872-4dd8-ba66-3cabe970f7d0
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0003-17badc17792017acc213db1c12bedfb2
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 17badc17-7920-17ac-c213-db1c12bedfb2
+    np.sensor_name: pilot-wind-0230
+    np.metric_type: WindSpeed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+
+Metric Name: process.memory.usage, Description: The amount of physical memory in use., Unit: By
+(2026-05-15T21:44:34.2737130Z, 2026-05-15T21:44:54.2820566Z] LongSumNonMonotonic
+Value: 106938368
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.memory.virtual, Description: The amount of committed virtual memory., Unit: By
+(2026-05-15T21:44:34.2749630Z, 2026-05-15T21:44:54.2820584Z] LongSumNonMonotonic
+Value: 2481008787456
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.cpu.time, Description: Total CPU seconds broken down by different states., Unit: s
+(2026-05-15T21:44:34.2751673Z, 2026-05-15T21:44:54.2820597Z] process.cpu.state: user DoubleSum
+Value: 1.90625
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2751673Z, 2026-05-15T21:44:54.2820597Z] process.cpu.state: system DoubleSum
+Value: 0.21875
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.cpu.count, Description: The number of processors (CPU cores) available to the current process., Unit: {processors}
+(2026-05-15T21:44:34.2751896Z, 2026-05-15T21:44:54.2820603Z] LongSumNonMonotonic
+Value: 16
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.thread.count, Description: Process threads count., Unit: {thread}
+(2026-05-15T21:44:34.2752038Z, 2026-05-15T21:44:54.2820606Z] LongSumNonMonotonic
+Value: 23
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.collections, Description: The number of garbage collections that have occurred since the process has started., Unit: {collection}
+(2026-05-15T21:44:34.2752122Z, 2026-05-15T21:44:54.2820611Z] gc.heap.generation: gen2 LongSum
+Value: 1
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752122Z, 2026-05-15T21:44:54.2820611Z] gc.heap.generation: gen1 LongSum
+Value: 1
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752122Z, 2026-05-15T21:44:54.2820611Z] gc.heap.generation: gen0 LongSum
+Value: 2
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.process.memory.working_set, Description: The number of bytes of physical memory mapped to the process context., Unit: By
+(2026-05-15T21:44:34.2752195Z, 2026-05-15T21:44:54.2820613Z] LongSumNonMonotonic
+Value: 106278912
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.heap.total_allocated, Description: The approximate number of bytes allocated on the managed GC heap since the process has started. The returned value does not include any native allocations., Unit: By
+(2026-05-15T21:44:34.2752294Z, 2026-05-15T21:44:54.2820616Z] LongSum
+Value: 39173440
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.last_collection.memory.committed_size, Description: The amount of committed virtual memory in use by the .NET GC, as observed during the latest garbage collection., Unit: By
+(2026-05-15T21:44:34.2752364Z, 2026-05-15T21:44:54.2820621Z] LongSumNonMonotonic
+Value: 20717568
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.last_collection.heap.size, Description: The managed GC heap size (including fragmentation), as observed during the latest garbage collection., Unit: By
+(2026-05-15T21:44:34.2752433Z, 2026-05-15T21:44:54.2820628Z] gc.heap.generation: gen0 LongSumNonMonotonic
+Value: 210064
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752433Z, 2026-05-15T21:44:54.2820628Z] gc.heap.generation: gen1 LongSumNonMonotonic
+Value: 4115352
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752433Z, 2026-05-15T21:44:54.2820628Z] gc.heap.generation: gen2 LongSumNonMonotonic
+Value: 906760
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752433Z, 2026-05-15T21:44:54.2820628Z] gc.heap.generation: loh LongSumNonMonotonic
+Value: 6986640
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752433Z, 2026-05-15T21:44:54.2820628Z] gc.heap.generation: poh LongSumNonMonotonic
+Value: 58240
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.last_collection.heap.fragmentation.size, Description: The heap fragmentation, as observed during the latest garbage collection., Unit: By
+(2026-05-15T21:44:34.2752533Z, 2026-05-15T21:44:54.2820633Z] gc.heap.generation: gen0 LongSumNonMonotonic
+Value: 201600
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752533Z, 2026-05-15T21:44:54.2820633Z] gc.heap.generation: gen1 LongSumNonMonotonic
+Value: 68256
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752533Z, 2026-05-15T21:44:54.2820633Z] gc.heap.generation: gen2 LongSumNonMonotonic
+Value: 0
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752533Z, 2026-05-15T21:44:54.2820633Z] gc.heap.generation: loh LongSumNonMonotonic
+Value: 1120
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2752533Z, 2026-05-15T21:44:54.2820633Z] gc.heap.generation: poh LongSumNonMonotonic
+Value: 0
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.pause.time, Description: The total amount of time paused in GC since the process has started., Unit: s
+(2026-05-15T21:44:34.2752612Z, 2026-05-15T21:44:54.2820636Z] DoubleSum
+Value: 0.019938
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.jit.compiled_il.size, Description: Count of bytes of intermediate language that have been compiled since the process has started., Unit: By
+(2026-05-15T21:44:34.2752680Z, 2026-05-15T21:44:54.2820639Z] LongSum
+Value: 1070985
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.jit.compiled_methods, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: {method}
+(2026-05-15T21:44:34.2752779Z, 2026-05-15T21:44:54.2820642Z] LongSum
+Value: 13863
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.jit.compilation.time, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: s
+(2026-05-15T21:44:34.2752908Z, 2026-05-15T21:44:54.2820649Z] DoubleSum
+Value: 1.3635035
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.monitor.lock_contentions, Description: The number of times there was contention when trying to acquire a monitor lock since the process has started., Unit: {contention}
+(2026-05-15T21:44:34.2753058Z, 2026-05-15T21:44:54.2820651Z] LongSum
+Value: 26
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.thread_pool.thread.count, Description: The number of thread pool threads that currently exist., Unit: {thread}
+(2026-05-15T21:44:34.2753281Z, 2026-05-15T21:44:54.2820653Z] LongSum
+Value: 3
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.thread_pool.work_item.count, Description: The number of work items that the thread pool has completed since the process has started., Unit: {work_item}
+(2026-05-15T21:44:34.2753394Z, 2026-05-15T21:44:54.2820656Z] LongSum
+Value: 88
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.thread_pool.queue.length, Description: The number of work items that are currently queued to be processed by the thread pool., Unit: {work_item}
+(2026-05-15T21:44:34.2753516Z, 2026-05-15T21:44:54.2820666Z] LongSum
+Value: 0
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.timer.count, Description: The number of timer instances that are currently active. An active timer is registered to tick at some point in the future and has not yet been canceled., Unit: {timer}
+(2026-05-15T21:44:34.2753665Z, 2026-05-15T21:44:54.2820673Z] LongSumNonMonotonic
+Value: 6
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.assembly.count, Description: The number of .NET assemblies that are currently loaded., Unit: {assembly}
+(2026-05-15T21:44:34.2753768Z, 2026-05-15T21:44:54.2820675Z] LongSumNonMonotonic
+Value: 105
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.process.cpu.count, Description: The number of processors available to the process., Unit: {cpu}
+(2026-05-15T21:44:34.2798528Z, 2026-05-15T21:44:54.2820682Z] LongSumNonMonotonic
+Value: 16
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.process.cpu.time, Description: CPU time used by the process., Unit: s
+(2026-05-15T21:44:34.2798767Z, 2026-05-15T21:44:54.2820685Z] cpu.mode: user DoubleSum
+Value: 1.90625
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T21:44:34.2798767Z, 2026-05-15T21:44:54.2820685Z] cpu.mode: system DoubleSum
+Value: 0.21875
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.context.creations
+(2026-05-15T21:44:34.2940793Z, 2026-05-15T21:44:54.2820694Z] LongSum
+Value: 1
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.context.creation.duration, Unit: ms
+(2026-05-15T21:44:34.2945229Z, 2026-05-15T21:44:54.2820703Z] Histogram
+Value: Sum: 1217,0126 Count: 1 Min: 1217,0126 Max: 1217,0126 
+(-Infinity,0]:0
+(0,5]:0
+(5,10]:0
+(10,25]:0
+(25,50]:0
+(50,75]:0
+(75,100]:0
+(100,250]:0
+(250,500]:0
+(500,750]:0
+(750,1000]:0
+(1000,2500]:1
+(2500,5000]:0
+(5000,7500]:0
+(7500,10000]:0
+(10000,+Infinity]:0
+
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.runs
+(2026-05-15T21:44:34.2945446Z, 2026-05-15T21:44:54.2820707Z] np.outcome: started LongSum
+Value: 1
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.publish.messages
+(2026-05-15T21:44:34.2945614Z, 2026-05-15T21:44:54.2820721Z] LongSum
+Value: 24
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.publish.batch.size
+(2026-05-15T21:44:34.2949760Z, 2026-05-15T21:44:54.2820769Z] Histogram
+Value: Sum: 24 Count: 4 Min: 6 Max: 6 
+(-Infinity,0]:0
+(0,5]:0
+(5,10]:4
+(10,25]:0
+(25,50]:0
+(50,75]:0
+(75,100]:0
+(100,250]:0
+(250,500]:0
+(500,750]:0
+(750,1000]:0
+(1000,2500]:0
+(2500,5000]:0
+(5000,7500]:0
+(7500,10000]:0
+(10000,+Infinity]:0
+
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: natureprotector.simulator.publish.duration, Unit: ms
+(2026-05-15T21:44:34.2949922Z, 2026-05-15T21:44:54.2820786Z] Histogram
+Value: Sum: 327,14519999999993 Count: 28 Min: 0,077 Max: 135,8199 
+(-Infinity,0]:0
+(0,5]:23
+(5,10]:0
+(10,25]:1
+(25,50]:2
+(50,75]:0
+(75,100]:0
+(100,250]:2
+(250,500]:0
+(500,750]:0
+(750,1000]:0
+(1000,2500]:0
+(2500,5000]:0
+(5000,7500]:0
+(7500,10000]:0
+(10000,+Infinity]:0
+
+Instrumentation scope (Meter):
+	Name: NatureProtector.Simulator.Host
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dns.lookup.duration, Description: Measures the time taken to perform a DNS lookup., Unit: s
+(2026-05-15T21:44:35.1375233Z, 2026-05-15T21:44:54.2820796Z] dns.question.name: localhost Histogram
+Value: Sum: 0,0084914 Count: 2 Min: 0,0003902 Max: 0,0081012 
+(-Infinity,0,005]:1
+(0,005,0,01]:1
+(0,01,0,025]:0
+(0,025,0,05]:0
+(0,05,0,075]:0
+(0,075,0,1]:0
+(0,1,0,25]:0
+(0,25,0,5]:0
+(0,5,0,75]:0
+(0,75,1]:0
+(1,2,5]:0
+(2,5,5]:0
+(5,7,5]:0
+(7,5,10]:0
+(10,+Infinity]:0
+
+Instrumentation scope (Meter):
+	Name: System.Net.NameResolution
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             ed6d24db646ec7ae
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       132272a51d552fca
+Activity.DisplayName:        natureprotector.simulator.cycle
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:50.9427725Z
+Activity.Duration:           00:00:05.0278639
+Activity.Tags:
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.scenario_id: 6034251c-b502-5f7b-a557-7187178cfb04
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Services.SimulationRunner[0]
+      Starting simulation cycle 5/5 at logical time 09/13/2020 12:00:20 +02:00.
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=a093e437-f178-4daa-9f21-645417fac748 | CorrelationId=28bdba5121594aef91eab746b0939f16-0004-22702eee75aa3cf431abb689bfb9a8bc | SensorId=22702eee-75aa-3cf4-31ab-b689bfb9a8bc | SensorName=pilot-humidity-0001 | Value=20.496012966119295
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             f4b40dfa1ab759a5
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       a790ed30f3a43b16
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:55.9736673Z
+Activity.Duration:           00:00:00.0001839
+Activity.Tags:
+    np.event_id: a093e437-f178-4daa-9f21-645417fac748
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0004-22702eee75aa3cf431abb689bfb9a8bc
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 22702eee-75aa-3cf4-31ab-b689bfb9a8bc
+    np.sensor_name: pilot-humidity-0001
+    np.metric_type: Humidity
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=8da335a4-d553-4a46-8828-2c5cb1c55191 | CorrelationId=28bdba5121594aef91eab746b0939f16-0004-2f494582407786f29707780861949155 | SensorId=2f494582-4077-86f2-9707-780861949155 | SensorName=pilot-humidity-0230 | Value=21.38652208821274
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             4dabd07fe2c1586d
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       a790ed30f3a43b16
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:55.9770185Z
+Activity.Duration:           00:00:00.0001819
+Activity.Tags:
+    np.event_id: 8da335a4-d553-4a46-8828-2c5cb1c55191
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0004-2f494582407786f29707780861949155
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 2f494582-4077-86f2-9707-780861949155
+    np.sensor_name: pilot-humidity-0230
+    np.metric_type: Humidity
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             43cdc48ae52759c8
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=a9a8f53e-f6b8-4070-8760-9d4918556456 | CorrelationId=28bdba5121594aef91eab746b0939f16-0004-27bf9aad094f7dc645b2129a8cc0522e | SensorId=27bf9aad-094f-7dc6-45b2-129a8cc0522e | SensorName=pilot-temperature-0001 | Value=32.41580185358954
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       a790ed30f3a43b16
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:55.9807094Z
+Activity.Duration:           00:00:00.0002534
+Activity.Tags:
+    np.event_id: a9a8f53e-f6b8-4070-8760-9d4918556456
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0004-27bf9aad094f7dc645b2129a8cc0522e
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 27bf9aad-094f-7dc6-45b2-129a8cc0522e
+    np.sensor_name: pilot-temperature-0001
+    np.metric_type: Temperature
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=b4c52802-1c73-4284-b225-58072d4fe93c | CorrelationId=28bdba5121594aef91eab746b0939f16-0004-8e6a3d8a7e654fa58c51fa4597b203b8 | SensorId=8e6a3d8a-7e65-4fa5-8c51-fa4597b203b8 | SensorName=pilot-temperature-0230 | Value=32.119581397201586
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             5c7a479f2ea79258
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       a790ed30f3a43b16
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:55.9856165Z
+Activity.Duration:           00:00:00.0002519
+Activity.Tags:
+    np.event_id: b4c52802-1c73-4284-b225-58072d4fe93c
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0004-8e6a3d8a7e654fa58c51fa4597b203b8
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 8e6a3d8a-7e65-4fa5-8c51-fa4597b203b8
+    np.sensor_name: pilot-temperature-0230
+    np.metric_type: Temperature
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=e6838c5e-fcf8-4673-848d-25ae334f7374 | CorrelationId=28bdba5121594aef91eab746b0939f16-0004-e7660606cadd4212e67b574c09ef789a | SensorId=e7660606-cadd-4212-e67b-574c09ef789a | SensorName=pilot-wind-0001 | Value=5.65633091766169
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             338bc27a4591031c
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       a790ed30f3a43b16
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:55.9889642Z
+Activity.Duration:           00:00:00.0001289
+Activity.Tags:
+    np.event_id: e6838c5e-fcf8-4673-848d-25ae334f7374
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0004-e7660606cadd4212e67b574c09ef789a
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: e7660606-cadd-4212-e67b-574c09ef789a
+    np.sensor_name: pilot-wind-0001
+    np.metric_type: WindSpeed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: NatureProtector.Simulator.Host.Publishing.RabbitMqReadingPublisher[0]
+      Published SensorReadingProduced to RabbitMQ | EventId=16cf048d-5d4a-47be-aae8-5f72e09531d3 | CorrelationId=28bdba5121594aef91eab746b0939f16-0004-17badc17792017acc213db1c12bedfb2 | SensorId=17badc17-7920-17ac-c213-db1c12bedfb2 | SensorName=pilot-wind-0230 | Value=5.787886884569596
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             acc93097af776fb3
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       a790ed30f3a43b16
+Activity.DisplayName:        natureprotector.simulator.publish
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:55.9921865Z
+Activity.Duration:           00:00:00.0001719
+Activity.Tags:
+    np.event_id: 16cf048d-5d4a-47be-aae8-5f72e09531d3
+    np.correlation_id: 28bdba5121594aef91eab746b0939f16-0004-17badc17792017acc213db1c12bedfb2
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.sensor_id: 17badc17-7920-17ac-c213-db1c12bedfb2
+    np.sensor_name: pilot-wind-0230
+    np.metric_type: WindSpeed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             a790ed30f3a43b16
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       132272a51d552fca
+Activity.DisplayName:        natureprotector.simulator.cycle
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:55.9735489Z
+Activity.Duration:           00:00:00.0228097
+Activity.Tags:
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.scenario_id: 6034251c-b502-5f7b-a557-7187178cfb04
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@__run_Id_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id", s."AreaId", s."ConfigurationVersionId", s."CreatedAt", s."EndedAt", s."ExecutionSeed", s."IntervalSeconds", s."LogicalStartTimestamp", s."MetadataJson", s."NumberOfCycles", s."ScenarioCode", s."ScenarioId", s."ScenarioName", s."StartedAt", s."Status"
+      FROM control.simulation_runs AS s
+      WHERE s."Id" = @__run_Id_0
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@p3='?' (DbType = Guid), @p0='?' (DbType = DateTime), @p1='?' (DbType = DateTime), @p2='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      UPDATE control.simulation_runs SET "EndedAt" = @p0, "StartedAt" = @p1, "Status" = @p2
+      WHERE "Id" = @p3;
+info: NatureProtector.Simulator.Host.Services.SimulationRunner[0]
+      Simulation completed successfully | SimulationRunId=28bdba51-2159-4aef-91ea-b746b0939f16 | CompletedAt=05/15/2026 21:44:55 +00:00 | LogicalCompletedAt=09/13/2020 12:00:25 +02:00.
+Activity.TraceId:            f456f8e5eb09dbec434ba42586c5dad7
+Activity.SpanId:             132272a51d552fca
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        natureprotector.simulator.run
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T21:44:34.2965736Z
+Activity.Duration:           00:00:21.7111943
+Activity.Tags:
+    np.area_id: b3f4fb84-bf17-5522-a5f3-70fd1212f381
+    np.scenario_id: 6034251c-b502-5f7b-a557-7187178cfb04
+    np.scenario_code: scenario_b
+    np.simulation_run_id: 28bdba51-2159-4aef-91ea-b746b0939f16
+    np.outcome: completed
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: 9d43906b-1707-43f4-88d1-e1b03d4ac39e
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+

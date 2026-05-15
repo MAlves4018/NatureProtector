@@ -139,6 +139,24 @@ public sealed class SimulatorOptions
     /// List of sensors that should exist in the in-memory simulation context.
     /// </summary>
     public List<SensorDefinitionOptions> Sensors { get; set; } = [];
+
+    /// <summary>
+    /// Optional runtime overrides used by the scenario orchestrator.
+    /// </summary>
+    public SimulatorRunOverridesOptions RunOverrides { get; set; } = new();
+}
+
+/// <summary>
+/// Runtime overrides requested by the scenario run orchestrator.
+/// </summary>
+public sealed class SimulatorRunOverridesOptions
+{
+    public int? SensorCount { get; set; }
+    public int? NumberOfCycles { get; set; }
+    public int? IntervalSeconds { get; set; }
+    public int? Seed { get; set; }
+    public string? DegradationProfile { get; set; }
+    public string? OrchestratorCorrelationId { get; set; }
 }
 
 /// <summary>

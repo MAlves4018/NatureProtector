@@ -87,6 +87,21 @@ public sealed class SimulatorOptionsValidator : IValidateOptions<SimulatorOption
             }
         }
 
+        if (options.RunOverrides.SensorCount.HasValue && options.RunOverrides.SensorCount.Value <= 0)
+        {
+            failures.Add("Simulator:RunOverrides:SensorCount must be greater than zero when provided.");
+        }
+
+        if (options.RunOverrides.NumberOfCycles.HasValue && options.RunOverrides.NumberOfCycles.Value <= 0)
+        {
+            failures.Add("Simulator:RunOverrides:NumberOfCycles must be greater than zero when provided.");
+        }
+
+        if (options.RunOverrides.IntervalSeconds.HasValue && options.RunOverrides.IntervalSeconds.Value <= 0)
+        {
+            failures.Add("Simulator:RunOverrides:IntervalSeconds must be greater than zero when provided.");
+        }
+
         return failures.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);

@@ -70,7 +70,32 @@ public sealed class PostgresSimulationRunStore(
         record.MetadataJson = JsonSerializer.Serialize(new
         {
             sensor_count = context.Sensors.Count,
-            scenario_category = context.Scenario.Category.ToString()
+            scenario_category = context.Scenario.Category.ToString(),
+            orchestrator_correlation_id = context.RunOverrides?.Resolved.OrchestratorCorrelationId,
+            run_overrides = context.RunOverrides is null
+                ? null
+                : new
+                {
+                    requested = new
+                    {
+                        sensor_count = context.RunOverrides.Requested.SensorCount,
+                        number_of_cycles = context.RunOverrides.Requested.NumberOfCycles,
+                        interval_seconds = context.RunOverrides.Requested.IntervalSeconds,
+                        seed = context.RunOverrides.Requested.Seed,
+                        degradation_profile = context.RunOverrides.Requested.DegradationProfile,
+                        orchestrator_correlation_id = context.RunOverrides.Requested.OrchestratorCorrelationId
+                    },
+                    resolved = new
+                    {
+                        sensor_count = context.RunOverrides.Resolved.SensorCount,
+                        number_of_cycles = context.RunOverrides.Resolved.NumberOfCycles,
+                        interval_seconds = context.RunOverrides.Resolved.IntervalSeconds,
+                        seed = run.ExecutionSeed,
+                        degradation_profile = context.RunOverrides.Resolved.DegradationProfile,
+                        orchestrator_correlation_id = context.RunOverrides.Resolved.OrchestratorCorrelationId,
+                        selected_sensor_names = context.RunOverrides.Resolved.SelectedSensorNames
+                    }
+                }
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);

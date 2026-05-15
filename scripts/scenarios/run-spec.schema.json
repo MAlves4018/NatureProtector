@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://natureprotector.local/schemas/scenario-run-spec-v1.0.json",
+  "title": "NatureProtector V1 Scenario Run Spec",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "areaCode",
+    "scenarioCode"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "areaCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scenarioCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sensorCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "numberOfCycles": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "intervalSeconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "degradationProfile": {
+      "type": "string"
+    },
+    "collectEvidence": {
+      "type": "boolean",
+      "default": true
+    },
+    "waitForCompletion": {
+      "type": "boolean",
+      "default": true
+    },
+    "timeoutSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 900
+    },
+    "allowParallelRun": {
+      "type": "boolean",
+      "default": false
+    },
+    "runLabel": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

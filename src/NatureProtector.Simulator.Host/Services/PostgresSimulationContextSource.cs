@@ -81,18 +81,48 @@ public sealed class PostgresSimulationContextSource(
                 ? parsedTimestamp
                 : _options.StartTimestamp ?? DateTimeOffset.UtcNow;
 
-        var intervalSeconds = simulatorOptions.GetProperty("IntervalSeconds").GetInt32();
-        var numberOfCycles = simulatorOptions.GetProperty("NumberOfCycles").GetInt32();
+        var runOverrides = _options.RunOverrides ?? new SimulatorRunOverridesOptions();
+        var requestedOverrides = new SimulationRunOverridesRequested(
+            SensorCount: runOverrides.SensorCount,
+            NumberOfCycles: runOverrides.NumberOfCycles,
+            IntervalSeconds: runOverrides.IntervalSeconds,
+            Seed: runOverrides.Seed,
+            DegradationProfile: runOverrides.DegradationProfile,
+            OrchestratorCorrelationId: runOverrides.OrchestratorCorrelationId);
+
+        var intervalSeconds = ResolveIntWithPrecedence(
+            requestedValue: requestedOverrides.IntervalSeconds,
+            scenarioOptions: simulatorOptions,
+            propertyName: "IntervalSeconds",
+            fallbackValue: _options.IntervalSeconds);
+        var numberOfCycles = ResolveIntWithPrecedence(
+            requestedValue: requestedOverrides.NumberOfCycles,
+            scenarioOptions: simulatorOptions,
+            propertyName: "NumberOfCycles",
+            fallbackValue: _options.NumberOfCycles);
+        var preferredSeed = requestedOverrides.Seed ?? _options.Seed;
+        var selectedSensors = SelectSensors(sensors, requestedOverrides.SensorCount, preferredSeed);
 
         var context = new SimulationContext(
             areaId: area.Id,
             scenario: domainScenario,
             scenarioCode: scenario.Code,
-            sensors: sensors.Select(BuildDomainSensor).ToList().AsReadOnly(),
+            sensors: selectedSensors.Select(BuildDomainSensor).ToList().AsReadOnly(),
             startTimestamp: startTimestamp,
             interval: TimeSpan.FromSeconds(intervalSeconds),
             numberOfCycles: numberOfCycles,
-            configurationVersionId: scenario.ConfigurationVersionId);
+            configurationVersionId: scenario.ConfigurationVersionId,
+            preferredSeed: preferredSeed,
+            runOverrides: new SimulationRunOverridesSnapshot(
+                Requested: requestedOverrides,
+                Resolved: new SimulationRunOverridesResolved(
+                    SensorCount: selectedSensors.Count,
+                    NumberOfCycles: numberOfCycles,
+                    IntervalSeconds: intervalSeconds,
+                    PreferredSeed: preferredSeed,
+                    DegradationProfile: requestedOverrides.DegradationProfile,
+                    OrchestratorCorrelationId: requestedOverrides.OrchestratorCorrelationId,
+                    SelectedSensorNames: selectedSensors.Select(sensor => sensor.Name).ToArray())));
 
         activity?.SetTag(TelemetryTags.AreaId, context.AreaId);
         activity?.SetTag(TelemetryTags.ScenarioId, context.Scenario.Id);
@@ -236,5 +266,77 @@ public sealed class PostgresSimulationContextSource(
             && property.ValueKind is JsonValueKind.Number
                 ? property.GetDouble()
                 : null;
+    }
+
+    private static int ResolveIntWithPrecedence(
+        int? requestedValue,
+        JsonElement scenarioOptions,
+        string propertyName,
+        int fallbackValue)
+    {
+        if (requestedValue.HasValue)
+        {
+            if (requestedValue.Value <= 0)
+            {
+                throw new InvalidOperationException($"Run override '{propertyName}' must be greater than zero.");
+            }
+
+            return requestedValue.Value;
+        }
+
+        if (scenarioOptions.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.Number)
+        {
+            var parsed = property.GetInt32();
+            if (parsed <= 0)
+            {
+                throw new InvalidOperationException($"Scenario simulator option '{propertyName}' must be greater than zero.");
+            }
+
+            return parsed;
+        }
+
+        if (fallbackValue <= 0)
+        {
+            throw new InvalidOperationException($"Simulator fallback option '{propertyName}' must be greater than zero.");
+        }
+
+        return fallbackValue;
+    }
+
+    private static List<SensorNodeRecord> SelectSensors(
+        IReadOnlyList<SensorNodeRecord> activeSensors,
+        int? requestedSensorCount,
+        int? preferredSeed)
+    {
+        if (!requestedSensorCount.HasValue)
+        {
+            return activeSensors.ToList();
+        }
+
+        var sensorCount = requestedSensorCount.Value;
+        if (sensorCount <= 0)
+        {
+            throw new InvalidOperationException("Run override 'SensorCount' must be greater than zero.");
+        }
+
+        if (sensorCount > activeSensors.Count)
+        {
+            throw new InvalidOperationException(
+                $"Run override 'SensorCount' ({sensorCount}) exceeds active sensor count ({activeSensors.Count}).");
+        }
+
+        var shuffled = activeSensors.ToList();
+        var random = new Random(preferredSeed ?? 1);
+
+        for (var index = shuffled.Count - 1; index > 0; index--)
+        {
+            var swapIndex = random.Next(index + 1);
+            (shuffled[index], shuffled[swapIndex]) = (shuffled[swapIndex], shuffled[index]);
+        }
+
+        return shuffled
+            .Take(sensorCount)
+            .OrderBy(sensor => sensor.Name, StringComparer.Ordinal)
+            .ToList();
     }
 }

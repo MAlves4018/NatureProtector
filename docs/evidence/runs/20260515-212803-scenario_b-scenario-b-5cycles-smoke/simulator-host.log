@@ -1,0 +1,540 @@
+﻿=== STDOUT ===
+Using launch settings from src\NatureProtector.Simulator.Host\Properties\launchSettings.json...
+Building...
+C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Shared\NatureProtector.Shared.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.10.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9 [C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host\NatureProtector.Simulator.Host.csproj]
+C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Shared\NatureProtector.Shared.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.10.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9
+info: NatureProtector.Simulator.Host.Services.SimulationRunner[0]
+      Simulation runner starting at 05/15/2026 19:28:06 +00:00.
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (40ms) [Parameters=[@___options_AreaId_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."Code", a."ConfigurationVersionId", a."CountryCode", a."GeometryGeoJson", a."MetadataJson", a."Name"
+      FROM control.areas AS a
+      WHERE a."Id" = @___options_AreaId_0
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (10ms) [Parameters=[@___options_ControlPlaneAreaCode_0='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."Code", a."ConfigurationVersionId", a."CountryCode", a."GeometryGeoJson", a."MetadataJson", a."Name"
+      FROM control.areas AS a
+      WHERE a."Code" = @___options_ControlPlaneAreaCode_0
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@__areaId_0='?' (DbType = Guid), @___options_ScenarioId_1='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id", s."AreaId", s."BaseScenarioId", s."Code", s."ConfigurationVersionId", s."Description", s."Name", s."ParametersJson", s."ScenarioKind"
+      FROM control.scenario_definitions AS s
+      WHERE s."AreaId" = @__areaId_0 AND s."Id" = @___options_ScenarioId_1
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@__areaId_0='?' (DbType = Guid), @___options_ControlPlaneScenarioCode_1='?'], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id", s."AreaId", s."BaseScenarioId", s."Code", s."ConfigurationVersionId", s."Description", s."Name", s."ParametersJson", s."ScenarioKind"
+      FROM control.scenario_definitions AS s
+      WHERE s."AreaId" = @__areaId_0 AND s."Code" = @___options_ControlPlaneScenarioCode_1
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@__area_Id_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id", s."AltitudeMeters", s."AreaId", s."ConfigurationVersionId", s."GridCellId", s."InstallationProfile", s."IsActive", s."Latitude", s."Longitude", s."Name", s."NetworkId", s."ProfileId", s."Type", s0."Id", s0."AccuracyProfileJson", s0."ConfigurationVersionId", s0."FaultProfileJson", s0."Name", s0."NoiseProfileJson", s0."PublicationPolicyJson", s0."SensorFamily"
+      FROM control.sensor_nodes AS s
+      INNER JOIN control.sensor_profiles AS s0 ON s."ProfileId" = s0."Id"
+      WHERE s."AreaId" = @__area_Id_0 AND s."IsActive"
+      ORDER BY s."Name"
+Activity.TraceId:            ba44b1d59ccf7dfbe848dae6001d3d18
+Activity.SpanId:             815c2585e2d35f22
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       d3c0b67ef15e582b
+Activity.DisplayName:        natureprotector.simulator.context.create_from_postgres
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T19:28:06.8674781Z
+Activity.Duration:           00:00:01.2141466
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+Activity.TraceId:            ba44b1d59ccf7dfbe848dae6001d3d18
+Activity.SpanId:             d3c0b67ef15e582b
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        natureprotector.simulator.run
+Activity.Kind:               Internal
+Activity.StartTime:          2026-05-15T19:28:06.8612346Z
+Activity.Duration:           00:00:01.2327064
+Instrumentation scope (ActivitySource):
+    Name: NatureProtector.Simulator.Host
+Resource associated with Activity:
+    service.name: NatureProtector.Simulator.Host
+    service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.10.0
+
+fail: Microsoft.Extensions.Hosting.Internal.Host[9]
+      BackgroundService failed
+      System.InvalidOperationException: Run override 'SensorCount' (12) exceeds active sensor count (6).
+         at NatureProtector.Simulator.Host.Services.PostgresSimulationContextSource.SelectSensors(IReadOnlyList`1 activeSensors, Nullable`1 requestedSensorCount, Nullable`1 preferredSeed) in C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host\Services\PostgresSimulationContextSource.cs:line 324
+         at NatureProtector.Simulator.Host.Services.PostgresSimulationContextSource.CreateAsync(CancellationToken cancellationToken) in C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host\Services\PostgresSimulationContextSource.cs:line 104
+         at NatureProtector.Simulator.Host.Services.PostgresSimulationContextSource.CreateAsync(CancellationToken cancellationToken) in C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host\Services\PostgresSimulationContextSource.cs:line 136
+         at NatureProtector.Simulator.Host.Services.SimulationRunner.ExecuteAsync(CancellationToken stoppingToken) in C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host\Services\SimulationRunner.cs:line 56
+         at Microsoft.Extensions.Hosting.Internal.Host.TryExecuteBackgroundServiceAsync(BackgroundService backgroundService)
+crit: Microsoft.Extensions.Hosting.Internal.Host[10]
+      The HostOptions.BackgroundServiceExceptionBehavior is configured to StopHost. A BackgroundService has thrown an unhandled exception, and the IHost instance is stopping. To avoid this behavior, configure this to Ignore; however the BackgroundService will not be restarted.
+      System.InvalidOperationException: Run override 'SensorCount' (12) exceeds active sensor count (6).
+         at NatureProtector.Simulator.Host.Services.PostgresSimulationContextSource.SelectSensors(IReadOnlyList`1 activeSensors, Nullable`1 requestedSensorCount, Nullable`1 preferredSeed) in C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host\Services\PostgresSimulationContextSource.cs:line 324
+         at NatureProtector.Simulator.Host.Services.PostgresSimulationContextSource.CreateAsync(CancellationToken cancellationToken) in C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host\Services\PostgresSimulationContextSource.cs:line 104
+         at NatureProtector.Simulator.Host.Services.PostgresSimulationContextSource.CreateAsync(CancellationToken cancellationToken) in C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host\Services\PostgresSimulationContextSource.cs:line 136
+         at NatureProtector.Simulator.Host.Services.SimulationRunner.ExecuteAsync(CancellationToken stoppingToken) in C:\Users\Miguel\UNI\6sem\PS\IMP\A\NatureProtector\src\NatureProtector.Simulator.Host\Services\SimulationRunner.cs:line 56
+         at Microsoft.Extensions.Hosting.Internal.Host.TryExecuteBackgroundServiceAsync(BackgroundService backgroundService)
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+
+Metric Name: process.memory.usage, Description: The amount of physical memory in use., Unit: By
+(2026-05-15T19:28:06.8389082Z, 2026-05-15T19:28:08.1353915Z] LongSumNonMonotonic
+Value: 101683200
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.memory.virtual, Description: The amount of committed virtual memory., Unit: By
+(2026-05-15T19:28:06.8398717Z, 2026-05-15T19:28:08.1354271Z] LongSumNonMonotonic
+Value: 2480996052992
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.cpu.time, Description: Total CPU seconds broken down by different states., Unit: s
+(2026-05-15T19:28:06.8400493Z, 2026-05-15T19:28:08.1354483Z] process.cpu.state: user DoubleSum
+Value: 1.40625
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8400493Z, 2026-05-15T19:28:08.1354483Z] process.cpu.state: system DoubleSum
+Value: 0.109375
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.cpu.count, Description: The number of processors (CPU cores) available to the current process., Unit: {processors}
+(2026-05-15T19:28:06.8400677Z, 2026-05-15T19:28:08.1354493Z] LongSumNonMonotonic
+Value: 16
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: process.thread.count, Description: Process threads count., Unit: {thread}
+(2026-05-15T19:28:06.8400821Z, 2026-05-15T19:28:08.1354500Z] LongSumNonMonotonic
+Value: 21
+Instrumentation scope (Meter):
+	Name: OpenTelemetry.Instrumentation.Process
+	Version: 1.10.0-beta.1
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.collections, Description: The number of garbage collections that have occurred since the process has started., Unit: {collection}
+(2026-05-15T19:28:06.8400902Z, 2026-05-15T19:28:08.1354504Z] gc.heap.generation: gen2 LongSum
+Value: 1
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8400902Z, 2026-05-15T19:28:08.1354504Z] gc.heap.generation: gen1 LongSum
+Value: 1
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8400902Z, 2026-05-15T19:28:08.1354504Z] gc.heap.generation: gen0 LongSum
+Value: 2
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.process.memory.working_set, Description: The number of bytes of physical memory mapped to the process context., Unit: By
+(2026-05-15T19:28:06.8400969Z, 2026-05-15T19:28:08.1354508Z] LongSumNonMonotonic
+Value: 101339136
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.heap.total_allocated, Description: The approximate number of bytes allocated on the managed GC heap since the process has started. The returned value does not include any native allocations., Unit: By
+(2026-05-15T19:28:06.8401057Z, 2026-05-15T19:28:08.1354521Z] LongSum
+Value: 36525696
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.last_collection.memory.committed_size, Description: The amount of committed virtual memory in use by the .NET GC, as observed during the latest garbage collection., Unit: By
+(2026-05-15T19:28:06.8401126Z, 2026-05-15T19:28:08.1354528Z] LongSumNonMonotonic
+Value: 20840448
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.last_collection.heap.size, Description: The managed GC heap size (including fragmentation), as observed during the latest garbage collection., Unit: By
+(2026-05-15T19:28:06.8401209Z, 2026-05-15T19:28:08.1354537Z] gc.heap.generation: gen0 LongSumNonMonotonic
+Value: 156056
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8401209Z, 2026-05-15T19:28:08.1354537Z] gc.heap.generation: gen1 LongSumNonMonotonic
+Value: 4145608
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8401209Z, 2026-05-15T19:28:08.1354537Z] gc.heap.generation: gen2 LongSumNonMonotonic
+Value: 911992
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8401209Z, 2026-05-15T19:28:08.1354537Z] gc.heap.generation: loh LongSumNonMonotonic
+Value: 6986640
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8401209Z, 2026-05-15T19:28:08.1354537Z] gc.heap.generation: poh LongSumNonMonotonic
+Value: 58240
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.last_collection.heap.fragmentation.size, Description: The heap fragmentation, as observed during the latest garbage collection., Unit: By
+(2026-05-15T19:28:06.8401298Z, 2026-05-15T19:28:08.1354541Z] gc.heap.generation: gen0 LongSumNonMonotonic
+Value: 147672
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8401298Z, 2026-05-15T19:28:08.1354541Z] gc.heap.generation: gen1 LongSumNonMonotonic
+Value: 68640
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8401298Z, 2026-05-15T19:28:08.1354541Z] gc.heap.generation: gen2 LongSumNonMonotonic
+Value: 0
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8401298Z, 2026-05-15T19:28:08.1354541Z] gc.heap.generation: loh LongSumNonMonotonic
+Value: 1120
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8401298Z, 2026-05-15T19:28:08.1354541Z] gc.heap.generation: poh LongSumNonMonotonic
+Value: 0
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.gc.pause.time, Description: The total amount of time paused in GC since the process has started., Unit: s
+(2026-05-15T19:28:06.8401368Z, 2026-05-15T19:28:08.1354545Z] DoubleSum
+Value: 0.018786
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.jit.compiled_il.size, Description: Count of bytes of intermediate language that have been compiled since the process has started., Unit: By
+(2026-05-15T19:28:06.8401469Z, 2026-05-15T19:28:08.1354551Z] LongSum
+Value: 859689
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.jit.compiled_methods, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: {method}
+(2026-05-15T19:28:06.8401547Z, 2026-05-15T19:28:08.1354554Z] LongSum
+Value: 10820
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.jit.compilation.time, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: s
+(2026-05-15T19:28:06.8401641Z, 2026-05-15T19:28:08.1354559Z] DoubleSum
+Value: 0.9841094
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.monitor.lock_contentions, Description: The number of times there was contention when trying to acquire a monitor lock since the process has started., Unit: {contention}
+(2026-05-15T19:28:06.8401707Z, 2026-05-15T19:28:08.1354560Z] LongSum
+Value: 2
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.thread_pool.thread.count, Description: The number of thread pool threads that currently exist., Unit: {thread}
+(2026-05-15T19:28:06.8401818Z, 2026-05-15T19:28:08.1354561Z] LongSum
+Value: 2
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.thread_pool.work_item.count, Description: The number of work items that the thread pool has completed since the process has started., Unit: {work_item}
+(2026-05-15T19:28:06.8401878Z, 2026-05-15T19:28:08.1354564Z] LongSum
+Value: 24
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.thread_pool.queue.length, Description: The number of work items that are currently queued to be processed by the thread pool., Unit: {work_item}
+(2026-05-15T19:28:06.8401959Z, 2026-05-15T19:28:08.1354567Z] LongSum
+Value: 0
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.timer.count, Description: The number of timer instances that are currently active. An active timer is registered to tick at some point in the future and has not yet been canceled., Unit: {timer}
+(2026-05-15T19:28:06.8408370Z, 2026-05-15T19:28:08.1354575Z] LongSumNonMonotonic
+Value: 2
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.assembly.count, Description: The number of .NET assemblies that are currently loaded., Unit: {assembly}
+(2026-05-15T19:28:06.8408488Z, 2026-05-15T19:28:08.1354581Z] LongSumNonMonotonic
+Value: 103
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.exceptions, Description: The number of exceptions that have been thrown in managed code., Unit: {exception}
+(2026-05-15T19:28:06.8408559Z, 2026-05-15T19:28:08.1354597Z] error.type: InvalidOperationException LongSum
+Value: 4
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.process.cpu.count, Description: The number of processors available to the process., Unit: {cpu}
+(2026-05-15T19:28:06.8443678Z, 2026-05-15T19:28:08.1354603Z] LongSumNonMonotonic
+Value: 16
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dotnet.process.cpu.time, Description: CPU time used by the process., Unit: s
+(2026-05-15T19:28:06.8443912Z, 2026-05-15T19:28:08.1354606Z] cpu.mode: user DoubleSum
+Value: 1.40625
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+(2026-05-15T19:28:06.8443912Z, 2026-05-15T19:28:08.1354606Z] cpu.mode: system DoubleSum
+Value: 0.125
+Instrumentation scope (Meter):
+	Name: System.Runtime
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+Metric Name: dns.lookup.duration, Description: Measures the time taken to perform a DNS lookup., Unit: s
+(2026-05-15T19:28:07.7169987Z, 2026-05-15T19:28:08.1355488Z] dns.question.name: localhost Histogram
+Value: Sum: 0,0094799 Count: 1 Min: 0,0094799 Max: 0,0094799 
+(-Infinity,0,005]:0
+(0,005,0,01]:1
+(0,01,0,025]:0
+(0,025,0,05]:0
+(0,05,0,075]:0
+(0,075,0,1]:0
+(0,1,0,25]:0
+(0,25,0,5]:0
+(0,5,0,75]:0
+(0,75,1]:0
+(1,2,5]:0
+(2,5,5]:0
+(5,7,5]:0
+(7,5,10]:0
+(10,+Infinity]:0
+
+Instrumentation scope (Meter):
+	Name: System.Net.NameResolution
+Resource associated with Metric:
+	service.name: NatureProtector.Simulator.Host
+	service.instance.id: a3b66248-5c91-4086-9aba-acdd7ed3aeaf
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.10.0
+
+
+=== STDERR ===

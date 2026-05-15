@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "areaCode": "proenca-a-nova",
+  "scenarioCode": "scenario_b",
+  "sensorCount": 12,
+  "numberOfCycles": 20,
+  "intervalSeconds": 30,
+  "seed": 12345,
+  "degradationProfile": "none",
+  "collectEvidence": true,
+  "waitForCompletion": true,
+  "timeoutSeconds": 900,
+  "allowParallelRun": true,
+  "runLabel": "scenario-b-default"
+}

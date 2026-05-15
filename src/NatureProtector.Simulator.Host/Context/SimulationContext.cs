@@ -62,6 +62,16 @@ public sealed class SimulationContext
     public int NumberOfCycles { get; }
 
     /// <summary>
+    /// Optional preferred seed resolved by the context source.
+    /// </summary>
+    public int? PreferredSeed { get; }
+
+    /// <summary>
+    /// Snapshot of run overrides requested/resolved by the orchestrator path.
+    /// </summary>
+    public SimulationRunOverridesSnapshot? RunOverrides { get; }
+
+    /// <summary>
     /// Creates a new SimulationContext instance.
     /// </summary>
     /// <param name="areaId">
@@ -88,6 +98,12 @@ public sealed class SimulationContext
     /// <param name="scenarioCode">
     /// Optional control-plane scenario code that produced this context.
     /// </param>
+    /// <param name="preferredSeed">
+    /// Optional preferred seed resolved by the context source.
+    /// </param>
+    /// <param name="runOverrides">
+    /// Optional override snapshot used for metadata persistence.
+    /// </param>
     public SimulationContext(
         Guid areaId,
         Scenario scenario,
@@ -96,7 +112,9 @@ public sealed class SimulationContext
         TimeSpan interval,
         int numberOfCycles,
         Guid? configurationVersionId = null,
-        string? scenarioCode = null)
+        string? scenarioCode = null,
+        int? preferredSeed = null,
+        SimulationRunOverridesSnapshot? runOverrides = null)
     {
         if (areaId == Guid.Empty)
         {
@@ -137,5 +155,28 @@ public sealed class SimulationContext
         Interval = interval;
         NumberOfCycles = numberOfCycles;
         ConfigurationVersionId = configurationVersionId;
+        PreferredSeed = preferredSeed;
+        RunOverrides = runOverrides;
     }
 }
+
+public sealed record SimulationRunOverridesRequested(
+    int? SensorCount,
+    int? NumberOfCycles,
+    int? IntervalSeconds,
+    int? Seed,
+    string? DegradationProfile,
+    string? OrchestratorCorrelationId);
+
+public sealed record SimulationRunOverridesResolved(
+    int SensorCount,
+    int NumberOfCycles,
+    int IntervalSeconds,
+    int? PreferredSeed,
+    string? DegradationProfile,
+    string? OrchestratorCorrelationId,
+    IReadOnlyList<string> SelectedSensorNames);
+
+public sealed record SimulationRunOverridesSnapshot(
+    SimulationRunOverridesRequested Requested,
+    SimulationRunOverridesResolved Resolved);
