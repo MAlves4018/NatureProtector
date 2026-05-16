@@ -12,6 +12,7 @@ public interface IControlPlaneService
     Task<ConfigurationVersionResponse?> ActivateConfigurationAsync(int versionNumber, CancellationToken cancellationToken);
     Task<IReadOnlyList<AreaSummaryResponse>> ListAreasAsync(int? configurationVersion, CancellationToken cancellationToken);
     Task<AreaDetailResponse?> GetAreaAsync(string areaCode, int? configurationVersion, CancellationToken cancellationToken);
+    Task<AreaGeoJSONResponse?> GetAreaGeoJSONAsync(string areaCode, int? configurationVersion, CancellationToken cancellationToken);
     Task<IReadOnlyList<GridCellResponse>> ListGridCellsAsync(
         string areaCode,
         int? configurationVersion,

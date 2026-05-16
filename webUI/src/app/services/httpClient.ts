@@ -1,5 +1,5 @@
 import {HttpError} from './httpError';
-import {ErrorResponse} from '~/types';
+import {ErrorResponse} from '../types/index';
 
 const API_BASE = '/api';
 

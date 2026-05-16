@@ -49,8 +49,8 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
 
         private readonly IReadOnlyList<GridCellResponse> _gridCells =
         [
-            new("PRO-001", 1, 39.75, -7.90, 340, 7.5, 125, "forest", null, null, null, "high", null, 1),
-            new("PRO-002", 1, 39.76, -7.89, 355, 11.2, 210, "shrubs", null, null, null, "medium", null, 1)
+            new("PRO-001", [Tuple.Create(Guid.Parse("70000000-0000-0000-0000-000000000001"), "Temperature")], 1, 39.75, -7.90, 340, 7.5, 125, "forest", null, null, null, "high", null, 1),
+            new("PRO-002", [Tuple.Create(Guid.Parse("70000000-0000-0000-0000-000000000002"), "Humidity")], 1, 39.76, -7.89, 355, 11.2, 210, "shrubs", null, null, null, "medium", null, 1)
         ];
 
         private readonly IReadOnlyList<SensorNodeResponse> _sensorNodes =
@@ -326,6 +326,11 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
 
             return Task.FromResult<IReadOnlyList<CellOperationalStateResponse>>(
                 _cellOperationalStates.Skip(skip).Take(take <= 0 ? 100 : take).ToArray());
+        }
+
+        public Task<AreaGeoJSONResponse?> GetAreaGeoJSONAsync(string areaCode, int? configurationVersion, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
         }
     }
 }

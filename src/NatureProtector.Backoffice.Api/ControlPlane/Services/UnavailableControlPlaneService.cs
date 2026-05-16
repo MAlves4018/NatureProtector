@@ -28,6 +28,9 @@ public sealed class UnavailableControlPlaneService : IControlPlaneService
     public Task<AreaDetailResponse?> GetAreaAsync(string areaCode, int? configurationVersion, CancellationToken cancellationToken)
         => Task.FromResult<AreaDetailResponse?>(null);
 
+    public Task<AreaGeoJSONResponse?> GetAreaGeoJSONAsync(string areaCode, int? configurationVersion, CancellationToken cancellationToken)
+        => Task.FromResult<AreaGeoJSONResponse?>(null);
+
     public Task<IReadOnlyList<GridCellResponse>> ListGridCellsAsync(
         string areaCode,
         int? configurationVersion,
@@ -81,4 +84,6 @@ public sealed class UnavailableControlPlaneService : IControlPlaneService
         int? configurationVersion,
         CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyList<AlertStateResponse>>([]);
+
+
 }

@@ -1,0 +1,38 @@
+// Color sets for light and dark mode
+export const lightColors = {
+  pageBg: '#f9fafb',
+  navBg: '#ffffff',
+  navBorder: '#e5e7eb',
+  panelBg: '#ffffff',
+  panelBorder: '#e5e7eb',
+  sectionBg: '#f9fafb',
+  cardBorder: '#e5e7eb',
+  textPrimary: '#1f2937',
+  textSecond: '#6b7280',
+  textMuted: '#9ca3af',
+  redText: '#750404',
+  inputBg: '#ffffff',
+  inputBorder: '#d1d5db',
+  toggleBg: '#f3f4f6',
+  segBg: '#f3f4f6',
+  segActive: '#ffffff',
+};
+
+export const darkColors = {
+  pageBg: '#0f1117',
+  navBg: '#13151c',
+  navBorder: '#1e2330',
+  panelBg: '#13151c',
+  panelBorder: '#1e2330',
+  sectionBg: '#1a1d27',
+  cardBorder: '#2a2f3e',
+  textPrimary: '#f1f5f9',
+  textSecond: '#94a3b8',
+  textMuted: '#64748b',
+  redText: '#f14343',
+  inputBg: '#1e2330',
+  inputBorder: '#2d3547',
+  toggleBg: '#1e2330',
+  segBg: '#1a1d27',
+  segActive: '#2d3547',
+};

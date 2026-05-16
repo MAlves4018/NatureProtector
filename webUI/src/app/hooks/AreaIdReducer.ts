@@ -1,13 +1,13 @@
 // State
 export interface AreaState {
-    areaId: string | null;
+    code: string | null;
     awating: boolean;
     removingId: boolean;
     message: { text: string; type: 'error' | 'success' } | null;
 }
 
 export const initialAreaState: AreaState = {
-    areaId: null,
+    code: null,
     awating: true,
     removingId: false,
     message: null
@@ -16,7 +16,7 @@ export const initialAreaState: AreaState = {
 // Actions
 export type AreaAction =
     | { type: 'AWAITING_INPUT'; payload: boolean }
-    | { type: 'SET_ID'; payload: string | null }
+    | { type: 'SET_CODE'; payload: string | null }
     | { type: 'REMOVE_ID'; payload: boolean }
     | { type: 'SET_MESSAGE'; payload: { text: string; type: 'error' | 'success' } | null }
 
@@ -26,8 +26,8 @@ export function areaReducer(state: AreaState, action: AreaAction): AreaState {
         case 'AWAITING_INPUT':
             return { ...state, awating: action.payload };
 
-        case 'SET_ID':
-            return { ...state, areaId: action.payload };
+        case 'SET_CODE':
+            return { ...state, code: action.payload };
 
         case 'REMOVE_ID':
             return { ...state, removingId: action.payload };

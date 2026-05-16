@@ -42,7 +42,7 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
         if (string.IsNullOrWhiteSpace(_options.Bucket))
             throw new InvalidOperationException("InfluxDb:Bucket is required.");
 
-        _client = InfluxDBClientFactory.Create(_options.Url, _options.Token);
+        _client = new InfluxDBClient(_options.Url, _options.Token);
     }
 
     public async Task WriteBatchAsync(

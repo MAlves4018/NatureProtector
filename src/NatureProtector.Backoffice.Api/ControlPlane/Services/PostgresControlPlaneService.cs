@@ -207,6 +207,30 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             .SingleOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<AreaGeoJSONResponse?> GetAreaGeoJSONAsync(
+        string areaCode,
+        int? configurationVersion,
+        CancellationToken cancellationToken)
+    {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var resolvedConfigurationVersion = await ResolveConfigurationVersionAsync(dbContext, configurationVersion, cancellationToken);
+
+        if (resolvedConfigurationVersion is null)
+        {
+            return null;
+        }
+
+        return await dbContext.Areas
+            .AsNoTracking()
+            .Where(entity =>
+                entity.Code == areaCode &&
+                entity.ConfigurationVersion!.VersionNumber == resolvedConfigurationVersion.Value)
+            .Select(entity => new AreaGeoJSONResponse(
+                entity.Id,
+                entity.GeometryGeoJson))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Lista células da grelha de uma área com paginação defensiva.
     /// </summary>
@@ -238,6 +262,10 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             .Take(normalizedTake)
             .Select(entity => new GridCellResponse(
                 entity.CellCode,
+                dbContext.SensorNodes
+                    .Where(node => node.GridCellId == entity.Id && node.IsActive)
+                    .Select(node => Tuple.Create(node.Id, node.Type.ToString()))
+                    .ToArray(),
                 entity.ConfigurationVersion!.VersionNumber,
                 entity.CentroidLatitude,
                 entity.CentroidLongitude,

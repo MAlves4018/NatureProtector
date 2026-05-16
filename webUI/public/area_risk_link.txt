@@ -1,0 +1,1 @@
+http://localhost:3000/d/adxq5gr/areas?orgId=1&from=2026-05-13T06:30:09.210Z&to=2026-05-13T12:30:09.210Z&timezone=browser&var-area_id=???&dtab=area-info&viewPanel=panel-13

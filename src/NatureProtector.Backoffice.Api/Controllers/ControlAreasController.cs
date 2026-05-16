@@ -42,12 +42,28 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
         return area is null ? NotFound() : Ok(area);
     }
 
+    [HttpGet("{areaCode}/GeoJSON")]
+    public async Task<ActionResult> GetAreaGeoJSON(
+        string areaCode,
+        [FromQuery] int? configurationVersion,
+        CancellationToken cancellationToken)
+    {
+        var unavailable = EnsureControlPlaneAvailable();
+        if (unavailable is not null)
+        {
+            return unavailable;
+        }
+
+        var geoJson = await ControlPlane.GetAreaGeoJSONAsync(areaCode, configurationVersion, cancellationToken);
+        return geoJson is null ? NotFound() : Ok(geoJson);
+    }
+
     [HttpGet("{areaCode}/grid-cells")]
     public async Task<ActionResult> ListGridCells(
         string areaCode,
         [FromQuery] int? configurationVersion,
         [FromQuery] int skip = 0,
-        [FromQuery] int take = 100,
+        [FromQuery] int take = 500,
         CancellationToken cancellationToken = default)
     {
         var unavailable = EnsureControlPlaneAvailable();

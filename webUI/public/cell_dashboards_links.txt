@@ -1,0 +1,3 @@
+http://localhost:3000/d/adxq5gr/areas?orgId=1&from=2026-05-13T06:33:44.918Z&to=2026-05-13T12:33:44.918Z&timezone=browser&var-area_id=?1?&var-sensor_id=?t?&dtab=cells-info&viewPanel=panel-17
+http://localhost:3000/d/adxq5gr/areas?orgId=1&from=2026-05-13T06:33:44.918Z&to=2026-05-13T12:33:44.918Z&timezone=browser&var-area_id=?1?&var-sensor_id=?h?&dtab=cells-info&viewPanel=panel-18
+http://localhost:3000/d/adxq5gr/areas?orgId=1&from=2026-05-13T06:33:44.918Z&to=2026-05-13T12:33:44.918Z&timezone=browser&var-area_id=?1?&var-sensor_id=?w?&dtab=cells-info&viewPanel=panel-19

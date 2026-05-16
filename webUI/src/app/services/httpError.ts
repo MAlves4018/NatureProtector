@@ -1,4 +1,4 @@
-import {ErrorResponse} from "./types/index";
+import { ErrorResponse } from "../types/index";
 
 export class HttpError extends Error {
     status: number;

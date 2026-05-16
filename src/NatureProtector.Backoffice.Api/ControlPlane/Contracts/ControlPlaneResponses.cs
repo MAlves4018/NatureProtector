@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
+
 namespace NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 
 public sealed record ConfigurationVersionResponse(
@@ -11,6 +13,12 @@ public sealed record ConfigurationVersionResponse(
     int SensorNodeCount,
     int ScenarioCount,
     int SimulationRunCount);
+
+
+public sealed record AreaGeoJSONResponse(
+    Guid Id,
+    string? GeometryGeoJson
+);
 
 public sealed record AreaContextResponse(
     string VegetationType,
@@ -43,6 +51,7 @@ public sealed record AreaDetailResponse(
 
 public sealed record GridCellResponse(
     string CellCode,
+    IReadOnlyList<Tuple<Guid, string>> sensorNodeIds,
     int ConfigurationVersionNumber,
     double CentroidLatitude,
     double CentroidLongitude,

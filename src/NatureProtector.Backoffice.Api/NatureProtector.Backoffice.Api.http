@@ -1,36 +1,44 @@
-@NatureProtector.Backoffice.Api_HostAddress = http://localhost:5254
+@NatureProtector_Backoffice_Api_HostAddress = http://localhost:5254
 
-GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/configurations/active
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/configurations/active
 Accept: application/json
 
 ###
 
-GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/areas
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas
 Accept: application/json
 
 ###
 
-GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/areas/proenca-a-nova/scenarios
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/scenarios
 Accept: application/json
 
 ###
 # Pode devolver 404 antes de existir estado operacional persistido para a área.
-GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/areas/proenca-a-nova/operational-state
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/operational-state
 Accept: application/json
 
 ###
 
-GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/areas/proenca-a-nova/cells/operational-state
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/cells/operational-state
 Accept: application/json
 
 ###
 
-GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/areas/proenca-a-nova/alerts/active
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/alerts/active
 Accept: application/json
 
 ###
 
-GET {{NatureProtector.Backoffice.Api_HostAddress}}/api/control/simulation-runs?areaCode=proenca-a-nova
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/simulation-runs?areaCode=proenca-a-nova
 Accept: application/json
 
 ###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/GeoJSON
+Accept: application/json
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/grid-cells
+Accept: application/json
