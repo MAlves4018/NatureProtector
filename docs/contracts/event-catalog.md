@@ -1,42 +1,44 @@
-﻿# Event Catalog (V1)
+# Event Catalog (V1)
 
 ## Objetivo
 
-Documentar eventos atuais, parciais e futuros da V1, distinguindo conceito de domínio (`OperationalEvent`) da implementação atual (`EventEnvelope<TPayload>`).
+Documentar o catálogo mínimo de eventos e sinais operacionais da V1,
+distinguindo o contrato RabbitMQ atual, camadas internas da prevenção e eventos
+futuros.
 
 ## Regras desta versão
 
 - Não altera contratos RabbitMQ.
-- Não cria novos eventos no código.
-- Usa estado `ativo`, `parcial`, `alvo`, `futuro`.
+- Não declara como vivo nenhum evento que não esteja publicado end-to-end.
+- Usa estado `ativo`, `interno`, `parcial`, `futuro`.
+- Quando houver conflito, prevalecem código, testes e evidência runtime recente.
 
-## Catálogo de eventos
+## Catálogo de eventos e sinais
 
-| Nome | Produtor | Consumidor | Estado | Payload atual ou alvo | Relação com Proposal | Altera RabbitMQ agora | Prioridade de implementação |
+| Nome | Tipo | Produtor | Consumidor | Estado | Payload ou forma atual | Altera RabbitMQ agora | Leitura correta |
 |---|---|---|---|---|---|---|---|
-| SensorReadingProduced | Simulator Host (`RabbitMqReadingPublisher`) | Prevention Host inbox/worker; observability raw queue | ativo | Atual: `EventEnvelope<TPayload>` com payload de leitura de sensor [CONFIRMAR tipo concreto] | Base de entrada de dados operacionais | não | Alta |
-| EventEnvelope<TPayload> | Produtores que publicam eventos operacionais | Consumidores que deserializam envelope canónico | ativo | Atual: `SchemaVersion, EventId, CorrelationId, Producer, EventType, AreaId, EventTime, IngestTime, Payload` | Implementação atual de transporte de eventos | não | Alta |
-| OperationalEvent (conceito V1) | [CONFIRMAR] | [CONFIRMAR] | alvo | Alvo: payload canónico de domínio sobre `EventEnvelope<TPayload>` | Contrato-alvo V1 para semântica operacional | não | Alta |
-| ReadingAccepted | Prevention processing flow [CONFIRMAR ponto exato] | [CONFIRMAR] | alvo | Atual/alvo: envelope com tipo `ReadingAccepted` e routing key `ingestion.reading.accepted` | Marca aceitação semântica de leitura | não | Média |
-| ReadingRejected | Prevention processing flow [CONFIRMAR ponto exato] | [CONFIRMAR] | parcial | Atual/alvo: envelope com tipo `ReadingRejected` e routing key `ingestion.reading.rejected` | Marca rejeição com motivo operacional | não | Média |
-| ReadingNormalized | Prevention processing flow [CONFIRMAR ponto exato] | [CONFIRMAR] | alvo | Atual/alvo: envelope com tipo `ReadingNormalized` e routing key `ingestion.reading.normalized` | Marca saída normalizada para etapas seguintes | não | Média |
-| WarningRaised | [CONFIRMAR] | [CONFIRMAR] | futuro | Alvo: evento formal de aviso operacional [CONFIRMAR campos] | Evolução de AlertState para gradação de alerta | não | Baixa |
-| AlarmRaised | [CONFIRMAR] | [CONFIRMAR] | futuro | Alvo: evento formal de alarme operacional [CONFIRMAR campos] | Evolução de AlertState para incidentes críticos | não | Baixa |
-| area-risk-high (alert code, não evento formal) | Projection store (`InMemoryAreaOperationalProjectionStore` / `PostgresAreaOperationalProjectionStore`) | API/consulta de projeção [CONFIRMAR] | parcial | Atual: código de alerta persistido em projeção, sem evento formal dedicado | Sinal atual parcial para estado de alerta | não | Média |
+| `SensorReadingProduced` | Evento externo RabbitMQ | `Simulator.Host` (`RabbitMqReadingPublisher`) | `Prevention.Host`, fila principal e fila de observabilidade raw | Ativo | `EventEnvelope<SensorReadingProducedPayload>` | Não | Evento externo vivo da ingestão V1. |
+| `EventEnvelope<SensorReadingProducedPayload>` | Contrato RabbitMQ atual | `Simulator.Host` | Consumidores que deserializam o envelope canónico | Ativo | `SchemaVersion`, `EventId`, `CorrelationId`, `Producer`, `EventType`, `AreaId`, `EventTime`, `IngestTime`, `Payload` | Não | Envelope e payload reais transportados pelo broker. |
+| `OperationalEvent` | Camada interna | `Prevention.Host` / pipeline de risco | `NormalizedReading` e pipeline interna | Interno | Record interno criado a partir de `EventEnvelope<SensorReadingProducedPayload>` | Não | Adaptador interno; não é evento externo RabbitMQ. |
+| `ReadingAccepted` | Semântica operacional | Pipeline/projeções | Persistência, evidência e futura evolução de eventos | Parcial | Hoje materializada por logs/persistência, não como publicação RabbitMQ completa | Não | Conceito útil; não apresentar como evento externo vivo. |
+| `ReadingRejected` | Semântica operacional | Worker/inbox/pipeline | Persistência de rejeição/quarentena e evidência | Parcial | Hoje materializada por rejeições/quarentena, não como publicação RabbitMQ completa | Não | Conceito útil; não apresentar como evento externo vivo. |
+| `ReadingNormalized` | Semântica operacional | Pipeline interna | Elegibilidade e scoring | Parcial | Hoje existe como `NormalizedReading` interno, não como evento externo publicado | Não | Camada interna/semântica; publicação formal fica futura. |
+| `area-risk-high` | Código de alerta/projeção | Projection store (`InMemoryAreaOperationalProjectionStore` / `PostgresAreaOperationalProjectionStore`) | API/consulta de projeção | Ativo como código de projeção | `projection.alert_state` com mensagem `AlertState=<estado>` | Não | Código/estado persistido; não é evento formal. |
+| `WarningRaised` | Evento formal futuro | Futuro | Futuro | Futuro | Payload a especificar quando houver publicação end-to-end | Não | Evolução possível de alertas; não está vivo na V1 atual. |
+| `AlarmRaised` | Evento formal futuro | Futuro | Futuro | Futuro | Payload a especificar quando houver publicação end-to-end | Não | Evolução possível de alertas; não está vivo na V1 atual. |
 
 ## Notas de compatibilidade
 
-- `OperationalEvent` permanece conceito V1 até existir contrato canónico estável.
-- `EventEnvelope<TPayload>` mantém-se como implementação ativa de transporte nesta fase.
-- `ReadingAccepted`, `ReadingNormalized`, `WarningRaised` e `AlarmRaised` devem ser tratados como `alvo/futuro` quando não houver formalização end-to-end comprovada.
+- `SensorReadingProduced` e `EventEnvelope<SensorReadingProducedPayload>` são a fronteira externa atual.
+- `OperationalEvent` não substitui o payload RabbitMQ. É um adaptador interno para reduzir acoplamento entre transporte e pipeline de risco.
+- `ReadingAccepted`, `ReadingRejected` e `ReadingNormalized` devem ser tratados como semântica interna/parcial enquanto não houver publicação formal end-to-end.
+- `WarningRaised` e `AlarmRaised` continuam eventos futuros.
+- `area-risk-high` é código de alerta persistido em projeção. A API expõe `alertState` a partir dessa projeção e não recalcula risco.
 
-## Decisões pendentes
+## Itens futuros
 
-| ID | Pendência | Impacto | Próxima ação |
+| ID | Tema | Estado | Próxima ação |
 |---|---|---|---|
-| EVT-P01 | Confirmar tipo concreto do payload de `SensorReadingProduced` | Médio | Inspecionar contrato de payload no módulo de simulação/mensageria |
-| EVT-P02 | Confirmar consumidores formais de `ReadingAccepted/ReadingRejected/ReadingNormalized` | Alto | Levantar handlers/subscrições por routing key |
-| EVT-P03 | Definir contrato mínimo de `OperationalEvent` (campos obrigatórios) | Alto | Proposta V1 de contrato + testes de compatibilidade |
-| EVT-P04 | Definir payload alvo de `WarningRaised` | Médio | Especificação de evento sem alterar RabbitMQ |
-| EVT-P05 | Definir payload alvo de `AlarmRaised` | Médio | Especificação de evento sem alterar RabbitMQ |
-| EVT-P06 | Confirmar fronteira entre `area-risk-high` (código) e evento formal de alerta | Alto | Regra de tradução código->evento para fase posterior |
+| EVT-F01 | Publicação formal de `ReadingAccepted`, `ReadingRejected` e `ReadingNormalized` | Futuro | Definir contrato, routing keys, consumidores e migração. |
+| EVT-F02 | Eventos formais `WarningRaised` e `AlarmRaised` | Futuro | Definir payloads e lifecycle quando os alertas deixarem de ser apenas projeção. |
+| EVT-F03 | Evolução de `area-risk-high` para evento formal | Futuro | Separar código de projeção de evento operacional publicado, se necessário. |
