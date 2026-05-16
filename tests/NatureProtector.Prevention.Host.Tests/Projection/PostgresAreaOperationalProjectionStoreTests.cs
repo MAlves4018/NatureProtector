@@ -161,6 +161,61 @@ public sealed class PostgresAreaOperationalProjectionStoreTests
     }
 
     [Fact]
+    public async Task SaveAsync_WarningThreshold_CreatesOpenWarningAlert()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var store = CreateStore(scope);
+        var snapshot = new AreaRiskSnapshot(
+            Guid.Parse("21000000-0000-0000-0000-000000000001"),
+            new DateTimeOffset(2026, 4, 10, 8, 10, 0, TimeSpan.Zero),
+            0.62,
+            "Warning candidate.");
+
+        await store.SaveAsync(seed.AreaId, snapshot, 4, CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var alert = Assert.Single(dbContext.AlertStates);
+        Assert.Equal("area-risk-high", alert.AlertCode);
+        Assert.Equal(OperationalAlertStatus.Open.ToString(), alert.Status);
+        Assert.Contains("AlertState=Warning", alert.Message);
+    }
+
+    [Fact]
+    public async Task SaveAsync_AlarmDropWithinHysteresis_DowngradesToWarningWithoutResolving()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var store = CreateStore(scope);
+
+        await store.SaveAsync(
+            seed.AreaId,
+            new AreaRiskSnapshot(
+                Guid.Parse("23000000-0000-0000-0000-000000000001"),
+                new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+                0.85,
+                "Alarm open"),
+            5,
+            CancellationToken.None);
+
+        await store.SaveAsync(
+            seed.AreaId,
+            new AreaRiskSnapshot(
+                Guid.Parse("23000000-0000-0000-0000-000000000002"),
+                new DateTimeOffset(2026, 4, 10, 8, 30, 0, TimeSpan.Zero),
+                0.66,
+                "Alarm drops but remains warning"),
+            5,
+            CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var alert = Assert.Single(dbContext.AlertStates);
+        Assert.Equal(OperationalAlertStatus.Open.ToString(), alert.Status);
+        Assert.Null(alert.ResolvedAt);
+        Assert.Contains("AlertState=Warning", alert.Message);
+    }
+
+    [Fact]
     public async Task SaveAsync_RiskDrops_ResolvesExistingAlertAndUpdatesProjection()
     {
         await using var scope = new SqliteControlDbContextScope();

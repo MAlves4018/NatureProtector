@@ -139,6 +139,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
 
             var existingState = await dbContext.AreaOperationalStates
                 .SingleOrDefaultAsync(entity => entity.AreaId == areaId, cancellationToken);
+            var previousAdjustedScore = existingState?.AggregateRiskScore ?? snapshot.AggregateRiskScore;
 
             var now = DateTimeOffset.UtcNow;
             var severity = SeverityExtensions.FromRiskLevel(snapshot.AggregateRiskLevel);
@@ -169,8 +170,12 @@ public sealed class PostgresAreaOperationalProjectionStore(
                         entity.AlertCode == "area-risk-high" &&
                         entity.Status == OperationalAlertStatus.Open.ToString(),
                     cancellationToken);
+            var currentState = V1AlertPolicy.InferCurrentState(
+                hasOpenAlert: existingAlert is not null,
+                previousAdjustedScore: previousAdjustedScore);
+            var nextState = V1AlertPolicy.EvaluateTransition(currentState, snapshot.AggregateRiskScore);
 
-            if (snapshot.AggregateRiskLevel.IsHighOrAbove())
+            if (nextState is V1AlertState.Warning or V1AlertState.Alarm)
             {
                 if (existingAlert is null)
                 {
@@ -183,7 +188,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
                         AlertCode = "area-risk-high",
                         Severity = severity.ToString(),
                         Status = OperationalAlertStatus.Open.ToString(),
-                        Message = Truncate(BuildAlertMessage(snapshot), 2000) ?? string.Empty,
+                        Message = Truncate(BuildAlertMessage(snapshot, nextState), 2000) ?? string.Empty,
                         TriggeredAt = snapshot.Timestamp,
                         UpdatedAt = now
                     });
@@ -192,7 +197,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
                 {
                     existingAlert.AreaOperationalStateId = existingState.Id;
                     existingAlert.Severity = severity.ToString();
-                    existingAlert.Message = Truncate(BuildAlertMessage(snapshot), 2000) ?? string.Empty;
+                    existingAlert.Message = Truncate(BuildAlertMessage(snapshot, nextState), 2000) ?? string.Empty;
                     existingAlert.UpdatedAt = now;
                     existingAlert.ResolvedAt = null;
                 }
@@ -236,8 +241,8 @@ public sealed class PostgresAreaOperationalProjectionStore(
     /// <summary>
     /// Constrói a mensagem curta do alerta operacional agregado.
     /// </summary>
-    private static string BuildAlertMessage(AreaRiskSnapshot snapshot)
-        => $"Area risk is {snapshot.AggregateRiskLevel} with score {snapshot.AggregateRiskScore:F2}.";
+    private static string BuildAlertMessage(AreaRiskSnapshot snapshot, V1AlertState state)
+        => $"AlertState={state}; Area risk is {snapshot.AggregateRiskLevel} with adjusted score {snapshot.AggregateRiskScore:F2}. Candidate Parameter Set V1.0 (non-official).";
 
     /// <summary>
     /// Limita texto livre aos comprimentos suportados pelo esquema relacional.

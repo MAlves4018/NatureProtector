@@ -1,3 +1,4 @@
+using NatureProtector.Prevention.Risk;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
 
@@ -18,23 +19,41 @@ public sealed record NormalizedReading(
     DateTimeOffset EventTime,
     DateTimeOffset? IngestTime)
 {
+    private static readonly IReadOnlyList<string> EmptyQualityFlags = Array.Empty<string>();
+    private static readonly IReadOnlyList<ClassifierResult> EmptyClassifierResults = Array.Empty<ClassifierResult>();
+
+    public IReadOnlyList<string> QualityFlags { get; init; } = EmptyQualityFlags;
+
+    public IReadOnlyList<ClassifierResult> ClassifierResults { get; init; } = EmptyClassifierResults;
+
     public static NormalizedReading FromEnvelope(EventEnvelope<SensorReadingProducedPayload> envelope)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
+        return FromOperationalEvent(OperationalEvent.FromEnvelope(envelope));
+    }
+
+    public static NormalizedReading FromOperationalEvent(OperationalEvent operationalEvent)
+    {
+        ArgumentNullException.ThrowIfNull(operationalEvent);
+
         return new NormalizedReading(
-            EventId: envelope.EventId,
-            CorrelationId: envelope.CorrelationId,
-            AreaId: envelope.AreaId,
-            SensorId: envelope.Payload.SensorId,
-            SensorName: envelope.Payload.SensorName,
-            MetricType: envelope.Payload.MetricType,
-            Value: envelope.Payload.Value,
-            Unit: envelope.Payload.Unit,
-            Latitude: envelope.Payload.Latitude,
-            Longitude: envelope.Payload.Longitude,
-            OperationalState: envelope.Payload.OperationalState,
-            EventTime: envelope.EventTime,
-            IngestTime: envelope.IngestTime);
+            EventId: operationalEvent.EventId,
+            CorrelationId: operationalEvent.CorrelationId,
+            AreaId: operationalEvent.AreaId,
+            SensorId: operationalEvent.SensorId,
+            SensorName: operationalEvent.SensorName,
+            MetricType: operationalEvent.MetricType,
+            Value: operationalEvent.Value,
+            Unit: operationalEvent.Unit,
+            Latitude: operationalEvent.Latitude,
+            Longitude: operationalEvent.Longitude,
+            OperationalState: operationalEvent.OperationalState,
+            EventTime: operationalEvent.EventTime,
+            IngestTime: operationalEvent.IngestTime)
+        {
+            QualityFlags = operationalEvent.QualityFlags ?? EmptyQualityFlags,
+            ClassifierResults = operationalEvent.ClassifierResults ?? EmptyClassifierResults
+        };
     }
 }

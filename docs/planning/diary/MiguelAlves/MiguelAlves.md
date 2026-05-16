@@ -588,7 +588,7 @@ O cálculo atual de risco continua a ser uma baseline demonstrativa. A decisão 
 
 ## Objetivo desta entrada
 
-Registar o trabalho de consolidação da segunda fase de pesquisa do NatureProtector, com foco na transformação da investigação dispersa numa base metodológica e técnica para orientar a V1 do subsistema de prevenção, o `Proposal`, a implementação futura, os anexos, a bibliografia e a validação.
+Registar o trabalho de consolidação da segunda fase de pesquisa do NatureProtector, com foco na transformação da investigação dispersa numa base metodológica e técnica para orientar a V1 do subsistema de prevenção, o `Proposal`, a implementação futura, os anexos, a bibliografia, a validação técnica/runtime e a preparação de execuções reprodutíveis de cenários.
 
 ## Índice
 
@@ -600,7 +600,8 @@ Registar o trabalho de consolidação da segunda fase de pesquisa do NatureProte
 * 5. Pipeline, normalização e elegibilidade
 * 6. `RiskInput`, `DailyCellState` e score
 * 7. Validação, anexos e bibliografia
-* 8. Resultado da quinzena e próximos passos
+* 8. Implementação, evidência runtime e orquestração de runs
+* 9. Resultado da quinzena e próximos passos
 
 ## Resumo Estruturado
 
@@ -620,7 +621,8 @@ Registar o trabalho de consolidação da segunda fase de pesquisa do NatureProte
 12. Ficou definido que o simulador deve gerar primeiro `TruthSnapshot`, depois `LocalObservation` com erro observacional, e só depois `OperationalEvent`.
 13. Foram clarificados os cenários A, B e C: A como dia normal plausível, B como dia severo plausível e C como versão degradada de A ou B, não como terceiro clima.
 14. Foi consolidada a lógica da pipeline: validade técnica, inbox, consistência semântica, duplicação, lateness, ordering, normalização, elegibilidade e construção de `RiskInput`.
-15. Foi reforçada a diferença entre persistir uma leitura para auditoria e usá-la no cálculo de risco.16. Foi formalizada a necessidade de `ClassifierResult`, quality flags, estados por camada e regras explícitas de elegibilidade.
+15. Foi reforçada a diferença entre persistir uma leitura para auditoria e usá-la no cálculo de risco.
+16. Foi formalizada a necessidade de `ClassifierResult`, quality flags, estados por camada e regras explícitas de elegibilidade.
 17. Foi definido `RiskInput` como fronteira entre pipeline e motor de prevenção.
 18. Ficou claro que `RiskInput` não deve conter resultados como `base_risk`, `adjusted_score`, `risk_level`, `alert_state` ou `operational_projection`.
 19. Foi introduzido `DailyCellState` como artefacto necessário para guardar memória temporal, estado antecedente, precipitação diária e suporte a índices como FWI e KBDI.
@@ -635,18 +637,44 @@ Registar o trabalho de consolidação da segunda fase de pesquisa do NatureProte
 28. Foram feitas várias rondas de auditoria e correção ao `Proposal.tex`, ao PDF, aos anexos e ao BibTeX.
 29. Foram corrigidas regressões, especialmente no Anexo D, Anexo C, Anexo A e Anexo G.
 30. Ficou como pendência importante o preenchimento de H.0 com branch, commit, ambiente, comandos de build e testes reais.
+31. Foi executada uma frente técnica incremental C0-C7 para aproximar a implementação da V1 descrita documentalmente.
+32. Foram introduzidos ou consolidados `OperationalEvent`, `ClassifierResult`, `ClassifierStatus`, `ClassifierSeverity`, `RiskInputStatus`, `DailyCellState`, `RiskAssessment` com `BaseRisk`/`AdjustedScore` e compatibilidade `RiskScore`.
+33. Foi reforçada a elegibilidade explícita para risco, distinguindo leituras completas, parciais e bloqueadas.
+34. A pipeline passou a impedir que leituras bloqueadas gerem novo `RiskAssessment`, preservando a regra `Blocked != risco zero`.
+35. Foi implementada uma política interna de alertas V1 com `None`, `Warning`, `Alarm` e histerese, sem a apresentar como calibração científica.
+36. A API/Backoffice passou a expor `alertState` a partir das projeções, sem recalcular risco.
+37. Foi criada uma recolha de evidência runtime para C7, com queries e script PowerShell reutilizável.
+38. A evidência runtime confirmou infraestrutura ativa, control plane carregado, eventos processados, risk assessments, projeções e API operacional, com classificação geral `OK com limitações`.
+39. Foram identificados e separados erros históricos ou esperados, como eventos rejeitados por `invalid_operational_state`, quarentenas antigas por `retries_exhausted` e o erro histórico `EmptyProjectionMember`.
+40. Foi criada uma frente O1/O1.2 para orquestração de runs, permitindo executar cenários por `run-spec.json` sem alterar manualmente CSV, scripts ou bootstrap.
+41. O `Simulator.Host` passou a aceitar `RunOverrides` para `sensorCount`, `numberOfCycles`, `intervalSeconds`, `seed`, `degradationProfile` e `orchestratorCorrelationId`.
+42. Foi validada uma run curta de `scenario_b` em `proenca-a-nova`, com 6 sensores, 5 ciclos, intervalo de 5 segundos e seed 12345, terminando com `Completed` e overrides como `observed_match`.
+43. A orquestração passou a gravar evidência por run, incluindo `summary.md`, `run-spec.resolved.json`, logs do simulador e relatório runtime.
+44. Foi realizada uma vaga adicional de testes para proteger as alterações da V1 e aumentar a cobertura da suite.
+45. A cobertura consolidada passou para `97.6%` de line coverage, `90.1%` de branch coverage e `97.1%` de method coverage.
+46. Os testes passaram a cobrir melhor domínio, validações, elegibilidade, `RiskInput`, `DailyCellState`, `RiskAssessment`, alertas V1, API/Backoffice, Influx configurável, inbox, contexto do simulador e orquestração de runs.
+47. Ficou definido que a cobertura não deve ser aumentada artificialmente à custa de testes frágeis sobre telemetry glue, RabbitMQ real, Influx real ou branches de observabilidade sem valor funcional.
 
 ### Resultado principal da quinzena
+
 O principal resultado foi transformar a pesquisa numa base metodológica muito mais madura e implementável. O NatureProtector deixou de ser descrito apenas como uma pipeline que recebe leituras e calcula um score. Passou a ser descrito como uma cadeia causal e operacional que separa cenário, estado diário, verdade física, observação, evento, normalização, elegibilidade, input de risco, avaliação, alerta e projeção.
+
 Esta mudança torna o projeto mais defensável. Uma mensagem recebida pela pipeline não é automaticamente risco. Pode estar atrasada, duplicada, degradada, incompleta ou imprópria para cálculo. Por isso, a V1 deve calcular risco apenas a partir de dados canónicos, contextualizados, auditáveis e explicitamente elegíveis.
+
 Também ficou mais claro o papel dos índices. O FWI orienta a componente meteorológica, o KBDI apoia a secura persistente, o PIR/RCM enquadra o contexto português e o EFFIS funciona como referência europeia. No entanto, nenhum destes produtos valida automaticamente o score interno, os pesos, os thresholds ou os fatores de confiança do NatureProtector.
+
+Na fase final da quinzena, esta base metodológica foi parcialmente materializada em código e evidência runtime. A implementação passou a incluir camadas e contratos internos compatíveis com a V1, alertas operacionais internos, projeções expostas pela API e uma primeira camada de orquestração de runs. A validação continua a ser técnica/runtime, não científica, mas passou a ser mais reprodutível e auditável.
+
+Também foi reforçada a base de testes automatizados. A suite passou a cobrir de forma mais completa os comportamentos de domínio, validação, elegibilidade, scoring interno, alertas, projeções, API, Influx configurável e execução de cenários. A cobertura consolidada atingiu `97.6%` de line coverage, `90.1%` de branch coverage e `97.1%` de method coverage, mantendo a opção de não perseguir `100%` artificial em componentes de observabilidade ou integrações externas difíceis de testar sem infraestrutura real.
 
 ---
 
 ## 1. Reenquadramento da pesquisa
 
 Durante este período, a pesquisa deixou de ser apenas um conjunto de fontes e passou a funcionar como base de decisão para a V1. O objetivo passou a ser transformar o conhecimento recolhido em decisões concretas para o relatório, implementação, validação e apresentação.
+
 A pesquisa anterior manteve valor como levantamento de estado da arte. A Pesquisa II passou a ter uma função diferente: organizar esse conhecimento e decidir como ele entra no sistema. Assim, a primeira pesquisa responde ao que é relevante conhecer; a segunda responde a como esse conhecimento deve ser usado na V1.
+
 Esta mudança ajudou a evitar dois riscos: apresentar o projeto como se já tivesse validação científica completa ou, pelo contrário, deixar a pesquisa como uma lista de possibilidades sem consequência técnica.
 
 ---
@@ -654,21 +682,33 @@ Esta mudança ajudou a evitar dois riscos: apresentar o projeto como se já tive
 ## 2. Cadeia metodológica da V1
 
 A decisão mais importante foi estabilizar a cadeia metodológica da V1:
+
 `ScenarioDefinition -> DailyCellState -> TruthSnapshot -> LocalObservation -> OperationalEvent -> NormalizedReading -> RiskInput -> RiskAssessment -> AlertState -> OperationalProjection`
+
 Esta cadeia separa claramente o que pertence ao cenário, ao ambiente físico, ao sensor, ao transporte, à pipeline, ao cálculo e à projeção operacional.
+
 A consequência principal é que o sistema deixa de ser descrito como “sensor envia leitura, sistema calcula risco”. Essa descrição era frágil porque misturava ambiente, erro de sensor, transporte, processamento e decisão. A nova cadeia permite explicar onde nasce cada dado, onde pode surgir erro, onde se decide elegibilidade e onde se calcula o risco.
+
 Esta estrutura também tornou o `Proposal` mais implementável, porque cada conceito pode ser ligado a schemas, pseudocódigo, testes, parâmetros e roadmap.
+
+Durante a implementação, nem toda a cadeia foi materializada de forma completa. `OperationalEvent` foi introduzido como camada interna, enquanto `TruthSnapshot` e `LocalObservation` continuaram a ser tratados como conceitos metodológicos ou planeados, não como contratos externos implementados.
 
 ---
 
 ## 3. Índices, variáveis e fontes
 
 A revisão dos índices permitiu delimitar melhor o que entra na V1.
+
 O FWI foi definido como a principal referência meteorológica, mas com a condição de não ser fingido se a implementação não tiver precipitação diária, continuidade temporal e estado antecedente.
+
 O KBDI foi tratado como complemento de secura acumulada, útil para representar défice hídrico persistente, mas ainda dependente de parametrização local e validação.
+
 O PIR/RCM foi tratado como enquadramento português e benchmark externo. A V1 não deve afirmar que calcula PIR ou RCM se não reproduzir a metodologia oficial.
+
 O EFFIS ficou como referência europeia. Haines e NFDRS foram mantidos como estado da arte ou trabalho futuro, por exigirem dados e pressupostos fora da baseline imediata.
+
 Também foi reorganizada a lista de variáveis. Temperatura, humidade relativa e vento ficaram como núcleo observacional mínimo. A precipitação passou a ser obrigatória como contexto diário, mesmo que não seja medida por sensor local no MVP. As variáveis territoriais, como altitude, declive, exposição, cobertura do solo e combustível dominante, ficaram ligadas ao contexto da célula.
+
 As variáveis de qualidade também passaram a ter importância própria: flags, estado do sensor, confiança observacional, integridade operacional, proveniência, duplicação, lateness e ordering.
 
 ---
@@ -676,39 +716,61 @@ As variáveis de qualidade também passaram a ter importância própria: flags, 
 ## 4. Simulação, sensores e cenários
 
 A simulação foi reorganizada como modelo observacional em camadas. O simulador não deve gerar diretamente eventos operacionais. Deve primeiro gerar uma verdade física plausível por célula e por instante lógico.
+
 Depois, sensores lógicos observam essa verdade física e introduzem erro: bias, drift, ruído, quantização, clipping, lag, missing, stuck values, outliers ou efeitos de instalação. Só depois a observação local deve ser transformada em evento operacional.
+
 Esta separação permitiu distinguir erro de medição e falha de pipeline. Um stuck value pertence à camada de observação; duplicação, redelivery ou out-of-order pertencem à camada de transporte.
+
 Os cenários também foram clarificados. O Cenário A representa um dia normal plausível. O Cenário B representa um dia severo plausível. O Cenário C não deve ser um terceiro clima; deve reutilizar a mesma verdade física de A ou B e degradar apenas observação, sensor, transporte ou pipeline.
+
 Isto permite comparar cenário limpo e degradado sem confundir falha operacional com maior perigo real.
+
+No final da quinzena, a execução de cenários foi tornada mais controlável através de um orquestrador local baseado em `run-spec.json`. Esta camada permite indicar área, cenário, número de sensores, ciclos, intervalo, seed e recolha de evidência, sem alterar manualmente CSV, scripts de bootstrap ou parâmetros dispersos.
 
 ---
 
 ## 5. Pipeline, normalização e elegibilidade
 
 A pipeline passou a ser descrita como uma sequência de decisões, não apenas como infraestrutura.
+
 A ordem consolidada foi:
+
 `receção -> validade técnica -> inbox durável -> consistência semântica -> duplicação -> lateness -> ordering -> normalização -> elegibilidade -> RiskInput -> RiskAssessment`
+
 Esta ordem impede que o cálculo de risco aconteça antes de existir uma decisão clara sobre validade, qualidade e elegibilidade.
+
 Também foi reforçada a distinção entre persistir e usar. Uma leitura pode ser guardada para auditoria e, mesmo assim, não entrar no cálculo de risco. Isto é essencial para duplicados, leituras stale, payloads incompletos, falhas semânticas ou eventos fora da janela operacional.
+
 Foram formalizados classificadores mínimos e a ideia de `ClassifierResult`, para que cada decisão da pipeline tenha nome, resultado, flags, estado, próxima ação e razão auditável.
+
+A implementação passou a refletir esta separação com estados de elegibilidade mais explícitos. Leituras bloqueadas deixam de produzir assessment numérico, evitando a interpretação errada de `Blocked` como risco zero. A evidência runtime confirmou eventos processados, tentativas de processamento sem erro recente, risk assessments e projeções operacionais.
 
 ---
 
 ## 6. `RiskInput`, `DailyCellState` e score
 
 O `RiskInput` foi definido como a entrada legítima do motor de risco. Ele só deve nascer depois de validação, classificação, normalização e elegibilidade.
+
 Também ficou definido o que ele não deve conter: `base_risk`, `adjusted_score`, `risk_level`, `alert_state` ou `operational_projection`. Esses campos pertencem ao resultado ou à projeção, não ao input.
+
 O `DailyCellState` foi introduzido como estado diário por célula. A sua função é suportar índices com memória temporal, especialmente FWI e KBDI, guardando precipitação diária, temperatura máxima, estado antecedente, parâmetros e proveniência.
+
 O score operacional foi mantido como baseline interna. A fórmula com componentes meteorológica, secura e território, os fatores `C/I`, os thresholds de alerta, as janelas temporais e a agregação por área foram tratados como `Candidate Parameter Set V1.0`.
+
 A regra importante foi manter honestidade metodológica: estes valores tornam a V1 executável e testável, mas não são calibração científica final.
+
 Também foi protegida a semântica de `Blocked`: não significa risco zero. Significa que não existem condições para calcular novo score válido.
+
+A implementação passou a distinguir `BaseRisk`, `AdjustedScore` e compatibilidade `RiskScore`, mantendo a separação entre input, cálculo e resultado. Esta alteração reforçou a legibilidade da fronteira entre pipeline e scoring.
 
 ---
 
 ## 7. Validação, anexos e bibliografia
 
 A validação foi reformulada com linguagem mais cautelosa. O documento passou a distinguir validação interna, critérios de avaliação, testes executáveis e validação científica externa futura.
+
 A V1 pode demonstrar plausibilidade, rastreabilidade, determinismo, robustez da pipeline, classificação, elegibilidade, score completo/parcial/bloqueado e comportamento dos alertas. Não deve afirmar previsão real de incêndios, calibração científica final, equivalência com produtos oficiais ou generalização multiárea.
+
 Os anexos foram reforçados para funcionarem como parte normativa do documento:
 
 * Anexo A: glossário e siglas;
@@ -720,27 +782,62 @@ Os anexos foram reforçados para funcionarem como parte normativa do documento:
 * Anexo G: matriz de evidência;
 * Anexo H: auditoria técnica ao repositório;
 * Anexo I: backlog e checklist.
+
 A bibliografia também foi trabalhada para evitar fontes mal usadas. A regra principal ficou clara: uma fonte pode sustentar um conceito, método, variável ou prática, mas não valida automaticamente os valores internos do NatureProtector.
+
 Foram acrescentadas fontes para RabbitMQ, idempotência, streaming, QA/QC, métricas estatísticas e forecast verification. Também foram corrigidas pendências de BibTeX, citações indefinidas e entradas não citadas.
+
+A validação técnica foi complementada com recolha runtime. Esta evidência demonstrou funcionamento operacional da baseline, mas continuou a ser tratada como validação técnica e não como validação científica do modelo.
+
+A validação automatizada também foi reforçada através de várias rondas de testes. Foram cobertos casos de domínio, limites, invariantes, caminhos negativos, indisponibilidade da API, validações de configuração, política de alertas, classificadores de falha, inbox em memória, parsing de configuração de InfluxDB e execução controlada do simulador. Esta melhoria aumentou a confiança técnica na implementação, sem ser apresentada como validação científica do modelo de risco.
 
 ---
 
-## 8. Resultado da quinzena e próximos passos
+## 8. Implementação, evidência runtime e orquestração de runs
+
+Para além da consolidação metodológica, foi realizada uma frente técnica incremental sobre a V1. Esta frente começou por vocabulário, contratos, catálogo de eventos e fronteiras conceptuais, e avançou para flags, classificadores, elegibilidade, input de risco, assessment, alertas, projeções e API.
+
+Foram criados e atualizados documentos em `docs/contracts/`, `docs/implementation/` e `docs/evidence/`, com o objetivo de manter a implementação rastreável e distinguível da intenção documental. Também foram criados scripts de evidência em `scripts/evidence/`.
+
+A evidência runtime C7 confirmou a presença dos schemas `control`, `pipeline` e `projection`, o carregamento do control plane, a existência da área `proenca-a-nova`, sensores, cenários, simulation runs, eventos na inbox, attempts de processamento, risk assessments, snapshots/projeções e API operacional. Foram identificados erros históricos ou esperados, sem os tratar automaticamente como falhas atuais da implementação.
+
+A política de alertas V1 foi implementada como política interna com `Warning`, `Alarm` e histerese. Esta política foi ligada às projeções e exposta pela API como estado operacional, sem recalcular risco no Backoffice.
+
+Na parte final, foi criada a primeira versão do Scenario Run Orchestrator. A versão O1.1 introduziu `run-spec.json`, exemplos de execução e `run-scenario.ps1`. A versão O1.2 adicionou suporte real no `Simulator.Host` para `RunOverrides`, permitindo controlar `sensorCount`, `numberOfCycles`, `intervalSeconds`, `seed`, `degradationProfile` e `orchestratorCorrelationId`.
+
+Foi validada uma run curta do `scenario_b` para `proenca-a-nova`, com 6 sensores, 5 ciclos, intervalo de 5 segundos e seed 12345. A run terminou com `Completed`, os overrides ficaram como `observed_match`, o `MetadataJson` passou a registar valores pedidos e resolvidos, e a evidência foi gravada numa pasta própria da run. Esta abordagem prepara o caminho para futura orquestração pelo Backoffice/site, onde será possível lançar runs, acompanhar estado e consultar dashboards/evidência a partir do mesmo ponto.
+
+Em paralelo, foi feita uma ronda de reforço da suite de testes. Foram acrescentados testes para `Area`, `GridCell`, `SensorDeployment`, `ClassifierResult`, `RiskEligibilityResult`, `RiskInput`, `DailyCellState`, `RiskAssessment`, `RiskCell`, `SimulationRun`, `DefaultProcessingFailureClassifier`, `V1AlertPolicy`, `ExpectedUniqueViolationDetector`, `PreventionHostOptionsValidator`, controllers da Backoffice API, `SafeInfluxWriteService`, `PostgresSimulationContextSource`, `SimulationRunner`, `InMemoryReadingEventInbox` e `InfluxDbSettingsLoader`.
+
+A cobertura consolidada passou para `97.6%` de line coverage, `90.1%` de branch coverage e `97.1%` de method coverage. A melhoria foi feita apenas com testes, sem alterar contratos RabbitMQ, scoring, alert policy, schemas ou comportamento de produção. Ficaram assumidas como limites saudáveis algumas zonas de baixa cobertura residual, sobretudo `PostgresBootstrapTelemetry`, branches de `ActivitySource`, integração RabbitMQ real e escrita Influx real, por serem áreas de observabilidade ou integração que exigiriam testes frágeis, infraestrutura externa ou refactor específico.
+
+---
+
+## 9. Resultado da quinzena e próximos passos
 
 Em síntese, esta quinzena consolidou a Pesquisa II como base metodológica e técnica do NatureProtector V1. O documento passou a explicar melhor o que o sistema faz, o que ainda não faz, que decisões estão fechadas, que parâmetros são apenas candidatos e que validação ainda falta.
+
 O resultado mais importante foi a definição de uma cadeia defensável entre cenário, verdade física, observação, evento, leitura normalizada, input de risco, avaliação, alerta e projeção. Esta cadeia permite defender que o sistema não calcula risco a partir de mensagens raw, mas sim a partir de dados canónicos, elegíveis, contextualizados e auditáveis.
-O documento ficou mais forte, mas ainda há trabalho antes de considerar tudo fechado. A principal pendência continua a ser H.0, porque falta registar branch, commit, ambiente, comandos e resultados reais de build/testes. Sem isso, a auditoria ao repositório continua parcialmente reportada, não totalmente reproduzível.
+
+A fase final da quinzena também transformou parte desta visão em execução técnica: a pipeline ganhou fronteiras mais explícitas, os alertas passaram a ter política interna testável, a API passou a expor estado operacional sem recalcular risco, foi criada uma primeira camada de orquestração de runs com evidência por execução, e a suite de testes foi reforçada até uma cobertura consolidada de `97.6%` em linhas, `90.1%` em branches e `97.1%` em métodos.
+
+O documento ficou mais forte, mas ainda há trabalho antes de considerar tudo fechado. A principal pendência documental continua a ser manter `Proposal.tex`, PDF, anexos, documentação técnica e evidência sincronizados com o estado real do código.
 
 ### Trabalho a fazer na continuação desta frente
 
 1. Fazer uma auditoria adversarial final ao documento consolidado.
-2. Preencher H.0 com branch, commit, ambiente, SDK, comandos de build, comandos de teste e resultados reais.
+2. Preencher ou atualizar H.0 com branch, commit, ambiente, SDK, comandos de build, comandos de teste, runtime evidence e estado da working tree.
 3. Evitar novas reescritas grandes; a partir daqui, fazer apenas microcorreções controladas.
 4. Rever visualmente tabelas densas, sobretudo Anexo G e anexos técnicos.
 5. Confirmar que `Proposal.tex`, PDF e BibTeX estão sincronizados.
 6. Confirmar que não existem citações indefinidas, referências indefinidas, entradas não citadas ou marcas internas.
 7. Garantir que `RiskInput` continua sem campos de resultado.
 8. Garantir que `Blocked` continua a significar ausência de score válido, não risco zero.
-9. Traduzir o roadmap em TODOs técnicos para implementação incremental.
-10. Começar a implementação pelos contratos e vocabulário único: flags, estados, `ClassifierResult`, `RiskInput`, `RiskAssessment`, `DailyCellState` e versões de parâmetros.
-11. Só depois avançar para FWI/KBDI, alertas finais, agregação por área e validação externa.
+9. Confirmar que a documentação técnica reflete o estado real de C0-C7 e O1/O1.2.
+10. Fazer limpeza pré-commit de ficheiros acidentais, evidência duplicada e outputs fora da pasta esperada.
+11. Correr `dotnet test` final, gerar o relatório de coverage consolidado e guardar a evidência relevante.
+12. Decidir se a evidência runtime final deve ser versionada na totalidade ou reduzida aos ficheiros essenciais.
+13. Separar commits, se possível, entre código/testes e documentação/evidência.
+14. Continuar a evolução do orquestrador apenas depois de fechar a frente atual, preparando futura integração no Backoffice/API.
+15. Só depois avançar para FWI/KBDI, alertas finais com política operacional mais completa, agregação por área calibrada e validação externa.
+16. Manter a política de coverage saudável: cobrir comportamento funcional e caminhos críticos, mas não perseguir `100%` artificial em telemetry glue, branches de observabilidade ou integrações externas sem infraestrutura própria.

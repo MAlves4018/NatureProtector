@@ -116,7 +116,8 @@ public sealed record AreaOperationalStateResponse(
     string Severity,
     string? Summary,
     int AssessmentCount,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    string? AlertState = null);
 
 public sealed record CellOperationalStateResponse(
     string AreaCode,
@@ -141,4 +142,5 @@ public sealed record AlertStateResponse(
     string Message,
     DateTimeOffset TriggeredAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? ResolvedAt);
+    DateTimeOffset? ResolvedAt,
+    string? AlertState = null);

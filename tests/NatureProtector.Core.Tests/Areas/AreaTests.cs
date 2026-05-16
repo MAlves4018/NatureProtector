@@ -1,6 +1,7 @@
 using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Risk;
 using Xunit;
+using GridCell = NatureProtector.Core.Areas.GridCell;
 
 namespace NatureProtector.Core.Tests.Areas;
 
@@ -69,6 +70,79 @@ public class AreaTests
         Assert.Equal("Serra A", area.Name);
         Assert.Same(boundaries, area.Boundaries);
         Assert.Empty(area.RiskCells);
+    }
+
+    [Fact]
+    public void Ctor_NullInitialGridCells_InitializesEmptyTerritorialGrid()
+    {
+        var area = new NatureProtector.Core.Areas.Area(
+            id: Guid.NewGuid(),
+            name: "Area A",
+            boundaries: CreateBoundaries(),
+            gridCells: null);
+
+        Assert.Empty(area.GridCells);
+    }
+
+    [Fact]
+    public void Ctor_Throws_WhenInitialGridCellsBelongToDifferentArea()
+    {
+        var areaId = Guid.NewGuid();
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            new NatureProtector.Core.Areas.Area(
+                id: areaId,
+                name: "Area A",
+                boundaries: CreateBoundaries(),
+                gridCells:
+                [
+                    CreateGridCell(areaId, "CELL-01"),
+                    CreateGridCell(Guid.NewGuid(), "CELL-02")
+                ]));
+
+        Assert.Equal("gridCells", exception.ParamName);
+        Assert.Contains("All grid cells must belong to the same AreaId as the Area.", exception.Message);
+    }
+
+    [Fact]
+    public void Ctor_Throws_WhenInitialGridCellsContainDuplicateIds()
+    {
+        var areaId = Guid.NewGuid();
+        var duplicatedId = Guid.NewGuid();
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            new NatureProtector.Core.Areas.Area(
+                id: areaId,
+                name: "Area A",
+                boundaries: CreateBoundaries(),
+                gridCells:
+                [
+                    CreateGridCell(areaId, "CELL-01", duplicatedId),
+                    CreateGridCell(areaId, "CELL-02", duplicatedId)
+                ]));
+
+        Assert.Equal("gridCells", exception.ParamName);
+        Assert.Contains("Grid cells must not contain duplicate identifiers.", exception.Message);
+    }
+
+    [Fact]
+    public void Ctor_Throws_WhenInitialGridCellsContainDuplicateCodesIgnoringCase()
+    {
+        var areaId = Guid.NewGuid();
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            new NatureProtector.Core.Areas.Area(
+                id: areaId,
+                name: "Area A",
+                boundaries: CreateBoundaries(),
+                gridCells:
+                [
+                    CreateGridCell(areaId, "CELL-01"),
+                    CreateGridCell(areaId, "cell-01")
+                ]));
+
+        Assert.Equal("gridCells", exception.ParamName);
+        Assert.Contains("Grid cells must not contain duplicate cell codes.", exception.Message);
     }
 
     [Fact]
@@ -200,6 +274,109 @@ public class AreaTests
         area.AddRiskCells(new[] { cell1, cell2, cell1 });
 
         Assert.Equal(2, area.RiskCells.Count);
+    }
+
+    [Fact]
+    public void AddGridCell_Throws_WhenGridCellIsNull()
+    {
+        var area = CreateArea();
+
+        var exception = Assert.Throws<ArgumentNullException>(() => area.AddGridCell(null!));
+
+        Assert.Equal("gridCell", exception.ParamName);
+    }
+
+    [Fact]
+    public void AddGridCell_Throws_WhenGridCellBelongsToAnotherArea()
+    {
+        var area = CreateArea();
+        var cell = CreateGridCell(Guid.NewGuid(), "CELL-01");
+
+        var exception = Assert.Throws<InvalidOperationException>(() => area.AddGridCell(cell));
+
+        Assert.Contains("does not belong to area", exception.Message);
+    }
+
+    [Fact]
+    public void AddGridCell_AddsCellAndIgnoresDuplicateById()
+    {
+        var area = CreateArea();
+        var cell = CreateGridCell(area.Id, "CELL-01");
+
+        area.AddGridCell(cell);
+        area.AddGridCell(cell);
+
+        var stored = Assert.Single(area.GridCells);
+        Assert.Same(cell, stored);
+    }
+
+    [Fact]
+    public void AddGridCells_Throws_WhenCollectionIsNull()
+    {
+        var area = CreateArea();
+
+        var exception = Assert.Throws<ArgumentNullException>(() => area.AddGridCells(null!));
+
+        Assert.Equal("cells", exception.ParamName);
+    }
+
+    [Fact]
+    public void AddGridCells_AddsAllUniqueCells()
+    {
+        var area = CreateArea();
+        var cell1 = CreateGridCell(area.Id, "CELL-01");
+        var cell2 = CreateGridCell(area.Id, "CELL-02");
+
+        area.AddGridCells([cell1, cell2, cell1]);
+
+        Assert.Equal(2, area.GridCells.Count);
+        Assert.Contains(area.GridCells, cell => cell.CellCode == "CELL-01");
+        Assert.Contains(area.GridCells, cell => cell.CellCode == "CELL-02");
+    }
+
+    [Fact]
+    public void RemoveGridCell_MissingCell_ReturnsFalse()
+    {
+        var area = CreateArea();
+
+        var removed = area.RemoveGridCell(Guid.NewGuid());
+
+        Assert.False(removed);
+    }
+
+    [Fact]
+    public void RemoveGridCell_ExistingCell_RemovesAndReturnsTrue()
+    {
+        var area = CreateArea();
+        var cell = CreateGridCell(area.Id, "CELL-01");
+        area.AddGridCell(cell);
+
+        var removed = area.RemoveGridCell(cell.Id);
+
+        Assert.True(removed);
+        Assert.Empty(area.GridCells);
+    }
+
+    [Fact]
+    public void GetGridCellById_ExistingCell_ReturnsCell()
+    {
+        var area = CreateArea();
+        var cell = CreateGridCell(area.Id, "CELL-01");
+        area.AddGridCell(cell);
+
+        var found = area.GetGridCellById(cell.Id);
+
+        Assert.Same(cell, found);
+    }
+
+    [Fact]
+    public void GetGridCellById_MissingCell_ThrowsKeyNotFoundException()
+    {
+        var area = CreateArea();
+
+        var exception = Assert.Throws<KeyNotFoundException>(() => area.GetGridCellById(Guid.NewGuid()));
+
+        Assert.Contains("was not found in area", exception.Message);
     }
 
     [Fact]
@@ -373,6 +550,49 @@ public class AreaTests
     }
 
     [Fact]
+    public void WithUpdatedGridCells_Throws_WhenCollectionIsNull()
+    {
+        var area = CreateArea();
+
+        var exception = Assert.Throws<ArgumentNullException>(() => area.WithUpdatedGridCells(null!));
+
+        Assert.Equal("newGridCells", exception.ParamName);
+    }
+
+    [Fact]
+    public void WithUpdatedGridCells_Throws_WhenCellsBelongToDifferentArea()
+    {
+        var area = CreateArea();
+
+        var exception = Assert.Throws<ArgumentException>(() => area.WithUpdatedGridCells(
+        [
+            CreateGridCell(area.Id, "CELL-01"),
+            CreateGridCell(Guid.NewGuid(), "CELL-02")
+        ]));
+
+        Assert.Equal("newGridCells", exception.ParamName);
+        Assert.Contains("All grid cells must belong to this area.", exception.Message);
+    }
+
+    [Fact]
+    public void WithUpdatedGridCells_ReturnsNewAreaWithReplacedGridCells()
+    {
+        var area = CreateArea();
+        var original = CreateGridCell(area.Id, "CELL-00");
+        area.AddGridCell(original);
+        var replacement1 = CreateGridCell(area.Id, "CELL-01");
+        var replacement2 = CreateGridCell(area.Id, "CELL-02");
+
+        var updated = area.WithUpdatedGridCells([replacement1, replacement2]);
+
+        Assert.NotSame(area, updated);
+        Assert.Equal(area.Id, updated.Id);
+        Assert.Single(area.GridCells);
+        Assert.Equal(2, updated.GridCells.Count);
+        Assert.DoesNotContain(updated.GridCells, cell => cell.CellCode == "CELL-00");
+    }
+
+    [Fact]
     public void ContainsLocation_Throws_WhenLocationIsNull()
     {
         var area = CreateArea();
@@ -403,6 +623,13 @@ public class AreaTests
             location: new Location(5.0, 5.0),
             initialRiskLevel: RiskLevel.Low,
             initialTimestamp: DateTimeOffset.UtcNow);
+
+    private static GridCell CreateGridCell(Guid areaId, string cellCode, Guid? id = null) =>
+        new(
+            id: id ?? Guid.NewGuid(),
+            areaId: areaId,
+            cellCode: cellCode,
+            centroid: new Location(5.0, 5.0));
 
     private static NatureProtector.Core.Areas.Area CreateArea() =>
         new(

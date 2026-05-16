@@ -1,0 +1,26 @@
+﻿<mxfile host="app.diagrams.net">
+  <diagram id="P03-risk-pipeline-simple" name="Page-1">
+    <mxGraphModel dx="1600" dy="900" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1320" pageHeight="660" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f4e78;strokeColor=#0b2e4f;fontColor=#ffffff;fontSize=22;fontStyle=1;align=center;verticalAlign=middle;spacing=8;" value="Pipeline de risco simplificada" vertex="1"><mxGeometry x="40" y="30" width="1240" height="58" as="geometry" /></mxCell>
+        <mxCell id="n1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#111111;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;spacing=8;" value="Evento recebido" vertex="1"><mxGeometry x="80" y="165" width="175" height="70" as="geometry" /></mxCell>
+        <mxCell id="n2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#111111;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;spacing=8;" value="Normalizacao" vertex="1"><mxGeometry x="300" y="165" width="175" height="70" as="geometry" /></mxCell>
+        <mxCell id="n3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#111111;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;spacing=8;" value="Qualidade + classificadores" vertex="1"><mxGeometry x="520" y="165" width="240" height="70" as="geometry" /></mxCell>
+        <mxCell id="n4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#111111;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;spacing=8;" value="Elegibilidade" vertex="1"><mxGeometry x="805" y="165" width="175" height="70" as="geometry" /></mxCell>
+        <mxCell id="n5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#111111;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;spacing=8;" value="RiskInput" vertex="1"><mxGeometry x="1025" y="165" width="155" height="70" as="geometry" /></mxCell>
+        <mxCell id="n6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#111111;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;spacing=8;" value="RiskAssessment" vertex="1"><mxGeometry x="1025" y="315" width="180" height="70" as="geometry" /></mxCell>
+        <mxCell id="blocked" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#111111;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;spacing=8;" value="Blocked -&gt; sem novo score" vertex="1"><mxGeometry x="760" y="315" width="230" height="70" as="geometry" /></mxCell>
+        <mxCell id="msg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f4e78;strokeColor=#0b2e4f;fontColor=#ffffff;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;spacing=8;" value="Blocked nao e risco zero; e ausencia de novo score valido." vertex="1"><mxGeometry x="260" y="500" width="790" height="70" as="geometry" /></mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="n1" target="n2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#666666;" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="n2" target="n3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#666666;" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="n3" target="n4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#666666;" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="n4" target="n5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#666666;" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="n5" target="n6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#666666;" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="n4" target="blocked" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#666666;dashed=1;" value="se Blocked"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+

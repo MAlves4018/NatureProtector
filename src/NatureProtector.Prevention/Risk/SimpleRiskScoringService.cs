@@ -4,49 +4,66 @@ using NatureProtector.Shared.Contracts.Readings;
 namespace NatureProtector.Prevention.Risk;
 
 /*
- * Este serviço converte leituras aceites em avaliações de risco elementares.
+ * This service converts accepted readings into baseline and adjusted risk
+ * assessments.
  *
  * Rationale:
- * - A pipeline de prevenção precisa de uma heurística explícita e testável para
- *   transformar métricas dos sensores em risco operacional.
- * - Manter esta lógica isolada facilita a futura substituição por modelos mais
- *   ricos sem mexer na orquestração da pipeline.
+ * - C5A introduces explicit BaseRisk and AdjustedScore while preserving the
+ *   legacy RiskScore compatibility path used across the current pipeline.
+ * - Scoring remains isolated so future model evolution does not force changes
+ *   in orchestration components.
  *
  * Design considerations:
- * - A implementação atual usa thresholds simples por tipo de métrica.
- * - A explicação textual resume os dados usados para que o resultado fique mais
- *   auditável em logs e persistência.
+ * - BaseRisk keeps the previous metric-threshold mapping.
+ * - AdjustedScore applies candidate (non-calibrated) contextual factors from
+ *   risk input metadata.
+ * - Blocked inputs are never converted into numeric risk assessments.
  */
-
 public sealed class SimpleRiskScoringService : ISimpleRiskScoringService
 {
     /// <summary>
-    /// Cria uma avaliação de risco a partir de uma leitura já aceite pela
-    /// pipeline.
+    /// Creates a risk assessment from one eligible risk input.
     /// </summary>
     public RiskAssessment CreateAssessment(RiskInput input)
     {
         ArgumentNullException.ThrowIfNull(input);
 
-        var score = CalculateScore(input.MetricType, input.Value);
+        if (input.InputStatus == RiskInputStatus.Blocked)
+        {
+            throw new InvalidOperationException(
+                "Blocked risk inputs cannot be converted into numeric assessments.");
+        }
+
+        var baseRisk = CalculateBaseRisk(input.MetricType, input.Value);
+        var contextFactor = ResolveContextFactor(input.ObservationalConfidence);
+        var integrityFactor = ResolveIntegrityFactor(input.OperationalIntegrity);
+        var eligibilityFactor = ResolveEligibilityFactor(input.InputStatus);
+        var adjustedScore = Math.Clamp(
+            baseRisk * contextFactor * integrityFactor * eligibilityFactor,
+            0.0,
+            1.0);
 
         var explanation =
             $"Area={input.AreaId}; Sensor={input.SensorId}; Event={input.SourceEventId}; " +
-            $"Metric={input.MetricType}; Value={input.Value:F2}; Score={score:F2}.";
+            $"Metric={input.MetricType}; Value={input.Value:F2}; " +
+            $"BaseRisk={baseRisk:F2}; AdjustedScore={adjustedScore:F2}; " +
+            $"C={contextFactor:F2}; I={integrityFactor:F2}; EligibilityFactor={eligibilityFactor:F2}; " +
+            "ParameterSet=Candidate Parameter Set V1.0 (non-calibrated).";
 
         return new RiskAssessment(
             id: Guid.NewGuid(),
             timestamp: input.EventTime,
-            riskScore: score,
+            baseRisk: baseRisk,
+            adjustedScore: adjustedScore,
             explanationSummary: explanation);
     }
 
     /// <summary>
-    /// Calcula um score normalizado entre 0 e 1 para a métrica indicada.
+    /// Calculates baseline risk in the range [0, 1] from metric/value.
     /// </summary>
-    private static double CalculateScore(SensorMetricType metricType, double value)
+    private static double CalculateBaseRisk(SensorMetricType metricType, double value)
     {
-        var score = metricType switch
+        var baseRisk = metricType switch
         {
             SensorMetricType.Temperature => value switch
             {
@@ -79,6 +96,41 @@ public sealed class SimpleRiskScoringService : ISimpleRiskScoringService
             _ => 0.20
         };
 
-        return Math.Clamp(score, 0.0, 1.0);
+        return Math.Clamp(baseRisk, 0.0, 1.0);
+    }
+
+    private static double ResolveContextFactor(ObservationalConfidenceLevel confidence)
+    {
+        // Candidate factors for V1 experimentation (not official calibration).
+        return confidence switch
+        {
+            ObservationalConfidenceLevel.High => 1.00,
+            ObservationalConfidenceLevel.Medium => 0.97,
+            ObservationalConfidenceLevel.Low => 0.93,
+            _ => 1.00
+        };
+    }
+
+    private static double ResolveIntegrityFactor(OperationalIntegrityLevel integrity)
+    {
+        // Candidate factors for V1 experimentation (not official calibration).
+        return integrity switch
+        {
+            OperationalIntegrityLevel.Intact => 1.00,
+            OperationalIntegrityLevel.Degraded => 0.90,
+            OperationalIntegrityLevel.Compromised => 0.80,
+            _ => 1.00
+        };
+    }
+
+    private static double ResolveEligibilityFactor(RiskInputStatus status)
+    {
+        return status switch
+        {
+            RiskInputStatus.CompleteEligible => 1.00,
+            RiskInputStatus.PartialButUsable => 0.95,
+            RiskInputStatus.Blocked => 0.0,
+            _ => 1.00
+        };
     }
 }

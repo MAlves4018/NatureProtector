@@ -437,6 +437,28 @@ public class RiskCellTests
     }
 
     [Fact]
+    public void GetRiskTrendDescription_VariableWithLowerIntermediateLevel_ReturnsVariableButOverallStable()
+    {
+        var t0 = new DateTimeOffset(2026, 5, 12, 10, 0, 0, TimeSpan.Zero);
+        var cell = new RiskCell(
+            id: Guid.NewGuid(),
+            areaId: Guid.NewGuid(),
+            location: new Location(38.7167, -9.1333),
+            initialRiskLevel: RiskLevel.Moderate,
+            initialTimestamp: t0);
+
+        cell.UpdateRiskLevel(RiskLevel.High, t0.AddMinutes(5));
+        cell.UpdateRiskLevel(RiskLevel.Low, t0.AddMinutes(10));
+        cell.UpdateRiskLevel(RiskLevel.Moderate, t0.AddMinutes(15));
+
+        var trend = cell.GetRiskTrendDescription();
+
+        Assert.Equal("Variable but overall stable", trend);
+        Assert.Equal(RiskLevel.Moderate, cell.CurrentRiskLevel);
+        Assert.Equal([RiskLevel.Moderate, RiskLevel.High, RiskLevel.Low, RiskLevel.Moderate], cell.History.Select(item => item.Level));
+    }
+
+    [Fact]
     public void IsAtLeast_AndIsAbove_ReturnExpectedValues()
     {
         // Arrange

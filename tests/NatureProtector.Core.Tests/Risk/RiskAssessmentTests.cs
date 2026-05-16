@@ -30,6 +30,8 @@ public class RiskAssessmentTests
         // Assert
         Assert.Equal(id, assessment.Id);
         Assert.Equal(timestamp, assessment.Timestamp);
+        Assert.Equal(0.65, assessment.BaseRisk);
+        Assert.Equal(0.65, assessment.AdjustedScore);
         Assert.Equal(0.65, assessment.RiskScore);
         Assert.Equal(RiskLevelExtensions.FromScore(0.65), assessment.RiskLevel);
         Assert.Equal("High temperature and wind", assessment.ExplanationSummary);
@@ -98,6 +100,90 @@ public class RiskAssessmentTests
 
         // Assert
         Assert.Equal("riskScore", ex.ParamName);
+    }
+
+    [Fact]
+    public void Ctor_AssignsBaseAndAdjusted_WhenExplicitValues()
+    {
+        var assessment = new RiskAssessment(
+            id: Guid.NewGuid(),
+            timestamp: DateTimeOffset.UtcNow,
+            baseRisk: 0.80,
+            adjustedScore: 0.62,
+            explanationSummary: "explicit values");
+
+        Assert.Equal(0.80, assessment.BaseRisk, precision: 3);
+        Assert.Equal(0.62, assessment.AdjustedScore, precision: 3);
+        Assert.Equal(0.62, assessment.RiskScore, precision: 3);
+        Assert.Equal(RiskLevelExtensions.FromScore(0.62), assessment.RiskLevel);
+    }
+
+    [Fact]
+    public void Ctor_ExplicitScoresThrows_WhenIdIsEmpty()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => new RiskAssessment(
+            id: Guid.Empty,
+            timestamp: DateTimeOffset.UtcNow,
+            baseRisk: 0.50,
+            adjustedScore: 0.40));
+
+        Assert.Equal("id", ex.ParamName);
+        Assert.Contains("must not be an empty GUID", ex.Message);
+    }
+
+    [Fact]
+    public void Ctor_ExplicitScoresThrows_WhenTimestampIsDefault()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => new RiskAssessment(
+            id: Guid.NewGuid(),
+            timestamp: default,
+            baseRisk: 0.50,
+            adjustedScore: 0.40));
+
+        Assert.Equal("timestamp", ex.ParamName);
+        Assert.Contains("must be a valid, non-default value", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(0.0, 0.0)]
+    [InlineData(1.0, 1.0)]
+    [InlineData(0.0, 1.0)]
+    [InlineData(1.0, 0.0)]
+    public void Ctor_ExplicitScoresAcceptsBoundaryValues(double baseRisk, double adjustedScore)
+    {
+        var assessment = new RiskAssessment(
+            id: Guid.NewGuid(),
+            timestamp: DateTimeOffset.UtcNow,
+            baseRisk: baseRisk,
+            adjustedScore: adjustedScore);
+
+        Assert.Equal(baseRisk, assessment.BaseRisk);
+        Assert.Equal(adjustedScore, assessment.AdjustedScore);
+        Assert.Equal(adjustedScore, assessment.RiskScore);
+        Assert.Equal(RiskLevelExtensions.FromScore(adjustedScore), assessment.RiskLevel);
+    }
+
+    [Theory]
+    [InlineData(double.NaN, 0.5, "baseRisk")]
+    [InlineData(double.PositiveInfinity, 0.5, "baseRisk")]
+    [InlineData(-0.1, 0.5, "baseRisk")]
+    [InlineData(1.1, 0.5, "baseRisk")]
+    [InlineData(0.5, double.NaN, "adjustedScore")]
+    [InlineData(0.5, double.NegativeInfinity, "adjustedScore")]
+    [InlineData(0.5, -0.1, "adjustedScore")]
+    [InlineData(0.5, 1.1, "adjustedScore")]
+    public void Ctor_Throws_WhenBaseOrAdjustedScoreIsInvalid(
+        double baseRisk,
+        double adjustedScore,
+        string expectedParamName)
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new RiskAssessment(
+            id: Guid.NewGuid(),
+            timestamp: DateTimeOffset.UtcNow,
+            baseRisk: baseRisk,
+            adjustedScore: adjustedScore));
+
+        Assert.Equal(expectedParamName, ex.ParamName);
     }
 
     [Theory]
@@ -219,6 +305,8 @@ public class RiskAssessmentTests
         // Assert
         Assert.Equal(id, assessment.Id);
         Assert.Equal(timestamp, assessment.Timestamp);
+        Assert.Equal(expectedScore, assessment.BaseRisk, 6);
+        Assert.Equal(expectedScore, assessment.AdjustedScore, 6);
         Assert.Equal(expectedScore, assessment.RiskScore, 6);
         Assert.Equal(RiskLevelExtensions.FromScore(expectedScore), assessment.RiskLevel);
         Assert.Equal(expectedExplanation, assessment.ExplanationSummary);

@@ -79,6 +79,14 @@ public sealed class PostgresSimulationRunStoreTests
         using var metadata = JsonDocument.Parse(record.MetadataJson!);
         Assert.Equal(1, metadata.RootElement.GetProperty("sensor_count").GetInt32());
         Assert.Equal("HighRisk", metadata.RootElement.GetProperty("scenario_category").GetString());
+        Assert.Equal("corr-123", metadata.RootElement.GetProperty("orchestrator_correlation_id").GetString());
+        var runOverrides = metadata.RootElement.GetProperty("run_overrides");
+        Assert.Equal(1, runOverrides.GetProperty("requested").GetProperty("sensor_count").GetInt32());
+        Assert.Equal(3, runOverrides.GetProperty("requested").GetProperty("number_of_cycles").GetInt32());
+        Assert.Equal(5, runOverrides.GetProperty("requested").GetProperty("interval_seconds").GetInt32());
+        Assert.Equal(42, runOverrides.GetProperty("resolved").GetProperty("seed").GetInt32());
+        Assert.Equal("corr-123", runOverrides.GetProperty("resolved").GetProperty("orchestrator_correlation_id").GetString());
+        Assert.Equal("sim-temp-001", runOverrides.GetProperty("resolved").GetProperty("selected_sensor_names")[0].GetString());
     }
 
     private static SimulationContext CreateSimulationContext(
@@ -119,7 +127,24 @@ public sealed class PostgresSimulationRunStoreTests
             interval: TimeSpan.FromSeconds(5),
             numberOfCycles: 3,
             configurationVersionId: configurationVersionId,
-            scenarioCode: "scenario-b");
+            scenarioCode: "scenario-b",
+            preferredSeed: 42,
+            runOverrides: new SimulationRunOverridesSnapshot(
+                Requested: new SimulationRunOverridesRequested(
+                    SensorCount: 1,
+                    NumberOfCycles: 3,
+                    IntervalSeconds: 5,
+                    Seed: 42,
+                    DegradationProfile: "none",
+                    OrchestratorCorrelationId: "corr-123"),
+                Resolved: new SimulationRunOverridesResolved(
+                    SensorCount: 1,
+                    NumberOfCycles: 3,
+                    IntervalSeconds: 5,
+                    PreferredSeed: 42,
+                    DegradationProfile: "none",
+                    OrchestratorCorrelationId: "corr-123",
+                    SelectedSensorNames: ["sim-temp-001"])));
     }
 
     private static async Task<SeededIds> SeedControlPlaneAsync(SqliteControlDbContextScope scope)

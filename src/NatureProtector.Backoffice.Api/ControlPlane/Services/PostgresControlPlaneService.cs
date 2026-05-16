@@ -468,22 +468,47 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             return null;
         }
 
-        return await dbContext.AreaOperationalStates
+        var projectedState = await dbContext.AreaOperationalStates
             .AsNoTracking()
             .Where(entity =>
                 entity.Area!.Code == areaCode &&
                 entity.ConfigurationVersion!.VersionNumber == resolvedConfigurationVersion.Value)
-            .Select(entity => new AreaOperationalStateResponse(
+            .Select(entity => new
+            {
                 entity.Area!.Code,
-                entity.ConfigurationVersion!.VersionNumber,
+                ConfigurationVersionNumber = entity.ConfigurationVersion!.VersionNumber,
                 entity.SnapshotTimestamp,
                 entity.AggregateRiskScore,
                 entity.AggregateRiskLevel,
                 entity.Severity,
                 entity.Summary,
                 entity.AssessmentCount,
-                entity.UpdatedAt))
+                entity.UpdatedAt,
+                OpenAlertMessage = dbContext.AlertStates
+                    .Where(alert =>
+                        alert.AreaId == entity.AreaId &&
+                        alert.Status == "Open")
+                    .Select(alert => alert.Message)
+                    .FirstOrDefault()
+            })
             .SingleOrDefaultAsync(cancellationToken);
+
+        if (projectedState is null)
+        {
+            return null;
+        }
+
+        return new AreaOperationalStateResponse(
+            projectedState.Code,
+            projectedState.ConfigurationVersionNumber,
+            projectedState.SnapshotTimestamp,
+            projectedState.AggregateRiskScore,
+            projectedState.AggregateRiskLevel,
+            projectedState.Severity,
+            projectedState.Summary,
+            projectedState.AssessmentCount,
+            projectedState.UpdatedAt,
+            ParseAlertState(projectedState.OpenAlertMessage));
     }
 
     /// <summary>
@@ -558,22 +583,63 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
         }
 
         var projectedAlerts = await query
-            .Select(entity => new AlertStateResponse(
+            .Select(entity => new
+            {
                 entity.Id,
-                entity.Area!.Code,
-                entity.ConfigurationVersion!.VersionNumber,
+                AreaCode = entity.Area!.Code,
+                ConfigurationVersionNumber = entity.ConfigurationVersion!.VersionNumber,
                 entity.AlertCode,
                 entity.Severity,
                 entity.Status,
                 entity.Message,
                 entity.TriggeredAt,
                 entity.UpdatedAt,
-                entity.ResolvedAt))
+                entity.ResolvedAt
+            })
             .ToListAsync(cancellationToken);
 
         return projectedAlerts
+            .Select(entity => new AlertStateResponse(
+                entity.Id,
+                entity.AreaCode,
+                entity.ConfigurationVersionNumber,
+                entity.AlertCode,
+                entity.Severity,
+                entity.Status,
+                entity.Message,
+                entity.TriggeredAt,
+                entity.UpdatedAt,
+                entity.ResolvedAt,
+                ParseAlertState(entity.Message)))
             .OrderByDescending(entity => entity.UpdatedAt)
             .ToList();
+    }
+
+    private static string? ParseAlertState(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return null;
+        }
+
+        const string prefix = "AlertState=";
+        var startIndex = message.IndexOf(prefix, StringComparison.Ordinal);
+
+        if (startIndex < 0)
+        {
+            return null;
+        }
+
+        startIndex += prefix.Length;
+        var endIndex = message.IndexOf(';', startIndex);
+
+        if (endIndex < 0)
+        {
+            return null;
+        }
+
+        var parsedValue = message[startIndex..endIndex].Trim();
+        return parsedValue.Length == 0 ? null : parsedValue;
     }
 
     /// <summary>

@@ -10,6 +10,17 @@ namespace NatureProtector.Backoffice.Api.Tests;
 
 public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly bool _controlPlaneAvailable;
+    private readonly string _availabilityMessage;
+
+    public ControlPlaneApiWebApplicationFactory(
+        bool controlPlaneAvailable = true,
+        string availabilityMessage = "Fake control plane available for API tests.")
+    {
+        _controlPlaneAvailable = controlPlaneAvailable;
+        _availabilityMessage = availabilityMessage;
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
@@ -23,11 +34,14 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IControlPlaneService>();
-            services.AddSingleton<IControlPlaneService, FakeControlPlaneService>();
+            services.AddSingleton<IControlPlaneService>(_ =>
+                new FakeControlPlaneService(_controlPlaneAvailable, _availabilityMessage));
         });
     }
 
-    private sealed class FakeControlPlaneService : IControlPlaneService
+    private sealed class FakeControlPlaneService(
+        bool isAvailable,
+        string availabilityMessage) : IControlPlaneService
     {
         private readonly List<ConfigurationVersionResponse> _configurations =
         [
@@ -93,7 +107,8 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
             "Critical",
             "Aggregated from 12 assessments; 8 at High or above.",
             12,
-            new DateTimeOffset(2026, 4, 7, 20, 14, 30, TimeSpan.Zero));
+            new DateTimeOffset(2026, 4, 7, 20, 14, 30, TimeSpan.Zero),
+            "Alarm");
 
         private readonly IReadOnlyList<CellOperationalStateResponse> _cellOperationalStates =
         [
@@ -132,15 +147,16 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
                 "area-risk-high",
                 "Critical",
                 "Open",
-                "Area risk is VeryHigh with score 0.78.",
+                "AlertState=Alarm; Area risk is VeryHigh with adjusted score 0.78. Candidate Parameter Set V1.0 (non-official).",
                 new DateTimeOffset(2026, 4, 7, 20, 10, 0, TimeSpan.Zero),
                 new DateTimeOffset(2026, 4, 7, 20, 14, 30, TimeSpan.Zero),
-                null)
+                null,
+                "Alarm")
         ];
 
-        public bool IsAvailable => true;
+        public bool IsAvailable => isAvailable;
 
-        public string AvailabilityMessage => "Fake control plane available for API tests.";
+        public string AvailabilityMessage => availabilityMessage;
 
         public Task<IReadOnlyList<ConfigurationVersionResponse>> ListConfigurationsAsync(CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<ConfigurationVersionResponse>>(_configurations.OrderByDescending(entity => entity.VersionNumber).ToArray());

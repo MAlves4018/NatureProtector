@@ -131,6 +131,7 @@ public sealed class PostgresControlPlaneServiceTests
         Assert.Equal("VeryHigh", areaState!.AggregateRiskLevel);
         Assert.Equal("Critical", areaState.Severity);
         Assert.Equal(12, areaState.AssessmentCount);
+        Assert.Equal("Alarm", areaState.AlertState);
 
         Assert.Equal(2, cellStates.Count);
         Assert.Equal(["PRO-002", "PRO-001"], cellStates.Select(state => state.CellCode));
@@ -139,6 +140,7 @@ public sealed class PostgresControlPlaneServiceTests
         var alert = Assert.Single(alerts);
         Assert.Equal("area-risk-high", alert.AlertCode);
         Assert.Equal("Open", alert.Status);
+        Assert.Equal("Alarm", alert.AlertState);
     }
 
     [Fact]
@@ -157,6 +159,28 @@ public sealed class PostgresControlPlaneServiceTests
         Assert.Empty(await service.ListCellOperationalStatesAsync("proenca-a-nova", 999, 0, 10, CancellationToken.None));
         Assert.Empty(await service.ListActiveAlertsAsync("proenca-a-nova", 999, CancellationToken.None));
         Assert.Empty(await service.ListSimulationRunsAsync("proenca-a-nova", "scenario_b", seed.ConfigurationVersion2Number, 0, 10, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RuntimeQueries_KeepAlertStateNull_WhenProjectionDoesNotPersistIt()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedAsync(scope);
+
+        await using (var dbContext = scope.CreateDbContext())
+        {
+            var openAlert = dbContext.AlertStates.Single(entity => entity.AlertCode == "area-risk-high" && entity.Status == "Open");
+            openAlert.Message = "Area risk is VeryHigh with score 0.91.";
+            await dbContext.SaveChangesAsync(CancellationToken.None);
+        }
+
+        var service = new PostgresControlPlaneService(scope.Factory);
+        var areaState = await service.GetAreaOperationalStateAsync("proenca-a-nova", configurationVersion: null, CancellationToken.None);
+        var alerts = await service.ListActiveAlertsAsync("proenca-a-nova", 1, CancellationToken.None);
+
+        Assert.NotNull(areaState);
+        Assert.Null(areaState!.AlertState);
+        Assert.Null(Assert.Single(alerts).AlertState);
     }
 
     private static async Task<SeededIds> SeedAsync(SqliteControlDbContextScope scope)
@@ -504,7 +528,7 @@ public sealed class PostgresControlPlaneServiceTests
                     AlertCode = "area-risk-high",
                     Severity = "Critical",
                     Status = "Open",
-                    Message = "Area risk is VeryHigh with score 0.91.",
+                    Message = "AlertState=Alarm; Area risk is VeryHigh with adjusted score 0.91. Candidate Parameter Set V1.0 (non-official).",
                     TriggeredAt = new DateTimeOffset(2026, 4, 12, 12, 19, 0, TimeSpan.Zero),
                     UpdatedAt = new DateTimeOffset(2026, 4, 12, 12, 19, 30, TimeSpan.Zero)
                 },

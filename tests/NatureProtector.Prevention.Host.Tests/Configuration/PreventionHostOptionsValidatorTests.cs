@@ -50,4 +50,38 @@ public sealed class PreventionHostOptionsValidatorTests
             "PreventionHost:RetryPollingIntervalSeconds must be greater than zero.",
             result.Failures);
     }
+
+    [Fact]
+    public void Validate_RetryDelaySecondsNull_FailsWithSpecificMessage()
+    {
+        var options = new PreventionHostOptions
+        {
+            ConsumerPrefetchCount = 1,
+            MaxProcessingAttempts = 3,
+            RetryDelaySeconds = null!,
+            RetryPollingIntervalSeconds = 5
+        };
+
+        var result = _validator.Validate(name: null, options);
+
+        Assert.True(result.Failed);
+        var failure = Assert.Single(result.Failures);
+        Assert.Equal("PreventionHost:RetryDelaySeconds must not be null.", failure);
+    }
+
+    [Fact]
+    public void Validate_RetryDelaySecondsEmpty_Succeeds()
+    {
+        var options = new PreventionHostOptions
+        {
+            ConsumerPrefetchCount = 1,
+            MaxProcessingAttempts = 3,
+            RetryDelaySeconds = [],
+            RetryPollingIntervalSeconds = 5
+        };
+
+        var result = _validator.Validate(name: null, options);
+
+        Assert.True(result.Succeeded);
+    }
 }

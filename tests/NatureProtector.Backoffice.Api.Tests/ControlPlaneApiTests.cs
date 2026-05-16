@@ -1,9 +1,103 @@
 using System.Text.Json;
+using System.Net;
 
 namespace NatureProtector.Backoffice.Api.Tests;
 
 public sealed class ControlPlaneApiTests
 {
+    [Theory]
+    [InlineData("/api/control/areas")]
+    [InlineData("/api/control/areas/proenca-a-nova")]
+    [InlineData("/api/control/areas/proenca-a-nova/grid-cells")]
+    [InlineData("/api/control/areas/proenca-a-nova/sensor-nodes")]
+    [InlineData("/api/control/areas/proenca-a-nova/scenarios")]
+    [InlineData("/api/control/areas/proenca-a-nova/operational-state")]
+    [InlineData("/api/control/areas/proenca-a-nova/cells/operational-state")]
+    [InlineData("/api/control/areas/proenca-a-nova/alerts/active")]
+    public async Task AreaEndpoints_ControlPlaneUnavailable_ReturnProblemDetails(string path)
+    {
+        const string availabilityMessage = "Control plane disabled for this test.";
+        await using var factory = new ControlPlaneApiWebApplicationFactory(
+            controlPlaneAvailable: false,
+            availabilityMessage: availabilityMessage);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        await AssertUnavailableProblemDetailsAsync(response, availabilityMessage);
+    }
+
+    [Theory]
+    [InlineData("/api/control/configurations")]
+    [InlineData("/api/control/configurations/active")]
+    public async Task ConfigurationGetEndpoints_ControlPlaneUnavailable_ReturnProblemDetails(string path)
+    {
+        const string availabilityMessage = "Control plane temporarily unavailable.";
+        await using var factory = new ControlPlaneApiWebApplicationFactory(
+            controlPlaneAvailable: false,
+            availabilityMessage: availabilityMessage);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        await AssertUnavailableProblemDetailsAsync(response, availabilityMessage);
+    }
+
+    [Fact]
+    public async Task ActivateConfiguration_ControlPlaneUnavailable_ReturnProblemDetails()
+    {
+        const string availabilityMessage = "Control plane unavailable during activation.";
+        await using var factory = new ControlPlaneApiWebApplicationFactory(
+            controlPlaneAvailable: false,
+            availabilityMessage: availabilityMessage);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync("/api/control/configurations/1/activate", content: null);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        await AssertUnavailableProblemDetailsAsync(response, availabilityMessage);
+    }
+
+    [Theory]
+    [InlineData("/api/control/simulation-runs")]
+    [InlineData("/api/control/simulation-runs/90000000-0000-0000-0000-000000000001")]
+    public async Task SimulationRunEndpoints_ControlPlaneUnavailable_ReturnProblemDetails(string path)
+    {
+        const string availabilityMessage = "Simulation run control plane unavailable.";
+        await using var factory = new ControlPlaneApiWebApplicationFactory(
+            controlPlaneAvailable: false,
+            availabilityMessage: availabilityMessage);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        await AssertUnavailableProblemDetailsAsync(response, availabilityMessage);
+    }
+
+    [Fact]
+    public async Task ListAreas_ExistingConfiguration_ReturnsSeededAreas()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/areas?configurationVersion=1");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var area = document.RootElement.EnumerateArray().Single();
+
+        Assert.Equal("proenca-a-nova", area.GetProperty("code").GetString());
+        Assert.Equal("Proenca-a-Nova", area.GetProperty("name").GetString());
+        Assert.Equal("PT", area.GetProperty("countryCode").GetString());
+        Assert.Equal(1, area.GetProperty("configurationVersionNumber").GetInt32());
+        Assert.Equal(2, area.GetProperty("gridCellCount").GetInt32());
+        Assert.Equal(2, area.GetProperty("sensorNodeCount").GetInt32());
+        Assert.Equal(2, area.GetProperty("scenarioCount").GetInt32());
+    }
+
     [Fact]
     public async Task ActiveConfigurationEndpoint_ReturnsCurrentControlPlaneState()
     {
@@ -23,6 +117,24 @@ public sealed class ControlPlaneApiTests
         Assert.Equal(2, root.GetProperty("sensorNodeCount").GetInt32());
         Assert.Equal(2, root.GetProperty("scenarioCount").GetInt32());
         Assert.Equal(1, root.GetProperty("simulationRunCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task ListConfigurations_SeededConfigurations_ReturnsConfigurationsDescending()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/configurations");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(2, document.RootElement.GetArrayLength());
+        Assert.Equal(2, document.RootElement[0].GetProperty("versionNumber").GetInt32());
+        Assert.False(document.RootElement[0].GetProperty("isActive").GetBoolean());
+        Assert.Equal(1, document.RootElement[1].GetProperty("versionNumber").GetInt32());
+        Assert.True(document.RootElement[1].GetProperty("isActive").GetBoolean());
     }
 
     [Fact]
@@ -59,10 +171,51 @@ public sealed class ControlPlaneApiTests
         Assert.Equal(2, sensorsDocument.RootElement.GetArrayLength());
         Assert.Equal("VeryHigh", stateDocument.RootElement.GetProperty("aggregateRiskLevel").GetString());
         Assert.Equal("Critical", stateDocument.RootElement.GetProperty("severity").GetString());
+        Assert.Equal("Alarm", stateDocument.RootElement.GetProperty("alertState").GetString());
         Assert.Equal(2, cellStatesDocument.RootElement.GetArrayLength());
         Assert.Equal("PRO-001", cellStatesDocument.RootElement[0].GetProperty("cellCode").GetString());
         Assert.Equal(1, alertsDocument.RootElement.GetArrayLength());
         Assert.Equal("area-risk-high", alertsDocument.RootElement[0].GetProperty("alertCode").GetString());
+        Assert.Equal("Alarm", alertsDocument.RootElement[0].GetProperty("alertState").GetString());
+    }
+
+    [Fact]
+    public async Task GetArea_MissingArea_ReturnsNotFound()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/areas/missing-area");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ListGridCells_ExistingArea_ReturnsGridCellResponseFields()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/areas/proenca-a-nova/grid-cells?skip=0&take=1");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var cell = document.RootElement.EnumerateArray().Single();
+
+        Assert.Equal("PRO-001", cell.GetProperty("cellCode").GetString());
+        Assert.Equal(1, cell.GetProperty("configurationVersionNumber").GetInt32());
+        Assert.Equal(39.75, cell.GetProperty("centroidLatitude").GetDouble());
+        Assert.Equal(-7.90, cell.GetProperty("centroidLongitude").GetDouble());
+        Assert.Equal(340.0, cell.GetProperty("altitudeMeters").GetDouble());
+        Assert.Equal(7.5, cell.GetProperty("slopeDegrees").GetDouble());
+        Assert.Equal(125.0, cell.GetProperty("aspectDegrees").GetDouble());
+        Assert.Equal("forest", cell.GetProperty("landCoverClass").GetString());
+        Assert.Equal(JsonValueKind.Null, cell.GetProperty("dominantForestType").ValueKind);
+        Assert.Equal(JsonValueKind.Null, cell.GetProperty("dominantFuelModel").ValueKind);
+        Assert.Equal(JsonValueKind.Null, cell.GetProperty("treeCoverDensity").ValueKind);
+        Assert.Equal("high", cell.GetProperty("structuralHazard").GetString());
+        Assert.Equal(JsonValueKind.Null, cell.GetProperty("conjuncturalHazard").ValueKind);
+        Assert.Equal(1, cell.GetProperty("sensorNodeCount").GetInt32());
     }
 
     [Fact]
@@ -84,6 +237,50 @@ public sealed class ControlPlaneApiTests
     }
 
     [Fact]
+    public async Task ListSimulationRuns_NoFilters_ReturnsSeededRun()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/simulation-runs");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var run = document.RootElement.EnumerateArray().Single();
+
+        Assert.Equal(Guid.Parse("90000000-0000-0000-0000-000000000001"), run.GetProperty("id").GetGuid());
+        Assert.Equal("proenca-a-nova", run.GetProperty("areaCode").GetString());
+        Assert.Equal("scenario_b", run.GetProperty("scenarioCode").GetString());
+    }
+
+    [Fact]
+    public async Task GetSimulationRun_ExistingRun_ReturnsSeededRun()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/simulation-runs/90000000-0000-0000-0000-000000000001");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(Guid.Parse("90000000-0000-0000-0000-000000000001"), document.RootElement.GetProperty("id").GetGuid());
+        Assert.Equal("Completed", document.RootElement.GetProperty("status").GetString());
+        Assert.Equal(42, document.RootElement.GetProperty("executionSeed").GetInt32());
+    }
+
+    [Fact]
+    public async Task GetSimulationRun_MissingRun_ReturnsNotFound()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/control/simulation-runs/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ActivateConfigurationEndpoint_SwitchesActiveVersion()
     {
         await using var factory = new ControlPlaneApiWebApplicationFactory();
@@ -102,5 +299,29 @@ public sealed class ControlPlaneApiTests
         Assert.True(activateDocument.RootElement.GetProperty("isActive").GetBoolean());
         Assert.Equal(2, activeDocument.RootElement.GetProperty("versionNumber").GetInt32());
         Assert.True(activeDocument.RootElement.GetProperty("isActive").GetBoolean());
+    }
+
+    [Fact]
+    public async Task ActivateConfiguration_MissingVersion_ReturnsNotFound()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync("/api/control/configurations/99/activate", content: null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    private static async Task AssertUnavailableProblemDetailsAsync(
+        HttpResponseMessage response,
+        string expectedDetail)
+    {
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+
+        Assert.Equal("Control plane unavailable", root.GetProperty("title").GetString());
+        Assert.Equal(expectedDetail, root.GetProperty("detail").GetString());
+        Assert.Equal((int)HttpStatusCode.ServiceUnavailable, root.GetProperty("status").GetInt32());
+        Assert.Equal(JsonValueKind.String, root.GetProperty("traceId").ValueKind);
     }
 }

@@ -1,6 +1,11 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Scenarios;
+using NatureProtector.Core.Sensors;
+using NatureProtector.Shared.Contracts.Readings;
+using NatureProtector.Shared.Messaging;
+using NatureProtector.Simulator.Host.Publishing;
 using NatureProtector.Simulator.Host.Services;
 using NatureProtector.Simulator.Host.Tests.Fakes;
 using NatureProtector.Simulator.Host.Tests.Helpers;
@@ -113,9 +118,55 @@ public sealed class SimulationRunnerTests
         Assert.True(completed.EndedAt >= completed.StartedAt);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_PublisherThrows_MarksRunFailedAndPropagatesException()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.Sensors = [SimulatorOptionsMother.CreateSensorDefinition(name: "OnlySensor")];
+        options.NumberOfCycles = 1;
+        var runStore = new RecordingSimulationRunStore();
+        var publisher = new ThrowingReadingPublisher();
+        var runner = CreateRunner(options, publisher, runStore);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None));
+
+        Assert.Equal("Simulated publisher failure.", exception.Message);
+        Assert.Equal(
+            new[]
+            {
+                SimulationRunStatus.Ready,
+                SimulationRunStatus.Running,
+                SimulationRunStatus.Failed
+            },
+            runStore.Upserts.Select(x => x.Status));
+        Assert.NotNull(runStore.Upserts[2].EndedAt);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_PreferredSeedPresent_UsesPreferredSeedForCreatedRun()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.Seed = 111;
+        var runStore = new RecordingSimulationRunStore();
+        var context = CreateContextWithPreferredSeed(222);
+        var runner = new SimulationRunner(
+            logger: NullLogger<SimulationRunner>.Instance,
+            simulatorOptions: Options.Create(options),
+            seedProvider: new SeedProvider(),
+            simulationContextSource: new StaticSimulationContextSource(context),
+            readingGenerationService: new ReadingGenerationService(),
+            simulationRunStore: runStore,
+            readingPublisher: new CollectingReadingPublisher());
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        Assert.All(runStore.Upserts, upsert => Assert.Equal(222, upsert.ExecutionSeed));
+    }
+
     private static SimulationRunner CreateRunner(
         NatureProtector.Simulator.Host.Configuration.SimulatorOptions options,
-        CollectingReadingPublisher publisher,
+        IReadingPublisher publisher,
         ISimulationRunStore? simulationRunStore = null)
     {
         return new SimulationRunner(
@@ -126,6 +177,43 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: simulationRunStore ?? new NoOpSimulationRunStore(),
             readingPublisher: publisher);
+    }
+
+    private static SimulationContext CreateContextWithPreferredSeed(int preferredSeed)
+    {
+        var sensor = new Sensor(
+            id: Guid.NewGuid(),
+            name: "PreferredSeedSensor",
+            type: SensorType.Temperature,
+            location: new Location(39.8, -7.9),
+            profile: new SensorProfile(
+                id: Guid.NewGuid(),
+                samplingInterval: TimeSpan.FromSeconds(5),
+                communicationMode: "Test",
+                noiseLevel: 0.0,
+                latencyProfile: "None",
+                failureProfile: "None"));
+
+        var scenario = new Scenario(
+            id: Guid.NewGuid(),
+            name: "Preferred seed scenario",
+            category: ScenarioCategory.HighRisk,
+            parameters: new ScenarioParameters(
+                baseTemperature: 30.0,
+                baseHumidity: 40.0,
+                baseWindSpeed: 5.0,
+                failureRate: 0.0,
+                noiseLevel: 0.0,
+                timeAcceleration: 1.0));
+
+        return new SimulationContext(
+            areaId: Guid.NewGuid(),
+            scenario: scenario,
+            sensors: [sensor],
+            startTimestamp: new DateTimeOffset(2026, 4, 6, 18, 0, 0, TimeSpan.Zero),
+            interval: TimeSpan.FromSeconds(1),
+            numberOfCycles: 1,
+            preferredSeed: preferredSeed);
     }
 
     private sealed class RecordingSimulationRunStore : ISimulationRunStore
@@ -141,7 +229,8 @@ public sealed class SimulationRunnerTests
                 run.Status,
                 run.StartedAt,
                 run.EndedAt,
-                context.StartTimestamp));
+                context.StartTimestamp,
+                run.ExecutionSeed));
 
             return Task.CompletedTask;
         }
@@ -151,5 +240,24 @@ public sealed class SimulationRunnerTests
         SimulationRunStatus Status,
         DateTimeOffset? StartedAt,
         DateTimeOffset? EndedAt,
-        DateTimeOffset LogicalStartTimestamp);
+        DateTimeOffset LogicalStartTimestamp,
+        int? ExecutionSeed);
+
+    private sealed class ThrowingReadingPublisher : IReadingPublisher
+    {
+        public Task PublishAsync(
+            EventEnvelope<SensorReadingProducedPayload> envelope,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("Simulated publisher failure.");
+        }
+    }
+
+    private sealed class StaticSimulationContextSource(SimulationContext context) : ISimulationContextSource
+    {
+        public Task<SimulationContext> CreateAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(context);
+        }
+    }
 }

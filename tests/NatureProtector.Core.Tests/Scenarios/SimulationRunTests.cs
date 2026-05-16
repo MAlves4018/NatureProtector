@@ -138,8 +138,13 @@ public class SimulationRunTests
         var startedAt = DateTimeOffset.UtcNow;
         run.Start(startedAt);
 
-        // Act + Assert
-        Assert.Throws<InvalidOperationException>(() => run.Start(startedAt));
+        // Act
+        var ex = Assert.Throws<InvalidOperationException>(() => run.Start(startedAt));
+
+        // Assert
+        Assert.Contains("cannot start from status Running", ex.Message);
+        Assert.Equal(SimulationRunStatus.Running, run.Status);
+        Assert.Equal(startedAt, run.StartedAt);
     }
 
     [Fact]
@@ -190,6 +195,18 @@ public class SimulationRunTests
     }
 
     [Fact]
+    public void Complete_Throws_WhenEndTimeIsDefault()
+    {
+        var run = new SimulationRun(Guid.NewGuid());
+        run.Start(new DateTimeOffset(2026, 4, 6, 10, 0, 0, TimeSpan.Zero));
+
+        var ex = Assert.Throws<ArgumentException>(() => run.Complete(default));
+
+        Assert.Equal("endedAt", ex.ParamName);
+        Assert.Contains("End time must be a valid, non-default timestamp.", ex.Message);
+    }
+
+    [Fact]
     public void Complete_Throws_WhenEndTimeIsBeforeStartTime()
     {
         // Arrange
@@ -236,6 +253,30 @@ public class SimulationRunTests
     }
 
     [Fact]
+    public void Fail_Throws_WhenEndTimeIsDefault()
+    {
+        var run = new SimulationRun(Guid.NewGuid());
+        run.Start(new DateTimeOffset(2026, 4, 6, 10, 0, 0, TimeSpan.Zero));
+
+        var ex = Assert.Throws<ArgumentException>(() => run.Fail(default));
+
+        Assert.Equal("endedAt", ex.ParamName);
+        Assert.Contains("End time must be a valid, non-default timestamp.", ex.Message);
+    }
+
+    [Fact]
+    public void Fail_Throws_WhenEndTimeIsBeforeStartTime()
+    {
+        var run = new SimulationRun(Guid.NewGuid());
+        var startedAt = new DateTimeOffset(2026, 4, 6, 10, 0, 0, TimeSpan.Zero);
+        run.Start(startedAt);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => run.Fail(startedAt.AddTicks(-1)));
+
+        Assert.Contains("cannot be earlier than the start time", ex.Message);
+    }
+
+    [Fact]
     public void Cancel_FromDefined_SetsCancelled_AndEndedAt()
     {
         // Arrange
@@ -271,6 +312,20 @@ public class SimulationRunTests
     }
 
     [Fact]
+    public void Cancel_FromReady_SetsCancelledWithoutStartedAt()
+    {
+        var run = new SimulationRun(Guid.NewGuid());
+        var cancelledAt = new DateTimeOffset(2026, 4, 6, 10, 0, 0, TimeSpan.Zero);
+        run.MarkReady();
+
+        run.Cancel(cancelledAt);
+
+        Assert.Null(run.StartedAt);
+        Assert.Equal(cancelledAt, run.EndedAt);
+        Assert.Equal(SimulationRunStatus.Cancelled, run.Status);
+    }
+
+    [Fact]
     public void Cancel_Throws_WhenTimeIsDefault()
     {
         // Arrange
@@ -299,6 +354,76 @@ public class SimulationRunTests
 
         // Assert
         Assert.Contains("cannot be cancelled from status", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(SimulationRunStatus.Completed)]
+    [InlineData(SimulationRunStatus.Failed)]
+    [InlineData(SimulationRunStatus.Cancelled)]
+    public void Cancel_TerminalStatus_ThrowsInvalidOperationException(SimulationRunStatus terminalStatus)
+    {
+        var run = new SimulationRun(Guid.NewGuid());
+        var startedAt = new DateTimeOffset(2026, 4, 6, 10, 0, 0, TimeSpan.Zero);
+        run.Start(startedAt);
+
+        switch (terminalStatus)
+        {
+            case SimulationRunStatus.Completed:
+                run.Complete(startedAt.AddMinutes(1));
+                break;
+            case SimulationRunStatus.Failed:
+                run.Fail(startedAt.AddMinutes(1));
+                break;
+            case SimulationRunStatus.Cancelled:
+                run.Cancel(startedAt.AddMinutes(1));
+                break;
+        }
+
+        var ex = Assert.Throws<InvalidOperationException>(() => run.Cancel(startedAt.AddMinutes(2)));
+
+        Assert.Contains($"cannot be cancelled from status {terminalStatus}", ex.Message);
+    }
+
+    [Fact]
+    public void Complete_CalledTwice_ThrowsInvalidOperationException()
+    {
+        var run = new SimulationRun(Guid.NewGuid());
+        var startedAt = new DateTimeOffset(2026, 4, 6, 10, 0, 0, TimeSpan.Zero);
+        run.Start(startedAt);
+        run.Complete(startedAt.AddMinutes(1));
+
+        var ex = Assert.Throws<InvalidOperationException>(() => run.Complete(startedAt.AddMinutes(2)));
+
+        Assert.Contains("cannot end from status Completed", ex.Message);
+    }
+
+    [Fact]
+    public void Fail_CalledTwice_ThrowsInvalidOperationException()
+    {
+        var run = new SimulationRun(Guid.NewGuid());
+        var startedAt = new DateTimeOffset(2026, 4, 6, 10, 0, 0, TimeSpan.Zero);
+        run.Start(startedAt);
+        run.Fail(startedAt.AddMinutes(1));
+
+        var ex = Assert.Throws<InvalidOperationException>(() => run.Fail(startedAt.AddMinutes(2)));
+
+        Assert.Contains("cannot end from status Failed", ex.Message);
+        Assert.Equal(SimulationRunStatus.Failed, run.Status);
+        Assert.Equal(startedAt.AddMinutes(1), run.EndedAt);
+    }
+
+    [Fact]
+    public void Complete_AfterFail_ThrowsInvalidOperationException()
+    {
+        var run = new SimulationRun(Guid.NewGuid());
+        var startedAt = new DateTimeOffset(2026, 4, 6, 10, 0, 0, TimeSpan.Zero);
+        run.Start(startedAt);
+        run.Fail(startedAt.AddMinutes(1));
+
+        var ex = Assert.Throws<InvalidOperationException>(() => run.Complete(startedAt.AddMinutes(2)));
+
+        Assert.Contains("cannot end from status Failed", ex.Message);
+        Assert.Equal(SimulationRunStatus.Failed, run.Status);
     }
 
     [Fact]

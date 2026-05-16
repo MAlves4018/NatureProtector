@@ -11,6 +11,117 @@ namespace NatureProtector.Infrastructure.Influx.Tests.Services;
 public sealed class SafeInfluxWriteServiceTests
 {
     [Fact]
+    public async Task WriteAcceptedReadingAsync_ValidEnvelope_ForwardsAcceptedReadingBatch()
+    {
+        var inner = new RecordingInfluxWriteService();
+        var service = CreateService(inner, new InfluxDbOptions { Enabled = true });
+        var envelope = CreateEnvelope();
+
+        await service.WriteAcceptedReadingAsync(envelope, CancellationToken.None);
+
+        var batch = Assert.Single(inner.Batches);
+        Assert.Equal(1, batch.AcceptedReadingCount);
+        Assert.Equal(0, batch.RiskAssessmentCount);
+        Assert.Equal(0, batch.AreaRiskSnapshotCount);
+        Assert.Same(envelope, Assert.Single(batch.AcceptedReadings));
+    }
+
+    [Fact]
+    public async Task WriteRiskAssessmentAsync_ValidAssessment_ForwardsRiskAssessmentBatch()
+    {
+        var inner = new RecordingInfluxWriteService();
+        var service = CreateService(inner, new InfluxDbOptions { Enabled = true });
+        var areaId = Guid.NewGuid();
+        var sensorId = Guid.NewGuid();
+        var assessment = CreateAssessment();
+
+        await service.WriteRiskAssessmentAsync(areaId, sensorId, assessment, CancellationToken.None);
+
+        var batch = Assert.Single(inner.Batches);
+        var write = Assert.Single(batch.RiskAssessments);
+        Assert.Equal(areaId, write.AreaId);
+        Assert.Equal(sensorId, write.SensorId);
+        Assert.Same(assessment, write.Assessment);
+        Assert.Equal(0, batch.AcceptedReadingCount);
+        Assert.Equal(0, batch.AreaRiskSnapshotCount);
+    }
+
+    [Fact]
+    public async Task WriteAreaRiskSnapshotAsync_ValidSnapshot_ForwardsAreaRiskSnapshotBatch()
+    {
+        var inner = new RecordingInfluxWriteService();
+        var service = CreateService(inner, new InfluxDbOptions { Enabled = true });
+        var areaId = Guid.NewGuid();
+        var snapshot = CreateSnapshot();
+
+        await service.WriteAreaRiskSnapshotAsync(areaId, 7, snapshot, CancellationToken.None);
+
+        var batch = Assert.Single(inner.Batches);
+        var write = Assert.Single(batch.AreaRiskSnapshots);
+        Assert.Equal(areaId, write.AreaId);
+        Assert.Equal(7, write.AssessmentCount);
+        Assert.Same(snapshot, write.Snapshot);
+        Assert.Equal(0, batch.AcceptedReadingCount);
+        Assert.Equal(0, batch.RiskAssessmentCount);
+    }
+
+    [Fact]
+    public async Task WriteAcceptedReadingAsync_NullEnvelope_ThrowsArgumentNullException()
+    {
+        var service = CreateService(
+            new RecordingInfluxWriteService(),
+            new InfluxDbOptions { Enabled = true });
+
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            service.WriteAcceptedReadingAsync(null!, CancellationToken.None));
+
+        Assert.Equal("envelope", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task WriteRiskAssessmentAsync_NullAssessment_ThrowsArgumentNullException()
+    {
+        var service = CreateService(
+            new RecordingInfluxWriteService(),
+            new InfluxDbOptions { Enabled = true });
+
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            service.WriteRiskAssessmentAsync(Guid.NewGuid(), Guid.NewGuid(), null!, CancellationToken.None));
+
+        Assert.Equal("assessment", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task WriteAreaRiskSnapshotAsync_NullSnapshot_ThrowsArgumentNullException()
+    {
+        var service = CreateService(
+            new RecordingInfluxWriteService(),
+            new InfluxDbOptions { Enabled = true });
+
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            service.WriteAreaRiskSnapshotAsync(Guid.NewGuid(), 1, null!, CancellationToken.None));
+
+        Assert.Equal("snapshot", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task WriteAcceptedReadingAsync_InnerThrowsAndFailureIsTolerated_DoesNotRethrow()
+    {
+        var inner = new ThrowingInfluxWriteService();
+        var service = CreateService(
+            inner,
+            new InfluxDbOptions
+            {
+                Enabled = true,
+                FailPipelineOnWriteError = false
+            });
+
+        await service.WriteAcceptedReadingAsync(CreateEnvelope(), CancellationToken.None);
+
+        Assert.Equal(1, inner.BatchCalls);
+    }
+
+    [Fact]
     public async Task WriteBatchAsync_DoesNotRethrow_WhenFailureIsTolerated()
     {
         var inner = new ThrowingInfluxWriteService();
@@ -189,10 +300,12 @@ public sealed class SafeInfluxWriteServiceTests
         public int RiskAssessmentCalls { get; private set; }
         public int AreaRiskSnapshotCalls { get; private set; }
         public int BatchCalls { get; private set; }
+        public List<InfluxTelemetryBatch> Batches { get; } = [];
 
         public Task WriteBatchAsync(InfluxTelemetryBatch batch, CancellationToken cancellationToken)
         {
             BatchCalls++;
+            Batches.Add(batch);
             return Task.CompletedTask;
         }
 

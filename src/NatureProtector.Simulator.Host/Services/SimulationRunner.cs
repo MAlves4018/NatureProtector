@@ -54,7 +54,7 @@ public sealed class SimulationRunner(
             DateTimeOffset.UtcNow);
 
         var context = await simulationContextSource.CreateAsync(stoppingToken);
-        var seed = seedProvider.ResolveSeed(_options.Seed);
+        var seed = seedProvider.ResolveSeed(context.PreferredSeed ?? _options.Seed);
         var random = seedProvider.CreateRandom(seed);
 
         logger.LogInformation(
