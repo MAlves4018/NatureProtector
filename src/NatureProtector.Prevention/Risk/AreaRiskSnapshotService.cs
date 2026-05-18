@@ -33,11 +33,9 @@ public sealed class AreaRiskSnapshotService : IAreaRiskSnapshotService
 
         if (items.Count == 0)
         {
-            return new AreaRiskSnapshot(
-                id: Guid.NewGuid(),
-                timestamp: snapshotTime,
-                aggregateRiskScore: 0.0,
-                summary: "No accepted assessments are available for this area.");
+            throw new ArgumentException(
+                "At least one eligible risk assessment is required; area risk is unavailable.",
+                nameof(assessments));
         }
 
         return AreaRiskSnapshot.CreateFromAssessments(

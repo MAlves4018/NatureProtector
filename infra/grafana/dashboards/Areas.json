@@ -12,13 +12,7 @@
       "grafana.app/deprecatedInternalID": "3367529253867520"
     },
     "annotations": {
-      "grafana.app/createdBy": "user:bflds7zcz76kgd",
-      "grafana.app/folder": "efm9buip8swlce",
-      "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f21)",
-      "grafana.app/updatedBy": "user:bflds7zcz76kgd",
-      "grafana.app/updatedTimestamp": "2026-05-15T12:43:04Z",
-      "grafana.app/folderTitle": "NatureProtector",
-      "grafana.app/folderUrl": "/dashboards/f/eflds8eozrdhcf/natureprotector"
+      "grafana.app/folderTitle": "NatureProtector"
     }
   },
   "spec": {

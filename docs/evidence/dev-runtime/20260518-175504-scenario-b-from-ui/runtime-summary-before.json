@@ -1,0 +1,62 @@
+{
+  "GeneratedAtUtc": "2026-05-18T17:55:04.2115096+00:00",
+  "RecentWindowMinutes": 30,
+  "AreaCode": "proenca-a-nova",
+  "CurrentRun": null,
+  "LatestRun": null,
+  "Pipeline": {
+    "InboxTotal": 0,
+    "InboxRecent": 0,
+    "InboxByStatus": [],
+    "AttemptsRecent": 0,
+    "AttemptsByOutcomeAndError": [],
+    "RejectedRecent": 0,
+    "RejectedTotal": 0,
+    "RejectedByCode": [],
+    "QuarantinedRecent": 0,
+    "QuarantinedTotal": 0,
+    "QuarantinedByCode": [],
+    "LatestRejected": [],
+    "LatestQuarantined": [],
+    "LatestFailedAttempts": []
+  },
+  "Risk": {
+    "RecentCount": 0,
+    "MinScore": null,
+    "MaxScore": null,
+    "LatestTimestamp": null,
+    "RecentScores": []
+  },
+  "AreaOperationalState": null,
+  "CellOperationalStateCount": 0,
+  "ActiveAlerts": [],
+  "Freshness": {
+    "FreshCount": 0,
+    "StaleCount": 0,
+    "ExpiredCount": 0,
+    "OldestIncludedAssessment": null,
+    "LatestIncludedAssessment": null,
+    "FreshSeconds": 120,
+    "StaleSeconds": 300,
+    "Note": "No cell operational states are persisted for this scope. Candidate Parameter Set only."
+  },
+  "Limitations": [
+    {
+      "Code": "rabbitmq_metrics_unavailable",
+      "Message": "RabbitMQ metrics are not exposed in this version."
+    },
+    {
+      "Code": "eligibility_projection_unavailable",
+      "Message": "Eligibility/Blocked/Partial/QualityFlags/Classifiers are not persisted as aggregate runtime projections yet."
+    },
+    {
+      "Code": "evidence_http_unavailable",
+      "Message": "Evidence files are not exposed by HTTP in this version."
+    },
+    {
+      "Code": "host_health_unavailable",
+      "Message": "Prevention.Host, Simulator.Host, InfluxDB and Grafana health are not exposed by this endpoint."
+    }
+  ],
+  "Warnings": []
+}

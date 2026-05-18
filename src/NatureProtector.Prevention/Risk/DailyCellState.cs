@@ -13,11 +13,29 @@ public sealed class DailyCellState
 
     public Guid SensorId { get; }
 
+    public Guid? GridCellId { get; }
+
+    public Guid? SimulationRunId { get; }
+
+    public Guid? ConfigurationVersionId { get; }
+
     public DateTimeOffset Day { get; }
 
     public double? DailyPrecipitationMillimeters { get; }
 
     public double? MaxTemperatureCelsius { get; }
+
+    public double? LatestHumidityPercent { get; }
+
+    public double? LatestWindSpeedMetersPerSecond { get; }
+
+    public string DroughtContext { get; }
+
+    public double? FireWeatherIndex { get; }
+
+    public double? KeetchByramDroughtIndex { get; }
+
+    public string FireIndexProvenance { get; }
 
     public string AntecedentState { get; }
 
@@ -39,7 +57,16 @@ public sealed class DailyCellState
         DateTimeOffset lastUpdatedAt,
         double? dailyPrecipitationMillimeters = null,
         double? maxTemperatureCelsius = null,
-        Guid? lastSourceEventId = null)
+        Guid? lastSourceEventId = null,
+        Guid? gridCellId = null,
+        Guid? simulationRunId = null,
+        Guid? configurationVersionId = null,
+        double? latestHumidityPercent = null,
+        double? latestWindSpeedMetersPerSecond = null,
+        string? droughtContext = null,
+        double? fireWeatherIndex = null,
+        double? keetchByramDroughtIndex = null,
+        string? fireIndexProvenance = null)
     {
         if (areaId == Guid.Empty)
         {
@@ -66,6 +93,21 @@ public sealed class DailyCellState
             throw new ArgumentException("LastSourceEventId must not be an empty GUID.", nameof(lastSourceEventId));
         }
 
+        if (gridCellId == Guid.Empty)
+        {
+            throw new ArgumentException("GridCellId must not be an empty GUID.", nameof(gridCellId));
+        }
+
+        if (simulationRunId == Guid.Empty)
+        {
+            throw new ArgumentException("SimulationRunId must not be an empty GUID.", nameof(simulationRunId));
+        }
+
+        if (configurationVersionId == Guid.Empty)
+        {
+            throw new ArgumentException("ConfigurationVersionId must not be an empty GUID.", nameof(configurationVersionId));
+        }
+
         if (string.IsNullOrWhiteSpace(antecedentState))
         {
             throw new ArgumentException("AntecedentState is required.", nameof(antecedentState));
@@ -83,12 +125,27 @@ public sealed class DailyCellState
 
         ValidateOptionalNonNegativeFinite(dailyPrecipitationMillimeters, nameof(dailyPrecipitationMillimeters));
         ValidateOptionalFinite(maxTemperatureCelsius, nameof(maxTemperatureCelsius));
+        ValidateOptionalFinite(latestHumidityPercent, nameof(latestHumidityPercent));
+        ValidateOptionalFinite(latestWindSpeedMetersPerSecond, nameof(latestWindSpeedMetersPerSecond));
+        ValidateOptionalNonNegativeFinite(fireWeatherIndex, nameof(fireWeatherIndex));
+        ValidateOptionalNonNegativeFinite(keetchByramDroughtIndex, nameof(keetchByramDroughtIndex));
 
         AreaId = areaId;
         SensorId = sensorId;
+        GridCellId = gridCellId;
+        SimulationRunId = simulationRunId;
+        ConfigurationVersionId = configurationVersionId;
         Day = NormalizeDay(day);
         DailyPrecipitationMillimeters = dailyPrecipitationMillimeters;
         MaxTemperatureCelsius = maxTemperatureCelsius;
+        LatestHumidityPercent = latestHumidityPercent;
+        LatestWindSpeedMetersPerSecond = latestWindSpeedMetersPerSecond;
+        DroughtContext = string.IsNullOrWhiteSpace(droughtContext) ? "unknown" : droughtContext.Trim();
+        FireWeatherIndex = fireWeatherIndex;
+        KeetchByramDroughtIndex = keetchByramDroughtIndex;
+        FireIndexProvenance = string.IsNullOrWhiteSpace(fireIndexProvenance)
+            ? (fireWeatherIndex.HasValue || keetchByramDroughtIndex.HasValue ? "unknown" : "absent")
+            : fireIndexProvenance.Trim();
         AntecedentState = antecedentState.Trim();
         CandidateParameterSetVersion = candidateParameterSetVersion.Trim();
         Provenance = provenance.Trim();
@@ -115,7 +172,16 @@ public sealed class DailyCellState
             lastUpdatedAt: input.EventTime,
             dailyPrecipitationMillimeters: dailyPrecipitationMillimeters,
             maxTemperatureCelsius: ResolveTemperatureIfAvailable(input.MetricType, input.Unit, input.Value),
-            lastSourceEventId: input.SourceEventId);
+            lastSourceEventId: input.SourceEventId,
+            gridCellId: input.GridCellId,
+            simulationRunId: input.SimulationRunId,
+            configurationVersionId: input.ConfigurationVersionId,
+            latestHumidityPercent: ResolveHumidityIfAvailable(input.MetricType, input.Unit, input.Value),
+            latestWindSpeedMetersPerSecond: ResolveWindSpeedIfAvailable(input.MetricType, input.Unit, input.Value),
+            droughtContext: input.DailyCellState?.DroughtContext,
+            fireWeatherIndex: input.FireWeatherIndexContext.FireWeatherIndex,
+            keetchByramDroughtIndex: input.FireWeatherIndexContext.KeetchByramDroughtIndex,
+            fireIndexProvenance: input.FireWeatherIndexContext.Provenance);
     }
 
     public static DailyCellState FromNormalizedReading(
@@ -149,9 +215,25 @@ public sealed class DailyCellState
             throw new InvalidOperationException("RiskInput AreaId does not match DailyCellState AreaId.");
         }
 
-        if (input.SensorId != SensorId)
+        if (input.GridCellId.HasValue &&
+            GridCellId.HasValue &&
+            input.GridCellId.Value != GridCellId.Value)
         {
-            throw new InvalidOperationException("RiskInput SensorId does not match DailyCellState SensorId.");
+            throw new InvalidOperationException("RiskInput GridCellId does not match DailyCellState GridCellId.");
+        }
+
+        if (input.SimulationRunId.HasValue &&
+            SimulationRunId.HasValue &&
+            input.SimulationRunId.Value != SimulationRunId.Value)
+        {
+            throw new InvalidOperationException("RiskInput SimulationRunId does not match DailyCellState SimulationRunId.");
+        }
+
+        if (input.ConfigurationVersionId.HasValue &&
+            ConfigurationVersionId.HasValue &&
+            input.ConfigurationVersionId.Value != ConfigurationVersionId.Value)
+        {
+            throw new InvalidOperationException("RiskInput ConfigurationVersionId does not match DailyCellState ConfigurationVersionId.");
         }
 
         if (NormalizeDay(input.EventTime) != Day)
@@ -165,10 +247,12 @@ public sealed class DailyCellState
                 ? Math.Max(MaxTemperatureCelsius.Value, incomingTemperature.Value)
                 : incomingTemperature.Value)
             : MaxTemperatureCelsius;
+        var incomingHumidity = ResolveHumidityIfAvailable(input.MetricType, input.Unit, input.Value);
+        var incomingWindSpeed = ResolveWindSpeedIfAvailable(input.MetricType, input.Unit, input.Value);
 
         return new DailyCellState(
             areaId: AreaId,
-            sensorId: SensorId,
+            sensorId: input.SensorId,
             day: Day,
             antecedentState: AntecedentState,
             candidateParameterSetVersion: CandidateParameterSetVersion,
@@ -176,7 +260,16 @@ public sealed class DailyCellState
             lastUpdatedAt: input.EventTime,
             dailyPrecipitationMillimeters: DailyPrecipitationMillimeters,
             maxTemperatureCelsius: nextMaxTemperature,
-            lastSourceEventId: input.SourceEventId);
+            lastSourceEventId: input.SourceEventId,
+            gridCellId: GridCellId ?? input.GridCellId,
+            simulationRunId: SimulationRunId ?? input.SimulationRunId,
+            configurationVersionId: ConfigurationVersionId ?? input.ConfigurationVersionId,
+            latestHumidityPercent: incomingHumidity ?? LatestHumidityPercent,
+            latestWindSpeedMetersPerSecond: incomingWindSpeed ?? LatestWindSpeedMetersPerSecond,
+            droughtContext: DroughtContext,
+            fireWeatherIndex: FireWeatherIndex,
+            keetchByramDroughtIndex: KeetchByramDroughtIndex,
+            fireIndexProvenance: FireIndexProvenance);
     }
 
     private static DateTimeOffset NormalizeDay(DateTimeOffset value)
@@ -199,6 +292,36 @@ public sealed class DailyCellState
     {
         if (metricType == SensorMetricType.Temperature &&
             unit == MeasurementUnit.Celsius)
+        {
+            ValidateOptionalFinite(value, nameof(value));
+            return value;
+        }
+
+        return null;
+    }
+
+    private static double? ResolveHumidityIfAvailable(
+        SensorMetricType metricType,
+        MeasurementUnit unit,
+        double value)
+    {
+        if (metricType == SensorMetricType.Humidity &&
+            unit == MeasurementUnit.Percent)
+        {
+            ValidateOptionalFinite(value, nameof(value));
+            return value;
+        }
+
+        return null;
+    }
+
+    private static double? ResolveWindSpeedIfAvailable(
+        SensorMetricType metricType,
+        MeasurementUnit unit,
+        double value)
+    {
+        if (metricType == SensorMetricType.WindSpeed &&
+            unit == MeasurementUnit.MetersPerSecond)
         {
             ValidateOptionalFinite(value, nameof(value));
             return value;

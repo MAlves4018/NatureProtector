@@ -66,7 +66,20 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
             var currentState = V1AlertPolicy.InferCurrentState(
                 hasOpenAlert,
                 previousAdjustedScore);
-            var nextState = V1AlertPolicy.EvaluateTransition(currentState, snapshot.AggregateRiskScore);
+            var pendingState = existingStateBeforeUpdate is null
+                ? V1AlertState.None
+                : Enum.TryParse<V1AlertState>(existingStateBeforeUpdate.PendingAlertState, out var parsedPendingState)
+                    ? parsedPendingState
+                    : V1AlertState.None;
+            var decision = V1AlertPolicy.EvaluateTransition(
+                currentState,
+                snapshot.AggregateRiskScore,
+                pendingState,
+                existingStateBeforeUpdate?.PendingAlertCycles ?? 0,
+                snapshot.Timestamp,
+                existingStateBeforeUpdate?.AlertCooldownUntil,
+                TimeSpan.FromSeconds(60));
+            var nextState = decision.State;
 
             _states[areaId] = new InMemoryAreaOperationalState(
                 areaId,
@@ -77,6 +90,9 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
                 severity.ToString(),
                 snapshot.Summary,
                 assessmentCount,
+                decision.PendingState.ToString(),
+                decision.PendingCycles,
+                decision.CooldownUntil,
                 updatedAt);
 
             if (nextState is V1AlertState.Warning or V1AlertState.Alarm)
@@ -120,6 +136,9 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         string Severity,
         string? Summary,
         int AssessmentCount,
+        string PendingAlertState,
+        int PendingAlertCycles,
+        DateTimeOffset? AlertCooldownUntil,
         DateTimeOffset UpdatedAt);
 
     public sealed record InMemoryCellOperationalState(

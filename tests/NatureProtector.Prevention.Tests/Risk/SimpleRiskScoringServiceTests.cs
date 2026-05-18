@@ -9,30 +9,30 @@ public sealed class SimpleRiskScoringServiceTests
 
     public static TheoryData<double, double> TemperatureCases => new()
     {
-        { 19.9, 0.10 },
-        { 20.0, 0.20 },
-        { 25.0, 0.40 },
-        { 30.0, 0.65 },
-        { 35.0, 0.85 },
-        { 40.0, 1.00 }
+        { 19.9, 0.30 },
+        { 20.0, 0.35 },
+        { 25.0, 0.45 },
+        { 30.0, 0.575 },
+        { 35.0, 0.675 },
+        { 40.0, 0.75 }
     };
 
     public static TheoryData<double, double> HumidityCases => new()
     {
-        { 70.0, 0.05 },
-        { 50.0, 0.20 },
-        { 35.0, 0.40 },
-        { 20.0, 0.70 },
-        { 19.9, 0.95 }
+        { 70.0, 0.275 },
+        { 50.0, 0.35 },
+        { 35.0, 0.45 },
+        { 20.0, 0.60 },
+        { 19.9, 0.725 }
     };
 
     public static TheoryData<double, double> WindCases => new()
     {
-        { 4.9, 0.10 },
-        { 5.0, 0.30 },
-        { 10.0, 0.55 },
-        { 15.0, 0.75 },
-        { 20.0, 0.95 }
+        { 4.9, 0.30 },
+        { 5.0, 0.40 },
+        { 10.0, 0.525 },
+        { 15.0, 0.625 },
+        { 20.0, 0.725 }
     };
 
     [Theory]
@@ -82,9 +82,9 @@ public sealed class SimpleRiskScoringServiceTests
             value: 180.0,
             unit: MeasurementUnit.Degrees));
 
-        Assert.Equal(0.20, assessment.BaseRisk, precision: 3);
-        Assert.Equal(0.20, assessment.AdjustedScore, precision: 3);
-        Assert.Equal(0.20, assessment.RiskScore, precision: 3);
+        Assert.Equal(0.35, assessment.BaseRisk, precision: 3);
+        Assert.Equal(0.35, assessment.AdjustedScore, precision: 3);
+        Assert.Equal(0.35, assessment.RiskScore, precision: 3);
     }
 
     [Fact]
@@ -110,6 +110,9 @@ public sealed class SimpleRiskScoringServiceTests
         Assert.Contains(sensorId.ToString(), assessment.ExplanationSummary);
         Assert.Contains(eventId.ToString(), assessment.ExplanationSummary);
         Assert.Contains(nameof(SensorMetricType.Temperature), assessment.ExplanationSummary);
+        Assert.Contains("M=", assessment.ExplanationSummary);
+        Assert.Contains("D=", assessment.ExplanationSummary);
+        Assert.Contains("T=", assessment.ExplanationSummary);
         Assert.Contains("BaseRisk=", assessment.ExplanationSummary);
         Assert.Contains("AdjustedScore=", assessment.ExplanationSummary);
         Assert.Contains("C=", assessment.ExplanationSummary);
@@ -136,11 +139,74 @@ public sealed class SimpleRiskScoringServiceTests
 
         var assessment = _service.CreateAssessment(input);
 
-        var expectedBaseRisk = 0.85;
-        var expectedAdjusted = expectedBaseRisk * 0.97 * 0.90 * 0.95;
+        var expectedBaseRisk = 0.675;
+        var expectedAdjusted = expectedBaseRisk * 0.97 * 0.90;
         Assert.Equal(expectedBaseRisk, assessment.BaseRisk, precision: 3);
         Assert.Equal(expectedAdjusted, assessment.AdjustedScore, precision: 3);
         Assert.Equal(assessment.AdjustedScore, assessment.RiskScore, precision: 6);
+        Assert.Contains("InputStatus=PartialButUsable", assessment.ExplanationSummary);
+    }
+
+    [Fact]
+    public void CreateAssessment_CalculatesV1Components_WhenCanonicalMetricsArePresent()
+    {
+        var dailyState = new DailyCellState(
+            areaId: Guid.NewGuid(),
+            sensorId: Guid.NewGuid(),
+            day: DateTimeOffset.UtcNow,
+            antecedentState: "dry",
+            candidateParameterSetVersion: "Candidate Parameter Set V1.0",
+            provenance: "test",
+            lastUpdatedAt: DateTimeOffset.UtcNow,
+            dailyPrecipitationMillimeters: 0.0,
+            maxTemperatureCelsius: 35.0,
+            latestHumidityPercent: 20.0,
+            latestWindSpeedMetersPerSecond: 20.0,
+            droughtContext: "dry");
+        var input = CreateRiskInput(SensorMetricType.Temperature, 35.0) with
+        {
+            Metrics = new RiskInputMetricSet(35.0, 20.0, 20.0),
+            DailyCellState = dailyState,
+            TerritorialContext = new TerritorialRiskContext(Guid.NewGuid(), "test", 0.80)
+        };
+
+        var assessment = _service.CreateAssessment(input);
+
+        Assert.Equal(0.791, assessment.BaseRisk, precision: 3);
+        Assert.Equal(assessment.BaseRisk, assessment.AdjustedScore, precision: 6);
+        Assert.Contains("M=", assessment.ExplanationSummary);
+        Assert.Contains("D=", assessment.ExplanationSummary);
+        Assert.Contains("T=", assessment.ExplanationSummary);
+    }
+
+    [Fact]
+    public void CreateAssessment_UsesImportedFwiAndKbdi_WhenDailyIndexContextExists()
+    {
+        var input = CreateRiskInput(SensorMetricType.Temperature, 35.0) with
+        {
+            Metrics = new RiskInputMetricSet(35.0, 20.0, 20.0),
+            FireWeatherIndexContext = new FireWeatherIndexContext(
+                FireWeatherIndex: 65.377,
+                KeetchByramDroughtIndex: 650.106,
+                Provenance: "imported_reference")
+        };
+
+        var assessment = _service.CreateAssessment(input);
+
+        Assert.True(assessment.BaseRisk > 0.70);
+        Assert.Contains("FWI=", assessment.ExplanationSummary);
+        Assert.Contains("KBDI=", assessment.ExplanationSummary);
+        Assert.Contains("FireIndexProvenance=imported_reference", assessment.ExplanationSummary);
+    }
+
+    [Fact]
+    public void CreateAssessment_MarksFwiAndKbdiAbsent_WhenNoIndexContextExists()
+    {
+        var assessment = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, 35.0));
+
+        Assert.Contains("FWI=absent", assessment.ExplanationSummary);
+        Assert.Contains("KBDI=absent", assessment.ExplanationSummary);
+        Assert.Contains("FireIndexProvenance=absent", assessment.ExplanationSummary);
     }
 
     [Fact]

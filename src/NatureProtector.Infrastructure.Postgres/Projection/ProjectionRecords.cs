@@ -64,6 +64,38 @@ public sealed class AreaRiskSnapshotLogRecord
     public Control.SimulationRunRecord? SimulationRun { get; set; }
 }
 
+public sealed class DailyCellStateRecord
+{
+    public Guid Id { get; set; }
+    public Guid AreaId { get; set; }
+    public Guid GridCellId { get; set; }
+    public Guid? SensorId { get; set; }
+    public Guid? SimulationRunId { get; set; }
+    public Guid? ConfigurationVersionId { get; set; }
+    public DateTimeOffset LogicalDate { get; set; }
+    public double? DailyPrecipitationMillimeters { get; set; }
+    public double? MaxTemperatureCelsius { get; set; }
+    public double? LatestHumidityPercent { get; set; }
+    public double? LatestWindSpeedMetersPerSecond { get; set; }
+    public string AntecedentState { get; set; } = string.Empty;
+    public string DroughtContext { get; set; } = string.Empty;
+    public double? FireWeatherIndex { get; set; }
+    public double? KeetchByramDroughtIndex { get; set; }
+    public string FireIndexProvenance { get; set; } = string.Empty;
+    public string CandidateParameterSetVersion { get; set; } = string.Empty;
+    public string Provenance { get; set; } = string.Empty;
+    public Guid? LastSourceEventId { get; set; }
+    public DateTimeOffset LastUpdatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+
+    public Control.AreaRecord? Area { get; set; }
+    public Control.GridCellRecord? GridCell { get; set; }
+    public Control.SensorNodeRecord? SensorNode { get; set; }
+    public Control.SimulationRunRecord? SimulationRun { get; set; }
+    public Control.ConfigurationVersionRecord? ConfigurationVersion { get; set; }
+}
+
 public sealed class CellOperationalStateRecord
 {
     public Guid Id { get; set; }
@@ -95,6 +127,9 @@ public sealed class AreaOperationalStateRecord
     public string Severity { get; set; } = string.Empty;
     public string? Summary { get; set; }
     public int AssessmentCount { get; set; }
+    public string PendingAlertState { get; set; } = string.Empty;
+    public int PendingAlertCycles { get; set; }
+    public DateTimeOffset? AlertCooldownUntil { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
     public Control.AreaRecord? Area { get; set; }

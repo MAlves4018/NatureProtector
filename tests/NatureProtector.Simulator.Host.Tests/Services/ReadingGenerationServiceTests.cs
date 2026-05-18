@@ -113,6 +113,80 @@ public sealed class ReadingGenerationServiceTests
     }
 
     [Fact]
+    public void GenerateObservation_CreatesTruthSnapshotBeforeLocalObservation()
+    {
+        var sensor = CreateSensor(SensorType.Temperature, "Sensor-01");
+        var context = CreateContext(sensors: [sensor], failureRate: 0.0);
+        var runId = Guid.NewGuid();
+
+        var observation = _service.GenerateObservation(
+            context,
+            simulationRunId: runId,
+            sensor: sensor,
+            cycleIndex: 1,
+            eventTime: context.StartTimestamp,
+            random: new Random(77));
+
+        Assert.NotEqual(Guid.Empty, observation.TruthSnapshot.Id);
+        Assert.Equal(observation.TruthSnapshot.Id, observation.TruthSnapshotId);
+        Assert.Equal(runId, observation.TruthSnapshot.SimulationRunId);
+        Assert.Equal(context.Scenario.Id, observation.TruthSnapshot.ScenarioId);
+        Assert.Equal(context.AreaId, observation.TruthSnapshot.AreaId);
+        Assert.Equal(sensor.Id, observation.TruthSnapshot.SensorId);
+        Assert.Equal(context.StartTimestamp, observation.TruthSnapshot.LogicalTimestamp);
+        Assert.False(observation.IsMissing);
+    }
+
+    [Fact]
+    public void LocalObservation_PreservesTruthSnapshotProvenanceInPublishedPayload()
+    {
+        var sensor = CreateSensor(SensorType.Humidity, "Sensor-H");
+        var context = CreateContext(sensors: [sensor], failureRate: 0.0);
+        var runId = Guid.NewGuid();
+
+        var observation = _service.GenerateObservation(
+            context,
+            simulationRunId: runId,
+            sensor: sensor,
+            cycleIndex: 2,
+            eventTime: context.StartTimestamp.AddSeconds(10),
+            random: new Random(99));
+
+        var envelope = _service.CreateEnvelope(observation);
+
+        Assert.Equal(observation.TruthSnapshot.SimulationRunId, envelope.Payload.SimulationRunId);
+        Assert.Equal(observation.TruthSnapshot.SensorId, envelope.Payload.SensorId);
+        Assert.Equal(observation.TruthSnapshot.SensorName, envelope.Payload.SensorName);
+        Assert.Equal(observation.TruthSnapshot.MetricType, envelope.Payload.MetricType);
+        Assert.Equal(observation.TruthSnapshot.Unit, envelope.Payload.Unit);
+        Assert.Equal(observation.ObservedValue, envelope.Payload.Value);
+        Assert.Equal(observation.Latitude, envelope.Payload.Latitude);
+        Assert.Equal(observation.Longitude, envelope.Payload.Longitude);
+        Assert.Equal(EventTypes.SensorReadingProduced, envelope.EventType);
+    }
+
+    [Fact]
+    public void LocalObservation_AsMissing_CannotBeConvertedToPayload()
+    {
+        var sensor = CreateSensor(SensorType.Wind, "Sensor-W");
+        var context = CreateContext(sensors: [sensor], failureRate: 0.0);
+        var observation = _service.GenerateObservation(
+            context,
+            simulationRunId: Guid.NewGuid(),
+            sensor: sensor,
+            cycleIndex: 0,
+            eventTime: context.StartTimestamp,
+            random: new Random(12));
+
+        var missing = observation.AsMissing("missing-readings");
+
+        Assert.True(missing.IsMissing);
+        Assert.Equal("missing-readings", missing.DegradationProfile);
+        Assert.Equal(observation.TruthSnapshot.Id, missing.TruthSnapshot.Id);
+        Assert.Throws<InvalidOperationException>(() => _service.CreateEnvelope(missing));
+    }
+
+    [Fact]
     public void GenerateReading_Throws_WhenSensorIsNull()
     {
         var ex = Assert.Throws<ArgumentNullException>(() => _service.GenerateReading(
@@ -285,13 +359,82 @@ public sealed class ReadingGenerationServiceTests
             second.Select(x => x.CorrelationId).ToArray());
     }
 
+    [Fact]
+    public void GenerateObservations_ProducesDeterministicPhysicalSequence_ForSameSeed()
+    {
+        var context = CreateContext(
+            sensors:
+            [
+                CreateSensor(SensorType.Temperature, "Sensor-T"),
+                CreateSensor(SensorType.Humidity, "Sensor-H"),
+                CreateSensor(SensorType.Wind, "Sensor-W")
+            ],
+            failureRate: 0.0);
+        var runId = Guid.NewGuid();
+
+        var first = _service.GenerateObservations(
+            context,
+            simulationRunId: runId,
+            cycleIndex: 2,
+            eventTime: context.StartTimestamp,
+            random: new Random(20260518));
+
+        var second = _service.GenerateObservations(
+            context,
+            simulationRunId: runId,
+            cycleIndex: 2,
+            eventTime: context.StartTimestamp,
+            random: new Random(20260518));
+
+        Assert.Equal(
+            first.Select(x => x.TruthSnapshot.PhysicalValue).ToArray(),
+            second.Select(x => x.TruthSnapshot.PhysicalValue).ToArray());
+        Assert.Equal(
+            first.Select(x => x.TruthSnapshot.MetricType).ToArray(),
+            second.Select(x => x.TruthSnapshot.MetricType).ToArray());
+    }
+
+    [Fact]
+    public void GenerateObservations_DoesNotApplyMissingReadingsToTruthSnapshots()
+    {
+        var sensors = new[]
+        {
+            CreateSensor(SensorType.Temperature, "Sensor-T"),
+            CreateSensor(SensorType.Humidity, "Sensor-H")
+        };
+        var baseline = CreateContext(sensors: sensors, failureRate: 0.0, degradationProfile: "none");
+        var degraded = CreateContext(sensors: sensors, failureRate: 0.0, degradationProfile: "missing-readings");
+        var runId = Guid.NewGuid();
+
+        var baselineObservations = _service.GenerateObservations(
+            baseline,
+            simulationRunId: runId,
+            cycleIndex: 3,
+            eventTime: baseline.StartTimestamp,
+            random: new Random(4242));
+
+        var degradedObservations = _service.GenerateObservations(
+            degraded,
+            simulationRunId: runId,
+            cycleIndex: 3,
+            eventTime: degraded.StartTimestamp,
+            random: new Random(4242));
+
+        Assert.Equal(baselineObservations.Count, degradedObservations.Count);
+        Assert.Equal(
+            baselineObservations.Select(x => x.TruthSnapshot.PhysicalValue).ToArray(),
+            degradedObservations.Select(x => x.TruthSnapshot.PhysicalValue).ToArray());
+        Assert.All(degradedObservations, observation => Assert.False(observation.IsMissing));
+    }
+
     private static SimulationContext CreateContext(
         IReadOnlyCollection<Sensor> sensors,
         double? baseTemperature = 31.0,
         double? baseHumidity = 33.0,
         double? baseWindSpeed = 7.5,
         double failureRate = 0.05,
-        double noiseLevel = 0.10)
+        double noiseLevel = 0.10,
+        string? degradationProfile = null)
     {
         var scenario = new Scenario(
             id: Guid.NewGuid(),
@@ -311,7 +454,25 @@ public sealed class ReadingGenerationServiceTests
             sensors: sensors,
             startTimestamp: new DateTimeOffset(2026, 4, 6, 12, 0, 0, TimeSpan.Zero),
             interval: TimeSpan.FromSeconds(1),
-            numberOfCycles: 3);
+            numberOfCycles: 3,
+            runOverrides: degradationProfile is null
+                ? null
+                : new SimulationRunOverridesSnapshot(
+                    Requested: new SimulationRunOverridesRequested(
+                        SensorCount: sensors.Count,
+                        NumberOfCycles: 3,
+                        IntervalSeconds: 1,
+                        Seed: null,
+                        DegradationProfile: degradationProfile,
+                        OrchestratorCorrelationId: "tests"),
+                    Resolved: new SimulationRunOverridesResolved(
+                        SensorCount: sensors.Count,
+                        NumberOfCycles: 3,
+                        IntervalSeconds: 1,
+                        PreferredSeed: null,
+                        DegradationProfile: degradationProfile,
+                        OrchestratorCorrelationId: "tests",
+                        SelectedSensorNames: sensors.Select(sensor => sensor.Name).ToArray())));
     }
 
     private static Sensor CreateSensor(SensorType sensorType, string name, bool isActive = true)

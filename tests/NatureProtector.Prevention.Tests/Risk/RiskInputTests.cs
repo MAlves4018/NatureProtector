@@ -35,8 +35,85 @@ public sealed class RiskInputTests
         Assert.Equal(reading.EventTime, input.EventTime);
         Assert.Equal(RiskInputStatus.CompleteEligible, input.InputStatus);
         Assert.Equal(RiskEligibilityReason.Eligible, input.EligibilityReason);
+        var source = Assert.Single(input.SourceReadings);
+        Assert.Equal(reading.EventId, source.EventId);
+        Assert.Equal(reading.Value, source.Value);
+        Assert.Equal(33.4, input.Metrics.TemperatureCelsius);
+        Assert.Null(input.Metrics.RelativeHumidityPercent);
+        Assert.Equal(input.EventTime, input.ValidFrom);
+        Assert.Equal(input.EventTime, input.ValidTo);
         Assert.Empty(input.QualityFlags);
         Assert.Empty(input.ClassifierResults);
+    }
+
+    [Fact]
+    public void FromNormalizedReading_WithDailyState_AttachesContextWithoutResultFields()
+    {
+        var gridCellId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var configurationVersionId = Guid.NewGuid();
+        var reading = CreateReading();
+        var dailyState = new DailyCellState(
+            areaId: reading.AreaId,
+            sensorId: reading.SensorId,
+            day: reading.EventTime,
+            antecedentState: "runtime-observed",
+            candidateParameterSetVersion: "Candidate Parameter Set V1.0",
+            provenance: "test",
+            lastUpdatedAt: reading.EventTime,
+            maxTemperatureCelsius: 31.0,
+            lastSourceEventId: reading.EventId,
+            gridCellId: gridCellId,
+            simulationRunId: runId,
+            configurationVersionId: configurationVersionId,
+            latestHumidityPercent: 35.0,
+            latestWindSpeedMetersPerSecond: 7.0,
+            fireWeatherIndex: 65.377,
+            keetchByramDroughtIndex: 650.106,
+            fireIndexProvenance: "imported_reference");
+
+        var input = RiskInput.FromNormalizedReading(
+            reading,
+            RiskEligibilityResult.Eligible,
+            dailyState,
+            runId,
+            gridCellId,
+            configurationVersionId);
+
+        Assert.Equal(runId, input.SimulationRunId);
+        Assert.Equal(gridCellId, input.GridCellId);
+        Assert.Equal(configurationVersionId, input.ConfigurationVersionId);
+        Assert.Equal(DailyCellStateStatus.Present, input.DailyCellStateStatus);
+        Assert.Same(dailyState, input.DailyCellState);
+        Assert.True(input.Metrics.IsCompleteV1);
+        Assert.Equal(gridCellId, input.TerritorialContext.GridCellId);
+        Assert.Equal(dailyState.FireWeatherIndex, input.FireWeatherIndexContext.FireWeatherIndex);
+        Assert.Equal(dailyState.KeetchByramDroughtIndex, input.FireWeatherIndexContext.KeetchByramDroughtIndex);
+        Assert.Equal(dailyState.FireIndexProvenance, input.FireWeatherIndexContext.Provenance);
+        Assert.DoesNotContain(
+            typeof(RiskInput).GetProperties().Select(property => property.Name),
+            name => name is "BaseRisk" or "AdjustedScore" or "RiskScore" or "RiskLevel" or "AlertState" or "OperationalProjection");
+    }
+
+    [Fact]
+    public void FromNormalizedReading_WithoutDailyState_MarksMissingContextExplicitly()
+    {
+        var reading = CreateReading();
+
+        var input = RiskInput.FromNormalizedReading(
+            reading,
+            RiskEligibilityResult.Eligible,
+            dailyCellState: null,
+            simulationRunId: Guid.NewGuid(),
+            gridCellId: Guid.NewGuid(),
+            configurationVersionId: Guid.NewGuid());
+
+        Assert.Equal(DailyCellStateStatus.Missing, input.DailyCellStateStatus);
+        Assert.Null(input.DailyCellState);
+        Assert.False(input.FireWeatherIndexContext.HasAnyIndex);
+        Assert.Equal("absent", input.FireWeatherIndexContext.Provenance);
+        Assert.Contains(RiskInput.MissingDailyCellStateFlag, input.QualityFlags);
+        Assert.Contains(QualityFlag.DailyCellStateMissing, input.TypedQualityFlags);
     }
 
     [Fact]

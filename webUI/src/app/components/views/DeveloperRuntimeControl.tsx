@@ -6,6 +6,7 @@ import {
   RuntimeDiagnosticDefinitionResponse,
   RuntimeDiagnosticResultResponse,
   RuntimeResetResponse,
+  RuntimeRunAuditResponse,
   RuntimeRunStartRequest,
   RuntimeRunStartResponse,
   RuntimeSummaryResponse,
@@ -21,6 +22,7 @@ export function DeveloperRuntimeControl({ isDark }: { isDark: boolean }) {
   const [areaCode, setAreaCode] = useState(DEFAULT_AREA);
   const [recentMinutes, setRecentMinutes] = useState(30);
   const [summary, setSummary] = useState<RuntimeSummaryResponse | null>(null);
+  const [runAudit, setRunAudit] = useState<RuntimeRunAuditResponse | null>(null);
   const [diagnostics, setDiagnostics] = useState<RuntimeDiagnosticDefinitionResponse[]>([]);
   const [selectedDiagnostic, setSelectedDiagnostic] = useState<string>("runtime-table-counts");
   const [diagnosticResult, setDiagnosticResult] = useState<RuntimeDiagnosticResultResponse | null>(null);
@@ -67,6 +69,11 @@ export function DeveloperRuntimeControl({ isDark }: { isDark: boolean }) {
         api.getAreaSensorNodes(areaCode),
       ]);
       setSummary(summaryResult);
+      if (summaryResult.latestRun?.id) {
+        setRunAudit(await api.getRuntimeRunAudit(summaryResult.latestRun.id));
+      } else {
+        setRunAudit(null);
+      }
       setDiagnostics(catalog.diagnostics);
       setScenarios(areaScenarios);
       setSensorNodes(sensors);
@@ -160,8 +167,38 @@ export function DeveloperRuntimeControl({ isDark }: { isDark: boolean }) {
         <Metric colors={c} title="RabbitMQ" value="not exposed" detail="no management adapter" />
         <Metric colors={c} title="Prevention.Host" value="not exposed" detail="no heartbeat yet" />
         <Metric colors={c} title="Latest run" value={summary?.latestRun?.status ?? "none"} detail={summary?.latestRun?.scenarioCode ?? "no run"} />
+        <Metric colors={c} title="Missing events" value={runAudit?.missingEvents ?? "n/a"} detail="latest run audit" />
+        <Metric colors={c} title="Risk assessments" value={runAudit?.riskAssessments ?? "n/a"} detail="latest run audit" />
         <Metric colors={c} title="Freshness" value={summary?.freshness ? `${summary.freshness.freshCount}/${summary.freshness.staleCount}/${summary.freshness.expiredCount}` : "n/a"} detail="fresh/stale/expired" />
       </section>
+
+      {runAudit && (
+        <Panel colors={c} accent="#2563eb">
+          <SectionTitle title="Latest Run Audit" subtitle={`${runAudit.run.scenarioCode} · ${runAudit.run.runOverrides?.resolved?.degradationProfile ?? "degradation unknown"}`} />
+          <ResultTable
+            colors={c}
+            result={{
+              id: "latest-run-audit",
+              title: "Latest run audit",
+              description: "Persisted run-scoped audit summary",
+              columns: ["metric", "value"],
+              rows: [
+                { metric: "simulationRunId", value: runAudit.run.id },
+                { metric: "expectedEvents", value: String(runAudit.expectedEvents ?? "") },
+                { metric: "acceptedReadings", value: String(runAudit.acceptedReadings) },
+                { metric: "missingEvents", value: String(runAudit.missingEvents ?? "") },
+                { metric: "rejected", value: String(runAudit.rejected) },
+                { metric: "quarantined", value: String(runAudit.quarantined) },
+                { metric: "riskAssessments", value: String(runAudit.riskAssessments) },
+                { metric: "qualityFlags", value: runAudit.qualityFlagsSummary.map(item => `${item.status}:${item.count}`).join(", ") },
+                { metric: "eligibility", value: runAudit.eligibilitySummary.map(item => `${item.status}:${item.count}`).join(", ") },
+                { metric: "areaSnapshot", value: runAudit.areaSnapshot ? `${runAudit.areaSnapshot.aggregateRiskLevel} ${runAudit.areaSnapshot.aggregateRiskScore}` : "" },
+              ],
+              limitations: runAudit.limitations.map(item => item.message),
+            }}
+          />
+        </Panel>
+      )}
 
       <Panel colors={c}>
         <SectionTitle title="Diagnostics" subtitle="Buttons execute fixed backend diagnostics. No free-form SQL is accepted." />

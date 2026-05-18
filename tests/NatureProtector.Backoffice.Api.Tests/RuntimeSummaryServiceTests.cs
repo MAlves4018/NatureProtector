@@ -84,6 +84,32 @@ public sealed class RuntimeSummaryServiceTests
         Assert.Contains(summary.Warnings, warning => warning.Contains(seed.RunId.ToString(), StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task RuntimeRunAudit_WithPersistedRuntimeData_ReturnsRunScopedAudit()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await SeedRuntimeAsync(scope, metadataJson: ValidMetadataJson);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var audit = await service.GetRuntimeRunAuditAsync(seed.RunId, CancellationToken.None);
+
+        Assert.NotNull(audit);
+        Assert.Equal(seed.RunId, audit!.Run.Id);
+        Assert.Equal("scenario_b", audit.Run.ScenarioCode);
+        Assert.Equal("none", audit.Run.RunOverrides!.Resolved!.DegradationProfile);
+        Assert.Equal(30, audit.ExpectedEvents);
+        Assert.Equal(2, audit.AcceptedReadings);
+        Assert.Equal(28, audit.MissingEvents);
+        Assert.Equal(2, audit.RiskAssessments);
+        Assert.Contains(audit.QualityFlagsSummary, item => item.Status == "Delayed" && item.Count == 1);
+        Assert.Contains(audit.QualityFlagsSummary, item => item.Status == "Missing" && item.Count == 28);
+        Assert.Contains(audit.EligibilitySummary, item => item.Status == "CompleteEligible" && item.Count == 1);
+        Assert.Contains(audit.EligibilitySummary, item => item.Status == "PartialButUsable" && item.Count == 1);
+        Assert.NotNull(audit.AreaSnapshot);
+        Assert.Equal(2, audit.AreaSnapshot!.AssessmentCount);
+        Assert.Contains(audit.Limitations, item => item.Code == "diagnostics_do_not_recalculate_risk");
+    }
+
     private static async Task<SeededRuntimeIds> SeedRuntimeAsync(
         SqliteControlDbContextScope scope,
         string metadataJson)
@@ -99,6 +125,8 @@ public sealed class RuntimeSummaryServiceTests
         var inboxEventId = Guid.Parse("80000000-0000-0000-0000-000000000001");
         var retryInboxEventId = Guid.Parse("80000000-0000-0000-0000-000000000002");
         var areaStateId = Guid.Parse("90000000-0000-0000-0000-000000000001");
+        var acceptedEventId = Guid.Parse("81000000-0000-0000-0000-000000000001");
+        var delayedEventId = Guid.Parse("81000000-0000-0000-0000-000000000002");
 
         await scope.SeedAsync(async dbContext =>
         {
@@ -192,7 +220,7 @@ public sealed class RuntimeSummaryServiceTests
                     AreaId = areaId,
                     EventTime = now.AddMinutes(-8),
                     ReceivedAt = now.AddMinutes(-8),
-                    PayloadJson = "{}",
+                    PayloadJson = $$"""{"SimulationRunId":"{{runId}}"}""",
                     EnvelopeJson = "{}",
                     Status = InboxEventStatus.Processed,
                     AttemptCount = 1,
@@ -210,12 +238,48 @@ public sealed class RuntimeSummaryServiceTests
                     AreaId = areaId,
                     EventTime = now.AddMinutes(-7),
                     ReceivedAt = now.AddMinutes(-7),
-                    PayloadJson = "{}",
+                    PayloadJson = $$"""{"SimulationRunId":"{{runId}}"}""",
                     EnvelopeJson = "{}",
                     Status = InboxEventStatus.RetryPending,
                     AttemptCount = 2,
                     LastAttemptAt = now.AddMinutes(-7),
                     LastErrorCode = "semantic_error"
+                });
+
+            dbContext.AcceptedReadingLogs.AddRange(
+                new AcceptedReadingLogRecord
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = acceptedEventId,
+                    AreaId = areaId,
+                    SensorId = sensorId,
+                    MetricType = "Temperature",
+                    MeasurementUnit = "Celsius",
+                    OperationalState = "Nominal",
+                    Value = 31.0,
+                    EventTime = now.AddMinutes(-8),
+                    Producer = "tests",
+                    CorrelationId = "corr-123",
+                    PayloadJson = $$"""{"SimulationRunId":"{{runId}}"}""",
+                    EnvelopeJson = "{}",
+                    CreatedAt = now.AddMinutes(-8)
+                },
+                new AcceptedReadingLogRecord
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = delayedEventId,
+                    AreaId = areaId,
+                    SensorId = sensorId,
+                    MetricType = "Humidity",
+                    MeasurementUnit = "Percent",
+                    OperationalState = "Delayed",
+                    Value = 20.0,
+                    EventTime = now.AddMinutes(-7),
+                    Producer = "tests",
+                    CorrelationId = "corr-124",
+                    PayloadJson = $$"""{"SimulationRunId":"{{runId}}"}""",
+                    EnvelopeJson = "{}",
+                    CreatedAt = now.AddMinutes(-7)
                 });
 
             dbContext.ProcessingAttempts.AddRange(
@@ -271,26 +335,43 @@ public sealed class RuntimeSummaryServiceTests
                 {
                     Id = Guid.NewGuid(),
                     AreaId = areaId,
+                    SimulationRunId = runId,
                     SensorId = sensorId,
                     GridCellId = cellId,
-                    SourceEventId = Guid.NewGuid(),
+                    SourceEventId = acceptedEventId,
                     Timestamp = now.AddMinutes(-8),
                     RiskScore = 0.42,
                     RiskLevel = "Medium",
+                    ExplanationSummary = "InputStatus=CompleteEligible; synthetic",
                     CreatedAt = now.AddMinutes(-8)
                 },
                 new RiskAssessmentLogRecord
                 {
                     Id = Guid.NewGuid(),
                     AreaId = areaId,
+                    SimulationRunId = runId,
                     SensorId = sensorId,
                     GridCellId = cellId,
-                    SourceEventId = Guid.NewGuid(),
+                    SourceEventId = delayedEventId,
                     Timestamp = now.AddMinutes(-7),
                     RiskScore = 0.88,
                     RiskLevel = "VeryHigh",
+                    ExplanationSummary = "InputStatus=PartialButUsable; synthetic",
                     CreatedAt = now.AddMinutes(-7)
                 });
+
+            dbContext.AreaRiskSnapshotLogs.Add(new AreaRiskSnapshotLogRecord
+            {
+                Id = Guid.NewGuid(),
+                AreaId = areaId,
+                SimulationRunId = runId,
+                SnapshotTimestamp = now.AddMinutes(-7),
+                AggregateRiskScore = 0.88,
+                AggregateRiskLevel = "VeryHigh",
+                Summary = "Synthetic run snapshot",
+                AssessmentCount = 2,
+                CreatedAt = now.AddMinutes(-7)
+            });
 
             dbContext.AreaOperationalStates.Add(new AreaOperationalStateRecord
             {

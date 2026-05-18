@@ -3,6 +3,7 @@ using NatureProtector.Core.Scenarios;
 using NatureProtector.Shared.Observability;
 using NatureProtector.Simulator.Host.Configuration;
 using NatureProtector.Simulator.Host.Publishing;
+using NatureProtector.Simulator.Host.Readings;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
@@ -114,24 +115,27 @@ public sealed class SimulationRunner(
                 cycleActivity?.SetTag(TelemetryTags.SimulationRunId, run.Id);
                 cycleActivity?.SetTag(TelemetryTags.AreaId, context.AreaId);
                 cycleActivity?.SetTag(TelemetryTags.ScenarioId, context.Scenario.Id);
-                var envelopes = readingGenerationService.GenerateBatch(
+                var observations = readingGenerationService.GenerateObservations(
                     context,
                     run.Id,
                     cycleIndex,
                     eventTime,
                     random);
-                var publishableEnvelopes = ApplyOperationalDegradation(
+                var publishableObservations = ApplyOperationalDegradation(
                     context,
-                    envelopes,
+                    observations,
                     cycleIndex);
+                var publishableEnvelopes = publishableObservations
+                    .Select(readingGenerationService.CreateEnvelope)
+                    .ToArray();
                 var publishStopwatch = Stopwatch.StartNew();
-                SimulatorHostTelemetry.PublishBatchSize.Record(publishableEnvelopes.Count);
+                SimulatorHostTelemetry.PublishBatchSize.Record(publishableEnvelopes.Length);
 
-                if (publishableEnvelopes.Count != envelopes.Count)
+                if (publishableObservations.Count != observations.Count)
                 {
                     logger.LogInformation(
                         "Operational degradation omitted {MissingCount} reading(s) in cycle {CycleNumber}. Profile={DegradationProfile}",
-                        envelopes.Count - publishableEnvelopes.Count,
+                        observations.Count - publishableObservations.Count,
                         cycleIndex + 1,
                         context.RunOverrides?.Resolved.DegradationProfile);
                 }
@@ -200,26 +204,29 @@ public sealed class SimulationRunner(
         }
     }
 
-    private static IReadOnlyCollection<Shared.Messaging.EventEnvelope<Shared.Contracts.Readings.SensorReadingProducedPayload>> ApplyOperationalDegradation(
+    private static IReadOnlyCollection<LocalObservation> ApplyOperationalDegradation(
         SimulationContext context,
-        IReadOnlyCollection<Shared.Messaging.EventEnvelope<Shared.Contracts.Readings.SensorReadingProducedPayload>> envelopes,
+        IReadOnlyCollection<LocalObservation> observations,
         int cycleIndex)
     {
         var profile = context.RunOverrides?.Resolved.DegradationProfile;
         if (string.IsNullOrWhiteSpace(profile) ||
             string.Equals(profile, "none", StringComparison.OrdinalIgnoreCase))
         {
-            return envelopes;
+            return observations;
         }
 
         if (!string.Equals(profile, "missing-readings", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(profile, "deterministic-missing-readings", StringComparison.OrdinalIgnoreCase))
         {
-            return envelopes;
+            return observations;
         }
 
-        return envelopes
-            .Where(envelope => !ShouldOmitReading(envelope.Payload.SensorId, cycleIndex))
+        return observations
+            .Select(observation => ShouldOmitReading(observation.TruthSnapshot.SensorId, cycleIndex)
+                ? observation.AsMissing(profile)
+                : observation)
+            .Where(observation => !observation.IsMissing)
             .ToArray();
     }
 

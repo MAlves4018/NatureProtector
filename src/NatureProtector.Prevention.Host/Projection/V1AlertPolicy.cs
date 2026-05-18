@@ -13,6 +13,7 @@ internal static class V1AlertPolicy
     public const double WarningCloseThreshold = 0.50;
     public const double AlarmOpenThreshold = 0.80;
     public const double AlarmCloseThreshold = 0.70;
+    public const int PersistenceCycles = 2;
 
     public static V1AlertState InferCurrentState(
         bool hasOpenAlert,
@@ -63,6 +64,52 @@ internal static class V1AlertPolicy
         };
     }
 
+    public static V1AlertDecision EvaluateTransition(
+        V1AlertState currentState,
+        double adjustedScore,
+        V1AlertState pendingState,
+        int pendingCycles,
+        DateTimeOffset evaluatedAt,
+        DateTimeOffset? cooldownUntil,
+        TimeSpan interval)
+    {
+        var immediateState = EvaluateTransition(currentState, adjustedScore);
+
+        if (currentState is V1AlertState.Warning or V1AlertState.Alarm)
+        {
+            var nextCooldown = immediateState == V1AlertState.None
+                ? evaluatedAt.Add(ResolveCooldown(interval))
+                : cooldownUntil;
+            return new V1AlertDecision(immediateState, V1AlertState.None, 0, nextCooldown);
+        }
+
+        if (immediateState == V1AlertState.None)
+        {
+            return new V1AlertDecision(V1AlertState.None, V1AlertState.None, 0, cooldownUntil);
+        }
+
+        if (cooldownUntil.HasValue && evaluatedAt < cooldownUntil.Value)
+        {
+            return new V1AlertDecision(V1AlertState.None, immediateState, 0, cooldownUntil);
+        }
+
+        var nextPendingCycles = pendingState == immediateState
+            ? pendingCycles + 1
+            : 1;
+        var nextState = nextPendingCycles >= PersistenceCycles
+            ? immediateState
+            : V1AlertState.None;
+        var nextPendingState = nextState == V1AlertState.None ? immediateState : V1AlertState.None;
+        var retainedPendingCycles = nextState == V1AlertState.None ? nextPendingCycles : 0;
+
+        return new V1AlertDecision(nextState, nextPendingState, retainedPendingCycles, cooldownUntil);
+    }
+
+    public static TimeSpan ResolveCooldown(TimeSpan interval)
+    {
+        return TimeSpan.FromSeconds(Math.Max(3 * interval.TotalSeconds, 180));
+    }
+
     private static void ValidateScore(double score, string paramName)
     {
         if (double.IsNaN(score) || double.IsInfinity(score))
@@ -82,3 +129,9 @@ internal static class V1AlertPolicy
         }
     }
 }
+
+internal sealed record V1AlertDecision(
+    V1AlertState State,
+    V1AlertState PendingState,
+    int PendingCycles,
+    DateTimeOffset? CooldownUntil);

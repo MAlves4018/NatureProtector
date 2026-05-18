@@ -11,8 +11,9 @@ using NatureProtector.Core.Primitives;
  *   alerts and operator-facing communication.
  *
  * Design considerations:
- * - The current aggregation strategy is intentionally simple: the aggregate score
- *   is the arithmetic mean of the provided assessment scores.
+ * - The V1 candidate aggregation strategy is 0.70 * p80 + 0.30 * max, so
+ *   localised high-risk cells remain visible in the area view without using the
+ *   maximum alone.
  * - The aggregate level is derived from the aggregate score, ensuring consistency
  *   with the same score-to-level mapping used elsewhere in the domain.
  * - Summary is optional and can be generated either upstream or through the
@@ -137,17 +138,31 @@ public sealed class AreaRiskSnapshot
                 nameof(assessments));
         }
 
-        var aggregateScore = items.Average(item => item.RiskScore);
+        var scores = items
+            .Select(item => item.RiskScore)
+            .Order()
+            .ToList();
+        var p80 = CalculateNearestRankPercentile(scores, 0.80);
+        var max = scores[^1];
+        var aggregateScore = (0.70 * p80) + (0.30 * max);
         var highOrAboveCount = items.Count(item => item.RiskLevel.IsHighOrAbove());
 
         var summary =
             $"Aggregated from {items.Count} assessments; " +
-            $"{highOrAboveCount} at High or above.";
+            $"{highOrAboveCount} at High or above; " +
+            $"AreaRisk=0.70*p80({p80:F2})+0.30*max({max:F2}).";
 
         return new AreaRiskSnapshot(
             id: id,
             timestamp: timestamp,
             aggregateRiskScore: aggregateScore,
             summary: summary);
+    }
+
+    private static double CalculateNearestRankPercentile(IReadOnlyList<double> sortedScores, double percentile)
+    {
+        var rank = (int)Math.Ceiling(percentile * sortedScores.Count);
+        var index = Math.Clamp(rank - 1, 0, sortedScores.Count - 1);
+        return sortedScores[index];
     }
 }

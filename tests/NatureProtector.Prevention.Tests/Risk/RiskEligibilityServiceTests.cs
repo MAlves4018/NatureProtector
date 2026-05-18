@@ -144,6 +144,25 @@ public sealed class RiskEligibilityServiceTests
     }
 
     [Fact]
+    public async Task PartialButUsable_WhenTemporalClassifierMarksStale()
+    {
+        var service = new RiskEligibilityService();
+        var eventTime = new DateTimeOffset(2026, 4, 30, 15, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(
+            eventTime: eventTime,
+            ingestTime: eventTime.AddSeconds(360));
+
+        var result = await service.EvaluateAsync(reading, CancellationToken.None);
+
+        Assert.True(result.IsEligible);
+        Assert.Equal(RiskInputStatus.PartialButUsable, result.Status);
+        Assert.Contains("Delayed", result.QualityFlags);
+        Assert.Contains("Stale", result.QualityFlags);
+        var classifier = Assert.Single(result.ClassifierResults);
+        Assert.Equal(ReadingTemporalClassifier.ClassifierName, classifier.ClassifierName);
+    }
+
+    [Fact]
     public void EligibleSingleton_HasExpectedReasonCode_AndStatus()
     {
         var result = RiskEligibilityResult.Eligible;
@@ -224,8 +243,11 @@ public sealed class RiskEligibilityServiceTests
         Guid? areaId = null,
         SensorOperationalState operationalState = SensorOperationalState.Nominal,
         SensorMetricType metricType = SensorMetricType.Temperature,
-        MeasurementUnit unit = MeasurementUnit.Celsius)
+        MeasurementUnit unit = MeasurementUnit.Celsius,
+        DateTimeOffset? eventTime = null,
+        DateTimeOffset? ingestTime = null)
     {
+        var resolvedEventTime = eventTime ?? new DateTimeOffset(2026, 4, 30, 15, 0, 0, TimeSpan.Zero);
         return new NormalizedReading(
             EventId: Guid.NewGuid(),
             CorrelationId: "corr-eligibility",
@@ -238,7 +260,7 @@ public sealed class RiskEligibilityServiceTests
             Latitude: 39.78,
             Longitude: -7.88,
             OperationalState: operationalState,
-            EventTime: new DateTimeOffset(2026, 4, 30, 15, 0, 0, TimeSpan.Zero),
-            IngestTime: new DateTimeOffset(2026, 4, 30, 15, 0, 3, TimeSpan.Zero));
+            EventTime: resolvedEventTime,
+            IngestTime: ingestTime ?? resolvedEventTime.AddSeconds(3));
     }
 }

@@ -139,7 +139,7 @@ public class AreaRiskSnapshotTests
     }
 
     [Fact]
-    public void CreateFromAssessments_AggregatesAverageScore_AndBuildsSummary()
+    public void CreateFromAssessments_AggregatesP80AndMaxScore_AndBuildsSummary()
     {
         // Arrange
         var timestamp = DateTimeOffset.UtcNow;
@@ -151,8 +151,7 @@ public class AreaRiskSnapshotTests
             new RiskAssessment(Guid.NewGuid(), timestamp, 0.90)
         };
 
-        // Average = 0.633333333...
-        var expectedAverage = assessments.Average(a => a.RiskScore);
+        var expectedAreaRisk = 0.90;
 
         // Act
         var snapshot = AreaRiskSnapshot.CreateFromAssessments(
@@ -161,10 +160,11 @@ public class AreaRiskSnapshotTests
             assessments: assessments);
 
         // Assert
-        Assert.Equal(expectedAverage, snapshot.AggregateRiskScore, 6);
-        Assert.Equal(RiskLevelExtensions.FromScore(expectedAverage), snapshot.AggregateRiskLevel);
+        Assert.Equal(expectedAreaRisk, snapshot.AggregateRiskScore, 6);
+        Assert.Equal(RiskLevelExtensions.FromScore(expectedAreaRisk), snapshot.AggregateRiskLevel);
         Assert.NotNull(snapshot.Summary);
         Assert.Contains("Aggregated from 3 assessments", snapshot.Summary);
         Assert.Contains("2 at High or above", snapshot.Summary);
+        Assert.Contains("0.70*p80", snapshot.Summary);
     }
 }

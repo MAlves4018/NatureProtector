@@ -251,6 +251,7 @@ public sealed class DailyCellStateTests
     {
         var areaId = Guid.NewGuid();
         var sensorId = Guid.NewGuid();
+
         var firstInput = new RiskInput(
             AreaId: areaId,
             SensorId: sensorId,
@@ -259,6 +260,7 @@ public sealed class DailyCellStateTests
             Value: 25.0,
             Unit: MeasurementUnit.Celsius,
             EventTime: new DateTimeOffset(2026, 5, 12, 8, 0, 0, TimeSpan.Zero));
+
         var secondInput = new RiskInput(
             AreaId: areaId,
             SensorId: sensorId,
@@ -267,6 +269,7 @@ public sealed class DailyCellStateTests
             Value: 33.0,
             Unit: MeasurementUnit.Celsius,
             EventTime: new DateTimeOffset(2026, 5, 12, 16, 0, 0, TimeSpan.Zero));
+
         var state = DailyCellState.FromRiskInput(
             firstInput,
             antecedentState: "baseline",
@@ -282,48 +285,224 @@ public sealed class DailyCellStateTests
     }
 
     [Fact]
-    public void ApplyRiskInput_Throws_WhenAreaOrSensorOrDayDoNotMatch()
+    public void ApplyRiskInput_AllowsDifferentSensor_WhenAreaGridCellRunAndDayMatch()
     {
+        var areaId = Guid.NewGuid();
+        var humiditySensorId = Guid.NewGuid();
+        var temperatureSensorId = Guid.NewGuid();
+        var gridCellId = Guid.NewGuid();
+        var simulationRunId = Guid.NewGuid();
+        var configurationVersionId = Guid.NewGuid();
+
+        var humidityInput = CreateRiskInput(
+            areaId: areaId,
+            sensorId: humiditySensorId,
+            sourceEventId: Guid.NewGuid(),
+            metricType: SensorMetricType.Humidity,
+            value: 21.5,
+            unit: MeasurementUnit.Percent,
+            eventTime: new DateTimeOffset(2026, 5, 12, 8, 0, 0, TimeSpan.Zero),
+            gridCellId: gridCellId,
+            simulationRunId: simulationRunId,
+            configurationVersionId: configurationVersionId);
+
         var state = DailyCellState.FromRiskInput(
-            new RiskInput(
-                AreaId: Guid.NewGuid(),
-                SensorId: Guid.NewGuid(),
-                SourceEventId: Guid.NewGuid(),
-                MetricType: SensorMetricType.Temperature,
-                Value: 20.0,
-                Unit: MeasurementUnit.Celsius,
-                EventTime: new DateTimeOffset(2026, 5, 12, 8, 0, 0, TimeSpan.Zero)),
+            humidityInput,
             antecedentState: "baseline",
             candidateParameterSetVersion: "Candidate Parameter Set V1.0",
             provenance: "risk_input_v1");
 
-        var mismatchArea = new RiskInput(
-            AreaId: Guid.NewGuid(),
-            SensorId: state.SensorId,
-            SourceEventId: Guid.NewGuid(),
-            MetricType: SensorMetricType.Temperature,
-            Value: 21.0,
-            Unit: MeasurementUnit.Celsius,
-            EventTime: new DateTimeOffset(2026, 5, 12, 9, 0, 0, TimeSpan.Zero));
-        var mismatchSensor = new RiskInput(
-            AreaId: state.AreaId,
-            SensorId: Guid.NewGuid(),
-            SourceEventId: Guid.NewGuid(),
-            MetricType: SensorMetricType.Temperature,
-            Value: 21.0,
-            Unit: MeasurementUnit.Celsius,
-            EventTime: new DateTimeOffset(2026, 5, 12, 9, 0, 0, TimeSpan.Zero));
-        var mismatchDay = new RiskInput(
-            AreaId: state.AreaId,
-            SensorId: state.SensorId,
-            SourceEventId: Guid.NewGuid(),
-            MetricType: SensorMetricType.Temperature,
-            Value: 21.0,
-            Unit: MeasurementUnit.Celsius,
-            EventTime: new DateTimeOffset(2026, 5, 13, 0, 1, 0, TimeSpan.Zero));
+        var temperatureInput = CreateRiskInput(
+            areaId: areaId,
+            sensorId: temperatureSensorId,
+            sourceEventId: Guid.NewGuid(),
+            metricType: SensorMetricType.Temperature,
+            value: 32.0,
+            unit: MeasurementUnit.Celsius,
+            eventTime: new DateTimeOffset(2026, 5, 12, 9, 0, 0, TimeSpan.Zero),
+            gridCellId: gridCellId,
+            simulationRunId: simulationRunId,
+            configurationVersionId: configurationVersionId);
+
+        var updated = state.ApplyRiskInput(temperatureInput);
+
+        Assert.Equal(areaId, updated.AreaId);
+        Assert.Equal(gridCellId, updated.GridCellId);
+        Assert.Equal(simulationRunId, updated.SimulationRunId);
+        Assert.Equal(configurationVersionId, updated.ConfigurationVersionId);
+        Assert.Equal(temperatureSensorId, updated.SensorId);
+        Assert.Equal(temperatureInput.SourceEventId, updated.LastSourceEventId);
+        Assert.Equal(temperatureInput.EventTime, updated.LastUpdatedAt);
+        Assert.Equal(21.5, updated.LatestHumidityPercent);
+        Assert.Equal(32.0, updated.MaxTemperatureCelsius);
+    }
+
+    [Fact]
+    public void ApplyRiskInput_AccumulatesHumidityTemperatureAndWindSpeed()
+    {
+        var areaId = Guid.NewGuid();
+        var gridCellId = Guid.NewGuid();
+        var simulationRunId = Guid.NewGuid();
+        var configurationVersionId = Guid.NewGuid();
+
+        var humidityInput = CreateRiskInput(
+            areaId: areaId,
+            sensorId: Guid.NewGuid(),
+            sourceEventId: Guid.NewGuid(),
+            metricType: SensorMetricType.Humidity,
+            value: 22.5,
+            unit: MeasurementUnit.Percent,
+            eventTime: new DateTimeOffset(2026, 5, 12, 8, 0, 0, TimeSpan.Zero),
+            gridCellId: gridCellId,
+            simulationRunId: simulationRunId,
+            configurationVersionId: configurationVersionId);
+
+        var state = DailyCellState.FromRiskInput(
+            humidityInput,
+            antecedentState: "baseline",
+            candidateParameterSetVersion: "Candidate Parameter Set V1.0",
+            provenance: "risk_input_v1");
+
+        var temperatureInput = CreateRiskInput(
+            areaId: areaId,
+            sensorId: Guid.NewGuid(),
+            sourceEventId: Guid.NewGuid(),
+            metricType: SensorMetricType.Temperature,
+            value: 31.8,
+            unit: MeasurementUnit.Celsius,
+            eventTime: new DateTimeOffset(2026, 5, 12, 9, 0, 0, TimeSpan.Zero),
+            gridCellId: gridCellId,
+            simulationRunId: simulationRunId,
+            configurationVersionId: configurationVersionId);
+
+        var windInput = CreateRiskInput(
+            areaId: areaId,
+            sensorId: Guid.NewGuid(),
+            sourceEventId: Guid.NewGuid(),
+            metricType: SensorMetricType.WindSpeed,
+            value: 5.4,
+            unit: MeasurementUnit.MetersPerSecond,
+            eventTime: new DateTimeOffset(2026, 5, 12, 10, 0, 0, TimeSpan.Zero),
+            gridCellId: gridCellId,
+            simulationRunId: simulationRunId,
+            configurationVersionId: configurationVersionId);
+
+        var afterTemperature = state.ApplyRiskInput(temperatureInput);
+        var afterWind = afterTemperature.ApplyRiskInput(windInput);
+
+        Assert.Equal(22.5, afterWind.LatestHumidityPercent);
+        Assert.Equal(31.8, afterWind.MaxTemperatureCelsius);
+        Assert.Equal(5.4, afterWind.LatestWindSpeedMetersPerSecond);
+        Assert.Equal(windInput.SourceEventId, afterWind.LastSourceEventId);
+        Assert.Equal(windInput.EventTime, afterWind.LastUpdatedAt);
+        Assert.Equal(windInput.SensorId, afterWind.SensorId);
+    }
+
+    [Fact]
+    public void ApplyRiskInput_Throws_WhenAreaGridCellRunOrDayDoNotMatch()
+    {
+        var areaId = Guid.NewGuid();
+        var sensorId = Guid.NewGuid();
+        var gridCellId = Guid.NewGuid();
+        var simulationRunId = Guid.NewGuid();
+        var configurationVersionId = Guid.NewGuid();
+
+        var initialInput = CreateRiskInput(
+            areaId: areaId,
+            sensorId: sensorId,
+            sourceEventId: Guid.NewGuid(),
+            metricType: SensorMetricType.Humidity,
+            value: 20.0,
+            unit: MeasurementUnit.Percent,
+            eventTime: new DateTimeOffset(2026, 5, 12, 8, 0, 0, TimeSpan.Zero),
+            gridCellId: gridCellId,
+            simulationRunId: simulationRunId,
+            configurationVersionId: configurationVersionId);
+
+        var state = DailyCellState.FromRiskInput(
+            initialInput,
+            antecedentState: "baseline",
+            candidateParameterSetVersion: "Candidate Parameter Set V1.0",
+            provenance: "risk_input_v1");
+
+        var mismatchArea = CreateRiskInput(
+            areaId: Guid.NewGuid(),
+            sensorId: Guid.NewGuid(),
+            sourceEventId: Guid.NewGuid(),
+            metricType: SensorMetricType.Temperature,
+            value: 21.0,
+            unit: MeasurementUnit.Celsius,
+            eventTime: new DateTimeOffset(2026, 5, 12, 9, 0, 0, TimeSpan.Zero),
+            gridCellId: gridCellId,
+            simulationRunId: simulationRunId,
+            configurationVersionId: configurationVersionId);
+
+        var mismatchGridCell = CreateRiskInput(
+            areaId: areaId,
+            sensorId: Guid.NewGuid(),
+            sourceEventId: Guid.NewGuid(),
+            metricType: SensorMetricType.Temperature,
+            value: 21.0,
+            unit: MeasurementUnit.Celsius,
+            eventTime: new DateTimeOffset(2026, 5, 12, 9, 0, 0, TimeSpan.Zero),
+            gridCellId: Guid.NewGuid(),
+            simulationRunId: simulationRunId,
+            configurationVersionId: configurationVersionId);
+
+        var mismatchRun = CreateRiskInput(
+            areaId: areaId,
+            sensorId: Guid.NewGuid(),
+            sourceEventId: Guid.NewGuid(),
+            metricType: SensorMetricType.Temperature,
+            value: 21.0,
+            unit: MeasurementUnit.Celsius,
+            eventTime: new DateTimeOffset(2026, 5, 12, 9, 0, 0, TimeSpan.Zero),
+            gridCellId: gridCellId,
+            simulationRunId: Guid.NewGuid(),
+            configurationVersionId: configurationVersionId);
+
+        var mismatchDay = CreateRiskInput(
+            areaId: areaId,
+            sensorId: Guid.NewGuid(),
+            sourceEventId: Guid.NewGuid(),
+            metricType: SensorMetricType.Temperature,
+            value: 21.0,
+            unit: MeasurementUnit.Celsius,
+            eventTime: new DateTimeOffset(2026, 5, 13, 0, 1, 0, TimeSpan.Zero),
+            gridCellId: gridCellId,
+            simulationRunId: simulationRunId,
+            configurationVersionId: configurationVersionId);
 
         Assert.Throws<InvalidOperationException>(() => state.ApplyRiskInput(mismatchArea));
-        Assert.Throws<InvalidOperationException>(() => state.ApplyRiskInput(mismatchSensor));
+        Assert.Throws<InvalidOperationException>(() => state.ApplyRiskInput(mismatchGridCell));
+        Assert.Throws<InvalidOperationException>(() => state.ApplyRiskInput(mismatchRun));
         Assert.Throws<InvalidOperationException>(() => state.ApplyRiskInput(mismatchDay));
+    }
+
+    private static RiskInput CreateRiskInput(
+        Guid areaId,
+        Guid sensorId,
+        Guid sourceEventId,
+        SensorMetricType metricType,
+        double value,
+        MeasurementUnit unit,
+        DateTimeOffset eventTime,
+        Guid? gridCellId = null,
+        Guid? simulationRunId = null,
+        Guid? configurationVersionId = null)
+    {
+        return new RiskInput(
+            AreaId: areaId,
+            SensorId: sensorId,
+            SourceEventId: sourceEventId,
+            MetricType: metricType,
+            Value: value,
+            Unit: unit,
+            EventTime: eventTime)
+        {
+            GridCellId = gridCellId,
+            SimulationRunId = simulationRunId,
+            ConfigurationVersionId = configurationVersionId
+        };
     }
 }

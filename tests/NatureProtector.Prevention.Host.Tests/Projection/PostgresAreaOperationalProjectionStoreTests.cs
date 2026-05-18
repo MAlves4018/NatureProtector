@@ -146,6 +146,15 @@ public sealed class PostgresAreaOperationalProjectionStoreTests
             "Area remains under elevated risk.");
 
         await store.SaveAsync(seed.AreaId, snapshot, 6, CancellationToken.None);
+        await store.SaveAsync(
+            seed.AreaId,
+            new AreaRiskSnapshot(
+                Guid.Parse("20000000-0000-0000-0000-000000000002"),
+                new DateTimeOffset(2026, 4, 10, 8, 1, 0, TimeSpan.Zero),
+                0.85,
+                "Area remains under elevated risk."),
+            6,
+            CancellationToken.None);
 
         await using var dbContext = scope.CreateDbContext();
         var areaState = Assert.Single(dbContext.AreaOperationalStates);
@@ -173,6 +182,15 @@ public sealed class PostgresAreaOperationalProjectionStoreTests
             "Warning candidate.");
 
         await store.SaveAsync(seed.AreaId, snapshot, 4, CancellationToken.None);
+        await store.SaveAsync(
+            seed.AreaId,
+            new AreaRiskSnapshot(
+                Guid.Parse("21000000-0000-0000-0000-000000000002"),
+                new DateTimeOffset(2026, 4, 10, 8, 11, 0, TimeSpan.Zero),
+                0.62,
+                "Warning candidate persists."),
+            4,
+            CancellationToken.None);
 
         await using var dbContext = scope.CreateDbContext();
         var alert = Assert.Single(dbContext.AlertStates);
@@ -195,6 +213,15 @@ public sealed class PostgresAreaOperationalProjectionStoreTests
                 new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
                 0.85,
                 "Alarm open"),
+            5,
+            CancellationToken.None);
+        await store.SaveAsync(
+            seed.AreaId,
+            new AreaRiskSnapshot(
+                Guid.Parse("23000000-0000-0000-0000-000000000003"),
+                new DateTimeOffset(2026, 4, 10, 8, 1, 0, TimeSpan.Zero),
+                0.85,
+                "Alarm open persists"),
             5,
             CancellationToken.None);
 
@@ -225,6 +252,11 @@ public sealed class PostgresAreaOperationalProjectionStoreTests
         await store.SaveAsync(
             seed.AreaId,
             new AreaRiskSnapshot(Guid.NewGuid(), new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero), 0.85, "High"),
+            6,
+            CancellationToken.None);
+        await store.SaveAsync(
+            seed.AreaId,
+            new AreaRiskSnapshot(Guid.NewGuid(), new DateTimeOffset(2026, 4, 10, 8, 1, 0, TimeSpan.Zero), 0.85, "High persists"),
             6,
             CancellationToken.None);
 

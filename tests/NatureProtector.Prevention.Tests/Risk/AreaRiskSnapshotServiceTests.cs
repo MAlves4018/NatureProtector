@@ -18,18 +18,16 @@ public sealed class AreaRiskSnapshotServiceTests
     }
 
     [Fact]
-    public void BuildSnapshot_ReturnsZeroSnapshot_WhenAssessmentsIsEmpty()
+    public void BuildSnapshot_Throws_WhenAssessmentsIsEmpty()
     {
         var snapshotTime = DateTimeOffset.UtcNow;
 
-        var snapshot = _service.BuildSnapshot(
+        var ex = Assert.Throws<ArgumentException>(() => _service.BuildSnapshot(
             assessments: Array.Empty<RiskAssessment>(),
-            snapshotTime: snapshotTime);
+            snapshotTime: snapshotTime));
 
-        Assert.NotEqual(Guid.Empty, snapshot.Id);
-        Assert.Equal(snapshotTime, snapshot.Timestamp);
-        Assert.Equal(0.0, snapshot.AggregateRiskScore);
-        Assert.Equal("No accepted assessments are available for this area.", snapshot.Summary);
+        Assert.Equal("assessments", ex.ParamName);
+        Assert.Contains("area risk is unavailable", ex.Message);
     }
 
     [Fact]
@@ -46,9 +44,30 @@ public sealed class AreaRiskSnapshotServiceTests
             assessments: assessments,
             snapshotTime: snapshotTime);
 
-        Assert.Equal(0.75, snapshot.AggregateRiskScore, precision: 3);
+        Assert.Equal(0.85, snapshot.AggregateRiskScore, precision: 3);
         Assert.Contains("Aggregated from 2 assessments", snapshot.Summary);
-        Assert.Contains("2 at High or above.", snapshot.Summary);
+        Assert.Contains("2 at High or above", snapshot.Summary);
+        Assert.Contains("0.70*p80", snapshot.Summary);
+    }
+
+    [Fact]
+    public void BuildSnapshot_UsesP80AndMaxAreaAggregation()
+    {
+        var snapshotTime = DateTimeOffset.UtcNow;
+        var assessments = new[]
+        {
+            CreateAssessment(snapshotTime.AddMinutes(-5), 0.10),
+            CreateAssessment(snapshotTime.AddMinutes(-4), 0.20),
+            CreateAssessment(snapshotTime.AddMinutes(-3), 0.30),
+            CreateAssessment(snapshotTime.AddMinutes(-2), 0.80),
+            CreateAssessment(snapshotTime.AddMinutes(-1), 1.00)
+        };
+
+        var snapshot = _service.BuildSnapshot(
+            assessments: assessments,
+            snapshotTime: snapshotTime);
+
+        Assert.Equal(0.86, snapshot.AggregateRiskScore, precision: 3);
     }
 
     private static RiskAssessment CreateAssessment(DateTimeOffset timestamp, double score)

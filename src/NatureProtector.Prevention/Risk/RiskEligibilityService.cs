@@ -22,6 +22,9 @@ public sealed class RiskEligibilityService : IRiskEligibilityService
     {
         ArgumentNullException.ThrowIfNull(reading);
         cancellationToken.ThrowIfCancellationRequested();
+        var temporalClassifiers = ReadingTemporalClassifier.Classify(
+            reading,
+            interval: TimeSpan.FromSeconds(60));
 
         if (reading.AreaId == Guid.Empty ||
             reading.SensorId == Guid.Empty ||
@@ -31,16 +34,21 @@ public sealed class RiskEligibilityService : IRiskEligibilityService
             return Task.FromResult(RiskEligibilityResult.Blocked(
                 RiskEligibilityReason.MissingRequiredValue,
                 "Reading is missing critical data required for risk assessment.",
-                ["MissingValue"]));
+                MergeFlags(temporalClassifiers, QualityFlag.MissingValue),
+                temporalClassifiers));
         }
 
         if (!Enum.IsDefined(reading.OperationalState) ||
             reading.OperationalState is SensorOperationalState.Invalid or SensorOperationalState.Dropped)
         {
+            var stateFlag = reading.OperationalState == SensorOperationalState.Dropped
+                ? QualityFlag.Dropped
+                : QualityFlag.SemanticMismatch;
             return Task.FromResult(RiskEligibilityResult.Blocked(
                 RiskEligibilityReason.InvalidOperationalState,
                 "Operational state is not eligible for risk processing.",
-                ["SemanticMismatch"]));
+                MergeFlags(temporalClassifiers, stateFlag, QualityFlag.SemanticMismatch),
+                temporalClassifiers));
         }
 
         if (!Enum.IsDefined(reading.MetricType) ||
@@ -49,7 +57,8 @@ public sealed class RiskEligibilityService : IRiskEligibilityService
             return Task.FromResult(RiskEligibilityResult.Blocked(
                 RiskEligibilityReason.UnsupportedMetric,
                 "Metric is not supported by the current risk model.",
-                ["UnsupportedMetric"]));
+                MergeFlags(temporalClassifiers, QualityFlag.UnsupportedMetric),
+                temporalClassifiers));
         }
 
         if (!Enum.IsDefined(reading.Unit) ||
@@ -58,13 +67,14 @@ public sealed class RiskEligibilityService : IRiskEligibilityService
             return Task.FromResult(RiskEligibilityResult.Blocked(
                 RiskEligibilityReason.InvalidUnit,
                 "Metric/unit combination is not supported by the current risk model.",
-                ["InvalidUnit"]));
+                MergeFlags(temporalClassifiers, QualityFlag.InvalidUnit),
+                temporalClassifiers));
         }
 
         if (reading.OperationalState is SensorOperationalState.Delayed or SensorOperationalState.Retransmitted)
         {
             var isDelayed = reading.OperationalState == SensorOperationalState.Delayed;
-            var qualityFlag = isDelayed ? "Delayed" : "Duplicate";
+            var qualityFlag = isDelayed ? QualityFlag.Delayed : QualityFlag.Duplicate;
             var reasonCode = isDelayed
                 ? RiskEligibilityReason.DelayedReading
                 : RiskEligibilityReason.RetransmittedReading;
@@ -72,7 +82,18 @@ public sealed class RiskEligibilityService : IRiskEligibilityService
             return Task.FromResult(RiskEligibilityResult.PartialButUsable(
                 reasonCode,
                 "Reading is degraded but still usable for risk assessment.",
-                [qualityFlag]));
+                MergeFlags(temporalClassifiers, qualityFlag),
+                temporalClassifiers));
+        }
+
+        if (temporalClassifiers.Count > 0)
+        {
+            var summary = ClassifierResult.AggregateForEligibility(temporalClassifiers);
+            return Task.FromResult(RiskEligibilityResult.PartialButUsable(
+                RiskEligibilityReason.DelayedReading,
+                "Reading temporal quality is degraded but still usable for risk assessment.",
+                summary.DistinctQualityFlags,
+                temporalClassifiers));
         }
 
         return Task.FromResult(RiskEligibilityResult.CompleteEligible());
@@ -89,5 +110,17 @@ public sealed class RiskEligibilityService : IRiskEligibilityService
             SensorMetricType.WindSpeed => unit == MeasurementUnit.MetersPerSecond,
             _ => false
         };
+    }
+
+    private static IReadOnlyList<string> MergeFlags(
+        IReadOnlyList<ClassifierResult> classifierResults,
+        params QualityFlag[] flags)
+    {
+        return classifierResults
+            .SelectMany(result => result.QualityFlags)
+            .Concat(flags.Select(flag => flag.ToWireName()))
+            .Where(flag => !string.IsNullOrWhiteSpace(flag))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 }

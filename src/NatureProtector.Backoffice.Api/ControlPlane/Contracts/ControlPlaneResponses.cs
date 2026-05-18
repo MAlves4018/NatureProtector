@@ -180,6 +180,27 @@ public sealed record RuntimeRunSummaryResponse(
     string? OrchestratorCorrelationId,
     RuntimeRunOverridesResponse? RunOverrides);
 
+public sealed record RuntimeRunAuditResponse(
+    RuntimeRunSummaryResponse Run,
+    int? ExpectedEvents,
+    int AcceptedReadings,
+    int? MissingEvents,
+    int Rejected,
+    int Quarantined,
+    int RetryAttempts,
+    int RiskAssessments,
+    IReadOnlyList<RuntimeStatusCountResponse> QualityFlagsSummary,
+    IReadOnlyList<RuntimeStatusCountResponse> EligibilitySummary,
+    RuntimeAreaSnapshotAuditResponse? AreaSnapshot,
+    IReadOnlyList<RuntimeLimitationResponse> Limitations);
+
+public sealed record RuntimeAreaSnapshotAuditResponse(
+    DateTimeOffset SnapshotTimestamp,
+    double AggregateRiskScore,
+    string AggregateRiskLevel,
+    int AssessmentCount,
+    string? Summary);
+
 public sealed record RuntimeRunOverridesResponse(
     RuntimeRunOverrideValuesResponse? Requested,
     RuntimeRunOverrideValuesResponse? Resolved,

@@ -676,6 +676,19 @@ Registar o trabalho de consolidação da segunda fase de pesquisa do NatureProte
 67. A seleção de cenários no simulador foi tornada explícita, impedindo coexistência ambígua de `ScenarioId` e `ControlPlaneScenarioCode`.
 68. O `scenario_c` passou a declarar degradação efetiva `missing-readings`, preservando o `scenario_b` sem degradação automática.
 69. A validação runtime final confirmou que `scenario_b` e `scenario_c` completam, que o pipeline processa sem novos `db_update_failed`, que há risk assessments e projeções com `SimulationRunId`, e que o `scenario_c` produz menos leituras aceites devido a `missing-readings`.
+70. Foi iniciada uma nova frente de alinhamento entre o repositório e a `PesquisaII`, usando a matriz comparativa `PesquisaII -> repo -> gap -> ação recomendada` como base de trabalho.
+71. Essa frente procurou aproximar a implementação da cadeia conceptual completa: `ScenarioDefinition -> DailyCellState -> TruthSnapshot -> LocalObservation -> OperationalEvent -> NormalizedReading -> RiskInput -> RiskAssessment -> AlertState -> OperationalProjection`.
+72. Foram introduzidos ou reforçados artefactos ligados à separação entre verdade física simulada, observação local e payload operacional, nomeadamente `TruthSnapshot` e `LocalObservation` no simulador.
+73. Foi iniciada a materialização runtime de `DailyCellState` como estado diário por célula, com persistência, índices de contexto meteorológico/secura e ligação ao `RiskInput`.
+74. O `RiskInput` foi enriquecido para transportar mais contexto operacional e metodológico, mantendo a regra de que não deve conter campos de resultado como `BaseRisk`, `AdjustedScore`, `RiskScore`, `RiskLevel` ou estado de alerta.
+75. Foram introduzidas alterações relacionadas com score V1, agregação por área, provenance de FWI/KBDI, quality flags, classificadores temporais, persistência/cooldown de alertas e exposição de auditoria runtime na API/UI.
+76. A validação técnica pós-implementação mostrou que build, testes e migrations podiam passar, mas que isso não era suficiente para aceitar o patch sem nova validação runtime B/C.
+77. Uma nova execução runtime do `scenario_b` revelou regressão no `reading_risk_pipeline`: parte significativa dos eventos foi para quarantine por `processing_failed`.
+78. A causa foi isolada na integração entre `RiskInput` e `DailyCellState`: o código exigia que `RiskInput.SensorId` coincidisse com `DailyCellState.SensorId`, tratando erradamente o estado diário como estado por sensor.
+79. A análise mostrou que `DailyCellState` deve ser entendido como estado por área/célula/dia/run, podendo ser atualizado por sensores diferentes de humidade, temperatura e vento.
+80. Foi definida a correção mínima: remover a validação obrigatória por `SensorId`, validar antes `AreaId`, `GridCellId`, `SimulationRunId` e dia lógico, e tratar `SensorId` apenas como proveniência do último input que atualizou o estado.
+81. Foram ajustados os testes de `DailyCellState` para refletir a nova semântica: sensores diferentes devem poder atualizar o mesmo estado diário quando pertencem à mesma célula, run e dia.
+82. Esta regressão reforçou uma conclusão metodológica importante: testes unitários e migrations verdes não substituem validação runtime ponta a ponta após alterações estruturais.
 
 ### Resultado principal da quinzena
 
@@ -801,6 +814,11 @@ Também foi protegida a semântica de `Blocked`: não significa risco zero. Sign
 
 A implementação passou a distinguir `BaseRisk`, `AdjustedScore` e compatibilidade `RiskScore`, mantendo a separação entre input, cálculo e resultado. Esta alteração reforçou a legibilidade da fronteira entre pipeline e scoring.
 
+Numa fase posterior, a implementação tentou aproximar mais diretamente o código da `PesquisaII`, enriquecendo `RiskInput`, persistindo `DailyCellState` e introduzindo contexto adicional para score, índices e agregação. Esta frente foi útil, mas também revelou um problema conceptual na primeira integração runtime.
+
+Inicialmente, `DailyCellState` foi tratado no código como se fosse estado por sensor, através de uma validação que exigia que `RiskInput.SensorId` coincidisse com `DailyCellState.SensorId`. A validação runtime mostrou que esta regra era incorreta: numa mesma célula e no mesmo dia, o estado diário deve poder acumular leituras de sensores diferentes, por exemplo humidade, temperatura e vento.
+
+A regra foi então corrigida conceptualmente: `DailyCellState` deve ser identificado por área, célula, dia lógico e, quando aplicável, `SimulationRunId` e versão de configuração. O `SensorId`, se mantido no modelo, deve representar proveniência ou último sensor fonte, não a identidade do estado diário. Esta correção preserva a lógica metodológica da `PesquisaII`, onde o estado diário pertence à célula e não a um sensor isolado.
 ---
 
 ## 7. Validação, anexos e bibliografia
@@ -906,6 +924,22 @@ A execução de runs a partir do website foi iniciada e demonstrou que o site co
 
 Ficou definido que as runs lançadas pela UI devem gerar evidência completa, incluindo request, response, summary, diagnósticos before/after e relatório pós-run. Esta frente prepara a passagem de uma orquestração local por script para uma orquestração mais integrada no Backoffice/site.
 
+### Alinhamento adicional com a PesquisaII e regressão encontrada em runtime
+
+Depois da validação B/C inicial, foi iniciada uma nova frente para reduzir os gaps identificados pela matriz comparativa entre `PesquisaII` e repositório. Esta frente incluiu alterações mais amplas do que os patches anteriores: introdução de `TruthSnapshot` e `LocalObservation`, persistência de `DailyCellState`, enriquecimento de `RiskInput`, ajustes no score V1, agregação por área, provenance de FWI/KBDI, flags/classificadores, alertas e exposição de auditoria runtime na API/UI.
+
+A primeira validação técnica indicou que a solução compilava, os testes passavam e as migrations estavam reconhecidas/aplicadas. No entanto, uma nova execução runtime do `scenario_b` mostrou uma regressão crítica: apenas parte dos eventos foi processada com sucesso, enquanto vários eventos de temperatura e vento foram colocados em quarantine após retries.
+
+A análise dos `processing_attempts` identificou a causa:
+
+`RiskInput SensorId does not match DailyCellState SensorId.`
+
+O erro revelou que `DailyCellState` tinha sido integrado com uma premissa incorreta. O estado diário estava a ser tratado como se pertencesse a um sensor específico, quando metodologicamente deve pertencer à célula/dia/run. Como as primeiras leituras de humidade criavam o estado diário, as leituras posteriores de temperatura e vento da mesma célula falhavam ao tentar atualizar esse estado.
+
+A correção definida foi mínima e sem alteração do contrato externo: remover a validação obrigatória por `SensorId`, manter validações por área, célula, run e dia, e ajustar os testes para garantir que sensores diferentes podem contribuir para o mesmo `DailyCellState`.
+
+Esta ocorrência reforçou que alterações estruturais devem ser sempre validadas com runs B/C reais depois dos testes automatizados, porque a regressão só ficou visível no comportamento runtime completo da pipeline.
+
 ---
 
 ## 9. Resultado da quinzena e próximos passos
@@ -919,6 +953,8 @@ A fase final da quinzena também transformou parte desta visão em execução t�
 Na última parte da frente, o trabalho avançou para observabilidade web e hardening runtime. O Runtime Monitor e o Developer Runtime Control tornaram visíveis problemas que antes estavam escondidos, como carry-forward, freshness, diferença entre assessments e projeções, cenário C sem degradação observável e evidência incompleta em runs iniciadas pela UI. A auditoria backend e os patches posteriores reforçaram a durabilidade do inbox, a validação pre-scoring, o isolamento por `SimulationRunId` e a degradação efetiva do `scenario_c` através de `missing-readings`.
 
 O documento ficou mais forte, mas ainda há trabalho antes de considerar tudo fechado. A principal pendência documental continua a ser manter `Proposal.tex`, PDF, anexos, documentação técnica e evidência sincronizados com o estado real do código.
+
+A frente mais recente mostrou progresso real no alinhamento com a `PesquisaII`, mas também evidenciou o risco de introduzir várias alterações estruturais de uma só vez. A regressão em `DailyCellState` foi útil porque clarificou uma fronteira conceptual importante: o estado diário não pertence ao sensor, pertence à célula. Assim, a validação runtime passou a ter um papel ainda mais central antes de aceitar a implementação como fechada.
 
 ### Trabalho a fazer na continuação desta frente
 

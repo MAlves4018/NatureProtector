@@ -432,6 +432,52 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
                 []));
         }
 
+        public Task<RuntimeRunAuditResponse?> GetRuntimeRunAuditAsync(Guid runId, CancellationToken cancellationToken)
+        {
+            var run = _simulationRuns.SingleOrDefault(item => item.Id == runId);
+            if (run is null)
+            {
+                return Task.FromResult<RuntimeRunAuditResponse?>(null);
+            }
+
+            return Task.FromResult<RuntimeRunAuditResponse?>(new RuntimeRunAuditResponse(
+                new RuntimeRunSummaryResponse(
+                    run.Id,
+                    run.AreaCode,
+                    run.ScenarioCode,
+                    run.ScenarioName,
+                    run.Status,
+                    run.ConfigurationVersionNumber,
+                    run.CreatedAt,
+                    run.StartedAt,
+                    run.EndedAt,
+                    840,
+                    run.LogicalStartTimestamp,
+                    run.IntervalSeconds,
+                    run.NumberOfCycles,
+                    run.ExecutionSeed,
+                    run.MetadataJson,
+                    "valid",
+                    null,
+                    null),
+                ExpectedEvents: 72,
+                AcceptedReadings: 70,
+                MissingEvents: 2,
+                Rejected: 0,
+                Quarantined: 0,
+                RetryAttempts: 0,
+                RiskAssessments: 70,
+                QualityFlagsSummary: [new RuntimeStatusCountResponse("Missing", 2)],
+                EligibilitySummary: [new RuntimeStatusCountResponse("CompleteEligible", 70)],
+                AreaSnapshot: new RuntimeAreaSnapshotAuditResponse(
+                    _areaOperationalState.SnapshotTimestamp,
+                    _areaOperationalState.AggregateRiskScore,
+                    _areaOperationalState.AggregateRiskLevel,
+                    _areaOperationalState.AssessmentCount,
+                    _areaOperationalState.Summary),
+                Limitations: []));
+        }
+
         public Task<AreaGeoJSONResponse?> GetAreaGeoJSONAsync(string areaCode, int? configurationVersion, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();

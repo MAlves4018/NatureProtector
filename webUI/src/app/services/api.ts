@@ -8,6 +8,7 @@ import {
     RuntimeDiagnosticResultResponse,
     RuntimeResetRequest,
     RuntimeResetResponse,
+    RuntimeRunAuditResponse,
     RuntimeRunStartRequest,
     RuntimeRunStartResponse,
     RuntimeSummaryResponse,
@@ -50,6 +51,10 @@ export const api = {
 
         const url = `/control/runtime/summary?${params.toString()}`;
         return httpClient.get<RuntimeSummaryResponse>(url);
+    },
+
+    getRuntimeRunAudit: (runId: string) => {
+        return httpClient.get<RuntimeRunAuditResponse>(`/control/runtime/runs/${runId}/audit`);
     },
 
     getRuntimeDiagnostics: () => {

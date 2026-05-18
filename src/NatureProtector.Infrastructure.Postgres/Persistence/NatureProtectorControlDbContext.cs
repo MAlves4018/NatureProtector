@@ -53,6 +53,7 @@ public sealed class NatureProtectorControlDbContext : DbContext
     public DbSet<AcceptedReadingLogRecord> AcceptedReadingLogs => Set<AcceptedReadingLogRecord>();
     public DbSet<RiskAssessmentLogRecord> RiskAssessmentLogs => Set<RiskAssessmentLogRecord>();
     public DbSet<AreaRiskSnapshotLogRecord> AreaRiskSnapshotLogs => Set<AreaRiskSnapshotLogRecord>();
+    public DbSet<DailyCellStateRecord> DailyCellStates => Set<DailyCellStateRecord>();
     public DbSet<CellOperationalStateRecord> CellOperationalStates => Set<CellOperationalStateRecord>();
     public DbSet<AreaOperationalStateRecord> AreaOperationalStates => Set<AreaOperationalStateRecord>();
     public DbSet<AlertStateRecord> AlertStates => Set<AlertStateRecord>();
@@ -93,6 +94,7 @@ public sealed class NatureProtectorControlDbContext : DbContext
         ConfigureAcceptedReadingLogs(modelBuilder);
         ConfigureRiskAssessmentLogs(modelBuilder);
         ConfigureAreaRiskSnapshotLogs(modelBuilder);
+        ConfigureDailyCellStates(modelBuilder);
         ConfigureCellOperationalStates(modelBuilder);
         ConfigureAreaOperationalStates(modelBuilder);
         ConfigureAlertStates(modelBuilder);
@@ -478,6 +480,41 @@ public sealed class NatureProtectorControlDbContext : DbContext
             .OnDelete(DeleteBehavior.SetNull);
     }
 
+    private static void ConfigureDailyCellStates(ModelBuilder modelBuilder)
+    {
+        var builder = modelBuilder.Entity<DailyCellStateRecord>();
+
+        builder.ToTable("daily_cell_state", PostgresSchemaNames.Projection);
+        builder.HasKey(entity => entity.Id);
+        builder.Property(entity => entity.AntecedentState).HasMaxLength(100).IsRequired();
+        builder.Property(entity => entity.DroughtContext).HasMaxLength(100).IsRequired();
+        builder.Property(entity => entity.FireIndexProvenance).HasMaxLength(100).IsRequired();
+        builder.Property(entity => entity.CandidateParameterSetVersion).HasMaxLength(100).IsRequired();
+        builder.Property(entity => entity.Provenance).HasMaxLength(200).IsRequired();
+        builder.HasIndex(entity => new { entity.AreaId, entity.GridCellId, entity.LogicalDate, entity.SimulationRunId }).IsUnique();
+        builder.HasIndex(entity => new { entity.SensorId, entity.LogicalDate });
+        builder.HasOne(entity => entity.Area)
+            .WithMany()
+            .HasForeignKey(entity => entity.AreaId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(entity => entity.GridCell)
+            .WithMany()
+            .HasForeignKey(entity => entity.GridCellId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(entity => entity.SensorNode)
+            .WithMany()
+            .HasForeignKey(entity => entity.SensorId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(entity => entity.SimulationRun)
+            .WithMany()
+            .HasForeignKey(entity => entity.SimulationRunId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(entity => entity.ConfigurationVersion)
+            .WithMany()
+            .HasForeignKey(entity => entity.ConfigurationVersionId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
+
     private static void ConfigureCellOperationalStates(ModelBuilder modelBuilder)
     {
         var builder = modelBuilder.Entity<CellOperationalStateRecord>();
@@ -511,6 +548,7 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.AggregateRiskLevel).HasMaxLength(50).IsRequired();
         builder.Property(entity => entity.Severity).HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.PendingAlertState).HasMaxLength(50).HasDefaultValue("None").IsRequired();
         builder.Property(entity => entity.Summary).HasMaxLength(2000);
         builder.HasIndex(entity => entity.AreaId).IsUnique();
         builder.HasIndex(entity => entity.SnapshotTimestamp);

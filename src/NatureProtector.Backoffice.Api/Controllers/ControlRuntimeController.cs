@@ -102,6 +102,13 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
         return run is null ? NotFound(new { message = $"Simulation run '{runId}' was not found." }) : Ok(run);
     }
 
+    [HttpGet("runs/{runId:guid}/audit")]
+    public async Task<ActionResult> GetRunAudit(Guid runId, CancellationToken cancellationToken = default)
+    {
+        var audit = await ControlPlane.GetRuntimeRunAuditAsync(runId, cancellationToken);
+        return audit is null ? NotFound(new { message = $"Simulation run '{runId}' was not found." }) : Ok(audit);
+    }
+
     [HttpPost("reset")]
     public async Task<ActionResult> ResetRuntimeState(
         [FromBody] RuntimeResetRequest request,

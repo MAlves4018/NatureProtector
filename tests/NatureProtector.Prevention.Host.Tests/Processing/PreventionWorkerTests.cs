@@ -390,6 +390,7 @@ public sealed class PreventionWorkerTests
         return new ReadingRiskPipeline(
             acceptedReadingRepository,
             new RiskEligibilityService(),
+            new InMemoryDailyCellStateRepository(),
             new SimpleRiskScoringService(),
             riskAssessmentRepository,
             new AreaRiskSnapshotService(),

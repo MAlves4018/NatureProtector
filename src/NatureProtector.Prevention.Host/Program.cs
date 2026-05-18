@@ -58,6 +58,7 @@ if (preventionHostOptions.PipelinePersistenceEnabled)
     builder.Services.AddSingleton<IReadingEventInbox, PostgresReadingEventInbox>();
     builder.Services.AddSingleton<IAreaOperationalProjectionStore, PostgresAreaOperationalProjectionStore>();
     builder.Services.AddSingleton<IAcceptedReadingRepository, PostgresAcceptedReadingRepository>();
+    builder.Services.AddSingleton<IDailyCellStateRepository, PostgresDailyCellStateRepository>();
     builder.Services.AddSingleton<IRiskAssessmentRepository, PostgresRiskAssessmentRepository>();
     builder.Services.AddSingleton<IAreaRiskSnapshotRepository, PostgresAreaRiskSnapshotRepository>();
     builder.Services.AddHostedService<InboxRetryWorker>();
@@ -70,6 +71,7 @@ else
     builder.Services.AddSingleton<IReadingEventInbox, InMemoryReadingEventInbox>();
     builder.Services.AddSingleton<IAreaOperationalProjectionStore, InMemoryAreaOperationalProjectionStore>();
     builder.Services.AddSingleton<IAcceptedReadingRepository, InMemoryAcceptedReadingRepository>();
+    builder.Services.AddSingleton<IDailyCellStateRepository, InMemoryDailyCellStateRepository>();
     builder.Services.AddSingleton<IRiskAssessmentRepository, InMemoryRiskAssessmentRepository>();
     builder.Services.AddSingleton<IAreaRiskSnapshotRepository, InMemoryAreaRiskSnapshotRepository>();
 }

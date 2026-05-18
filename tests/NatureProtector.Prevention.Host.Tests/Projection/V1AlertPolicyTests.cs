@@ -80,4 +80,78 @@ public sealed class V1AlertPolicyTests
 
         Assert.Equal(V1AlertState.None, state);
     }
+
+    [Fact]
+    public void EvaluateTransition_WithPersistence_DoesNotOpenOnSingleSpike()
+    {
+        var now = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+
+        var decision = V1AlertPolicy.EvaluateTransition(
+            V1AlertState.None,
+            adjustedScore: 0.85,
+            pendingState: V1AlertState.None,
+            pendingCycles: 0,
+            evaluatedAt: now,
+            cooldownUntil: null,
+            interval: TimeSpan.FromSeconds(60));
+
+        Assert.Equal(V1AlertState.None, decision.State);
+        Assert.Equal(V1AlertState.Alarm, decision.PendingState);
+        Assert.Equal(1, decision.PendingCycles);
+    }
+
+    [Fact]
+    public void EvaluateTransition_WithPersistence_OpensOnSecondConsecutiveCycle()
+    {
+        var now = new DateTimeOffset(2026, 5, 18, 12, 1, 0, TimeSpan.Zero);
+
+        var decision = V1AlertPolicy.EvaluateTransition(
+            V1AlertState.None,
+            adjustedScore: 0.85,
+            pendingState: V1AlertState.Alarm,
+            pendingCycles: 1,
+            evaluatedAt: now,
+            cooldownUntil: null,
+            interval: TimeSpan.FromSeconds(60));
+
+        Assert.Equal(V1AlertState.Alarm, decision.State);
+        Assert.Equal(V1AlertState.None, decision.PendingState);
+        Assert.Equal(0, decision.PendingCycles);
+    }
+
+    [Fact]
+    public void EvaluateTransition_WithCooldown_SuppressesImmediateReopen()
+    {
+        var now = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+
+        var decision = V1AlertPolicy.EvaluateTransition(
+            V1AlertState.None,
+            adjustedScore: 0.85,
+            pendingState: V1AlertState.None,
+            pendingCycles: 0,
+            evaluatedAt: now,
+            cooldownUntil: now.AddSeconds(180),
+            interval: TimeSpan.FromSeconds(60));
+
+        Assert.Equal(V1AlertState.None, decision.State);
+        Assert.Equal(0, decision.PendingCycles);
+    }
+
+    [Fact]
+    public void EvaluateTransition_WhenAlertCloses_StartsCooldown()
+    {
+        var now = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+
+        var decision = V1AlertPolicy.EvaluateTransition(
+            V1AlertState.Warning,
+            adjustedScore: 0.49,
+            pendingState: V1AlertState.None,
+            pendingCycles: 0,
+            evaluatedAt: now,
+            cooldownUntil: null,
+            interval: TimeSpan.FromSeconds(60));
+
+        Assert.Equal(V1AlertState.None, decision.State);
+        Assert.Equal(now.AddSeconds(180), decision.CooldownUntil);
+    }
 }

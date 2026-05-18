@@ -325,6 +325,7 @@ public sealed class ReadingEventProcessingServiceTests
         return new ReadingRiskPipeline(
             acceptedReadingRepository,
             riskEligibilityService ?? new RiskEligibilityService(),
+            new InMemoryDailyCellStateRepository(),
             new SimpleRiskScoringService(),
             riskAssessmentRepository ?? new InMemoryRiskAssessmentRepository(),
             new AreaRiskSnapshotService(),

@@ -42,6 +42,7 @@ public sealed class SimulatorToPreventionCompatibilityTests
         var pipeline = new ReadingRiskPipeline(
             acceptedReadingRepository,
             new RiskEligibilityService(),
+            new InMemoryDailyCellStateRepository(),
             new SimpleRiskScoringService(),
             riskAssessmentRepository,
             new AreaRiskSnapshotService(),
@@ -102,6 +103,7 @@ public sealed class SimulatorToPreventionCompatibilityTests
         var pipeline = new ReadingRiskPipeline(
             acceptedReadingRepository,
             new RiskEligibilityService(),
+            new InMemoryDailyCellStateRepository(),
             new SimpleRiskScoringService(),
             riskAssessmentRepository,
             new AreaRiskSnapshotService(),

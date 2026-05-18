@@ -14,9 +14,10 @@ namespace NatureProtector.Prevention.Risk;
  *   in orchestration components.
  *
  * Design considerations:
- * - BaseRisk keeps the previous metric-threshold mapping.
- * - AdjustedScore applies candidate (non-calibrated) contextual factors from
- *   risk input metadata.
+ * - BaseRisk follows the V1 candidate baseline:
+ *   0.50 * meteorology + 0.20 * dryness + 0.30 * territory.
+ * - AdjustedScore applies candidate (non-calibrated) confidence and integrity
+ *   factors from risk input metadata.
  * - Blocked inputs are never converted into numeric risk assessments.
  */
 public sealed class SimpleRiskScoringService : ISimpleRiskScoringService
@@ -34,21 +35,27 @@ public sealed class SimpleRiskScoringService : ISimpleRiskScoringService
                 "Blocked risk inputs cannot be converted into numeric assessments.");
         }
 
-        var baseRisk = CalculateBaseRisk(input.MetricType, input.Value);
+        var meteorology = CalculateMeteorologicalComponent(input);
+        var dryness = CalculateDrynessComponent(input);
+        var territory = Math.Clamp(input.TerritorialContext.StructuralHazardScore, 0.0, 1.0);
+        var baseRisk = Math.Clamp((0.50 * meteorology) + (0.20 * dryness) + (0.30 * territory), 0.0, 1.0);
         var contextFactor = ResolveContextFactor(input.ObservationalConfidence);
         var integrityFactor = ResolveIntegrityFactor(input.OperationalIntegrity);
-        var eligibilityFactor = ResolveEligibilityFactor(input.InputStatus);
         var adjustedScore = Math.Clamp(
-            baseRisk * contextFactor * integrityFactor * eligibilityFactor,
+            baseRisk * contextFactor * integrityFactor,
             0.0,
             1.0);
 
         var explanation =
             $"Area={input.AreaId}; Sensor={input.SensorId}; Event={input.SourceEventId}; " +
-            $"Metric={input.MetricType}; Value={input.Value:F2}; " +
+            $"Metric={input.MetricType}; Value={input.Value:F2}; InputStatus={input.InputStatus}; " +
+            $"M={meteorology:F2}; D={dryness:F2}; T={territory:F2}; " +
             $"BaseRisk={baseRisk:F2}; AdjustedScore={adjustedScore:F2}; " +
-            $"C={contextFactor:F2}; I={integrityFactor:F2}; EligibilityFactor={eligibilityFactor:F2}; " +
-            "ParameterSet=Candidate Parameter Set V1.0 (non-calibrated).";
+            $"C={contextFactor:F2}; I={integrityFactor:F2}; " +
+            $"FWI={FormatOptional(input.FireWeatherIndexContext.FireWeatherIndex)}; " +
+            $"KBDI={FormatOptional(input.FireWeatherIndexContext.KeetchByramDroughtIndex)}; " +
+            $"FireIndexProvenance={input.FireWeatherIndexContext.Provenance}; " +
+            $"ParameterSet={input.ParameterSetVersion} (non-calibrated).";
 
         return new RiskAssessment(
             id: Guid.NewGuid(),
@@ -61,7 +68,85 @@ public sealed class SimpleRiskScoringService : ISimpleRiskScoringService
     /// <summary>
     /// Calculates baseline risk in the range [0, 1] from metric/value.
     /// </summary>
-    private static double CalculateBaseRisk(SensorMetricType metricType, double value)
+    private static double CalculateMeteorologicalComponent(RiskInput input)
+    {
+        var weightedComponents = new List<(double Weight, double Score)>();
+
+        if (input.Metrics.TemperatureCelsius is { } temperature)
+        {
+            weightedComponents.Add((0.40, CalculateMetricRisk(SensorMetricType.Temperature, temperature)));
+        }
+
+        if (input.Metrics.RelativeHumidityPercent is { } humidity)
+        {
+            weightedComponents.Add((0.35, CalculateMetricRisk(SensorMetricType.Humidity, humidity)));
+        }
+
+        if (input.Metrics.WindSpeedMetersPerSecond is { } windSpeed)
+        {
+            weightedComponents.Add((0.25, CalculateMetricRisk(SensorMetricType.WindSpeed, windSpeed)));
+        }
+
+        if (weightedComponents.Count == 0)
+        {
+            return ResolveWithFireWeatherIndex(
+                CalculateMetricRisk(input.MetricType, input.Value),
+                input.FireWeatherIndexContext.FireWeatherIndex);
+        }
+
+        var weightTotal = weightedComponents.Sum(item => item.Weight);
+        var metricComponent = Math.Clamp(
+            weightedComponents.Sum(item => item.Weight * item.Score) / weightTotal,
+            0.0,
+            1.0);
+        return ResolveWithFireWeatherIndex(metricComponent, input.FireWeatherIndexContext.FireWeatherIndex);
+    }
+
+    private static double CalculateDrynessComponent(RiskInput input)
+    {
+        if (input.FireWeatherIndexContext.KeetchByramDroughtIndex is { } kbdi)
+        {
+            return Math.Clamp(kbdi / 800.0, 0.0, 1.0);
+        }
+
+        if (input.DailyCellState is null)
+        {
+            return 0.50;
+        }
+
+        var dryness = 0.50;
+
+        if (input.DailyCellState.AntecedentState.Contains("dry", StringComparison.OrdinalIgnoreCase) ||
+            input.DailyCellState.DroughtContext.Contains("dry", StringComparison.OrdinalIgnoreCase))
+        {
+            dryness = 0.70;
+        }
+
+        if (input.DailyCellState.DailyPrecipitationMillimeters is > 0.0)
+        {
+            dryness -= Math.Min(input.DailyCellState.DailyPrecipitationMillimeters.Value / 20.0, 0.30);
+        }
+
+        return Math.Clamp(dryness, 0.0, 1.0);
+    }
+
+    private static double ResolveWithFireWeatherIndex(double metricComponent, double? fireWeatherIndex)
+    {
+        if (!fireWeatherIndex.HasValue)
+        {
+            return metricComponent;
+        }
+
+        var fwiComponent = Math.Clamp(fireWeatherIndex.Value / 80.0, 0.0, 1.0);
+        return Math.Clamp((0.70 * metricComponent) + (0.30 * fwiComponent), 0.0, 1.0);
+    }
+
+    private static string FormatOptional(double? value)
+    {
+        return value.HasValue ? value.Value.ToString("F3") : "absent";
+    }
+
+    private static double CalculateMetricRisk(SensorMetricType metricType, double value)
     {
         var baseRisk = metricType switch
         {
@@ -123,14 +208,4 @@ public sealed class SimpleRiskScoringService : ISimpleRiskScoringService
         };
     }
 
-    private static double ResolveEligibilityFactor(RiskInputStatus status)
-    {
-        return status switch
-        {
-            RiskInputStatus.CompleteEligible => 1.00,
-            RiskInputStatus.PartialButUsable => 0.95,
-            RiskInputStatus.Blocked => 0.0,
-            _ => 1.00
-        };
-    }
 }

@@ -16,6 +16,11 @@ public sealed class InMemoryAreaOperationalProjectionStoreAlertPolicyTests
             CreateSnapshot(0.60, "Warning open"),
             assessmentCount: 2,
             CancellationToken.None);
+        await store.SaveAsync(
+            areaId,
+            CreateSnapshot(0.60, "Warning open persists"),
+            assessmentCount: 2,
+            CancellationToken.None);
 
         var warningAlert = Assert.Single(store.Alerts);
         Assert.Equal("Open", warningAlert.Status);
@@ -41,6 +46,11 @@ public sealed class InMemoryAreaOperationalProjectionStoreAlertPolicyTests
         await store.SaveAsync(
             areaId,
             CreateSnapshot(0.82, "Alarm open"),
+            assessmentCount: 3,
+            CancellationToken.None);
+        await store.SaveAsync(
+            areaId,
+            CreateSnapshot(0.82, "Alarm open persists"),
             assessmentCount: 3,
             CancellationToken.None);
 
@@ -84,6 +94,11 @@ public sealed class InMemoryAreaOperationalProjectionStoreAlertPolicyTests
         await store.SaveAsync(
             areaId,
             CreateSnapshot(0.62, "Warning open"),
+            assessmentCount: 1,
+            CancellationToken.None);
+        await store.SaveAsync(
+            areaId,
+            CreateSnapshot(0.62, "Warning open persists"),
             assessmentCount: 1,
             CancellationToken.None);
 

@@ -35,6 +35,7 @@ namespace NatureProtector.Prevention.Host.Processing;
 public sealed class ReadingRiskPipeline(
     IAcceptedReadingRepository acceptedReadingRepository,
     IRiskEligibilityService riskEligibilityService,
+    IDailyCellStateRepository dailyCellStateRepository,
     IRiskScoringService riskScoringService,
     IRiskAssessmentRepository riskAssessmentRepository,
     IAreaRiskSnapshotService areaRiskSnapshotService,
@@ -109,8 +110,19 @@ public sealed class ReadingRiskPipeline(
             return;
         }
 
-        var riskInput = RiskInput.FromNormalizedReading(normalizedReading, eligibility);
+        var dailyStateLookup = await dailyCellStateRepository.GetForReadingAsync(
+            normalizedReading,
+            operationalEvent.SimulationRunId,
+            cancellationToken);
+        var riskInput = RiskInput.FromNormalizedReading(
+            normalizedReading,
+            eligibility,
+            dailyStateLookup.State,
+            operationalEvent.SimulationRunId,
+            dailyStateLookup.GridCellId,
+            dailyStateLookup.ConfigurationVersionId);
         var assessment = riskScoringService.CreateAssessment(riskInput);
+        await dailyCellStateRepository.UpsertAsync(riskInput, cancellationToken);
 
         var riskAssessmentPersistStopwatch = Stopwatch.StartNew();
         await riskAssessmentRepository.AddAsync(

@@ -47,6 +47,7 @@ public sealed class InboxRetryWorkerTests
         var pipeline = new ReadingRiskPipeline(
             new InMemoryAcceptedReadingRepository(),
             new RiskEligibilityService(),
+            new InMemoryDailyCellStateRepository(),
             new SimpleRiskScoringService(),
             new InMemoryRiskAssessmentRepository(),
             new AreaRiskSnapshotService(),

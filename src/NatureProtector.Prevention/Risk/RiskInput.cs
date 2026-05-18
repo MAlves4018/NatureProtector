@@ -12,8 +12,34 @@ public sealed record RiskInput(
     MeasurementUnit Unit,
     DateTimeOffset EventTime)
 {
+    public const string MissingDailyCellStateFlag = "daily_cell_state_missing";
+
     private static readonly IReadOnlyList<string> EmptyQualityFlags = Array.Empty<string>();
     private static readonly IReadOnlyList<ClassifierResult> EmptyClassifierResults = Array.Empty<ClassifierResult>();
+
+    public Guid? SimulationRunId { get; init; }
+
+    public Guid? GridCellId { get; init; }
+
+    public Guid? ConfigurationVersionId { get; init; }
+
+    public DateTimeOffset ValidFrom { get; init; } = EventTime;
+
+    public DateTimeOffset ValidTo { get; init; } = EventTime;
+
+    public IReadOnlyList<RiskInputSourceReading> SourceReadings { get; init; } = Array.Empty<RiskInputSourceReading>();
+
+    public RiskInputMetricSet Metrics { get; init; } = new(null, null, null);
+
+    public DailyCellState? DailyCellState { get; init; }
+
+    public DailyCellStateStatus DailyCellStateStatus { get; init; } = DailyCellStateStatus.NotEvaluated;
+
+    public TerritorialRiskContext TerritorialContext { get; init; } = TerritorialRiskContext.Unknown(null);
+
+    public FireWeatherIndexContext FireWeatherIndexContext { get; init; } = FireWeatherIndexContext.Absent;
+
+    public string ParameterSetVersion { get; init; } = "Candidate Parameter Set V1.0";
 
     public RiskInputStatus InputStatus { get; init; } = RiskInputStatus.CompleteEligible;
 
@@ -24,6 +50,8 @@ public sealed record RiskInput(
     public OperationalIntegrityLevel OperationalIntegrity { get; init; } = OperationalIntegrityLevel.Intact;
 
     public IReadOnlyList<string> QualityFlags { get; init; } = EmptyQualityFlags;
+
+    public IReadOnlyList<QualityFlag> TypedQualityFlags => QualityFlagCatalog.ParseMany(QualityFlags);
 
     public IReadOnlyList<ClassifierResult> ClassifierResults { get; init; } = EmptyClassifierResults;
 
@@ -56,6 +84,42 @@ public sealed record RiskInput(
         };
     }
 
+    public static RiskInput FromNormalizedReading(
+        NormalizedReading reading,
+        RiskEligibilityResult eligibility,
+        DailyCellState? dailyCellState,
+        Guid? simulationRunId,
+        Guid? gridCellId,
+        Guid? configurationVersionId)
+    {
+        var baseInput = FromNormalizedReading(reading, eligibility);
+        var input = baseInput with
+        {
+            SimulationRunId = simulationRunId,
+            GridCellId = dailyCellState?.GridCellId ?? gridCellId,
+            ConfigurationVersionId = dailyCellState?.ConfigurationVersionId ?? configurationVersionId,
+            Metrics = baseInput.Metrics.Merge(dailyCellState),
+            DailyCellState = dailyCellState,
+            DailyCellStateStatus = dailyCellState is null
+                ? DailyCellStateStatus.Missing
+                : DailyCellStateStatus.Present,
+            TerritorialContext = TerritorialRiskContext.Unknown(dailyCellState?.GridCellId ?? gridCellId),
+            FireWeatherIndexContext = dailyCellState is null
+                ? FireWeatherIndexContext.Absent
+                : new FireWeatherIndexContext(
+                    dailyCellState.FireWeatherIndex,
+                    dailyCellState.KeetchByramDroughtIndex,
+                    dailyCellState.FireIndexProvenance)
+        };
+
+        return dailyCellState is null
+            ? input with
+            {
+                QualityFlags = MergeQualityFlags(input.QualityFlags, [MissingDailyCellStateFlag])
+            }
+            : input;
+    }
+
     private static RiskInput CreateBaseInput(NormalizedReading reading)
     {
         return new RiskInput(
@@ -65,7 +129,11 @@ public sealed record RiskInput(
             MetricType: reading.MetricType,
             Value: reading.Value,
             Unit: reading.Unit,
-            EventTime: reading.EventTime);
+            EventTime: reading.EventTime)
+        {
+            SourceReadings = [RiskInputSourceReading.FromNormalizedReading(reading)],
+            Metrics = RiskInputMetricSet.FromReading(reading.MetricType, reading.Unit, reading.Value)
+        };
     }
 
     private static IReadOnlyList<string> MergeQualityFlags(
@@ -130,4 +198,11 @@ public sealed record RiskInput(
             }
         }
     }
+}
+
+public enum DailyCellStateStatus
+{
+    NotEvaluated = 0,
+    Present = 1,
+    Missing = 2
 }

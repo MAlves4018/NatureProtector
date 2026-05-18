@@ -175,7 +175,22 @@ public sealed class PostgresAreaOperationalProjectionStore(
             var currentState = V1AlertPolicy.InferCurrentState(
                 hasOpenAlert: existingAlert is not null,
                 previousAdjustedScore: previousAdjustedScore);
-            var nextState = V1AlertPolicy.EvaluateTransition(currentState, snapshot.AggregateRiskScore);
+            var pendingState = Enum.TryParse<V1AlertState>(existingState.PendingAlertState, out var parsedPendingState)
+                ? parsedPendingState
+                : V1AlertState.None;
+            var decision = V1AlertPolicy.EvaluateTransition(
+                currentState,
+                snapshot.AggregateRiskScore,
+                pendingState,
+                existingState.PendingAlertCycles,
+                snapshot.Timestamp,
+                existingState.AlertCooldownUntil,
+                TimeSpan.FromSeconds(60));
+            var nextState = decision.State;
+
+            existingState.PendingAlertState = decision.PendingState.ToString();
+            existingState.PendingAlertCycles = decision.PendingCycles;
+            existingState.AlertCooldownUntil = decision.CooldownUntil;
 
             if (nextState is V1AlertState.Warning or V1AlertState.Alarm)
             {

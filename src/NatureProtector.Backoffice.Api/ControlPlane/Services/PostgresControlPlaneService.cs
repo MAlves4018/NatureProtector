@@ -487,6 +487,69 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             .SingleOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<RuntimeRunAuditResponse?> GetRuntimeRunAuditAsync(Guid runId, CancellationToken cancellationToken)
+    {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var run = await GetSimulationRunAsync(runId, cancellationToken);
+        if (run is null)
+        {
+            return null;
+        }
+
+        var warnings = new List<string>();
+        var runtimeRun = ToRuntimeRun(run, warnings)!;
+        var readings = await GetAcceptedReadingsForRunAsync(dbContext, runId, cancellationToken);
+        var riskAssessments = await dbContext.RiskAssessmentLogs
+            .AsNoTracking()
+            .Where(entity => entity.SimulationRunId == runId)
+            .ToListAsync(cancellationToken);
+        var inboxEvents = await dbContext.InboxEvents
+            .Include(entity => entity.Attempts)
+            .Include(entity => entity.Rejections)
+            .Include(entity => entity.Quarantines)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        var runInboxEvents = inboxEvents
+            .Where(entity => TryGetSimulationRunId(entity.PayloadJson) == runId)
+            .ToArray();
+        var areaSnapshotRows = await dbContext.AreaRiskSnapshotLogs
+            .AsNoTracking()
+            .Where(entity => entity.SimulationRunId == runId)
+            .ToListAsync(cancellationToken);
+        var areaSnapshot = areaSnapshotRows
+            .OrderByDescending(entity => entity.SnapshotTimestamp)
+            .Select(entity => new RuntimeAreaSnapshotAuditResponse(
+                entity.SnapshotTimestamp,
+                entity.AggregateRiskScore,
+                entity.AggregateRiskLevel,
+                entity.AssessmentCount,
+                entity.Summary))
+            .FirstOrDefault();
+
+        var expectedEvents = TryGetResolvedSensorCount(run.MetadataJson) is { } sensorCount
+            ? sensorCount * run.NumberOfCycles
+            : (int?)null;
+        var qualityFlags = BuildQualityFlagSummary(readings, expectedEvents);
+        var eligibilitySummary = BuildEligibilitySummary(readings.Count, riskAssessments);
+
+        return new RuntimeRunAuditResponse(
+            runtimeRun,
+            expectedEvents,
+            readings.Count,
+            expectedEvents.HasValue ? Math.Max(0, expectedEvents.Value - readings.Count) : null,
+            runInboxEvents.SelectMany(entity => entity.Rejections).Count(),
+            runInboxEvents.SelectMany(entity => entity.Quarantines).Count(),
+            runInboxEvents.SelectMany(entity => entity.Attempts).Count(attempt => attempt.Outcome == ProcessingAttemptOutcome.RetryScheduled),
+            riskAssessments.Count,
+            qualityFlags,
+            eligibilitySummary,
+            areaSnapshot,
+            [
+                new RuntimeLimitationResponse("quality_flags_from_operational_state", "Run audit derives quality flag summary from persisted accepted reading operational states and missing-event arithmetic; detailed classifier payloads are not persisted yet."),
+                new RuntimeLimitationResponse("diagnostics_do_not_recalculate_risk", "Run audit reads persisted risk assessments and snapshots only; it does not recalculate risk.")
+            ]);
+    }
+
     /// <summary>
     /// Obtém o estado operacional agregado mais recente da área.
     /// </summary>
@@ -1903,6 +1966,85 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             .Where(entity => TryGetSimulationRunId(entity.PayloadJson) == runId)
             .OrderBy(entity => entity.EventTime)
             .ToArray();
+    }
+
+    private static IReadOnlyList<RuntimeStatusCountResponse> BuildQualityFlagSummary(
+        IReadOnlyCollection<AcceptedReadingLogRecord> readings,
+        int? expectedEvents)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var reading in readings)
+        {
+            if (string.Equals(reading.OperationalState, "Delayed", StringComparison.Ordinal))
+            {
+                Increment(counts, "Delayed");
+            }
+            else if (string.Equals(reading.OperationalState, "Retransmitted", StringComparison.Ordinal))
+            {
+                Increment(counts, "Duplicate");
+            }
+            else if (string.Equals(reading.OperationalState, "Dropped", StringComparison.Ordinal))
+            {
+                Increment(counts, "Dropped");
+            }
+        }
+
+        if (expectedEvents.HasValue)
+        {
+            var missing = Math.Max(0, expectedEvents.Value - readings.Count);
+            if (missing > 0)
+            {
+                counts["Missing"] = missing;
+            }
+        }
+
+        return counts
+            .OrderBy(item => item.Key, StringComparer.Ordinal)
+            .Select(item => new RuntimeStatusCountResponse(item.Key, item.Value))
+            .ToArray();
+    }
+
+    private static IReadOnlyList<RuntimeStatusCountResponse> BuildEligibilitySummary(
+        int acceptedReadingCount,
+        IReadOnlyCollection<RiskAssessmentLogRecord> riskAssessments)
+    {
+        var counts = riskAssessments
+            .GroupBy(entity => ExtractInputStatus(entity.ExplanationSummary))
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        var nonScoredAcceptedReadings = Math.Max(0, acceptedReadingCount - riskAssessments.Count);
+        if (nonScoredAcceptedReadings > 0)
+        {
+            counts["BlockedOrMissingRisk"] = nonScoredAcceptedReadings;
+        }
+
+        return counts
+            .OrderBy(item => item.Key, StringComparer.Ordinal)
+            .Select(item => new RuntimeStatusCountResponse(item.Key, item.Value))
+            .ToArray();
+    }
+
+    private static string ExtractInputStatus(string? explanationSummary)
+    {
+        if (string.IsNullOrWhiteSpace(explanationSummary))
+        {
+            return "Unknown";
+        }
+
+        var marker = "InputStatus=";
+        var markerIndex = explanationSummary.IndexOf(marker, StringComparison.Ordinal);
+        if (markerIndex < 0)
+        {
+            return "Unknown";
+        }
+
+        var start = markerIndex + marker.Length;
+        var end = explanationSummary.IndexOf(';', start);
+        return (end < 0 ? explanationSummary[start..] : explanationSummary[start..end]).Trim();
+    }
+
+    private static void Increment(Dictionary<string, int> counts, string key)
+    {
+        counts[key] = counts.TryGetValue(key, out var current) ? current + 1 : 1;
     }
 
     private static Guid? TryGetSimulationRunId(string? payloadJson)

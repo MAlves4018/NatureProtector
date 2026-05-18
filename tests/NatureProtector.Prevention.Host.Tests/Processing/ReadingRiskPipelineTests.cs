@@ -354,9 +354,57 @@ public sealed class ReadingRiskPipelineTests
         Assert.Equal(RiskEligibilityReason.DelayedReading, scoringService.LastInput.EligibilityReason);
         Assert.Equal(ObservationalConfidenceLevel.Medium, scoringService.LastInput.ObservationalConfidence);
         Assert.Equal(OperationalIntegrityLevel.Degraded, scoringService.LastInput.OperationalIntegrity);
-        Assert.Equal(["Delayed"], scoringService.LastInput.QualityFlags);
+        Assert.Contains("Delayed", scoringService.LastInput.QualityFlags);
         var carried = Assert.Single(scoringService.LastInput.ClassifierResults);
         Assert.Equal("temporal_classifier", carried.ClassifierName);
+    }
+
+    [Fact]
+    public async Task ProcessAcceptedReadingAsync_AttachesDailyCellStateContext_WhenAvailable()
+    {
+        var areaId = Guid.NewGuid();
+        var sensorId = Guid.NewGuid();
+        var simulationRunId = Guid.NewGuid();
+        var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
+        var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
+        var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
+        var projectionStore = new InMemoryAreaOperationalProjectionStore();
+        var influxWriteService = new FakeInfluxWriteService();
+        var scoringService = new CapturingRiskScoringService();
+        var pipeline = CreatePipeline(
+            acceptedReadingRepository,
+            riskAssessmentRepository,
+            areaRiskSnapshotRepository,
+            projectionStore,
+            influxWriteService,
+            new RiskEligibilityService(),
+            scoringService);
+        var first = EnvelopeFactory.Create(
+            areaId: areaId,
+            simulationRunId: simulationRunId,
+            sensorId: sensorId,
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 28.0,
+            eventTime: new DateTimeOffset(2026, 5, 18, 8, 0, 0, TimeSpan.Zero));
+        var second = EnvelopeFactory.Create(
+            areaId: areaId,
+            simulationRunId: simulationRunId,
+            sensorId: sensorId,
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 33.0,
+            eventTime: new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero));
+
+        await pipeline.ProcessAcceptedReadingAsync(first, CancellationToken.None);
+        await pipeline.ProcessAcceptedReadingAsync(second, CancellationToken.None);
+
+        Assert.Equal(2, scoringService.Inputs.Count);
+        Assert.Equal(DailyCellStateStatus.Missing, scoringService.Inputs[0].DailyCellStateStatus);
+        Assert.Contains(RiskInput.MissingDailyCellStateFlag, scoringService.Inputs[0].QualityFlags);
+        Assert.Equal(DailyCellStateStatus.Present, scoringService.Inputs[1].DailyCellStateStatus);
+        Assert.NotNull(scoringService.Inputs[1].DailyCellState);
+        Assert.Equal(28.0, scoringService.Inputs[1].DailyCellState!.MaxTemperatureCelsius);
     }
 
     [Fact]
@@ -576,6 +624,7 @@ public sealed class ReadingRiskPipelineTests
         return new ReadingRiskPipeline(
             acceptedReadingRepository,
             riskEligibilityService,
+            new InMemoryDailyCellStateRepository(),
             riskScoringService ?? new SimpleRiskScoringService(),
             riskAssessmentRepository,
             new AreaRiskSnapshotService(),
@@ -613,10 +662,12 @@ public sealed class ReadingRiskPipelineTests
     private sealed class CapturingRiskScoringService : IRiskScoringService
     {
         public RiskInput? LastInput { get; private set; }
+        public List<RiskInput> Inputs { get; } = [];
 
         public RiskAssessment CreateAssessment(RiskInput input)
         {
             LastInput = input;
+            Inputs.Add(input);
 
             return new RiskAssessment(
                 id: Guid.NewGuid(),

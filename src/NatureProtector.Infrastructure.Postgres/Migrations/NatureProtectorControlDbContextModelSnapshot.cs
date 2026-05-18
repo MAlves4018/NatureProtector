@@ -916,6 +916,9 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<double>("AggregateRiskScore")
                         .HasColumnType("double precision");
 
+                    b.Property<DateTimeOffset?>("AlertCooldownUntil")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("AreaId")
                         .HasColumnType("uuid");
 
@@ -924,6 +927,16 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.Property<Guid>("ConfigurationVersionId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("PendingAlertCycles")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PendingAlertState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("None");
 
                     b.Property<string>("Severity")
                         .IsRequired()
@@ -1050,6 +1063,101 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.HasIndex("AreaId", "SnapshotTimestamp");
 
                     b.ToTable("cell_operational_state", "projection");
+                });
+
+            modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Projection.DailyCellStateRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AntecedentState")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("AreaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CandidateParameterSetVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("ConfigurationVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("DailyPrecipitationMillimeters")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("DroughtContext")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("FireIndexProvenance")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<double?>("FireWeatherIndex")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("GridCellId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("KeetchByramDroughtIndex")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid?>("LastSourceEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("LatestHumidityPercent")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("LatestWindSpeedMetersPerSecond")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTimeOffset>("LogicalDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("MaxTemperatureCelsius")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Provenance")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("SensorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SimulationRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConfigurationVersionId");
+
+                    b.HasIndex("GridCellId");
+
+                    b.HasIndex("SimulationRunId");
+
+                    b.HasIndex("SensorId", "LogicalDate");
+
+                    b.HasIndex("AreaId", "GridCellId", "LogicalDate", "SimulationRunId")
+                        .IsUnique();
+
+                    b.ToTable("daily_cell_state", "projection");
                 });
 
             modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Projection.RiskAssessmentLogRecord", b =>
@@ -1443,6 +1551,46 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Navigation("GridCell");
 
                     b.Navigation("SensorNode");
+                });
+
+            modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Projection.DailyCellStateRecord", b =>
+                {
+                    b.HasOne("NatureProtector.Infrastructure.Postgres.Control.AreaRecord", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("NatureProtector.Infrastructure.Postgres.Control.ConfigurationVersionRecord", "ConfigurationVersion")
+                        .WithMany()
+                        .HasForeignKey("ConfigurationVersionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("NatureProtector.Infrastructure.Postgres.Control.GridCellRecord", "GridCell")
+                        .WithMany()
+                        .HasForeignKey("GridCellId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("NatureProtector.Infrastructure.Postgres.Control.SensorNodeRecord", "SensorNode")
+                        .WithMany()
+                        .HasForeignKey("SensorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("NatureProtector.Infrastructure.Postgres.Control.SimulationRunRecord", "SimulationRun")
+                        .WithMany()
+                        .HasForeignKey("SimulationRunId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Area");
+
+                    b.Navigation("ConfigurationVersion");
+
+                    b.Navigation("GridCell");
+
+                    b.Navigation("SensorNode");
+
+                    b.Navigation("SimulationRun");
                 });
 
             modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Projection.RiskAssessmentLogRecord", b =>

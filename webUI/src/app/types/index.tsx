@@ -109,6 +109,29 @@ export interface RuntimeRunSummaryResponse {
     runOverrides: RuntimeRunOverridesResponse | null;
 }
 
+export interface RuntimeRunAuditResponse {
+    run: RuntimeRunSummaryResponse;
+    expectedEvents: number | null;
+    acceptedReadings: number;
+    missingEvents: number | null;
+    rejected: number;
+    quarantined: number;
+    retryAttempts: number;
+    riskAssessments: number;
+    qualityFlagsSummary: RuntimeStatusCountResponse[];
+    eligibilitySummary: RuntimeStatusCountResponse[];
+    areaSnapshot: RuntimeAreaSnapshotAuditResponse | null;
+    limitations: RuntimeLimitationResponse[];
+}
+
+export interface RuntimeAreaSnapshotAuditResponse {
+    snapshotTimestamp: string;
+    aggregateRiskScore: number;
+    aggregateRiskLevel: string;
+    assessmentCount: number;
+    summary: string | null;
+}
+
 export interface RuntimeRunOverridesResponse {
     requested: RuntimeRunOverrideValuesResponse | null;
     resolved: RuntimeRunOverrideValuesResponse | null;
