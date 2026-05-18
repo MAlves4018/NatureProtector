@@ -91,6 +91,7 @@ public sealed class ReadingRiskPipelineTests
     public async Task ProcessAcceptedReadingAsync_AggregatesMultipleReadings_FromSameArea()
     {
         var areaId = Guid.NewGuid();
+        var simulationRunId = Guid.NewGuid();
         var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
         var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
         var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
@@ -105,6 +106,7 @@ public sealed class ReadingRiskPipelineTests
             new RiskEligibilityService());
         var first = EnvelopeFactory.Create(
             areaId: areaId,
+            simulationRunId: simulationRunId,
             sensorId: Guid.NewGuid(),
             metricType: SensorMetricType.Temperature,
             unit: MeasurementUnit.Celsius,
@@ -112,6 +114,7 @@ public sealed class ReadingRiskPipelineTests
             eventTime: new DateTimeOffset(2026, 4, 6, 18, 0, 0, TimeSpan.Zero));
         var second = EnvelopeFactory.Create(
             areaId: areaId,
+            simulationRunId: simulationRunId,
             sensorId: Guid.NewGuid(),
             metricType: SensorMetricType.WindSpeed,
             unit: MeasurementUnit.MetersPerSecond,
@@ -141,6 +144,7 @@ public sealed class ReadingRiskPipelineTests
     {
         var areaId = Guid.NewGuid();
         var sensorId = Guid.NewGuid();
+        var simulationRunId = Guid.NewGuid();
         var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
         var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
         var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
@@ -155,6 +159,7 @@ public sealed class ReadingRiskPipelineTests
             new RiskEligibilityService());
         var first = EnvelopeFactory.Create(
             areaId: areaId,
+            simulationRunId: simulationRunId,
             sensorId: sensorId,
             metricType: SensorMetricType.Temperature,
             unit: MeasurementUnit.Celsius,
@@ -162,6 +167,7 @@ public sealed class ReadingRiskPipelineTests
             eventTime: new DateTimeOffset(2026, 4, 6, 18, 0, 0, TimeSpan.Zero));
         var second = EnvelopeFactory.Create(
             areaId: areaId,
+            simulationRunId: simulationRunId,
             sensorId: sensorId,
             metricType: SensorMetricType.Temperature,
             unit: MeasurementUnit.Celsius,
@@ -391,6 +397,136 @@ public sealed class ReadingRiskPipelineTests
         Assert.Single(influxWriteService.AcceptedReadings);
         Assert.Empty(influxWriteService.RiskAssessments);
         Assert.Empty(influxWriteService.AreaSnapshots);
+    }
+
+    [Fact]
+    public async Task ProcessAcceptedReadingAsync_SameAreaDifferentRuns_DoesNotMixSnapshotAssessments()
+    {
+        var areaId = Guid.NewGuid();
+        var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
+        var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
+        var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
+        var projectionStore = new InMemoryAreaOperationalProjectionStore();
+        var influxWriteService = new FakeInfluxWriteService();
+        var pipeline = CreatePipeline(
+            acceptedReadingRepository,
+            riskAssessmentRepository,
+            areaRiskSnapshotRepository,
+            projectionStore,
+            influxWriteService,
+            new RiskEligibilityService());
+        var firstRunId = Guid.NewGuid();
+        var secondRunId = Guid.NewGuid();
+        var firstRunReading = EnvelopeFactory.Create(
+            areaId: areaId,
+            simulationRunId: firstRunId,
+            sensorId: Guid.NewGuid(),
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 22.0,
+            eventTime: new DateTimeOffset(2026, 5, 14, 8, 0, 0, TimeSpan.Zero));
+        var secondRunReading = EnvelopeFactory.Create(
+            areaId: areaId,
+            simulationRunId: secondRunId,
+            sensorId: Guid.NewGuid(),
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 41.0,
+            eventTime: new DateTimeOffset(2026, 5, 14, 9, 0, 0, TimeSpan.Zero));
+
+        await pipeline.ProcessAcceptedReadingAsync(firstRunReading, CancellationToken.None);
+        await pipeline.ProcessAcceptedReadingAsync(secondRunReading, CancellationToken.None);
+
+        var firstRunLatest = await riskAssessmentRepository.GetLatestByAreaAsync(
+            areaId,
+            CancellationToken.None,
+            firstRunId);
+        var secondRunSnapshot = await areaRiskSnapshotRepository.GetLatestAsync(
+            areaId,
+            CancellationToken.None,
+            secondRunId);
+
+        var firstRunAssessment = Assert.Single(firstRunLatest);
+        Assert.NotNull(secondRunSnapshot);
+        Assert.Equal(1, influxWriteService.AreaSnapshots.Last().AssessmentCount);
+        Assert.NotEqual(firstRunAssessment.RiskScore, secondRunSnapshot!.AggregateRiskScore);
+        Assert.Equal(1, projectionStore.States.Single().AssessmentCount);
+        Assert.Equal(secondRunId, projectionStore.States.Single().SimulationRunId);
+    }
+
+    [Fact]
+    public async Task ProcessAcceptedReadingAsync_DroppedReading_DoesNotCreateRiskAssessment()
+    {
+        var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
+        var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
+        var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
+        var projectionStore = new InMemoryAreaOperationalProjectionStore();
+        var influxWriteService = new FakeInfluxWriteService();
+        var scoringService = new ThrowingRiskScoringService();
+        var pipeline = CreatePipeline(
+            acceptedReadingRepository,
+            riskAssessmentRepository,
+            areaRiskSnapshotRepository,
+            projectionStore,
+            influxWriteService,
+            new RiskEligibilityService(),
+            scoringService);
+        var envelope = EnvelopeFactory.Create(
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 31.0,
+            operationalState: SensorOperationalState.Dropped,
+            eventTime: new DateTimeOffset(2026, 5, 13, 12, 0, 0, TimeSpan.Zero));
+
+        await pipeline.ProcessAcceptedReadingAsync(envelope, CancellationToken.None);
+
+        Assert.Single(await acceptedReadingRepository.GetAllAsync(CancellationToken.None));
+        Assert.Empty(await riskAssessmentRepository.GetByAreaAsync(envelope.AreaId, CancellationToken.None));
+        Assert.Null(await areaRiskSnapshotRepository.GetLatestAsync(envelope.AreaId, CancellationToken.None));
+        Assert.Empty(projectionStore.States);
+        Assert.Empty(projectionStore.CellStates);
+        Assert.Equal(0, scoringService.CallCount);
+        var batch = Assert.Single(influxWriteService.Batches);
+        Assert.Equal(1, batch.AcceptedReadingCount);
+        Assert.Equal(0, batch.RiskAssessmentCount);
+        Assert.Equal(0, batch.AreaRiskSnapshotCount);
+    }
+
+    [Fact]
+    public async Task ProcessAcceptedReadingAsync_UnsupportedMetric_DoesNotCreateRiskAssessment()
+    {
+        var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
+        var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
+        var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
+        var projectionStore = new InMemoryAreaOperationalProjectionStore();
+        var influxWriteService = new FakeInfluxWriteService();
+        var scoringService = new ThrowingRiskScoringService();
+        var pipeline = CreatePipeline(
+            acceptedReadingRepository,
+            riskAssessmentRepository,
+            areaRiskSnapshotRepository,
+            projectionStore,
+            influxWriteService,
+            new RiskEligibilityService(),
+            scoringService);
+        var envelope = EnvelopeFactory.Create(
+            metricType: SensorMetricType.WindDirection,
+            unit: MeasurementUnit.Degrees,
+            value: 180.0,
+            eventTime: new DateTimeOffset(2026, 5, 13, 12, 5, 0, TimeSpan.Zero));
+
+        await pipeline.ProcessAcceptedReadingAsync(envelope, CancellationToken.None);
+
+        Assert.Single(await acceptedReadingRepository.GetAllAsync(CancellationToken.None));
+        Assert.Empty(await riskAssessmentRepository.GetByAreaAsync(envelope.AreaId, CancellationToken.None));
+        Assert.Null(await areaRiskSnapshotRepository.GetLatestAsync(envelope.AreaId, CancellationToken.None));
+        Assert.Empty(projectionStore.States);
+        Assert.Empty(projectionStore.CellStates);
+        Assert.Equal(0, scoringService.CallCount);
+        var batch = Assert.Single(influxWriteService.Batches);
+        Assert.Equal(1, batch.AcceptedReadingCount);
+        Assert.Equal(0, batch.RiskAssessmentCount);
+        Assert.Equal(0, batch.AreaRiskSnapshotCount);
     }
 
     [Fact]

@@ -94,11 +94,12 @@ public sealed class PostgresSimulationContextSourceTests
         Assert.Equal(5, contextA.RunOverrides.Resolved.NumberOfCycles);
         Assert.Equal(5, contextA.RunOverrides.Resolved.IntervalSeconds);
         Assert.Equal(12345, contextA.RunOverrides.Resolved.PreferredSeed);
+        Assert.Equal("none", contextA.RunOverrides.Resolved.DegradationProfile);
         Assert.Equal("corr-123", contextA.RunOverrides.Resolved.OrchestratorCorrelationId);
     }
 
     [Fact]
-    public async Task CreateAsync_AreaIdAndScenarioIdProvided_ResolveByIdsBeforeCodes()
+    public async Task CreateAsync_AreaIdAndScenarioIdProvided_ResolvesByIds()
     {
         await using var scope = new SqliteControlDbContextScope();
         var ids = await SeedControlPlaneAsync(scope, includeActiveSensor: true);
@@ -107,7 +108,7 @@ public sealed class PostgresSimulationContextSourceTests
             AreaId = ids.AreaId,
             ScenarioId = ids.ScenarioId,
             ControlPlaneAreaCode = "wrong-area-code",
-            ControlPlaneScenarioCode = "wrong-scenario-code",
+            ControlPlaneScenarioCode = null,
             NumberOfCycles = 99,
             IntervalSeconds = 99
         });
@@ -121,6 +122,103 @@ public sealed class PostgresSimulationContextSourceTests
         Assert.Equal("scenario_b", context.ScenarioCode);
         Assert.Equal(TimeSpan.FromSeconds(15), context.Interval);
         Assert.Equal(6, context.NumberOfCycles);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Throws_WhenScenarioIdAndScenarioCodeAreBothConfigured()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var ids = await SeedControlPlaneAsync(scope, includeActiveSensor: true);
+        var options = Options.Create(new SimulatorOptions
+        {
+            AreaId = ids.AreaId,
+            ScenarioId = ids.ScenarioId,
+            ControlPlaneAreaCode = "proenca-a-nova",
+            ControlPlaneScenarioCode = "scenario_c"
+        });
+
+        var source = new PostgresSimulationContextSource(scope.Factory, options);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => source.CreateAsync(CancellationToken.None));
+        Assert.Contains("scenario selection is ambiguous", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreateAsync_UsesScenarioDegradationProfile_WhenRunOverrideIsMissing()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedControlPlaneAsync(
+            scope,
+            includeActiveSensor: true,
+            scenarioParametersJson:
+                """
+                {
+                  "simulator_options": {
+                    "FailureRate": 0.18,
+                    "NoiseLevel": 0.16,
+                    "DegradationProfile": "missing-readings",
+                    "TimeAcceleration": 1.0,
+                    "IntervalSeconds": 15,
+                    "NumberOfCycles": 6
+                  }
+                }
+                """);
+        var options = Options.Create(new SimulatorOptions
+        {
+            AreaId = Guid.Empty,
+            ScenarioId = Guid.Empty,
+            ControlPlaneAreaCode = "proenca-a-nova",
+            ControlPlaneScenarioCode = "scenario_b"
+        });
+
+        var source = new PostgresSimulationContextSource(scope.Factory, options);
+
+        var context = await source.CreateAsync(CancellationToken.None);
+
+        Assert.NotNull(context.RunOverrides);
+        Assert.Null(context.RunOverrides!.Requested.DegradationProfile);
+        Assert.Equal("missing-readings", context.RunOverrides.Resolved.DegradationProfile);
+    }
+
+    [Fact]
+    public async Task CreateAsync_RunOverrideDegradationProfileOverridesScenarioProfile()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedControlPlaneAsync(
+            scope,
+            includeActiveSensor: true,
+            scenarioParametersJson:
+                """
+                {
+                  "simulator_options": {
+                    "FailureRate": 0.18,
+                    "NoiseLevel": 0.16,
+                    "DegradationProfile": "missing-readings",
+                    "TimeAcceleration": 1.0,
+                    "IntervalSeconds": 15,
+                    "NumberOfCycles": 6
+                  }
+                }
+                """);
+        var options = Options.Create(new SimulatorOptions
+        {
+            AreaId = Guid.Empty,
+            ScenarioId = Guid.Empty,
+            ControlPlaneAreaCode = "proenca-a-nova",
+            ControlPlaneScenarioCode = "scenario_b",
+            RunOverrides = new SimulatorRunOverridesOptions
+            {
+                DegradationProfile = "none"
+            }
+        });
+
+        var source = new PostgresSimulationContextSource(scope.Factory, options);
+
+        var context = await source.CreateAsync(CancellationToken.None);
+
+        Assert.NotNull(context.RunOverrides);
+        Assert.Equal("none", context.RunOverrides!.Requested.DegradationProfile);
+        Assert.Equal("none", context.RunOverrides.Resolved.DegradationProfile);
     }
 
     [Fact]
@@ -288,7 +386,7 @@ public sealed class PostgresSimulationContextSourceTests
         var options = Options.Create(new SimulatorOptions
         {
             AreaId = Guid.Empty,
-            ScenarioId = Guid.NewGuid(),
+            ScenarioId = Guid.Empty,
             ControlPlaneAreaCode = "proenca-a-nova",
             ControlPlaneScenarioCode = "missing-scenario"
         });

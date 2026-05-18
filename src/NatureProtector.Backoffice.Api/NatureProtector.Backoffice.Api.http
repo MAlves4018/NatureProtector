@@ -35,6 +35,11 @@ Accept: application/json
 
 ###
 
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30
+Accept: application/json
+
+###
+
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/GeoJSON
 Accept: application/json
 

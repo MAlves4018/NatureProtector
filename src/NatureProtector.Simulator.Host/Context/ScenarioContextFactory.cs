@@ -76,6 +76,28 @@ public sealed class ScenarioContextFactory : ISimulationContextSource
 
         var startTimestamp = _options.StartTimestamp ?? DateTimeOffset.UtcNow;
         var interval = TimeSpan.FromSeconds(_options.IntervalSeconds);
+        var requestedOverrides = _options.RunOverrides ?? new SimulatorRunOverridesOptions();
+        var effectiveDegradationProfile = ResolveDegradationProfile(
+            requestedOverrides.DegradationProfile,
+            _options.DegradationProfile);
+        var runOverrides = effectiveDegradationProfile is null && requestedOverrides.DegradationProfile is null
+            ? null
+            : new SimulationRunOverridesSnapshot(
+                Requested: new SimulationRunOverridesRequested(
+                    SensorCount: requestedOverrides.SensorCount,
+                    NumberOfCycles: requestedOverrides.NumberOfCycles,
+                    IntervalSeconds: requestedOverrides.IntervalSeconds,
+                    Seed: requestedOverrides.Seed,
+                    DegradationProfile: requestedOverrides.DegradationProfile,
+                    OrchestratorCorrelationId: requestedOverrides.OrchestratorCorrelationId),
+                Resolved: new SimulationRunOverridesResolved(
+                    SensorCount: sensors.Count,
+                    NumberOfCycles: _options.NumberOfCycles,
+                    IntervalSeconds: _options.IntervalSeconds,
+                    PreferredSeed: _options.Seed,
+                    DegradationProfile: effectiveDegradationProfile,
+                    OrchestratorCorrelationId: requestedOverrides.OrchestratorCorrelationId,
+                    SelectedSensorNames: sensors.Select(sensor => sensor.Name).ToArray()));
 
         var context = new SimulationContext(
             areaId: _options.AreaId,
@@ -84,7 +106,8 @@ public sealed class ScenarioContextFactory : ISimulationContextSource
             sensors: sensors,
             startTimestamp: startTimestamp,
             interval: interval,
-            numberOfCycles: _options.NumberOfCycles);
+            numberOfCycles: _options.NumberOfCycles,
+            runOverrides: runOverrides);
 
         activity?.SetTag(TelemetryTags.AreaId, context.AreaId);
         activity?.SetTag(TelemetryTags.ScenarioId, context.Scenario.Id);
@@ -187,6 +210,16 @@ public sealed class ScenarioContextFactory : ISimulationContextSource
     private static string NormalizeRequiredString(string? value, string fallback)
     {
         return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+    }
+
+    private static string? ResolveDegradationProfile(string? overrideProfile, string? scenarioProfile)
+    {
+        if (!string.IsNullOrWhiteSpace(overrideProfile))
+        {
+            return overrideProfile.Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(scenarioProfile) ? null : scenarioProfile.Trim();
     }
 
     /// <summary>

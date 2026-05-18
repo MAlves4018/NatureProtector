@@ -45,6 +45,7 @@ public sealed class PostgresSimulationContextSource(
         var stopwatch = Stopwatch.StartNew();
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+        ValidateScenarioSelector();
         var area = await ResolveAreaAsync(dbContext, cancellationToken);
         var scenario = await ResolveScenarioAsync(dbContext, area.Id, cancellationToken);
         var sensors = await dbContext.SensorNodes
@@ -89,6 +90,10 @@ public sealed class PostgresSimulationContextSource(
             Seed: runOverrides.Seed,
             DegradationProfile: runOverrides.DegradationProfile,
             OrchestratorCorrelationId: runOverrides.OrchestratorCorrelationId);
+        var scenarioDegradationProfile = GetOptionalString(simulatorOptions, "DegradationProfile");
+        var effectiveDegradationProfile = ResolveDegradationProfile(
+            requestedOverrides.DegradationProfile,
+            scenarioDegradationProfile);
 
         var intervalSeconds = ResolveIntWithPrecedence(
             requestedValue: requestedOverrides.IntervalSeconds,
@@ -120,7 +125,7 @@ public sealed class PostgresSimulationContextSource(
                     NumberOfCycles: numberOfCycles,
                     IntervalSeconds: intervalSeconds,
                     PreferredSeed: preferredSeed,
-                    DegradationProfile: requestedOverrides.DegradationProfile,
+                    DegradationProfile: effectiveDegradationProfile,
                     OrchestratorCorrelationId: requestedOverrides.OrchestratorCorrelationId,
                     SelectedSensorNames: selectedSensors.Select(sensor => sensor.Name).ToArray())));
 
@@ -134,6 +139,15 @@ public sealed class PostgresSimulationContextSource(
         SimulatorHostTelemetry.ContextCreationDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds);
 
         return context;
+    }
+
+    private void ValidateScenarioSelector()
+    {
+        if (_options.ScenarioId != Guid.Empty && !string.IsNullOrWhiteSpace(_options.ControlPlaneScenarioCode))
+        {
+            throw new InvalidOperationException(
+                "Control plane scenario selection is ambiguous because both ScenarioId and ControlPlaneScenarioCode are configured.");
+        }
     }
 
     private async Task<AreaRecord> ResolveAreaAsync(
@@ -266,6 +280,24 @@ public sealed class PostgresSimulationContextSource(
             && property.ValueKind is JsonValueKind.Number
                 ? property.GetDouble()
                 : null;
+    }
+
+    private static string? GetOptionalString(JsonElement element, string propertyName)
+    {
+        return element.TryGetProperty(propertyName, out var property)
+            && property.ValueKind is JsonValueKind.String
+                ? property.GetString()
+                : null;
+    }
+
+    private static string? ResolveDegradationProfile(string? overrideProfile, string? scenarioProfile)
+    {
+        if (!string.IsNullOrWhiteSpace(overrideProfile))
+        {
+            return overrideProfile.Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(scenarioProfile) ? null : scenarioProfile.Trim();
     }
 
     private static int ResolveIntWithPrecedence(

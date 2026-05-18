@@ -1,0 +1,51 @@
+﻿{
+    "version":  "1.0",
+    "areaCode":  "proenca-a-nova",
+    "scenarioCode":  "scenario_b",
+    "runLabel":  "scenario-b-5cycles-6sensors-smoke",
+    "collectEvidence":  false,
+    "waitForCompletion":  true,
+    "timeoutSeconds":  180,
+    "allowParallelRun":  false,
+    "requested":  {
+                      "sensorCount":  6,
+                      "numberOfCycles":  5,
+                      "intervalSeconds":  5,
+                      "seed":  12345,
+                      "degradationProfile":  "none"
+                  },
+    "orchestrator":  {
+                         "correlationId":  "ae190bde-d5c2-4ac6-ab56-d741f11b4871",
+                         "startedAtUtc":  "2026-05-16T22:31:05.1442274Z",
+                         "repoRoot":  "C:\\Users\\Miguel\\UNI\\6sem\\PS\\IMP\\D\\NatureProtector",
+                         "specPath":  "C:\\Users\\Miguel\\UNI\\6sem\\PS\\IMP\\D\\NatureProtector\\scripts\\scenarios\\examples\\scenario-b-5cycles-6sensors-smoke.json",
+                         "completedAtUtc":  "2026-05-16T22:31:30.4796495Z",
+                         "outputDir":  "C:\\Users\\Miguel\\UNI\\6sem\\PS\\IMP\\D\\NatureProtector\\docs\\evidence\\runs\\20260517-003104-scenario_b-scenario-b-5cycles-6sensors-smoke",
+                         "runId":  "be6a783b-ad1b-42b0-a541-4245c375f014",
+                         "finalStatus":  "Completed",
+                         "hostExitCode":  null,
+                         "evidence":  "not_requested"
+                     },
+    "confirmation":  {
+                         "sensorCount":  {
+                                             "status":  "observed_match",
+                                             "observedValue":  6
+                                         },
+                         "numberOfCycles":  {
+                                                "status":  "observed_match",
+                                                "observedValue":  5
+                                            },
+                         "intervalSeconds":  {
+                                                 "status":  "observed_match",
+                                                 "observedValue":  5
+                                             },
+                         "seed":  {
+                                      "status":  "observed_match",
+                                      "observedValue":  12345
+                                  },
+                         "degradationProfile":  {
+                                                    "status":  "requested_not_confirmed_pending_host_support",
+                                                    "observedValue":  null
+                                                }
+                     }
+}

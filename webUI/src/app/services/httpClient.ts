@@ -29,10 +29,15 @@ class HttpClient {
         }
 
         if (!response.ok) {
-            const errorBody: ErrorResponse = data.message ? data : {
+            const errorBody: ErrorResponse = data.message || data.detail ? {
+                status: data.status || response.status,
+                title: data.title || 'Request Failed',
+                message: data.message || data.detail,
+                detail: data.detail,
+            } : {
                 status: response.status,
                 title: 'Request Failed',
-                message: data.message || response.statusText || 'Unknown error'
+                message: response.statusText || 'Unknown error'
             };
             throw HttpError.fromResponseBody(errorBody);
         }

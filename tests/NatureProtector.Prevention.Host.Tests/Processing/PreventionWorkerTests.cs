@@ -80,6 +80,62 @@ public sealed class PreventionWorkerTests
     }
 
     [Fact]
+    public async Task HandleReceivedAsync_AcknowledgesNullPayload_AndStoresRejection()
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var worker = CreateWorker(CreatePipeline(
+            new InMemoryAcceptedReadingRepository(),
+            new InMemoryRiskAssessmentRepository(),
+            new InMemoryAreaRiskSnapshotRepository(),
+            new FakeInfluxWriteService()),
+            inbox);
+        var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
+        var envelope = EnvelopeFactory.Create();
+        var body = Encoding.UTF8.GetBytes(
+            $$"""{"schemaVersion":"1.0","eventId":"{{envelope.EventId}}","correlationId":"{{envelope.CorrelationId}}","producer":"{{envelope.Producer}}","eventType":"{{envelope.EventType}}","areaId":"{{envelope.AreaId}}","eventTime":"{{envelope.EventTime:O}}","payload":null}""");
+
+        await InvokeHandleReceivedAsync(
+            worker,
+            channel,
+            CreateEventArgs(body, 17),
+            CancellationToken.None);
+
+        Assert.Single(recorder.Invocations, x => x.MethodName == "BasicAck");
+        Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
+        Assert.Empty(inbox.Events);
+        Assert.Single(inbox.Rejections);
+        Assert.Equal("missing_payload", inbox.Rejections.Single().RejectionCode);
+    }
+
+    [Fact]
+    public async Task HandleReceivedAsync_AcknowledgesMissingPayload_AndStoresRejection()
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var worker = CreateWorker(CreatePipeline(
+            new InMemoryAcceptedReadingRepository(),
+            new InMemoryRiskAssessmentRepository(),
+            new InMemoryAreaRiskSnapshotRepository(),
+            new FakeInfluxWriteService()),
+            inbox);
+        var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
+        var envelope = EnvelopeFactory.Create();
+        var body = Encoding.UTF8.GetBytes(
+            $$"""{"schemaVersion":"1.0","eventId":"{{envelope.EventId}}","correlationId":"{{envelope.CorrelationId}}","producer":"{{envelope.Producer}}","eventType":"{{envelope.EventType}}","areaId":"{{envelope.AreaId}}","eventTime":"{{envelope.EventTime:O}}"}""");
+
+        await InvokeHandleReceivedAsync(
+            worker,
+            channel,
+            CreateEventArgs(body, 18),
+            CancellationToken.None);
+
+        Assert.Single(recorder.Invocations, x => x.MethodName == "BasicAck");
+        Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
+        Assert.Empty(inbox.Events);
+        Assert.Single(inbox.Rejections);
+        Assert.Equal("missing_payload", inbox.Rejections.Single().RejectionCode);
+    }
+
+    [Fact]
     public async Task HandleReceivedAsync_AcknowledgesInvalidJson_AndStoresRejection()
     {
         var inbox = new InMemoryReadingEventInbox();
@@ -129,6 +185,60 @@ public sealed class PreventionWorkerTests
         Assert.Empty(inbox.Events);
         Assert.Single(inbox.Rejections);
         Assert.Equal("invalid_operational_state", inbox.Rejections.Single().RejectionCode);
+    }
+
+    [Fact]
+    public async Task HandleReceivedAsync_AcknowledgesUndefinedMetricType_AndRejectsBeforeInbox()
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var worker = CreateWorker(CreatePipeline(
+            new InMemoryAcceptedReadingRepository(),
+            new InMemoryRiskAssessmentRepository(),
+            new InMemoryAreaRiskSnapshotRepository(),
+            new FakeInfluxWriteService()),
+            inbox);
+        var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
+        var envelope = EnvelopeFactory.Create(metricType: (SensorMetricType)999);
+
+        await InvokeHandleReceivedAsync(
+            worker,
+            channel,
+            CreateEventArgs(JsonEventSerializer.SerializeToUtf8Bytes(envelope), 19),
+            CancellationToken.None);
+
+        var ack = Assert.Single(recorder.Invocations, x => x.MethodName == "BasicAck");
+        Assert.Equal(19UL, Assert.IsType<ulong>(ack.Arguments[0]));
+        Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
+        Assert.Empty(inbox.Events);
+        Assert.Single(inbox.Rejections);
+        Assert.Equal("invalid_metric_type", inbox.Rejections.Single().RejectionCode);
+    }
+
+    [Fact]
+    public async Task HandleReceivedAsync_AcknowledgesUndefinedMeasurementUnit_AndRejectsBeforeInbox()
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var worker = CreateWorker(CreatePipeline(
+            new InMemoryAcceptedReadingRepository(),
+            new InMemoryRiskAssessmentRepository(),
+            new InMemoryAreaRiskSnapshotRepository(),
+            new FakeInfluxWriteService()),
+            inbox);
+        var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
+        var envelope = EnvelopeFactory.Create(unit: (MeasurementUnit)999);
+
+        await InvokeHandleReceivedAsync(
+            worker,
+            channel,
+            CreateEventArgs(JsonEventSerializer.SerializeToUtf8Bytes(envelope), 20),
+            CancellationToken.None);
+
+        var ack = Assert.Single(recorder.Invocations, x => x.MethodName == "BasicAck");
+        Assert.Equal(20UL, Assert.IsType<ulong>(ack.Arguments[0]));
+        Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
+        Assert.Empty(inbox.Events);
+        Assert.Single(inbox.Rejections);
+        Assert.Equal("invalid_measurement_unit", inbox.Rejections.Single().RejectionCode);
     }
 
     [Fact]

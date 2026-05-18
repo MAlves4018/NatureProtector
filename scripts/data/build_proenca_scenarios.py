@@ -154,11 +154,12 @@ def build_simulator_options(
     failure_rate: float,
     noise_level: float,
     time_acceleration: float,
+    degradation_profile: str | None = None,
 ) -> dict[str, object]:
     """Constrói o bloco `simulator_options` que será consumido pelo host."""
     start_local = datetime.fromisoformat(f"{candidate_date}T12:00:00")
 
-    return {
+    options: dict[str, object] = {
         "AreaId": str(AREA_ID),
         "ScenarioId": scenario_id,
         "ScenarioName": scenario_name,
@@ -175,6 +176,10 @@ def build_simulator_options(
         "IntervalSeconds": 30,
         "LogicalStepMinutes": 5,
     }
+    if degradation_profile:
+        options["DegradationProfile"] = degradation_profile
+
+    return options
 
 
 def scenario_payload(
@@ -341,6 +346,7 @@ def main() -> None:
             failure_rate=0.18,
             noise_level=0.16,
             time_acceleration=1.0,
+            degradation_profile="missing-readings",
         ),
         future_fault_injections=[
             "invalid_sensor_state",

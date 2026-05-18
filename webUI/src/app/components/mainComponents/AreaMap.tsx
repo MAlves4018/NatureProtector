@@ -171,6 +171,7 @@ export function AreaMap({ areaId, mapType, geoJSON, cells }: MapProps) {
 
   const changeDashes = (areaId: string, cellCode: string) => {
     const sensors = cells.find(c => c.cellCode === cellCode)?.sensorNodeIds || [];
+    console.log('Sensors for cell', cellCode, ':', sensors);
     return dashboardLinks.map(link => {
       if (typeof link === 'string') {
         const updatedLink = link
@@ -179,13 +180,13 @@ export function AreaMap({ areaId, mapType, geoJSON, cells }: MapProps) {
             
             if (part.includes('?1?')) return part.replace(/\?1\?/g, areaId);
             if (part.includes('?w?')) {
-              return part.replace(/\?w\?/g, sensors.find(sensor => sensor.type === 'Wind')?.id || '');
+              return part.replace(/\?w\?/g, sensors.find(sensor => sensor.item2 === 'Wind')?.item1 || '');
             }
             if (part.includes('?h?')) {
-              return part.replace(/\?h\?/g, sensors.find(sensor => sensor.type === 'Humidity')?.id || '');
+              return part.replace(/\?h\?/g, sensors.find(sensor => sensor.item2 === 'Humidity')?.item1 || '');
             }
             if (part.includes('?t?')) {
-              return part.replace(/\?t\?/g, sensors.find(sensor => sensor.type === 'Temperature')?.id || '');
+              return part.replace(/\?t\?/g, sensors.find(sensor => sensor.item2 === 'Temperature')?.item1 || '');
             }
             return part;
           })

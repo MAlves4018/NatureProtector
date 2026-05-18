@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Scenarios;
@@ -27,6 +28,60 @@ public sealed class SimulationRunnerTests
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
 
         Assert.Equal(options.NumberOfCycles * options.Sensors.Count, publisher.Published.Count);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_MissingReadingsDegradation_OmitsDeterministicSubset()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 5;
+        options.IntervalSeconds = 1;
+        var context = CreateContextWithDegradation(options, "missing-readings");
+        var publisher = new CollectingReadingPublisher();
+        var runner = new SimulationRunner(
+            logger: NullLogger<SimulationRunner>.Instance,
+            simulatorOptions: Options.Create(options),
+            seedProvider: new SeedProvider(),
+            simulationContextSource: new StaticSimulationContextSource(context),
+            readingGenerationService: new ReadingGenerationService(),
+            simulationRunStore: new NoOpSimulationRunStore(),
+            readingPublisher: publisher);
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        var expectedWithoutDegradation = context.NumberOfCycles * context.Sensors.Count;
+        Assert.InRange(publisher.Published.Count, 1, expectedWithoutDegradation - 1);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_RunStartLogIncludesEffectiveScenarioAndDegradationContext()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 1;
+        options.IntervalSeconds = 1;
+        var context = CreateContextWithDegradation(options, "missing-readings");
+        var logger = new CapturingLogger<SimulationRunner>();
+        var runner = new SimulationRunner(
+            logger: logger,
+            simulatorOptions: Options.Create(options),
+            seedProvider: new SeedProvider(),
+            simulationContextSource: new StaticSimulationContextSource(context),
+            readingGenerationService: new ReadingGenerationService(),
+            simulationRunStore: new NoOpSimulationRunStore(),
+            readingPublisher: new CollectingReadingPublisher());
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        var runStartLog = Assert.Single(
+            logger.Messages,
+            message => message.Contains("Simulation run started", StringComparison.Ordinal));
+        Assert.Contains("SimulationRunId=", runStartLog);
+        Assert.Contains("ScenarioId=", runStartLog);
+        Assert.Contains("ScenarioName=Preferred seed scenario", runStartLog);
+        Assert.Contains("DegradationProfile=missing-readings", runStartLog);
+        Assert.Contains("FailureRate=0", runStartLog);
+        Assert.Contains("NoiseLevel=0", runStartLog);
+        Assert.Contains("SensorLimit=1", runStartLog);
     }
 
     [Fact]
@@ -216,6 +271,24 @@ public sealed class SimulationRunnerTests
             preferredSeed: preferredSeed);
     }
 
+    private static SimulationContext CreateContextWithDegradation(
+        NatureProtector.Simulator.Host.Configuration.SimulatorOptions options,
+        string degradationProfile)
+    {
+        var context = CreateContextWithPreferredSeed(options.Seed ?? 12345);
+        return new SimulationContext(
+            areaId: context.AreaId,
+            scenario: context.Scenario,
+            sensors: context.Sensors,
+            startTimestamp: context.StartTimestamp,
+            interval: TimeSpan.FromSeconds(options.IntervalSeconds),
+            numberOfCycles: options.NumberOfCycles,
+            preferredSeed: options.Seed,
+            runOverrides: new SimulationRunOverridesSnapshot(
+                new SimulationRunOverridesRequested(null, options.NumberOfCycles, options.IntervalSeconds, options.Seed, degradationProfile, "tests"),
+                new SimulationRunOverridesResolved(context.Sensors.Count, options.NumberOfCycles, options.IntervalSeconds, options.Seed, degradationProfile, "tests", context.Sensors.Select(sensor => sensor.Name).ToArray())));
+    }
+
     private sealed class RecordingSimulationRunStore : ISimulationRunStore
     {
         public List<RecordedRun> Upserts { get; } = [];
@@ -258,6 +331,38 @@ public sealed class SimulationRunnerTests
         public Task<SimulationContext> CreateAsync(CancellationToken cancellationToken)
         {
             return Task.FromResult(context);
+        }
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state)
+            where TState : notnull
+        {
+            return NoOpScope.Instance;
+        }
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Messages.Add(formatter(state, exception));
+        }
+
+        private sealed class NoOpScope : IDisposable
+        {
+            public static NoOpScope Instance { get; } = new();
+
+            public void Dispose()
+            {
+            }
         }
     }
 }

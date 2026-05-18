@@ -37,6 +37,7 @@ public sealed class GeneratedScenarioManifestLoaderTests
             "BaseWindSpeed": 12.0,
             "FailureRate": 0.25,
             "NoiseLevel": 0.45,
+            "DegradationProfile": "missing-readings",
             "TimeAcceleration": 2.0,
             "NumberOfCycles": 9,
             "IntervalSeconds": 4
@@ -59,6 +60,7 @@ public sealed class GeneratedScenarioManifestLoaderTests
         Assert.Equal(12.0, options.BaseWindSpeed);
         Assert.Equal(0.25, options.FailureRate);
         Assert.Equal(0.45, options.NoiseLevel);
+        Assert.Equal("missing-readings", options.DegradationProfile);
         Assert.Equal(2.0, options.TimeAcceleration);
         Assert.Equal(9, options.NumberOfCycles);
         Assert.Equal(4, options.IntervalSeconds);
@@ -102,6 +104,46 @@ public sealed class GeneratedScenarioManifestLoaderTests
         Assert.Equal(ScenarioCategory.Exercise, options.ScenarioCategory);
         Assert.Equal(7, options.NumberOfCycles);
         Assert.Equal("Simulator test scenario", options.ScenarioDescription);
+        Assert.Null(options.DegradationProfile);
+    }
+
+    [Fact]
+    public void ApplyIfConfigured_SelectsScenarioC_WithExplicitDegradationProfile()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        using var tempDirectory = new TempDirectory();
+        File.WriteAllText(Path.Combine(tempDirectory.Path, "catalog.json"), """
+        {
+          "scenarios": [
+            {
+              "scenario_key": "scenario_b",
+              "scenario_id": "22222222-aaaa-bbbb-cccc-222222222222",
+              "simulator_options": {
+                "ScenarioName": "Catalog B",
+                "ScenarioCategory": "HighRisk"
+              }
+            },
+            {
+              "scenario_key": "scenario_c",
+              "scenario_id": "33333333-aaaa-bbbb-cccc-333333333333",
+              "simulator_options": {
+                "ScenarioName": "Catalog C",
+                "ScenarioCategory": "Failure",
+                "DegradationProfile": "missing-readings"
+              }
+            }
+          ]
+        }
+        """);
+
+        options.ScenarioManifestPath = "catalog.json";
+        options.ScenarioManifestScenarioKey = "scenario_c";
+
+        GeneratedScenarioManifestLoader.ApplyIfConfigured(options, tempDirectory.Path);
+
+        Assert.Equal("Catalog C", options.ScenarioName);
+        Assert.Equal(ScenarioCategory.Failure, options.ScenarioCategory);
+        Assert.Equal("missing-readings", options.DegradationProfile);
     }
 
     [Fact]

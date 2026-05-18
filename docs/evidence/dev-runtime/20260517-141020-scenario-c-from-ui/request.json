@@ -1,0 +1,14 @@
+{
+  "AreaCode": "proenca-a-nova",
+  "ScenarioCode": "scenario_c",
+  "SensorCount": 6,
+  "NumberOfCycles": 5,
+  "IntervalSeconds": 5,
+  "Seed": 12345,
+  "DegradationProfile": "none",
+  "CollectEvidence": true,
+  "WaitForCompletion": true,
+  "TimeoutSeconds": 180,
+  "AllowParallelRun": false,
+  "RunLabel": "scenario-c-from-ui"
+}

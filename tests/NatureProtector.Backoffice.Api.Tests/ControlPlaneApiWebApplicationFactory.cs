@@ -344,9 +344,150 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
                 _cellOperationalStates.Skip(skip).Take(take <= 0 ? 100 : take).ToArray());
         }
 
+        public Task<RuntimeSummaryResponse> GetRuntimeSummaryAsync(
+            string? areaCode,
+            int recentMinutes,
+            CancellationToken cancellationToken)
+        {
+            var run = _simulationRuns.Single();
+            return Task.FromResult(new RuntimeSummaryResponse(
+                new DateTimeOffset(2026, 4, 7, 20, 16, 0, TimeSpan.Zero),
+                recentMinutes,
+                areaCode,
+                null,
+                new RuntimeRunSummaryResponse(
+                    run.Id,
+                    run.AreaCode,
+                    run.ScenarioCode,
+                    run.ScenarioName,
+                    run.Status,
+                    run.ConfigurationVersionNumber,
+                    run.CreatedAt,
+                    run.StartedAt,
+                    run.EndedAt,
+                    840,
+                    run.LogicalStartTimestamp,
+                    run.IntervalSeconds,
+                    run.NumberOfCycles,
+                    run.ExecutionSeed,
+                    run.MetadataJson,
+                    "valid",
+                    null,
+                    null),
+                new RuntimePipelineSummaryResponse(
+                    2,
+                    2,
+                    [new RuntimeStatusCountResponse("Processed", 2)],
+                    2,
+                    [new RuntimeAttemptCountResponse("Succeeded", null, 2)],
+                    0,
+                    0,
+                    [],
+                    0,
+                    0,
+                    [],
+                    [],
+                    [],
+                    []),
+                new RuntimeRiskSummaryResponse(
+                    2,
+                    0.72,
+                    0.91,
+                    new DateTimeOffset(2026, 4, 7, 20, 14, 0, TimeSpan.Zero),
+                    [new RuntimeRiskPointResponse(new DateTimeOffset(2026, 4, 7, 20, 14, 0, TimeSpan.Zero), 0.91, "Extreme")]),
+                new RuntimeAreaOperationalSummaryResponse(
+                    _areaOperationalState.AreaCode,
+                    _areaOperationalState.ConfigurationVersionNumber,
+                    _areaOperationalState.SnapshotTimestamp,
+                    _areaOperationalState.AggregateRiskScore,
+                    _areaOperationalState.AggregateRiskLevel,
+                    _areaOperationalState.Severity,
+                    _areaOperationalState.Summary,
+                    _areaOperationalState.AssessmentCount,
+                    _areaOperationalState.UpdatedAt,
+                    _areaOperationalState.AlertState),
+                _cellOperationalStates.Count,
+                _activeAlerts.Select(alert => new RuntimeAlertSummaryResponse(
+                    alert.Id,
+                    alert.AreaCode,
+                    alert.ConfigurationVersionNumber,
+                    alert.AlertCode,
+                    alert.Severity,
+                    alert.Status,
+                    alert.Message,
+                    alert.TriggeredAt,
+                    alert.UpdatedAt,
+                    alert.ResolvedAt,
+                    alert.AlertState)).ToArray(),
+                new RuntimeFreshnessSummaryResponse(
+                    2,
+                    0,
+                    0,
+                    new DateTimeOffset(2026, 4, 7, 20, 13, 0, TimeSpan.Zero),
+                    new DateTimeOffset(2026, 4, 7, 20, 14, 0, TimeSpan.Zero),
+                    120,
+                    300,
+                    "Fake freshness summary."),
+                RuntimeLimitations.Default,
+                []));
+        }
+
         public Task<AreaGeoJSONResponse?> GetAreaGeoJSONAsync(string areaCode, int? configurationVersion, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
+
+        public Task<RuntimeDiagnosticCatalogResponse> ListRuntimeDiagnosticsAsync(CancellationToken cancellationToken)
+            => Task.FromResult(new RuntimeDiagnosticCatalogResponse(
+            [
+                new RuntimeDiagnosticDefinitionResponse("runtime-table-counts", "Runtime table counts", "Fake diagnostic")
+            ]));
+
+        public Task<RuntimeDiagnosticResultResponse?> ExecuteRuntimeDiagnosticAsync(
+            string diagnosticId,
+            RuntimeDiagnosticRequest request,
+            CancellationToken cancellationToken)
+            => Task.FromResult<RuntimeDiagnosticResultResponse?>(
+                diagnosticId == "runtime-table-counts"
+                    ? new RuntimeDiagnosticResultResponse(
+                        diagnosticId,
+                        "Runtime table counts",
+                        "Fake diagnostic",
+                        ["schema", "table", "count"],
+                        [new Dictionary<string, string?> { ["schema"] = "control", ["table"] = "simulation_runs", ["count"] = "1" }],
+                        [])
+                    : null);
+
+        public Task<RuntimeRunStartResponse> StartRuntimeRunAsync(
+            RuntimeRunStartRequest request,
+            CancellationToken cancellationToken)
+            => Task.FromResult(new RuntimeRunStartResponse(
+                Guid.Parse("92000000-0000-0000-0000-000000000001"),
+                "fake-correlation",
+                "Validated",
+                "Fake run request accepted.",
+                DateTimeOffset.UtcNow,
+                new RuntimeRunOverrideValuesResponse(
+                    request.SensorCount,
+                    request.NumberOfCycles,
+                    request.IntervalSeconds,
+                    request.Seed,
+                    request.DegradationProfile,
+                    "fake-correlation"),
+                null,
+                [],
+                null,
+                null));
+
+        public Task<RuntimeResetResponse> ResetRuntimeStateAsync(
+            RuntimeResetRequest request,
+            CancellationToken cancellationToken)
+            => Task.FromResult(new RuntimeResetResponse(
+                DateTimeOffset.UtcNow,
+                request.DryRun,
+                request.DryRun ? "DryRun" : "Completed",
+                "Fake reset response.",
+                [],
+                []));
     }
 }

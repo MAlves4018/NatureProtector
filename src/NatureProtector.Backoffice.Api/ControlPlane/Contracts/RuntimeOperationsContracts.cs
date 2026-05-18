@@ -1,0 +1,76 @@
+namespace NatureProtector.Backoffice.Api.ControlPlane.Contracts;
+
+public sealed record RuntimeDiagnosticCatalogResponse(
+    IReadOnlyList<RuntimeDiagnosticDefinitionResponse> Diagnostics);
+
+public sealed record RuntimeDiagnosticDefinitionResponse(
+    string Id,
+    string Title,
+    string Description);
+
+public sealed record RuntimeDiagnosticRequest(
+    string? AreaCode = null,
+    int RecentMinutes = 30,
+    string? ScenarioCode = null);
+
+public sealed record RuntimeDiagnosticResultResponse(
+    string Id,
+    string Title,
+    string Description,
+    IReadOnlyList<string> Columns,
+    IReadOnlyList<IReadOnlyDictionary<string, string?>> Rows,
+    IReadOnlyList<string> Limitations);
+
+public sealed record RuntimeTableCountResponse(
+    string Schema,
+    string Table,
+    int Count);
+
+public sealed record RuntimeFreshnessSummaryResponse(
+    int FreshCount,
+    int StaleCount,
+    int ExpiredCount,
+    DateTimeOffset? OldestIncludedAssessment,
+    DateTimeOffset? LatestIncludedAssessment,
+    int FreshSeconds,
+    int StaleSeconds,
+    string Note);
+
+public sealed record RuntimeRunStartRequest(
+    string AreaCode,
+    string ScenarioCode,
+    int? SensorCount,
+    int? NumberOfCycles,
+    int? IntervalSeconds,
+    int? Seed,
+    string? DegradationProfile,
+    bool CollectEvidence = false,
+    bool WaitForCompletion = false,
+    int TimeoutSeconds = 180,
+    bool AllowParallelRun = false,
+    string? RunLabel = null);
+
+public sealed record RuntimeRunStartResponse(
+    Guid RequestId,
+    string OrchestratorCorrelationId,
+    string Status,
+    string Message,
+    DateTimeOffset RequestedAtUtc,
+    RuntimeRunOverrideValuesResponse Requested,
+    RuntimeRunSummaryResponse? Run,
+    IReadOnlyList<string> Warnings,
+    string? LogDirectory,
+    string? EvidenceDirectory);
+
+public sealed record RuntimeResetRequest(
+    string Scope,
+    string Confirm,
+    bool DryRun);
+
+public sealed record RuntimeResetResponse(
+    DateTimeOffset GeneratedAtUtc,
+    bool DryRun,
+    string Status,
+    string Message,
+    IReadOnlyList<RuntimeTableCountResponse> Before,
+    IReadOnlyList<RuntimeTableCountResponse> After);

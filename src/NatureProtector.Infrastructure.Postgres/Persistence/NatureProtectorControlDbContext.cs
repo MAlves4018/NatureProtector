@@ -437,12 +437,18 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.Property(entity => entity.RiskLevel).HasMaxLength(50).IsRequired();
         builder.Property(entity => entity.ExplanationSummary).HasMaxLength(2000);
         builder.HasIndex(entity => entity.SourceEventId).IsUnique();
+        builder.HasIndex(entity => entity.SimulationRunId);
         builder.HasIndex(entity => new { entity.AreaId, entity.Timestamp });
+        builder.HasIndex(entity => new { entity.AreaId, entity.SimulationRunId, entity.Timestamp });
         builder.HasIndex(entity => new { entity.GridCellId, entity.Timestamp });
         builder.HasOne(entity => entity.Area)
             .WithMany()
             .HasForeignKey(entity => entity.AreaId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(entity => entity.SimulationRun)
+            .WithMany()
+            .HasForeignKey(entity => entity.SimulationRunId)
+            .OnDelete(DeleteBehavior.SetNull);
         builder.HasOne(entity => entity.SensorNode)
             .WithMany()
             .HasForeignKey(entity => entity.SensorId)

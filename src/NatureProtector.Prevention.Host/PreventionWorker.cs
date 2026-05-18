@@ -172,14 +172,6 @@ public sealed class PreventionWorker(
                 return;
             }
 
-            PreventionHostTelemetry.ValidatedEvents.Add(1);
-            receiveActivity?.SetTag(TelemetryTags.EventId, envelope.EventId);
-            receiveActivity?.SetTag(TelemetryTags.CorrelationId, envelope.CorrelationId);
-            receiveActivity?.SetTag(TelemetryTags.AreaId, envelope.AreaId);
-            receiveActivity?.SetTag(TelemetryTags.SensorId, envelope.Payload.SensorId);
-            receiveActivity?.SetTag(TelemetryTags.SensorName, envelope.Payload.SensorName);
-            receiveActivity?.SetTag(TelemetryTags.MetricType, envelope.Payload.MetricType);
-
             if (!TryValidateEnvelope(envelope, out var validationFailure))
             {
                 await RejectBeforeInboxAsync(
@@ -191,6 +183,14 @@ public sealed class PreventionWorker(
                     envelope);
                 return;
             }
+
+            PreventionHostTelemetry.ValidatedEvents.Add(1);
+            receiveActivity?.SetTag(TelemetryTags.EventId, envelope.EventId);
+            receiveActivity?.SetTag(TelemetryTags.CorrelationId, envelope.CorrelationId);
+            receiveActivity?.SetTag(TelemetryTags.AreaId, envelope.AreaId);
+            receiveActivity?.SetTag(TelemetryTags.SensorId, envelope.Payload.SensorId);
+            receiveActivity?.SetTag(TelemetryTags.SensorName, envelope.Payload.SensorName);
+            receiveActivity?.SetTag(TelemetryTags.MetricType, envelope.Payload.MetricType);
 
             logger.LogInformation(
                 "Accepted event contract | EventId={EventId} | EventType={EventType} | SchemaVersion={SchemaVersion} | CorrelationId={CorrelationId} | Sensor={SensorName} | Metric={MetricType} | Value={Value} | OperationalState={OperationalState} | EventTime={EventTime}",
@@ -266,7 +266,7 @@ public sealed class PreventionWorker(
             envelope?.EventType,
             envelope?.SchemaVersion,
             envelope?.AreaId,
-            envelope?.Payload.SensorId);
+            envelope?.Payload?.SensorId);
         PreventionHostTelemetry.RejectedEvents.Add(1, new TagList { { TelemetryTags.RejectionCode, rejectionCode } });
 
         await readingEventInbox.StoreRejectedAsync(
@@ -282,10 +282,10 @@ public sealed class PreventionWorker(
                     EventType: envelope.EventType,
                     AreaId: envelope.AreaId,
                     SchemaVersion: envelope.SchemaVersion,
-                    SensorId: envelope.Payload.SensorId,
-                    SensorName: envelope.Payload.SensorName,
-                    MetricType: envelope.Payload.MetricType.ToString(),
-                    OperationalState: envelope.Payload.OperationalState.ToString(),
+                    SensorId: envelope.Payload?.SensorId,
+                    SensorName: envelope.Payload?.SensorName,
+                    MetricType: envelope.Payload is null ? null : envelope.Payload.MetricType.ToString(),
+                    OperationalState: envelope.Payload is null ? null : envelope.Payload.OperationalState.ToString(),
                     Stage: "pre_inbox_validation",
                     DeliveryTag: ea.DeliveryTag),
             stoppingToken);
@@ -322,6 +322,14 @@ public sealed class PreventionWorker(
             return false;
         }
 
+        if (envelope.Payload is null)
+        {
+            failure = new EnvelopeValidationFailure(
+                "missing_payload",
+                "Payload is required.");
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(envelope.CorrelationId))
         {
             failure = new EnvelopeValidationFailure(
@@ -355,6 +363,30 @@ public sealed class PreventionWorker(
         }
 
         var payload = envelope.Payload;
+
+        if (!Enum.IsDefined(payload.MetricType))
+        {
+            failure = new EnvelopeValidationFailure(
+                "invalid_metric_type",
+                $"MetricType '{payload.MetricType:D}' is not defined.");
+            return false;
+        }
+
+        if (!Enum.IsDefined(payload.Unit))
+        {
+            failure = new EnvelopeValidationFailure(
+                "invalid_measurement_unit",
+                $"Unit '{payload.Unit:D}' is not defined.");
+            return false;
+        }
+
+        if (!Enum.IsDefined(payload.OperationalState))
+        {
+            failure = new EnvelopeValidationFailure(
+                "invalid_operational_state",
+                $"OperationalState '{payload.OperationalState:D}' is not defined.");
+            return false;
+        }
 
         if (payload.SimulationRunId == Guid.Empty)
         {

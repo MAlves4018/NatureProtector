@@ -7,7 +7,7 @@
   "intervalSeconds": 5,
   "seed": 12345,
   "degradationProfile": "none",
-  "collectEvidence": false,
+  "collectEvidence": true,
   "waitForCompletion": true,
   "timeoutSeconds": 180,
   "allowParallelRun": false,

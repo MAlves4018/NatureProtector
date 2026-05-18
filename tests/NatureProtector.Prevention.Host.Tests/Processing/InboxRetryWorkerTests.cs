@@ -128,7 +128,9 @@ public sealed class InboxRetryWorkerTests
 
         public Task<InboxRetryWorkItem?> TryStartDueRetryAsync(
             string stage,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            TimeSpan? processingLeaseTimeout = null,
+            int? maxProcessingAttempts = null)
         {
             var callCount = Interlocked.Increment(ref _callCount);
 

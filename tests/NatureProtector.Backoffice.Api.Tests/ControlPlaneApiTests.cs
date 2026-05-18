@@ -63,6 +63,7 @@ public sealed class ControlPlaneApiTests
     [Theory]
     [InlineData("/api/control/simulation-runs")]
     [InlineData("/api/control/simulation-runs/90000000-0000-0000-0000-000000000001")]
+    [InlineData("/api/control/runtime/summary")]
     public async Task SimulationRunEndpoints_ControlPlaneUnavailable_ReturnProblemDetails(string path)
     {
         const string availabilityMessage = "Simulation run control plane unavailable.";
@@ -267,6 +268,28 @@ public sealed class ControlPlaneApiTests
         Assert.Equal(Guid.Parse("90000000-0000-0000-0000-000000000001"), document.RootElement.GetProperty("id").GetGuid());
         Assert.Equal("Completed", document.RootElement.GetProperty("status").GetString());
         Assert.Equal(42, document.RootElement.GetProperty("executionSeed").GetInt32());
+    }
+
+    [Fact]
+    public async Task RuntimeSummaryEndpoint_ReturnsAggregatedRuntimeState()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+
+        Assert.Equal("proenca-a-nova", root.GetProperty("areaCode").GetString());
+        Assert.Equal(30, root.GetProperty("recentWindowMinutes").GetInt32());
+        Assert.Equal("scenario_b", root.GetProperty("latestRun").GetProperty("scenarioCode").GetString());
+        Assert.Equal(2, root.GetProperty("pipeline").GetProperty("inboxTotal").GetInt32());
+        Assert.Equal(2, root.GetProperty("risk").GetProperty("recentCount").GetInt32());
+        Assert.Equal("Alarm", root.GetProperty("areaOperationalState").GetProperty("alertState").GetString());
+        Assert.Equal(1, root.GetProperty("activeAlerts").GetArrayLength());
+        Assert.NotEmpty(root.GetProperty("limitations").EnumerateArray());
     }
 
     [Fact]

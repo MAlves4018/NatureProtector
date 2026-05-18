@@ -163,6 +163,42 @@ public sealed class InMemoryReadingEventInboxTests
         Assert.NotNull(inboxEvent.NextAttemptNotBefore);
     }
 
+    [Fact]
+    public async Task TryStartDueRetryAsync_ExpiredProcessingLease_StartsRecoveredAttempt()
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var envelope = EnvelopeFactory.Create();
+        var stored = await inbox.StoreIncomingAsync(
+            envelope,
+            JsonEventSerializer.SerializeToUtf8Bytes(envelope),
+            "reading_risk_pipeline",
+            CancellationToken.None);
+        SetLastAttemptAt(
+            inbox,
+            stored.InboxEventId,
+            DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(30)));
+
+        var workItem = await inbox.TryStartDueRetryAsync(
+            "reading_risk_pipeline",
+            CancellationToken.None,
+            TimeSpan.FromMinutes(5),
+            maxProcessingAttempts: 3);
+
+        Assert.NotNull(workItem);
+        Assert.Equal(envelope.EventId, workItem!.Envelope.EventId);
+        Assert.Equal(2, workItem.Lease.AttemptNumber);
+
+        var inboxEvent = Assert.Single(inbox.Events);
+        Assert.Equal(InboxEventStatus.Processing, inboxEvent.Status);
+        Assert.Equal(2, inboxEvent.AttemptCount);
+
+        var attempts = inbox.Attempts.OrderBy(attempt => attempt.AttemptNumber).ToArray();
+        Assert.Equal(2, attempts.Length);
+        Assert.Equal(ProcessingAttemptOutcome.RetryScheduled, attempts[0].Outcome);
+        Assert.Equal("processing_lease_expired", attempts[0].ErrorCode);
+        Assert.Equal(ProcessingAttemptOutcome.Started, attempts[1].Outcome);
+    }
+
     private static void CorruptEnvelope(
         InMemoryReadingEventInbox inbox,
         Guid inboxEventId,
@@ -194,6 +230,24 @@ public sealed class InMemoryReadingEventInboxTests
             "_eventsByEventId");
         var current = eventsByInboxId[inboxEventId];
         var updated = current with { NextAttemptNotBefore = nextAttemptNotBefore };
+
+        eventsByInboxId[inboxEventId] = updated;
+        eventsByEventId[current.EventId] = updated;
+    }
+
+    private static void SetLastAttemptAt(
+        InMemoryReadingEventInbox inbox,
+        Guid inboxEventId,
+        DateTimeOffset lastAttemptAt)
+    {
+        var eventsByInboxId = GetPrivateDictionary(
+            inbox,
+            "_eventsByInboxId");
+        var eventsByEventId = GetPrivateDictionary(
+            inbox,
+            "_eventsByEventId");
+        var current = eventsByInboxId[inboxEventId];
+        var updated = current with { LastAttemptAt = lastAttemptAt };
 
         eventsByInboxId[inboxEventId] = updated;
         eventsByEventId[current.EventId] = updated;

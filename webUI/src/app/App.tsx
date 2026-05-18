@@ -9,6 +9,7 @@ import { NavBar } from './components/views/navBar';
 import { getColors } from './utils/utils';
 import { DashMain } from './components/views/DashMain';
 import { Pipeline } from './components/views/Pipeline';
+import { DeveloperRuntimeControl } from './components/views/DeveloperRuntimeControl';
 
 // ─── Chakra system ─────────────────────────────────────────────────────────────
 const system = createSystem(defaultConfig, defineConfig({ theme: {} }));
@@ -25,6 +26,10 @@ export default function App() {
         {
           index: true,
           element: <MainPage isDark={isDark} />,
+        },
+        {
+          path: "/dev/runtime",
+          element: <DeveloperRuntimeControl isDark={isDark} />,
         },
         {
           path: "/dashboards/:areaCode",

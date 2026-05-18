@@ -1,0 +1,9 @@
+C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Shared\NatureProtector.Shared.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.10.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://127.0.0.1:5254
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Backoffice.Api

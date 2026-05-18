@@ -23,6 +23,7 @@ public sealed class SimulatorOptionsValidatorTests
     {
         var options = SimulatorOptionsMother.CreateValid();
         options.ControlPlaneEnabled = true;
+        options.ScenarioId = Guid.Empty;
         options.ControlPlaneAreaCode = "   ";
         options.ControlPlaneScenarioCode = null;
 
@@ -33,7 +34,23 @@ public sealed class SimulatorOptionsValidatorTests
             "Simulator:ControlPlaneAreaCode is required when ControlPlaneEnabled=true.",
             result.Failures);
         Assert.Contains(
-            "Simulator:ControlPlaneScenarioCode is required when ControlPlaneEnabled=true.",
+            "Simulator:ScenarioId or Simulator:ControlPlaneScenarioCode is required when ControlPlaneEnabled=true.",
+            result.Failures);
+    }
+
+    [Fact]
+    public void Validate_Fails_WhenControlPlaneProfileConfiguresScenarioIdAndCode()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.ControlPlaneEnabled = true;
+        options.ControlPlaneAreaCode = "proenca-a-nova";
+        options.ControlPlaneScenarioCode = "scenario_c";
+
+        var result = _validator.Validate(name: null, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains(
+            "Simulator:ScenarioId and Simulator:ControlPlaneScenarioCode cannot both be configured when ControlPlaneEnabled=true. Configure exactly one scenario selector to avoid ambiguous control-plane scenario selection.",
             result.Failures);
     }
 
@@ -42,6 +59,7 @@ public sealed class SimulatorOptionsValidatorTests
     {
         var options = SimulatorOptionsMother.CreateValid();
         options.ControlPlaneEnabled = true;
+        options.ScenarioId = Guid.Empty;
         options.ControlPlaneAreaCode = "proenca-a-nova";
         options.ControlPlaneScenarioCode = "scenario_b";
         options.ScenarioManifestPath = "data/manifests/scenarios/proenca-a-nova.json";

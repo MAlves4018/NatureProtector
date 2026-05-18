@@ -1,0 +1,124 @@
+using Microsoft.AspNetCore.Mvc;
+using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
+using NatureProtector.Backoffice.Api.ControlPlane.Services;
+
+namespace NatureProtector.Backoffice.Api.Controllers;
+
+[Route("api/control/runtime")]
+public sealed class ControlRuntimeController : ControlPlaneControllerBase
+{
+    private readonly IWebHostEnvironment _environment;
+
+    public ControlRuntimeController(
+        IControlPlaneService controlPlane,
+        IWebHostEnvironment environment)
+        : base(controlPlane)
+    {
+        _environment = environment;
+    }
+
+    [HttpGet("summary")]
+    public async Task<ActionResult> GetSummary(
+        [FromQuery] string? areaCode,
+        [FromQuery] int recentMinutes = 30,
+        CancellationToken cancellationToken = default)
+    {
+        var unavailable = EnsureControlPlaneAvailable();
+        if (unavailable is not null)
+        {
+            return unavailable;
+        }
+
+        var summary = await ControlPlane.GetRuntimeSummaryAsync(areaCode, recentMinutes, cancellationToken);
+        return Ok(summary);
+    }
+
+    [HttpGet("diagnostics")]
+    public async Task<ActionResult> ListDiagnostics(CancellationToken cancellationToken = default)
+    {
+        var unavailable = EnsureControlPlaneAvailable();
+        if (unavailable is not null)
+        {
+            return unavailable;
+        }
+
+        return Ok(await ControlPlane.ListRuntimeDiagnosticsAsync(cancellationToken));
+    }
+
+    [HttpPost("diagnostics/{diagnosticId}")]
+    public async Task<ActionResult> ExecuteDiagnostic(
+        string diagnosticId,
+        [FromBody] RuntimeDiagnosticRequest? request,
+        CancellationToken cancellationToken = default)
+    {
+        var unavailable = EnsureControlPlaneAvailable();
+        if (unavailable is not null)
+        {
+            return unavailable;
+        }
+
+        var result = await ControlPlane.ExecuteRuntimeDiagnosticAsync(
+            diagnosticId,
+            request ?? new RuntimeDiagnosticRequest(),
+            cancellationToken);
+
+        return result is null ? NotFound(new { message = $"Unknown runtime diagnostic '{diagnosticId}'." }) : Ok(result);
+    }
+
+    [HttpPost("runs")]
+    public async Task<ActionResult> StartRun(
+        [FromBody] RuntimeRunStartRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var unavailable = EnsureControlPlaneAvailable();
+        if (unavailable is not null)
+        {
+            return unavailable;
+        }
+
+        if (!_environment.IsDevelopment())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Runtime run orchestration is only available in Development." });
+        }
+
+        var result = await ControlPlane.StartRuntimeRunAsync(request, cancellationToken);
+        return result.Status == "Rejected" ? BadRequest(result) : Ok(result);
+    }
+
+    [HttpGet("runs/latest")]
+    public async Task<ActionResult> GetLatestRun(
+        [FromQuery] string? areaCode,
+        CancellationToken cancellationToken = default)
+    {
+        var runs = await ControlPlane.ListSimulationRunsAsync(areaCode, null, null, 0, 1, cancellationToken);
+        var run = runs.FirstOrDefault();
+        return run is null ? NotFound(new { message = "No simulation run found." }) : Ok(run);
+    }
+
+    [HttpGet("runs/{runId:guid}")]
+    public async Task<ActionResult> GetRun(Guid runId, CancellationToken cancellationToken = default)
+    {
+        var run = await ControlPlane.GetSimulationRunAsync(runId, cancellationToken);
+        return run is null ? NotFound(new { message = $"Simulation run '{runId}' was not found." }) : Ok(run);
+    }
+
+    [HttpPost("reset")]
+    public async Task<ActionResult> ResetRuntimeState(
+        [FromBody] RuntimeResetRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var unavailable = EnsureControlPlaneAvailable();
+        if (unavailable is not null)
+        {
+            return unavailable;
+        }
+
+        if (!_environment.IsDevelopment())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Runtime reset is only available in Development." });
+        }
+
+        var result = await ControlPlane.ResetRuntimeStateAsync(request, cancellationToken);
+        return result.Status == "Rejected" ? BadRequest(result) : Ok(result);
+    }
+}

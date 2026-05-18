@@ -144,3 +144,160 @@ public sealed record AlertStateResponse(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? ResolvedAt,
     string? AlertState = null);
+
+public sealed record RuntimeSummaryResponse(
+    DateTimeOffset GeneratedAtUtc,
+    int RecentWindowMinutes,
+    string? AreaCode,
+    RuntimeRunSummaryResponse? CurrentRun,
+    RuntimeRunSummaryResponse? LatestRun,
+    RuntimePipelineSummaryResponse Pipeline,
+    RuntimeRiskSummaryResponse Risk,
+    RuntimeAreaOperationalSummaryResponse? AreaOperationalState,
+    int CellOperationalStateCount,
+    IReadOnlyList<RuntimeAlertSummaryResponse> ActiveAlerts,
+    RuntimeFreshnessSummaryResponse? Freshness,
+    IReadOnlyList<RuntimeLimitationResponse> Limitations,
+    IReadOnlyList<string> Warnings);
+
+public sealed record RuntimeRunSummaryResponse(
+    Guid Id,
+    string AreaCode,
+    string ScenarioCode,
+    string ScenarioName,
+    string Status,
+    int ConfigurationVersionNumber,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? EndedAt,
+    double? DurationSeconds,
+    DateTimeOffset LogicalStartTimestamp,
+    int IntervalSeconds,
+    int NumberOfCycles,
+    int? ExecutionSeed,
+    string? MetadataJson,
+    string MetadataJsonStatus,
+    string? OrchestratorCorrelationId,
+    RuntimeRunOverridesResponse? RunOverrides);
+
+public sealed record RuntimeRunOverridesResponse(
+    RuntimeRunOverrideValuesResponse? Requested,
+    RuntimeRunOverrideValuesResponse? Resolved,
+    IReadOnlyList<string> SelectedSensorNames);
+
+public sealed record RuntimeRunOverrideValuesResponse(
+    int? SensorCount,
+    int? NumberOfCycles,
+    int? IntervalSeconds,
+    int? Seed,
+    string? DegradationProfile,
+    string? OrchestratorCorrelationId);
+
+public sealed record RuntimePipelineSummaryResponse(
+    int InboxTotal,
+    int InboxRecent,
+    IReadOnlyList<RuntimeStatusCountResponse> InboxByStatus,
+    int AttemptsRecent,
+    IReadOnlyList<RuntimeAttemptCountResponse> AttemptsByOutcomeAndError,
+    int RejectedRecent,
+    int RejectedTotal,
+    IReadOnlyList<RuntimeCodeCountResponse> RejectedByCode,
+    int QuarantinedRecent,
+    int QuarantinedTotal,
+    IReadOnlyList<RuntimeCodeCountResponse> QuarantinedByCode,
+    IReadOnlyList<RuntimeRejectedEventResponse> LatestRejected,
+    IReadOnlyList<RuntimeQuarantinedEventResponse> LatestQuarantined,
+    IReadOnlyList<RuntimeProcessingAttemptResponse> LatestFailedAttempts);
+
+public sealed record RuntimeStatusCountResponse(
+    string Status,
+    int Count);
+
+public sealed record RuntimeAttemptCountResponse(
+    string Outcome,
+    string? ErrorCode,
+    int Count);
+
+public sealed record RuntimeCodeCountResponse(
+    string Code,
+    int Count);
+
+public sealed record RuntimeRejectedEventResponse(
+    Guid Id,
+    Guid? EventId,
+    string RejectionCode,
+    string RejectionReason,
+    DateTimeOffset RejectedAt,
+    string? MetadataJson);
+
+public sealed record RuntimeQuarantinedEventResponse(
+    Guid Id,
+    Guid EventId,
+    int FinalAttemptNumber,
+    string QuarantineCode,
+    string QuarantineReason,
+    DateTimeOffset QuarantinedAt,
+    string? MetadataJson);
+
+public sealed record RuntimeProcessingAttemptResponse(
+    Guid Id,
+    Guid InboxEventId,
+    int AttemptNumber,
+    string Stage,
+    DateTimeOffset StartedAt,
+    DateTimeOffset? FinishedAt,
+    string Outcome,
+    string? ErrorCode,
+    string? ErrorMessage);
+
+public sealed record RuntimeRiskSummaryResponse(
+    int RecentCount,
+    double? MinScore,
+    double? MaxScore,
+    DateTimeOffset? LatestTimestamp,
+    IReadOnlyList<RuntimeRiskPointResponse> RecentScores);
+
+public sealed record RuntimeRiskPointResponse(
+    DateTimeOffset Timestamp,
+    double RiskScore,
+    string RiskLevel);
+
+public sealed record RuntimeAreaOperationalSummaryResponse(
+    string AreaCode,
+    int ConfigurationVersionNumber,
+    DateTimeOffset SnapshotTimestamp,
+    double AggregateRiskScore,
+    string AggregateRiskLevel,
+    string Severity,
+    string? Summary,
+    int AssessmentCount,
+    DateTimeOffset UpdatedAt,
+    string? AlertState);
+
+public sealed record RuntimeAlertSummaryResponse(
+    Guid Id,
+    string AreaCode,
+    int ConfigurationVersionNumber,
+    string AlertCode,
+    string Severity,
+    string Status,
+    string Message,
+    DateTimeOffset TriggeredAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? ResolvedAt,
+    string? AlertState);
+
+public sealed record RuntimeLimitationResponse(
+    string Code,
+    string Message);
+
+public static class RuntimeLimitations
+{
+    public static IReadOnlyList<RuntimeLimitationResponse> Default { get; } =
+    [
+        new("rabbitmq_metrics_unavailable", "RabbitMQ metrics are not exposed in this version."),
+        new("eligibility_projection_unavailable", "Eligibility/Blocked/Partial/QualityFlags/Classifiers are not persisted as aggregate runtime projections yet."),
+        new("evidence_http_unavailable", "Evidence files are not exposed by HTTP in this version."),
+        new("host_health_unavailable", "Prevention.Host, Simulator.Host, InfluxDB and Grafana health are not exposed by this endpoint.")
+    ];
+}

@@ -34,6 +34,11 @@ public sealed class PreventionHostOptionsValidator : IValidateOptions<Prevention
             failures.Add("PreventionHost:RetryPollingIntervalSeconds must be greater than zero.");
         }
 
+        if (options.ProcessingLeaseTimeoutSeconds <= 0)
+        {
+            failures.Add("PreventionHost:ProcessingLeaseTimeoutSeconds must be greater than zero.");
+        }
+
         return failures.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);

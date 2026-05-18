@@ -11,6 +11,8 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
 {
     private const string InvalidRetryPayloadCode = "invalid_retry_payload";
     private const string InvalidRetryPayloadReason = "Retry inbox event envelope could not be deserialized.";
+    private const string ProcessingLeaseExpiredCode = "processing_lease_expired";
+    private const string ProcessingLeaseExpiredReason = "Processing lease expired before the attempt completed.";
 
     private readonly object _gate = new();
     private readonly ConcurrentDictionary<Guid, InMemoryInboxEvent> _eventsByEventId = new();
@@ -259,7 +261,9 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
 
     public Task<InboxRetryWorkItem?> TryStartDueRetryAsync(
         string stage,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        TimeSpan? processingLeaseTimeout = null,
+        int? maxProcessingAttempts = null)
     {
         lock (_gate)
         {
@@ -268,12 +272,21 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var now = DateTimeOffset.UtcNow;
+                var recoverStaleProcessing = processingLeaseTimeout is { } timeout && timeout > TimeSpan.Zero;
+                var staleProcessingCutoff = recoverStaleProcessing
+                    ? now.Subtract(processingLeaseTimeout!.Value)
+                    : DateTimeOffset.MinValue;
                 var dueEvent = _eventsByInboxId.Values
                     .Where(entity =>
-                        entity.Status == InboxEventStatus.RetryPending &&
-                        entity.NextAttemptNotBefore is not null &&
-                        entity.NextAttemptNotBefore <= now)
-                    .OrderBy(entity => entity.NextAttemptNotBefore)
+                        (entity.Status == InboxEventStatus.RetryPending &&
+                         entity.NextAttemptNotBefore is not null &&
+                         entity.NextAttemptNotBefore <= now) ||
+                        (recoverStaleProcessing &&
+                         entity.Status == InboxEventStatus.Processing &&
+                         entity.LastAttemptAt is not null &&
+                         entity.LastAttemptAt <= staleProcessingCutoff))
+                    .OrderBy(entity => entity.Status == InboxEventStatus.RetryPending ? 0 : 1)
+                    .ThenBy(entity => entity.NextAttemptNotBefore ?? entity.LastAttemptAt ?? entity.ReceivedAt)
                     .FirstOrDefault();
 
                 if (dueEvent is null)
@@ -281,8 +294,17 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
                     return Task.FromResult<InboxRetryWorkItem?>(null);
                 }
 
+                var isRecoveringStaleProcessing = dueEvent.Status == InboxEventStatus.Processing;
                 var attemptNumber = dueEvent.AttemptCount + 1;
                 var attemptId = Guid.NewGuid();
+
+                if (isRecoveringStaleProcessing &&
+                    maxProcessingAttempts.HasValue &&
+                    dueEvent.AttemptCount >= maxProcessingAttempts.Value)
+                {
+                    QuarantineExpiredProcessingLease(dueEvent, now);
+                    continue;
+                }
 
                 if (!TryDeserializeEnvelope(dueEvent.EnvelopeJson, out var envelope, out var errorMessage))
                 {
@@ -320,6 +342,25 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
                         now));
 
                     continue;
+                }
+
+                if (isRecoveringStaleProcessing)
+                {
+                    var expiredAttempt = _attemptsById.Values.SingleOrDefault(
+                        attempt =>
+                            attempt.InboxEventId == dueEvent.InboxEventId &&
+                            attempt.AttemptNumber == dueEvent.AttemptCount);
+
+                    if (expiredAttempt is not null && expiredAttempt.Outcome == ProcessingAttemptOutcome.Started)
+                    {
+                        _attemptsById[expiredAttempt.AttemptId] = expiredAttempt with
+                        {
+                            FinishedAt = now,
+                            Outcome = ProcessingAttemptOutcome.RetryScheduled,
+                            ErrorCode = ProcessingLeaseExpiredCode,
+                            ErrorMessage = ProcessingLeaseExpiredReason
+                        };
+                    }
                 }
 
                 var updatedEvent = dueEvent with
@@ -400,6 +441,49 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
         return Task.CompletedTask;
     }
 
+    private void QuarantineExpiredProcessingLease(
+        InMemoryInboxEvent inboxEvent,
+        DateTimeOffset now)
+    {
+        var quarantinedEvent = inboxEvent with
+        {
+            Status = InboxEventStatus.Quarantined,
+            LastProcessedAt = null,
+            NextAttemptNotBefore = null,
+            QuarantinedAt = now,
+            LastErrorCode = ProcessingLeaseExpiredCode,
+            LastErrorMessage = ProcessingLeaseExpiredReason
+        };
+
+        _eventsByInboxId[inboxEvent.InboxEventId] = quarantinedEvent;
+        _eventsByEventId[inboxEvent.EventId] = quarantinedEvent;
+
+        var attempt = _attemptsById.Values.SingleOrDefault(
+            item =>
+                item.InboxEventId == inboxEvent.InboxEventId &&
+                item.AttemptNumber == inboxEvent.AttemptCount);
+
+        if (attempt is not null && attempt.Outcome == ProcessingAttemptOutcome.Started)
+        {
+            _attemptsById[attempt.AttemptId] = attempt with
+            {
+                FinishedAt = now,
+                Outcome = ProcessingAttemptOutcome.Quarantined,
+                ErrorCode = ProcessingLeaseExpiredCode,
+                ErrorMessage = ProcessingLeaseExpiredReason
+            };
+        }
+
+        _quarantines.Add(new InMemoryQuarantinedEvent(
+            Guid.NewGuid(),
+            inboxEvent.InboxEventId,
+            inboxEvent.EventId,
+            inboxEvent.AttemptCount,
+            ProcessingLeaseExpiredCode,
+            ProcessingLeaseExpiredReason,
+            now));
+    }
+
     public sealed record InMemoryInboxEvent(
         Guid InboxEventId,
         Guid EventId,
@@ -458,6 +542,12 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
             if (envelope is null)
             {
                 errorMessage = "Retry inbox event contains a null envelope.";
+                return false;
+            }
+
+            if (envelope.Payload is null)
+            {
+                errorMessage = "Retry inbox event contains a null payload.";
                 return false;
             }
 

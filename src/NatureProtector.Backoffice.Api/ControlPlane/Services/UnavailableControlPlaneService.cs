@@ -85,5 +85,64 @@ public sealed class UnavailableControlPlaneService : IControlPlaneService
         CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyList<AlertStateResponse>>([]);
 
+    public Task<RuntimeSummaryResponse> GetRuntimeSummaryAsync(
+        string? areaCode,
+        int recentMinutes,
+        CancellationToken cancellationToken)
+        => Task.FromResult(new RuntimeSummaryResponse(
+            DateTimeOffset.UtcNow,
+            recentMinutes,
+            areaCode,
+            null,
+            null,
+            new RuntimePipelineSummaryResponse(0, 0, [], 0, [], 0, 0, [], 0, 0, [], [], [], []),
+            new RuntimeRiskSummaryResponse(0, null, null, null, []),
+            null,
+            0,
+            [],
+            null,
+            RuntimeLimitations.Default,
+            [AvailabilityMessage]));
+
+    public Task<RuntimeDiagnosticCatalogResponse> ListRuntimeDiagnosticsAsync(CancellationToken cancellationToken)
+        => Task.FromResult(new RuntimeDiagnosticCatalogResponse([]));
+
+    public Task<RuntimeDiagnosticResultResponse?> ExecuteRuntimeDiagnosticAsync(
+        string diagnosticId,
+        RuntimeDiagnosticRequest request,
+        CancellationToken cancellationToken)
+        => Task.FromResult<RuntimeDiagnosticResultResponse?>(null);
+
+    public Task<RuntimeRunStartResponse> StartRuntimeRunAsync(
+        RuntimeRunStartRequest request,
+        CancellationToken cancellationToken)
+        => Task.FromResult(new RuntimeRunStartResponse(
+            Guid.NewGuid(),
+            string.Empty,
+            "Unavailable",
+            AvailabilityMessage,
+            DateTimeOffset.UtcNow,
+            new RuntimeRunOverrideValuesResponse(
+                request.SensorCount,
+                request.NumberOfCycles,
+                request.IntervalSeconds,
+                request.Seed,
+                request.DegradationProfile,
+                null),
+            null,
+            [AvailabilityMessage],
+            null,
+            null));
+
+    public Task<RuntimeResetResponse> ResetRuntimeStateAsync(
+        RuntimeResetRequest request,
+        CancellationToken cancellationToken)
+        => Task.FromResult(new RuntimeResetResponse(
+            DateTimeOffset.UtcNow,
+            request.DryRun,
+            "Unavailable",
+            AvailabilityMessage,
+            [],
+            []));
 
 }

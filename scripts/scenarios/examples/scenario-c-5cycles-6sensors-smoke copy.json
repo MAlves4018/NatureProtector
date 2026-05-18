@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "areaCode": "proenca-a-nova",
+  "scenarioCode": "scenario_c",
+  "sensorCount": 6,
+  "numberOfCycles": 5,
+  "intervalSeconds": 5,
+  "seed": 12345,
+  "degradationProfile": "none",
+  "collectEvidence": true,
+  "waitForCompletion": true,
+  "timeoutSeconds": 180,
+  "allowParallelRun": false,
+  "runLabel": "scenario-c-5cycles-6sensors-smoke"
+}

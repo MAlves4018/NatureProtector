@@ -31,7 +31,9 @@ public interface IReadingEventInbox
 
     Task<InboxRetryWorkItem?> TryStartDueRetryAsync(
         string stage,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        TimeSpan? processingLeaseTimeout = null,
+        int? maxProcessingAttempts = null);
 
     Task QuarantineProcessingAsync(
         InboxProcessingLease lease,

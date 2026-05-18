@@ -1,0 +1,24 @@
+[2m01:43:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1118:18)
+    at afterConnectMultiple (node:net:1685:7)
+[2m01:43:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/diagnostics[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1118:18)
+    at afterConnectMultiple (node:net:1685:7)
+[2m01:43:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1118:18)
+    at afterConnectMultiple (node:net:1685:7)
+[2m01:43:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/diagnostics[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1118:18)
+    at afterConnectMultiple (node:net:1685:7)
+[2m01:43:32[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1118:18)
+    at afterConnectMultiple (node:net:1685:7)
+[2m01:43:32[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1118:18)
+    at afterConnectMultiple (node:net:1685:7)

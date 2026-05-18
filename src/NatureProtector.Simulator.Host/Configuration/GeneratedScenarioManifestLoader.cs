@@ -103,6 +103,7 @@ internal static class GeneratedScenarioManifestLoader
         options.BaseWindSpeed = ReadDouble(simulatorOptions, "BaseWindSpeed", options.BaseWindSpeed);
         options.FailureRate = ReadDouble(simulatorOptions, "FailureRate", options.FailureRate);
         options.NoiseLevel = ReadDouble(simulatorOptions, "NoiseLevel", options.NoiseLevel);
+        options.DegradationProfile = ReadString(simulatorOptions, "DegradationProfile") ?? options.DegradationProfile;
         options.TimeAcceleration = ReadDouble(simulatorOptions, "TimeAcceleration", options.TimeAcceleration);
         options.NumberOfCycles = ReadInt(simulatorOptions, "NumberOfCycles", options.NumberOfCycles);
         options.IntervalSeconds = ReadInt(simulatorOptions, "IntervalSeconds", options.IntervalSeconds);

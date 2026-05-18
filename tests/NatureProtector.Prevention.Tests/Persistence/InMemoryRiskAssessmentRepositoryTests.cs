@@ -108,6 +108,41 @@ public sealed class InMemoryRiskAssessmentRepositoryTests
         Assert.Equal(targetAssessment.Id, item.Id);
     }
 
+    [Fact]
+    public async Task GetLatestByAreaAsync_WithSimulationRunId_IsolatesRuns()
+    {
+        var repository = new InMemoryRiskAssessmentRepository();
+        var areaId = Guid.NewGuid();
+        var sensorId = Guid.NewGuid();
+        var runA = Guid.NewGuid();
+        var runB = Guid.NewGuid();
+        var runAAssessment = CreateAssessment(DateTimeOffset.UtcNow, 0.20);
+        var runBAssessment = CreateAssessment(DateTimeOffset.UtcNow.AddMinutes(1), 0.90);
+
+        await repository.AddAsync(areaId, sensorId, Guid.NewGuid(), runAAssessment, CancellationToken.None, runA);
+        await repository.AddAsync(areaId, sensorId, Guid.NewGuid(), runBAssessment, CancellationToken.None, runB);
+
+        var result = await repository.GetLatestByAreaAsync(areaId, CancellationToken.None, runA);
+
+        var item = Assert.Single(result);
+        Assert.Equal(runAAssessment.Id, item.Id);
+    }
+
+    [Fact]
+    public async Task GetLatestByAreaAsync_WithoutSimulationRunId_IncludesLegacyRows()
+    {
+        var repository = new InMemoryRiskAssessmentRepository();
+        var areaId = Guid.NewGuid();
+        var legacyAssessment = CreateAssessment(DateTimeOffset.UtcNow, 0.60);
+
+        await repository.AddAsync(areaId, Guid.NewGuid(), Guid.NewGuid(), legacyAssessment, CancellationToken.None);
+
+        var result = await repository.GetLatestByAreaAsync(areaId, CancellationToken.None);
+
+        var item = Assert.Single(result);
+        Assert.Equal(legacyAssessment.Id, item.Id);
+    }
+
     private static RiskAssessment CreateAssessment(DateTimeOffset timestamp, double score)
     {
         return new RiskAssessment(

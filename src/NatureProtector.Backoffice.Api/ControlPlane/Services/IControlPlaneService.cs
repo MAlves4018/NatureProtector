@@ -51,4 +51,19 @@ public interface IControlPlaneService
         string? areaCode,
         int? configurationVersion,
         CancellationToken cancellationToken);
+    Task<RuntimeSummaryResponse> GetRuntimeSummaryAsync(
+        string? areaCode,
+        int recentMinutes,
+        CancellationToken cancellationToken);
+    Task<RuntimeDiagnosticCatalogResponse> ListRuntimeDiagnosticsAsync(CancellationToken cancellationToken);
+    Task<RuntimeDiagnosticResultResponse?> ExecuteRuntimeDiagnosticAsync(
+        string diagnosticId,
+        RuntimeDiagnosticRequest request,
+        CancellationToken cancellationToken);
+    Task<RuntimeRunStartResponse> StartRuntimeRunAsync(
+        RuntimeRunStartRequest request,
+        CancellationToken cancellationToken);
+    Task<RuntimeResetResponse> ResetRuntimeStateAsync(
+        RuntimeResetRequest request,
+        CancellationToken cancellationToken);
 }

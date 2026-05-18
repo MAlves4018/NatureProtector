@@ -8,9 +8,11 @@ public interface IAreaRiskSnapshotRepository
         Guid areaId,
         AreaRiskSnapshot snapshot,
         int assessmentCount,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null);
 
     Task<AreaRiskSnapshot?> GetLatestAsync(
         Guid areaId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null);
 }

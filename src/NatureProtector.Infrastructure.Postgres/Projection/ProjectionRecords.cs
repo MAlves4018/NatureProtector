@@ -32,6 +32,7 @@ public sealed class RiskAssessmentLogRecord
 {
     public Guid Id { get; set; }
     public Guid AreaId { get; set; }
+    public Guid? SimulationRunId { get; set; }
     public Guid SensorId { get; set; }
     public Guid? GridCellId { get; set; }
     public Guid SourceEventId { get; set; }
@@ -42,6 +43,7 @@ public sealed class RiskAssessmentLogRecord
     public DateTimeOffset CreatedAt { get; set; }
 
     public Control.AreaRecord? Area { get; set; }
+    public Control.SimulationRunRecord? SimulationRun { get; set; }
     public Control.SensorNodeRecord? SensorNode { get; set; }
     public Control.GridCellRecord? GridCell { get; set; }
 }

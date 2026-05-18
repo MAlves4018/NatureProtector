@@ -1082,6 +1082,9 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<Guid>("SensorId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("SimulationRunId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("SourceEventId")
                         .HasColumnType("uuid");
 
@@ -1092,12 +1095,16 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.HasIndex("SensorId");
 
+                    b.HasIndex("SimulationRunId");
+
                     b.HasIndex("SourceEventId")
                         .IsUnique();
 
                     b.HasIndex("AreaId", "Timestamp");
 
                     b.HasIndex("GridCellId", "Timestamp");
+
+                    b.HasIndex("AreaId", "SimulationRunId", "Timestamp");
 
                     b.ToTable("risk_assessment_log", "projection");
                 });
@@ -1457,11 +1464,18 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("NatureProtector.Infrastructure.Postgres.Control.SimulationRunRecord", "SimulationRun")
+                        .WithMany()
+                        .HasForeignKey("SimulationRunId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Area");
 
                     b.Navigation("GridCell");
 
                     b.Navigation("SensorNode");
+
+                    b.Navigation("SimulationRun");
                 });
 
             modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Control.AreaRecord", b =>

@@ -46,7 +46,9 @@ public sealed class InboxRetryWorker(
                 {
                     var workItem = await readingEventInbox.TryStartDueRetryAsync(
                         "reading_risk_pipeline",
-                        stoppingToken);
+                        stoppingToken,
+                        TimeSpan.FromSeconds(_options.ProcessingLeaseTimeoutSeconds),
+                        _options.MaxProcessingAttempts);
 
                     if (workItem is null)
                     {

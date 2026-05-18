@@ -86,8 +86,7 @@ public sealed class SimulatorOptions
     /// <summary>
     /// Scenario identifier to use when constructing the simulation context.
     /// </summary>
-    public Guid ScenarioId { get; set; } =
-        Guid.Parse("22222222-2222-2222-2222-222222222222");
+    public Guid ScenarioId { get; set; }
 
     /// <summary>
     /// Human-readable scenario name.
@@ -129,6 +128,12 @@ public sealed class SimulatorOptions
     /// Noise level used both by the scenario and by generated sensor profiles.
     /// </summary>
     public double NoiseLevel { get; set; } = 0.10;
+
+    /// <summary>
+    /// Optional degradation profile defined by the selected scenario baseline.
+    /// RunOverrides.DegradationProfile has precedence when provided.
+    /// </summary>
+    public string? DegradationProfile { get; set; }
 
     /// <summary>
     /// Time acceleration factor for the scenario.

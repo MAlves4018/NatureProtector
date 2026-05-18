@@ -118,7 +118,8 @@ public sealed class ReadingRiskPipeline(
             normalizedReading.SensorId,
             normalizedReading.EventId,
             assessment,
-            cancellationToken);
+            cancellationToken,
+            simulationRunId: operationalEvent.SimulationRunId);
         riskAssessmentPersistStopwatch.Stop();
         logger.LogDebug(
             "risk_assessment_persist_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId}",
@@ -154,7 +155,8 @@ public sealed class ReadingRiskPipeline(
         var getLatestByAreaStopwatch = Stopwatch.StartNew();
         var areaAssessments = await riskAssessmentRepository.GetLatestByAreaAsync(
             normalizedReading.AreaId,
-            cancellationToken);
+            cancellationToken,
+            simulationRunId: operationalEvent.SimulationRunId);
         getLatestByAreaStopwatch.Stop();
         logger.LogDebug(
             "get_latest_by_area_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | Count={Count}",
@@ -187,7 +189,8 @@ public sealed class ReadingRiskPipeline(
             normalizedReading.AreaId,
             snapshot,
             areaAssessments.Count,
-            cancellationToken);
+            cancellationToken,
+            simulationRunId: operationalEvent.SimulationRunId);
         snapshotPersistStopwatch.Stop();
         logger.LogDebug(
             "snapshot_persist_ms={DurationMs} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | AssessmentCount={AssessmentCount}",
@@ -206,7 +209,8 @@ public sealed class ReadingRiskPipeline(
             normalizedReading.AreaId,
             snapshot,
             areaAssessments.Count,
-            cancellationToken);
+            cancellationToken,
+            simulationRunId: operationalEvent.SimulationRunId);
         saveAreaProjectionStopwatch.Stop();
 
         var influxBatchWriteStopwatch = Stopwatch.StartNew();

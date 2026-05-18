@@ -9,7 +9,8 @@ public interface IRiskAssessmentRepository
         Guid sensorId,
         Guid sourceEventId,
         RiskAssessment assessment,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null);
 
     Task<IReadOnlyCollection<RiskAssessment>> GetByAreaAsync(
         Guid areaId,
@@ -17,5 +18,6 @@ public interface IRiskAssessmentRepository
 
     Task<IReadOnlyCollection<RiskAssessment>> GetLatestByAreaAsync(
         Guid areaId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null);
 }

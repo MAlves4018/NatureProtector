@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Risk;
+using NatureProtector.Core.Scenarios;
+using NatureProtector.Infrastructure.Postgres.Control;
 using NatureProtector.Infrastructure.Postgres.Projection;
 using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Tests.TestInfrastructure;
@@ -32,6 +34,32 @@ public sealed class PostgresRiskAssessmentRepositoryTests
         Assert.Equal(seed.GridCellId, row.GridCellId);
         Assert.Equal(sourceEventId, row.SourceEventId);
         Assert.Equal("VeryHigh", row.RiskLevel);
+    }
+
+    [Fact]
+    public async Task AddAsync_WithSimulationRunId_PersistsSimulationRunId()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var simulationRunId = await SeedSimulationRunAsync(scope, seed);
+        var repository = CreateRepository(scope);
+        var assessment = new RiskAssessment(
+            Guid.Parse("31000000-0000-0000-0000-000000000001"),
+            new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+            0.74,
+            "High risk");
+
+        await repository.AddAsync(
+            seed.AreaId,
+            seed.SensorId,
+            Guid.NewGuid(),
+            assessment,
+            CancellationToken.None,
+            simulationRunId);
+
+        await using var dbContext = scope.CreateDbContext();
+        var row = Assert.Single(dbContext.RiskAssessmentLogs);
+        Assert.Equal(simulationRunId, row.SimulationRunId);
     }
 
     [Fact]
@@ -86,6 +114,7 @@ public sealed class PostgresRiskAssessmentRepositoryTests
                 {
                     Id = Guid.NewGuid(),
                     AreaId = pending.AreaId,
+                    SimulationRunId = pending.SimulationRunId,
                     SensorId = pending.SensorId,
                     GridCellId = pending.GridCellId,
                     SourceEventId = pending.SourceEventId,
@@ -204,6 +233,26 @@ public sealed class PostgresRiskAssessmentRepositoryTests
     }
 
     [Fact]
+    public async Task GetLatestByAreaAsync_WithSimulationRunId_DoesNotMixRuns()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var runA = await SeedSimulationRunAsync(scope, seed);
+        var runB = await SeedSimulationRunAsync(scope, seed);
+        var repository = CreateRepository(scope);
+        var runAAssessment = new RiskAssessment(Guid.NewGuid(), new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero), 0.20, "Run A");
+        var runBAssessment = new RiskAssessment(Guid.NewGuid(), new DateTimeOffset(2026, 4, 10, 9, 0, 0, TimeSpan.Zero), 0.90, "Run B");
+
+        await repository.AddAsync(seed.AreaId, seed.SensorId, Guid.NewGuid(), runAAssessment, CancellationToken.None, runA);
+        await repository.AddAsync(seed.AreaId, seed.SensorId, Guid.NewGuid(), runBAssessment, CancellationToken.None, runB);
+
+        var latest = await repository.GetLatestByAreaAsync(seed.AreaId, CancellationToken.None, runA);
+
+        var item = Assert.Single(latest);
+        Assert.Equal(runAAssessment.Id, item.Id);
+    }
+
+    [Fact]
     public void SelectLatestAssessments_Throws_WhenRowsIsNull()
     {
         var ex = Assert.Throws<ArgumentNullException>(() =>
@@ -256,6 +305,47 @@ public sealed class PostgresRiskAssessmentRepositoryTests
         return new PostgresRiskAssessmentRepository(
             scope.Factory,
             NullLogger<PostgresRiskAssessmentRepository>.Instance);
+    }
+
+    private static async Task<Guid> SeedSimulationRunAsync(
+        SqliteControlDbContextScope scope,
+        SeededControlPlane seed)
+    {
+        var scenarioId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+
+        await scope.SeedAsync(dbContext =>
+        {
+            dbContext.ScenarioDefinitions.Add(new ScenarioDefinitionRecord
+            {
+                Id = scenarioId,
+                AreaId = seed.AreaId,
+                ConfigurationVersionId = seed.ConfigurationVersionId,
+                Code = $"scenario-{scenarioId:N}",
+                Name = "Test scenario",
+                ScenarioKind = ScenarioCategory.Base
+            });
+
+            dbContext.SimulationRuns.Add(new SimulationRunRecord
+            {
+                Id = runId,
+                AreaId = seed.AreaId,
+                ScenarioId = scenarioId,
+                ConfigurationVersionId = seed.ConfigurationVersionId,
+                ScenarioCode = "scenario-test",
+                ScenarioName = "Test scenario",
+                CreatedAt = new DateTimeOffset(2026, 4, 10, 7, 59, 0, TimeSpan.Zero),
+                StartedAt = new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+                LogicalStartTimestamp = new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+                IntervalSeconds = 60,
+                NumberOfCycles = 1,
+                Status = SimulationRunStatus.Running
+            });
+
+            return Task.CompletedTask;
+        });
+
+        return runId;
     }
 
     private static RiskAssessmentLogRecord CreateRow(

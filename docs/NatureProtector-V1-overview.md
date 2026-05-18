@@ -33,6 +33,7 @@ Fontes principais para aprofundar:
 - [planning/v1-implementation-map.md](planning/v1-implementation-map.md)
 - [planning/diary/MiguelAlves/MiguelAlves.md](planning/diary/MiguelAlves/MiguelAlves.md)
 - [setup/local-baseline-setup.md](setup/local-baseline-setup.md)
+- [runtime-developer-control.md](runtime-developer-control.md)
 - [tests/README.md](../tests/README.md)
 
 ## 2. O que a V1 valida e o que não valida
@@ -80,7 +81,7 @@ InfluxDB e Grafana existem como observabilidade temporal e visualização de apo
 | PostgreSQL | Control plane, inbox, tentativas, quarentena, logs e projeções. | Implementado |
 | InfluxDB | Observabilidade temporal, configurável e não crítica por defeito. | Implementado/opcional |
 | Grafana | Apoio a dashboards e leitura temporal. | Parcial |
-| `NatureProtector.Backoffice.Api` | Consulta `control.*`, `projection.*` e alertas ativos. | Implementado/parcial |
+| `NatureProtector.Backoffice.Api` | Consulta `control.*`, `pipeline.*`, `projection.*`, alertas ativos e resumo agregado do Runtime Monitor. | Implementado/parcial |
 | `scripts/scenarios/run-scenario.ps1` | Orquestração local de runs por especificação. | Implementado |
 
 O desenho não deve ser apresentado como deployment produtivo distribuído. A baseline é local, controlável e adequada para demonstração, mas ainda não é uma plataforma operacional em produção.

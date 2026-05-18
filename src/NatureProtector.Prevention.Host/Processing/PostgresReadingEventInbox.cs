@@ -37,6 +37,8 @@ public sealed class PostgresReadingEventInbox(
 {
     private const string InvalidRetryPayloadCode = "invalid_retry_payload";
     private const string InvalidRetryPayloadReason = "Retry inbox event envelope could not be deserialized.";
+    private const string ProcessingLeaseExpiredCode = "processing_lease_expired";
+    private const string ProcessingLeaseExpiredReason = "Processing lease expired before the attempt completed.";
 
     /// <summary>
     /// Regista um evento recebido do broker e cria a primeira tentativa de
@@ -248,19 +250,30 @@ public sealed class PostgresReadingEventInbox(
     /// </summary>
     public async Task<InboxRetryWorkItem?> TryStartDueRetryAsync(
         string stage,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        TimeSpan? processingLeaseTimeout = null,
+        int? maxProcessingAttempts = null)
     {
         while (true)
         {
             await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
             var now = DateTimeOffset.UtcNow;
+            var recoverStaleProcessing = processingLeaseTimeout is { } timeout && timeout > TimeSpan.Zero;
+            var staleProcessingCutoff = recoverStaleProcessing
+                ? now.Subtract(processingLeaseTimeout!.Value)
+                : DateTimeOffset.MinValue;
 
             var inboxEvent = await dbContext.InboxEvents
                 .Where(entity =>
-                    entity.Status == InboxEventStatus.RetryPending &&
-                    entity.NextAttemptNotBefore != null &&
-                    entity.NextAttemptNotBefore <= now)
-                .OrderBy(entity => entity.NextAttemptNotBefore)
+                    (entity.Status == InboxEventStatus.RetryPending &&
+                     entity.NextAttemptNotBefore != null &&
+                     entity.NextAttemptNotBefore <= now) ||
+                    (recoverStaleProcessing &&
+                     entity.Status == InboxEventStatus.Processing &&
+                     entity.LastAttemptAt != null &&
+                     entity.LastAttemptAt <= staleProcessingCutoff))
+                .OrderBy(entity => entity.Status == InboxEventStatus.RetryPending ? 0 : 1)
+                .ThenBy(entity => entity.NextAttemptNotBefore ?? entity.LastAttemptAt ?? entity.ReceivedAt)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (inboxEvent is null)
@@ -268,8 +281,29 @@ public sealed class PostgresReadingEventInbox(
                 return null;
             }
 
+            var isRecoveringStaleProcessing = inboxEvent.Status == InboxEventStatus.Processing;
             var attemptNumber = inboxEvent.AttemptCount + 1;
             var attemptId = Guid.NewGuid();
+
+            if (isRecoveringStaleProcessing &&
+                maxProcessingAttempts.HasValue &&
+                inboxEvent.AttemptCount >= maxProcessingAttempts.Value)
+            {
+                await QuarantineExpiredProcessingLeaseAsync(
+                    dbContext,
+                    inboxEvent,
+                    stage,
+                    now,
+                    cancellationToken);
+
+                logger.LogWarning(
+                    "Quarantined stale processing inbox event after lease expiry. InboxEventId={InboxEventId} EventId={EventId} Attempt={AttemptNumber}",
+                    inboxEvent.Id,
+                    inboxEvent.EventId,
+                    inboxEvent.AttemptCount);
+
+                continue;
+            }
 
             if (!TryDeserializeEnvelope(inboxEvent.EnvelopeJson, out var envelope, out var errorMessage))
             {
@@ -291,6 +325,24 @@ public sealed class PostgresReadingEventInbox(
                     errorMessage);
 
                 continue;
+            }
+
+            if (isRecoveringStaleProcessing)
+            {
+                var expiredAttempt = await dbContext.ProcessingAttempts
+                    .SingleOrDefaultAsync(
+                        entity =>
+                            entity.InboxEventId == inboxEvent.Id &&
+                            entity.AttemptNumber == inboxEvent.AttemptCount,
+                        cancellationToken);
+
+                if (expiredAttempt is not null && expiredAttempt.Outcome == ProcessingAttemptOutcome.Started)
+                {
+                    expiredAttempt.FinishedAt = now;
+                    expiredAttempt.Outcome = ProcessingAttemptOutcome.RetryScheduled;
+                    expiredAttempt.ErrorCode = ProcessingLeaseExpiredCode;
+                    expiredAttempt.ErrorMessage = ProcessingLeaseExpiredReason;
+                }
             }
 
             // A mudança para Processing e a criação da nova tentativa ficam na
@@ -317,6 +369,15 @@ public sealed class PostgresReadingEventInbox(
             catch (DbUpdateException ex) when (ExpectedUniqueViolationDetector.IsExpected(ex, NatureProtectorUniqueConstraints.ProcessingAttemptNumber))
             {
                 continue;
+            }
+
+            if (isRecoveringStaleProcessing)
+            {
+                logger.LogWarning(
+                    "Recovered stale processing inbox event after lease expiry. InboxEventId={InboxEventId} EventId={EventId} Attempt={AttemptNumber}",
+                    inboxEvent.Id,
+                    inboxEvent.EventId,
+                    attemptNumber);
             }
 
             return new InboxRetryWorkItem(
@@ -445,6 +506,50 @@ public sealed class PostgresReadingEventInbox(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private static async Task QuarantineExpiredProcessingLeaseAsync(
+        NatureProtectorControlDbContext dbContext,
+        InboxEventRecord inboxEvent,
+        string stage,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        inboxEvent.Status = InboxEventStatus.Quarantined;
+        inboxEvent.LastProcessedAt = null;
+        inboxEvent.NextAttemptNotBefore = null;
+        inboxEvent.QuarantinedAt = now;
+        inboxEvent.LastErrorCode = ProcessingLeaseExpiredCode;
+        inboxEvent.LastErrorMessage = ProcessingLeaseExpiredReason;
+
+        var attempt = await dbContext.ProcessingAttempts
+            .SingleOrDefaultAsync(
+                entity =>
+                    entity.InboxEventId == inboxEvent.Id &&
+                    entity.AttemptNumber == inboxEvent.AttemptCount,
+                cancellationToken);
+
+        if (attempt is not null && attempt.Outcome == ProcessingAttemptOutcome.Started)
+        {
+            attempt.FinishedAt = now;
+            attempt.Outcome = ProcessingAttemptOutcome.Quarantined;
+            attempt.ErrorCode = ProcessingLeaseExpiredCode;
+            attempt.ErrorMessage = ProcessingLeaseExpiredReason;
+        }
+
+        dbContext.QuarantinedEvents.Add(new QuarantinedEventRecord
+        {
+            Id = Guid.NewGuid(),
+            InboxEventId = inboxEvent.Id,
+            EventId = inboxEvent.EventId,
+            FinalAttemptNumber = inboxEvent.AttemptCount,
+            QuarantineCode = ProcessingLeaseExpiredCode,
+            QuarantineReason = ProcessingLeaseExpiredReason,
+            QuarantinedAt = now,
+            MetadataJson = $"{{\"stage\":\"{stage}\"}}"
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Tenta reconstruir o envelope original a partir do JSON guardado no inbox.
     /// </summary>
@@ -461,6 +566,12 @@ public sealed class PostgresReadingEventInbox(
             if (envelope is null)
             {
                 errorMessage = "Retry inbox event contains a null envelope.";
+                return false;
+            }
+
+            if (envelope.Payload is null)
+            {
+                errorMessage = "Retry inbox event contains a null payload.";
                 return false;
             }
 

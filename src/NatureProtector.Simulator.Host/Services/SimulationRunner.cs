@@ -58,13 +58,15 @@ public sealed class SimulationRunner(
         var random = seedProvider.CreateRandom(seed);
 
         logger.LogInformation(
-            "Simulation context created | AreaId={AreaId} | ScenarioId={ScenarioId} | ScenarioName={ScenarioName} | Seed={Seed} | Cycles={Cycles} | Interval={IntervalSeconds}s",
+            "Simulation context created | AreaId={AreaId} | ScenarioId={ScenarioId} | ScenarioCode={ScenarioCode} | ScenarioName={ScenarioName} | Seed={Seed} | Cycles={Cycles} | Interval={IntervalSeconds}s | DegradationProfile={DegradationProfile}",
             context.AreaId,
             context.Scenario.Id,
+            context.ScenarioCode,
             context.Scenario.Name,
             seed,
             context.NumberOfCycles,
-            context.Interval.TotalSeconds);
+            context.Interval.TotalSeconds,
+            context.RunOverrides?.Resolved.DegradationProfile);
         runActivity?.SetTag(TelemetryTags.AreaId, context.AreaId);
         runActivity?.SetTag(TelemetryTags.ScenarioId, context.Scenario.Id);
         runActivity?.SetTag(TelemetryTags.ScenarioCode, context.ScenarioCode);
@@ -81,8 +83,15 @@ public sealed class SimulationRunner(
         runActivity?.SetTag(TelemetryTags.SimulationRunId, run.Id);
 
         logger.LogInformation(
-            "Simulation run started | SimulationRunId={SimulationRunId} | StartedAt={StartedAt} | LogicalStartTimestamp={LogicalStartTimestamp}",
+            "Simulation run started | SimulationRunId={SimulationRunId} | ScenarioId={ScenarioId} | ScenarioCode={ScenarioCode} | ScenarioName={ScenarioName} | DegradationProfile={DegradationProfile} | FailureRate={FailureRate} | NoiseLevel={NoiseLevel} | SensorLimit={SensorLimit} | StartedAt={StartedAt} | LogicalStartTimestamp={LogicalStartTimestamp}",
             run.Id,
+            context.Scenario.Id,
+            context.ScenarioCode,
+            context.Scenario.Name,
+            context.RunOverrides?.Resolved.DegradationProfile,
+            context.Scenario.Parameters.FailureRate,
+            context.Scenario.Parameters.NoiseLevel,
+            context.RunOverrides?.Resolved.SensorCount ?? context.Sensors.Count,
             actualStartedAt,
             context.StartTimestamp);
 
@@ -111,10 +120,23 @@ public sealed class SimulationRunner(
                     cycleIndex,
                     eventTime,
                     random);
+                var publishableEnvelopes = ApplyOperationalDegradation(
+                    context,
+                    envelopes,
+                    cycleIndex);
                 var publishStopwatch = Stopwatch.StartNew();
-                SimulatorHostTelemetry.PublishBatchSize.Record(envelopes.Count);
+                SimulatorHostTelemetry.PublishBatchSize.Record(publishableEnvelopes.Count);
 
-                foreach (var envelope in envelopes)
+                if (publishableEnvelopes.Count != envelopes.Count)
+                {
+                    logger.LogInformation(
+                        "Operational degradation omitted {MissingCount} reading(s) in cycle {CycleNumber}. Profile={DegradationProfile}",
+                        envelopes.Count - publishableEnvelopes.Count,
+                        cycleIndex + 1,
+                        context.RunOverrides?.Resolved.DegradationProfile);
+                }
+
+                foreach (var envelope in publishableEnvelopes)
                 {
                     await readingPublisher.PublishAsync(envelope, stoppingToken);
                 }
@@ -176,5 +198,40 @@ public sealed class SimulationRunner(
 
             throw;
         }
+    }
+
+    private static IReadOnlyCollection<Shared.Messaging.EventEnvelope<Shared.Contracts.Readings.SensorReadingProducedPayload>> ApplyOperationalDegradation(
+        SimulationContext context,
+        IReadOnlyCollection<Shared.Messaging.EventEnvelope<Shared.Contracts.Readings.SensorReadingProducedPayload>> envelopes,
+        int cycleIndex)
+    {
+        var profile = context.RunOverrides?.Resolved.DegradationProfile;
+        if (string.IsNullOrWhiteSpace(profile) ||
+            string.Equals(profile, "none", StringComparison.OrdinalIgnoreCase))
+        {
+            return envelopes;
+        }
+
+        if (!string.Equals(profile, "missing-readings", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(profile, "deterministic-missing-readings", StringComparison.OrdinalIgnoreCase))
+        {
+            return envelopes;
+        }
+
+        return envelopes
+            .Where(envelope => !ShouldOmitReading(envelope.Payload.SensorId, cycleIndex))
+            .ToArray();
+    }
+
+    private static bool ShouldOmitReading(Guid sensorId, int cycleIndex)
+    {
+        var bytes = sensorId.ToByteArray();
+        var accumulator = cycleIndex * 17;
+        for (var index = 0; index < bytes.Length; index++)
+        {
+            accumulator += bytes[index] * (index + 3);
+        }
+
+        return accumulator % 5 == 0;
     }
 }

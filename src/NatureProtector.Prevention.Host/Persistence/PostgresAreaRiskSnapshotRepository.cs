@@ -35,7 +35,8 @@ public sealed class PostgresAreaRiskSnapshotRepository(
         Guid areaId,
         AreaRiskSnapshot snapshot,
         int assessmentCount,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.postgres.write.area_risk_snapshot");
@@ -56,6 +57,7 @@ public sealed class PostgresAreaRiskSnapshotRepository(
         {
             Id = snapshot.Id,
             AreaId = areaId,
+            SimulationRunId = simulationRunId,
             SnapshotTimestamp = snapshot.Timestamp,
             AggregateRiskScore = snapshot.AggregateRiskScore,
             AggregateRiskLevel = snapshot.AggregateRiskLevel.ToString(),
@@ -96,13 +98,21 @@ public sealed class PostgresAreaRiskSnapshotRepository(
     /// </summary>
     public async Task<AreaRiskSnapshot?> GetLatestAsync(
         Guid areaId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var row = await dbContext.AreaRiskSnapshotLogs
+        var query = dbContext.AreaRiskSnapshotLogs
             .AsNoTracking()
-            .Where(entity => entity.AreaId == areaId)
+            .Where(entity => entity.AreaId == areaId);
+
+        if (simulationRunId.HasValue)
+        {
+            query = query.Where(entity => entity.SimulationRunId == simulationRunId.Value);
+        }
+
+        var row = await query
             .ToListAsync(cancellationToken);
 
         var latest = row

@@ -4,14 +4,15 @@ namespace NatureProtector.Prevention.Persistence;
 
 public sealed class InMemoryAreaRiskSnapshotRepository : IAreaRiskSnapshotRepository
 {
-    private readonly Dictionary<Guid, AreaRiskSnapshot> _items = new();
+    private readonly Dictionary<(Guid AreaId, Guid? SimulationRunId), AreaRiskSnapshot> _items = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     public async Task SaveAsync(
         Guid areaId,
         AreaRiskSnapshot snapshot,
         int assessmentCount,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
 
@@ -19,7 +20,7 @@ public sealed class InMemoryAreaRiskSnapshotRepository : IAreaRiskSnapshotReposi
 
         try
         {
-            _items[areaId] = snapshot;
+            _items[(areaId, simulationRunId)] = snapshot;
         }
         finally
         {
@@ -29,15 +30,25 @@ public sealed class InMemoryAreaRiskSnapshotRepository : IAreaRiskSnapshotReposi
 
     public async Task<AreaRiskSnapshot?> GetLatestAsync(
         Guid areaId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null)
     {
         await _gate.WaitAsync(cancellationToken);
 
         try
         {
-            return _items.TryGetValue(areaId, out var snapshot)
-                ? snapshot
-                : null;
+            if (simulationRunId.HasValue)
+            {
+                return _items.TryGetValue((areaId, simulationRunId), out var runSnapshot)
+                    ? runSnapshot
+                    : null;
+            }
+
+            return _items
+                .Where(item => item.Key.AreaId == areaId)
+                .Select(item => item.Value)
+                .OrderByDescending(item => item.Timestamp)
+                .FirstOrDefault();
         }
         finally
         {

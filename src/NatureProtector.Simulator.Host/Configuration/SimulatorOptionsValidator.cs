@@ -40,9 +40,20 @@ public sealed class SimulatorOptionsValidator : IValidateOptions<SimulatorOption
                 failures.Add("Simulator:ControlPlaneAreaCode is required when ControlPlaneEnabled=true.");
             }
 
-            if (string.IsNullOrWhiteSpace(options.ControlPlaneScenarioCode))
+            var hasScenarioId = options.ScenarioId != Guid.Empty;
+            var hasScenarioCode = !string.IsNullOrWhiteSpace(options.ControlPlaneScenarioCode);
+
+            if (!hasScenarioId && !hasScenarioCode)
             {
-                failures.Add("Simulator:ControlPlaneScenarioCode is required when ControlPlaneEnabled=true.");
+                failures.Add(
+                    "Simulator:ScenarioId or Simulator:ControlPlaneScenarioCode is required when ControlPlaneEnabled=true.");
+            }
+
+            if (hasScenarioId && hasScenarioCode)
+            {
+                failures.Add(
+                    "Simulator:ScenarioId and Simulator:ControlPlaneScenarioCode cannot both be configured when ControlPlaneEnabled=true. " +
+                    "Configure exactly one scenario selector to avoid ambiguous control-plane scenario selection.");
             }
 
             if (!string.IsNullOrWhiteSpace(options.ScenarioManifestPath))

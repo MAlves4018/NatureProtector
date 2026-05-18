@@ -47,7 +47,8 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         Guid areaId,
         AreaRiskSnapshot snapshot,
         int assessmentCount,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null)
     {
         await _gate.WaitAsync(cancellationToken);
 
@@ -69,6 +70,7 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
 
             _states[areaId] = new InMemoryAreaOperationalState(
                 areaId,
+                simulationRunId,
                 snapshot.Timestamp,
                 snapshot.AggregateRiskScore,
                 snapshot.AggregateRiskLevel.ToString(),
@@ -111,6 +113,7 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
 
     public sealed record InMemoryAreaOperationalState(
         Guid AreaId,
+        Guid? SimulationRunId,
         DateTimeOffset SnapshotTimestamp,
         double AggregateRiskScore,
         string AggregateRiskLevel,

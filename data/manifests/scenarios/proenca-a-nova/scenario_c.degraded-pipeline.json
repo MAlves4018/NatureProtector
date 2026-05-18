@@ -40,6 +40,7 @@
     "BaseWindSpeed": 3.78,
     "FailureRate": 0.18,
     "NoiseLevel": 0.16,
+    "DegradationProfile": "missing-readings",
     "TimeAcceleration": 1.0,
     "NumberOfCycles": 288,
     "IntervalSeconds": 5,

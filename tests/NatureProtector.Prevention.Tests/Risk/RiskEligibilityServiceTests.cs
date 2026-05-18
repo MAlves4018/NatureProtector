@@ -84,6 +84,66 @@ public sealed class RiskEligibilityServiceTests
     }
 
     [Fact]
+    public async Task Blocked_WhenOperationalStateIsDropped_UsesInvalidOperationalStateReason()
+    {
+        var service = new RiskEligibilityService();
+        var reading = CreateReading(operationalState: SensorOperationalState.Dropped);
+
+        var result = await service.EvaluateAsync(reading, CancellationToken.None);
+
+        Assert.False(result.IsEligible);
+        Assert.Equal(RiskInputStatus.Blocked, result.Status);
+        Assert.Equal(RiskEligibilityReason.InvalidOperationalState, result.ReasonCode);
+        Assert.Contains("SemanticMismatch", result.QualityFlags);
+    }
+
+    [Fact]
+    public async Task Blocked_WhenMetricIsUnsupported_UsesUnsupportedMetricReason()
+    {
+        var service = new RiskEligibilityService();
+        var reading = CreateReading(
+            metricType: SensorMetricType.WindDirection,
+            unit: MeasurementUnit.Degrees);
+
+        var result = await service.EvaluateAsync(reading, CancellationToken.None);
+
+        Assert.False(result.IsEligible);
+        Assert.Equal(RiskInputStatus.Blocked, result.Status);
+        Assert.Equal(RiskEligibilityReason.UnsupportedMetric, result.ReasonCode);
+        Assert.Contains("UnsupportedMetric", result.QualityFlags);
+    }
+
+    [Fact]
+    public async Task Blocked_WhenMetricEnumIsUndefined_UsesUnsupportedMetricReason()
+    {
+        var service = new RiskEligibilityService();
+        var reading = CreateReading(metricType: (SensorMetricType)999);
+
+        var result = await service.EvaluateAsync(reading, CancellationToken.None);
+
+        Assert.False(result.IsEligible);
+        Assert.Equal(RiskInputStatus.Blocked, result.Status);
+        Assert.Equal(RiskEligibilityReason.UnsupportedMetric, result.ReasonCode);
+        Assert.Contains("UnsupportedMetric", result.QualityFlags);
+    }
+
+    [Fact]
+    public async Task Blocked_WhenMetricUnitCombinationIsUnsupported_UsesInvalidUnitReason()
+    {
+        var service = new RiskEligibilityService();
+        var reading = CreateReading(
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Percent);
+
+        var result = await service.EvaluateAsync(reading, CancellationToken.None);
+
+        Assert.False(result.IsEligible);
+        Assert.Equal(RiskInputStatus.Blocked, result.Status);
+        Assert.Equal(RiskEligibilityReason.InvalidUnit, result.ReasonCode);
+        Assert.Contains("InvalidUnit", result.QualityFlags);
+    }
+
+    [Fact]
     public void EligibleSingleton_HasExpectedReasonCode_AndStatus()
     {
         var result = RiskEligibilityResult.Eligible;
@@ -162,7 +222,9 @@ public sealed class RiskEligibilityServiceTests
 
     private static NormalizedReading CreateReading(
         Guid? areaId = null,
-        SensorOperationalState operationalState = SensorOperationalState.Nominal)
+        SensorOperationalState operationalState = SensorOperationalState.Nominal,
+        SensorMetricType metricType = SensorMetricType.Temperature,
+        MeasurementUnit unit = MeasurementUnit.Celsius)
     {
         return new NormalizedReading(
             EventId: Guid.NewGuid(),
@@ -170,9 +232,9 @@ public sealed class RiskEligibilityServiceTests
             AreaId: areaId ?? Guid.NewGuid(),
             SensorId: Guid.NewGuid(),
             SensorName: "Sensor-PT-03",
-            MetricType: SensorMetricType.Temperature,
+            MetricType: metricType,
             Value: 28.4,
-            Unit: MeasurementUnit.Celsius,
+            Unit: unit,
             Latitude: 39.78,
             Longitude: -7.88,
             OperationalState: operationalState,

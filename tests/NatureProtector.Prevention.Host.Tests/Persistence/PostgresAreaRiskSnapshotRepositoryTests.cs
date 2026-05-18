@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NatureProtector.Core.Risk;
+using NatureProtector.Core.Scenarios;
+using NatureProtector.Infrastructure.Postgres.Control;
 using NatureProtector.Infrastructure.Postgres.Projection;
 using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Tests.TestInfrastructure;
@@ -37,6 +39,38 @@ public sealed class PostgresAreaRiskSnapshotRepositoryTests
 
         await using var dbContext = scope.CreateDbContext();
         Assert.Equal(2, dbContext.AreaRiskSnapshotLogs.Count());
+    }
+
+    [Fact]
+    public async Task SaveAsync_WithSimulationRunId_PersistsAndFiltersByRun()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var runA = await SeedSimulationRunAsync(scope, seed);
+        var runB = await SeedSimulationRunAsync(scope, seed);
+        var repository = CreateRepository(scope);
+        var snapshotA = new AreaRiskSnapshot(
+            Guid.Parse("21000000-0000-0000-0000-000000000001"),
+            new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+            0.40,
+            "Run A snapshot");
+        var snapshotB = new AreaRiskSnapshot(
+            Guid.Parse("22000000-0000-0000-0000-000000000001"),
+            new DateTimeOffset(2026, 4, 10, 9, 0, 0, TimeSpan.Zero),
+            0.82,
+            "Run B snapshot");
+
+        await repository.SaveAsync(seed.AreaId, snapshotA, 1, CancellationToken.None, runA);
+        await repository.SaveAsync(seed.AreaId, snapshotB, 1, CancellationToken.None, runB);
+
+        var latestRunA = await repository.GetLatestAsync(seed.AreaId, CancellationToken.None, runA);
+
+        Assert.NotNull(latestRunA);
+        Assert.Equal(snapshotA.Id, latestRunA!.Id);
+
+        await using var dbContext = scope.CreateDbContext();
+        var rowA = Assert.Single(dbContext.AreaRiskSnapshotLogs.Where(row => row.Id == snapshotA.Id));
+        Assert.Equal(runA, rowA.SimulationRunId);
     }
 
     [Fact]
@@ -93,6 +127,7 @@ public sealed class PostgresAreaRiskSnapshotRepositoryTests
                 {
                     Id = pending.Id,
                     AreaId = pending.AreaId,
+                    SimulationRunId = pending.SimulationRunId,
                     SnapshotTimestamp = pending.SnapshotTimestamp,
                     AggregateRiskScore = pending.AggregateRiskScore,
                     AggregateRiskLevel = pending.AggregateRiskLevel,
@@ -133,5 +168,46 @@ public sealed class PostgresAreaRiskSnapshotRepositoryTests
         return new PostgresAreaRiskSnapshotRepository(
             scope.Factory,
             NullLogger<PostgresAreaRiskSnapshotRepository>.Instance);
+    }
+
+    private static async Task<Guid> SeedSimulationRunAsync(
+        SqliteControlDbContextScope scope,
+        SeededControlPlane seed)
+    {
+        var scenarioId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+
+        await scope.SeedAsync(dbContext =>
+        {
+            dbContext.ScenarioDefinitions.Add(new ScenarioDefinitionRecord
+            {
+                Id = scenarioId,
+                AreaId = seed.AreaId,
+                ConfigurationVersionId = seed.ConfigurationVersionId,
+                Code = $"scenario-{scenarioId:N}",
+                Name = "Test scenario",
+                ScenarioKind = ScenarioCategory.Base
+            });
+
+            dbContext.SimulationRuns.Add(new SimulationRunRecord
+            {
+                Id = runId,
+                AreaId = seed.AreaId,
+                ScenarioId = scenarioId,
+                ConfigurationVersionId = seed.ConfigurationVersionId,
+                ScenarioCode = "scenario-test",
+                ScenarioName = "Test scenario",
+                CreatedAt = new DateTimeOffset(2026, 4, 10, 7, 59, 0, TimeSpan.Zero),
+                StartedAt = new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+                LogicalStartTimestamp = new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+                IntervalSeconds = 60,
+                NumberOfCycles = 1,
+                Status = SimulationRunStatus.Running
+            });
+
+            return Task.CompletedTask;
+        });
+
+        return runId;
     }
 }

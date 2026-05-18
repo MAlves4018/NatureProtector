@@ -64,4 +64,6 @@ Tal como o GeoJSON da Área num mapa, com pontos a representar Células de Senso
 
 ### pipeline:
 
+Esta vista passou a servir como `Runtime Monitor` tecnico/developer para a area selecionada. Mostra dados de `GET /api/control/runtime/summary` e deixa explicitas as limitacoes que ainda nao sao observaveis diretamente.
+
 De momento não mostra nada, mas esta vista tem como objetivo mostrar toda a pipeline de consumo de mensagens desde a entrada de valores dos sensores até ao envio de leituras aceites (accepted_readings)

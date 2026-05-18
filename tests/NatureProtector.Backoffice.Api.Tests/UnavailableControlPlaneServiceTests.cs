@@ -24,5 +24,11 @@ public sealed class UnavailableControlPlaneServiceTests
         Assert.Null(await service.GetAreaOperationalStateAsync("proenca-a-nova", null, CancellationToken.None));
         Assert.Empty(await service.ListCellOperationalStatesAsync("proenca-a-nova", null, 0, 10, CancellationToken.None));
         Assert.Empty(await service.ListActiveAlertsAsync("proenca-a-nova", null, CancellationToken.None));
+
+        var runtimeSummary = await service.GetRuntimeSummaryAsync("proenca-a-nova", 30, CancellationToken.None);
+        Assert.Null(runtimeSummary.CurrentRun);
+        Assert.Null(runtimeSummary.LatestRun);
+        Assert.Equal(0, runtimeSummary.Pipeline.InboxTotal);
+        Assert.NotEmpty(runtimeSummary.Limitations);
     }
 }

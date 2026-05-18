@@ -34,12 +34,31 @@ public sealed class RiskEligibilityService : IRiskEligibilityService
                 ["MissingValue"]));
         }
 
-        if (reading.OperationalState == SensorOperationalState.Invalid)
+        if (!Enum.IsDefined(reading.OperationalState) ||
+            reading.OperationalState is SensorOperationalState.Invalid or SensorOperationalState.Dropped)
         {
             return Task.FromResult(RiskEligibilityResult.Blocked(
                 RiskEligibilityReason.InvalidOperationalState,
-                "Operational state is invalid for risk processing.",
+                "Operational state is not eligible for risk processing.",
                 ["SemanticMismatch"]));
+        }
+
+        if (!Enum.IsDefined(reading.MetricType) ||
+            reading.MetricType == SensorMetricType.WindDirection)
+        {
+            return Task.FromResult(RiskEligibilityResult.Blocked(
+                RiskEligibilityReason.UnsupportedMetric,
+                "Metric is not supported by the current risk model.",
+                ["UnsupportedMetric"]));
+        }
+
+        if (!Enum.IsDefined(reading.Unit) ||
+            !IsSupportedMetricUnit(reading.MetricType, reading.Unit))
+        {
+            return Task.FromResult(RiskEligibilityResult.Blocked(
+                RiskEligibilityReason.InvalidUnit,
+                "Metric/unit combination is not supported by the current risk model.",
+                ["InvalidUnit"]));
         }
 
         if (reading.OperationalState is SensorOperationalState.Delayed or SensorOperationalState.Retransmitted)
@@ -57,5 +76,18 @@ public sealed class RiskEligibilityService : IRiskEligibilityService
         }
 
         return Task.FromResult(RiskEligibilityResult.CompleteEligible());
+    }
+
+    private static bool IsSupportedMetricUnit(
+        SensorMetricType metricType,
+        MeasurementUnit unit)
+    {
+        return metricType switch
+        {
+            SensorMetricType.Temperature => unit == MeasurementUnit.Celsius,
+            SensorMetricType.Humidity => unit == MeasurementUnit.Percent,
+            SensorMetricType.WindSpeed => unit == MeasurementUnit.MetersPerSecond,
+            _ => false
+        };
     }
 }

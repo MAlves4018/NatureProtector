@@ -35,6 +35,7 @@ public sealed class ScenarioContextFactoryTests
         Assert.Equal(TimeSpan.FromSeconds(options.IntervalSeconds), context.Interval);
         Assert.Equal(options.StartTimestamp, context.StartTimestamp);
         Assert.Equal(options.NumberOfCycles, context.NumberOfCycles);
+        Assert.Null(context.RunOverrides);
 
         var sensors = context.Sensors.ToList();
         Assert.Equal(2, sensors.Count);
@@ -43,6 +44,35 @@ public sealed class ScenarioContextFactoryTests
         Assert.Equal("LoRa", sensors[0].Profile.CommunicationMode);
         Assert.Equal("Low latency", sensors[0].Profile.LatencyProfile);
         Assert.Equal("Rare failures", sensors[0].Profile.FailureProfile);
+    }
+
+    [Fact]
+    public void Create_UsesScenarioDegradationProfile_WhenRunOverrideIsMissing()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.DegradationProfile = "missing-readings";
+        var factory = new ScenarioContextFactory(Options.Create(options));
+
+        var context = factory.Create();
+
+        Assert.NotNull(context.RunOverrides);
+        Assert.Null(context.RunOverrides!.Requested.DegradationProfile);
+        Assert.Equal("missing-readings", context.RunOverrides.Resolved.DegradationProfile);
+    }
+
+    [Fact]
+    public void Create_RunOverrideDegradationProfileOverridesScenarioProfile()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.DegradationProfile = "missing-readings";
+        options.RunOverrides.DegradationProfile = "none";
+        var factory = new ScenarioContextFactory(Options.Create(options));
+
+        var context = factory.Create();
+
+        Assert.NotNull(context.RunOverrides);
+        Assert.Equal("none", context.RunOverrides!.Requested.DegradationProfile);
+        Assert.Equal("none", context.RunOverrides.Resolved.DegradationProfile);
     }
 
     [Fact]

@@ -1,0 +1,249 @@
+[2m22:18:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:19:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:20:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:21:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:22:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:23:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:24:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:25:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:26:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:27:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:28:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:29:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:30:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:31:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:32:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:33:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:34:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:35:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:36:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:37:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:38:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:39:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:40:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:41:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:42:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:43:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:44:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:45:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:46:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:47:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:48:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:49:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:50:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:51:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:52:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:53:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:54:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:55:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:56:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:57:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:58:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m22:59:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:00:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:01:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:02:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:03:12[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:03:17[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:03:37[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:03:47[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:03:57[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:04:07[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:04:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:05:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:06:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:07:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:08:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:09:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:10:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:11:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:12:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:13:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:14:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:15:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:16:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:17:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:18:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:19:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:20:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:21:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:22:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:23:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:24:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:25:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:26:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:27:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:28:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:29:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:30:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:31:09[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:31:17[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:31:23[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)
+[2m23:31:23[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30[39m
+Error: connect ECONNREFUSED 127.0.0.1:5254
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1607:16)

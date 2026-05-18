@@ -270,6 +270,49 @@ public sealed class PostgresReadingEventInboxTests
     }
 
     [Fact]
+    public async Task TryStartDueRetryAsync_ExpiredProcessingLease_StartsRecoveredAttempt()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var inbox = CreateInbox(scope);
+        var envelope = EnvelopeFactory.Create();
+        var stored = await inbox.StoreIncomingAsync(
+            envelope,
+            JsonEventSerializer.SerializeToUtf8Bytes(envelope),
+            "reading_risk_pipeline",
+            CancellationToken.None);
+
+        await scope.SeedAsync(async dbContext =>
+        {
+            var row = await dbContext.InboxEvents.SingleAsync();
+            row.LastAttemptAt = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(30));
+        });
+
+        var retry = await inbox.TryStartDueRetryAsync(
+            "reading_risk_pipeline",
+            CancellationToken.None,
+            TimeSpan.FromMinutes(5),
+            maxProcessingAttempts: 3);
+
+        Assert.NotNull(retry);
+        Assert.Equal(envelope.EventId, retry!.Envelope.EventId);
+        Assert.Equal(2, retry.Lease.AttemptNumber);
+
+        await using var dbContext = scope.CreateDbContext();
+        var inboxEvent = Assert.Single(dbContext.InboxEvents);
+        Assert.Equal(stored.InboxEventId, inboxEvent.Id);
+        Assert.Equal(InboxEventStatus.Processing, inboxEvent.Status);
+        Assert.Equal(2, inboxEvent.AttemptCount);
+
+        var attempts = dbContext.ProcessingAttempts
+            .OrderBy(attempt => attempt.AttemptNumber)
+            .ToArray();
+        Assert.Equal(2, attempts.Length);
+        Assert.Equal(ProcessingAttemptOutcome.RetryScheduled, attempts[0].Outcome);
+        Assert.Equal("processing_lease_expired", attempts[0].ErrorCode);
+        Assert.Equal(ProcessingAttemptOutcome.Started, attempts[1].Outcome);
+    }
+
+    [Fact]
     public async Task TryStartDueRetryAsync_ConcurrentAttemptNumberRace_ReturnsNull()
     {
         var databasePath = Path.Combine(

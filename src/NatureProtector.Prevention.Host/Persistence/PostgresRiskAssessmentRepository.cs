@@ -37,7 +37,8 @@ public sealed class PostgresRiskAssessmentRepository(
         Guid sensorId,
         Guid sourceEventId,
         RiskAssessment assessment,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null)
     {
         ArgumentNullException.ThrowIfNull(assessment);
         using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.postgres.write.risk_assessment");
@@ -62,6 +63,7 @@ public sealed class PostgresRiskAssessmentRepository(
         {
             Id = assessment.Id,
             AreaId = areaId,
+            SimulationRunId = simulationRunId,
             SensorId = sensorId,
             GridCellId = sensorNode?.GridCellId,
             SourceEventId = sourceEventId,
@@ -124,13 +126,21 @@ public sealed class PostgresRiskAssessmentRepository(
     /// </summary>
     public async Task<IReadOnlyCollection<RiskAssessment>> GetLatestByAreaAsync(
         Guid areaId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var rows = await dbContext.RiskAssessmentLogs
+        var query = dbContext.RiskAssessmentLogs
             .AsNoTracking()
-            .Where(entity => entity.AreaId == areaId)
+            .Where(entity => entity.AreaId == areaId);
+
+        if (simulationRunId.HasValue)
+        {
+            query = query.Where(entity => entity.SimulationRunId == simulationRunId.Value);
+        }
+
+        var rows = await query
             .ToListAsync(cancellationToken);
 
         return SelectLatestAssessments(rows);

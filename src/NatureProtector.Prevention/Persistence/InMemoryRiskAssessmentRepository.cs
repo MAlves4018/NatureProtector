@@ -15,7 +15,8 @@ public sealed class InMemoryRiskAssessmentRepository : IRiskAssessmentRepository
         Guid sensorId,
         Guid sourceEventId,
         RiskAssessment assessment,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null)
     {
         ArgumentNullException.ThrowIfNull(assessment);
 
@@ -36,6 +37,7 @@ public sealed class InMemoryRiskAssessmentRepository : IRiskAssessmentRepository
 
             var stored = new StoredAssessment(
                 sensorId,
+                simulationRunId,
                 sourceEventId,
                 assessment,
                 ++_nextSequence);
@@ -88,12 +90,33 @@ public sealed class InMemoryRiskAssessmentRepository : IRiskAssessmentRepository
 
     public async Task<IReadOnlyCollection<RiskAssessment>> GetLatestByAreaAsync(
         Guid areaId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null)
     {
         await _gate.WaitAsync(cancellationToken);
 
         try
         {
+            if (simulationRunId.HasValue)
+            {
+                if (!_items.TryGetValue(areaId, out var list))
+                {
+                    return Array.Empty<RiskAssessment>();
+                }
+
+                return list
+                    .Where(item => item.SimulationRunId == simulationRunId.Value)
+                    .OrderByDescending(item => item.Assessment.Timestamp)
+                    .ThenByDescending(item => item.Sequence)
+                    .GroupBy(item => item.SensorId)
+                    .Select(group => group.First())
+                    .OrderBy(item => item.Assessment.Timestamp)
+                    .ThenBy(item => item.Sequence)
+                    .Select(item => item.Assessment)
+                    .ToList()
+                    .AsReadOnly();
+            }
+
             if (!_latestByArea.TryGetValue(areaId, out var latestBySensor))
             {
                 return Array.Empty<RiskAssessment>();
@@ -121,6 +144,7 @@ public sealed class InMemoryRiskAssessmentRepository : IRiskAssessmentRepository
 
     private sealed record StoredAssessment(
         Guid SensorId,
+        Guid? SimulationRunId,
         Guid SourceEventId,
         RiskAssessment Assessment,
         long Sequence);

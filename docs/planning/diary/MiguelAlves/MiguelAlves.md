@@ -654,6 +654,28 @@ Registar o trabalho de consolidação da segunda fase de pesquisa do NatureProte
 45. A cobertura consolidada passou para `97.6%` de line coverage, `90.1%` de branch coverage e `97.1%` de method coverage.
 46. Os testes passaram a cobrir melhor domínio, validações, elegibilidade, `RiskInput`, `DailyCellState`, `RiskAssessment`, alertas V1, API/Backoffice, Influx configurável, inbox, contexto do simulador e orquestração de runs.
 47. Ficou definido que a cobertura não deve ser aumentada artificialmente à custa de testes frágeis sobre telemetry glue, RabbitMQ real, Influx real ou branches de observabilidade sem valor funcional.
+48. Foi reorganizada a documentação técnica, reduzindo documentação operacional intermédia, movendo a documentação do orquestrador para `docs/architecture/` e consolidando o plano V1 em `docs/planning/v1-implementation-map.md`.
+49. Foi criado `docs/NatureProtector-V1-overview.md` como documento de entrada canónico para explicar o estado atual da V1, ligando arquitetura, runtime, contratos, pipeline, testes, evidência, limitações e roadmap.
+50. Foi criada uma linha de diagramas simplificados para apresentação, separada dos diagramas técnicos detalhados, para explicar o projeto com poucos blocos e menor carga visual.
+51. Foi iniciada a integração da orquestração e observabilidade runtime no website, criando uma vista `Runtime Monitor` e uma vista `Developer Runtime Control`.
+52. O `Runtime Monitor` passou a expor, a partir de dados persistidos, estado da última run, inbox, attempts, rejeições, quarentenas, risk assessments, alertas, estado agregado da área, freshness e gráficos de apoio.
+53. A vista `Developer Runtime Control` passou a reunir diagnósticos fixos, reset controlado de runtime e submissão de runs com parâmetros operacionais.
+54. Foi criado/corrigido um launcher local para arrancar Backoffice API, Prevention Host e webUI de forma coordenada, lendo `.env`, validando PostgreSQL, detetando portas ocupadas e registando PIDs, portas e URLs em evidência local.
+55. Foi corrigido o tratamento de erro quando a API não consegue ligar ao PostgreSQL, passando a devolver erro controlado em vez de `Internal Server Error` genérico.
+56. Foi adicionada uma ação de reset runtime controlado no website, com dry-run e confirmação explícita, permitindo limpar runs, inbox, attempts, projections e alertas sem apagar o control plane.
+57. A análise das runs no Runtime Monitor evidenciou que projeções e estado agregado podem incluir carry-forward, pelo que o score de área não deve ser interpretado como simples média dos eventos da última run.
+58. Ficou identificado que a freshness por célula é necessária para distinguir estado recente, stale e expirado, limitando a influência de leituras antigas nas projeções.
+59. A observação de runs do `scenario_b` mostrou diferença entre expectativa metodológica e comportamento agregado observado, reforçando que cenários severos ainda são instrumentos de demonstração técnica e não validação científica de risco extremo.
+60. Foi identificado que o `scenario_c` não apresentava degradação operacional clara face ao `scenario_b`, apesar de estar definido como cenário degradado.
+61. Foi realizada uma auditoria técnica adicional, focada na lógica backend/runtime de simulação e prevenção, excluindo deliberadamente UI, `.env`, segurança local, documentação e cobertura global de testes.
+62. A auditoria identificou riscos de perda de eventos, rejeições não persistidas, estados `Processing` presos, validação operacional insuficiente antes do scoring, contaminação de snapshots entre runs e ambiguidade na seleção de cenários.
+63. Foi implementado um hardening incremental da pipeline: recovery por lease para eventos antigos em `Processing`, rejeição segura de payload nulo/ausente, validação explícita de estados operacionais, métricas e unidades antes do scoring.
+64. Foi reforçada a regra de que leituras `Dropped`, métricas não suportadas ou unidades incompatíveis não devem gerar `RiskAssessment` normal.
+65. Os `RiskAssessment` e snapshots passaram a ser associados a `SimulationRunId`, evitando mistura de avaliações entre runs ou cenários diferentes na mesma área.
+66. Foi corrigido um problema de migrations EF Core em que a migration que adicionava `SimulationRunId` existia com `Up/Down`, mas não era reconhecida pelo EF por falta de metadata/designer adequado.
+67. A seleção de cenários no simulador foi tornada explícita, impedindo coexistência ambígua de `ScenarioId` e `ControlPlaneScenarioCode`.
+68. O `scenario_c` passou a declarar degradação efetiva `missing-readings`, preservando o `scenario_b` sem degradação automática.
+69. A validação runtime final confirmou que `scenario_b` e `scenario_c` completam, que o pipeline processa sem novos `db_update_failed`, que há risk assessments e projeções com `SimulationRunId`, e que o `scenario_c` produz menos leituras aceites devido a `missing-readings`.
 
 ### Resultado principal da quinzena
 
@@ -666,6 +688,10 @@ Também ficou mais claro o papel dos índices. O FWI orienta a componente meteor
 Na fase final da quinzena, esta base metodológica foi parcialmente materializada em código e evidência runtime. A implementação passou a incluir camadas e contratos internos compatíveis com a V1, alertas operacionais internos, projeções expostas pela API e uma primeira camada de orquestração de runs. A validação continua a ser técnica/runtime, não científica, mas passou a ser mais reprodutível e auditável.
 
 Também foi reforçada a base de testes automatizados. A suite passou a cobrir de forma mais completa os comportamentos de domínio, validação, elegibilidade, scoring interno, alertas, projeções, API, Influx configurável e execução de cenários. A cobertura consolidada atingiu `97.6%` de line coverage, `90.1%` de branch coverage e `97.1%` de method coverage, mantendo a opção de não perseguir `100%` artificial em componentes de observabilidade ou integrações externas difíceis de testar sem infraestrutura real.
+
+Na fase final, a validação deixou de ser apenas demonstrativa e passou a testar riscos concretos de runtime. A auditoria backend identificou pontos onde a pipeline podia perder eventos, aceitar dados inelegíveis ou misturar runs. As correções incrementais reforçaram a durabilidade do inbox, a validação antes do scoring, o isolamento por `SimulationRunId` e a semântica efetiva do `scenario_c`.
+
+A integração inicial no website também tornou a operação mais observável. O projeto passou a ter uma primeira superfície visual para monitorizar runtime, lançar runs, executar diagnósticos e limpar estado operacional local. Esta superfície ainda é de desenvolvimento, mas ajudou a tornar visíveis problemas como carry-forward, freshness, diferença entre risk assessments e projeções, e evidência incompleta quando a run é iniciada pela UI.
 
 ---
 
@@ -727,6 +753,12 @@ Isto permite comparar cenário limpo e degradado sem confundir falha operacional
 
 No final da quinzena, a execução de cenários foi tornada mais controlável através de um orquestrador local baseado em `run-spec.json`. Esta camada permite indicar área, cenário, número de sensores, ciclos, intervalo, seed e recolha de evidência, sem alterar manualmente CSV, scripts de bootstrap ou parâmetros dispersos.
 
+A análise das execuções mostrou, no entanto, que a semântica dos cenários precisava de ficar mais explícita. O `scenario_b`, embora represente um contexto severo, não deve ser apresentado como prova de risco extremo. A sua leitura depende da seleção de sensores, do estado projetado, do carry-forward e dos thresholds candidatos.
+
+Também foi identificado que o `scenario_c` se comportava de forma demasiado próxima do `scenario_b` quando era executado com `degradationProfile=none` ou quando a definição persistida do control plane não refletia degradação efetiva. Esta observação reforçou a decisão metodológica inicial: C não deve ser um terceiro clima, mas uma versão operacionalmente degradada de uma execução comparável.
+
+Na fase final, a semântica dos cenários foi reforçada também em runtime. A seleção por control plane passou a exigir uma escolha inequívoca entre `ScenarioId` e `ControlPlaneScenarioCode`, evitando que um identificador por omissão mascarasse o cenário pretendido. O `scenario_c` passou a declarar explicitamente `missing-readings` como perfil de degradação, mantendo o `scenario_b` sem degradação automática. A validação runtime posterior confirmou que o `scenario_c` produziu menos leituras aceites do que o `scenario_b` em execução comparável.
+
 ---
 
 ## 5. Pipeline, normalização e elegibilidade
@@ -744,6 +776,12 @@ Também foi reforçada a distinção entre persistir e usar. Uma leitura pode se
 Foram formalizados classificadores mínimos e a ideia de `ClassifierResult`, para que cada decisão da pipeline tenha nome, resultado, flags, estado, próxima ação e razão auditável.
 
 A implementação passou a refletir esta separação com estados de elegibilidade mais explícitos. Leituras bloqueadas deixam de produzir assessment numérico, evitando a interpretação errada de `Blocked` como risco zero. A evidência runtime confirmou eventos processados, tentativas de processamento sem erro recente, risk assessments e projeções operacionais.
+
+Após auditoria backend, esta fronteira foi reforçada em código. A pipeline passou a recuperar eventos antigos presos em `Processing` através de uma política explícita de lease/timeout, evitando que mensagens já materializadas no inbox fiquem indefinidamente sem novo processamento após cancelamento ou crash.
+
+Também foi acrescentada validação defensiva para payload nulo ou ausente, garantindo rejeição persistida antes do `BasicAck` quando tecnicamente possível. Na elegibilidade, leituras com estado operacional `Dropped`, métricas não suportadas, unidades incompatíveis ou enums indefinidos passaram a ser bloqueadas ou rejeitadas antes de qualquer cálculo de risco. Esta alteração protege a regra de que dados tecnicamente recebidos não são automaticamente dados elegíveis para scoring.
+
+A análise runtime também mostrou que persistir e projetar estado não é equivalente a recalcular tudo a partir da última run. O estado operacional pode transportar carry-forward, o que é útil para continuidade, mas exige regras explícitas de freshness, expiração e peso temporal para evitar que leituras antigas dominem a interpretação atual.
 
 ---
 
@@ -791,6 +829,10 @@ A validação técnica foi complementada com recolha runtime. Esta evidência de
 
 A validação automatizada também foi reforçada através de várias rondas de testes. Foram cobertos casos de domínio, limites, invariantes, caminhos negativos, indisponibilidade da API, validações de configuração, política de alertas, classificadores de falha, inbox em memória, parsing de configuração de InfluxDB e execução controlada do simulador. Esta melhoria aumentou a confiança técnica na implementação, sem ser apresentada como validação científica do modelo de risco.
 
+A organização documental também foi revista para facilitar leitura e manutenção. Foi criado `docs/NatureProtector-V1-overview.md` como documento canónico de entrada, capaz de explicar o estado atual da V1 sem obrigar à leitura inicial de todos os documentos técnicos. Em paralelo, a documentação de implementação foi simplificada, o plano consolidado passou para `docs/planning/v1-implementation-map.md`, e a documentação do orquestrador passou a estar enquadrada em `docs/architecture/`.
+
+Foi ainda criada uma linha de diagramas simplificados para apresentação, separada dos diagramas técnicos detalhados. Esta decisão surgiu da necessidade de explicar o projeto com poucos blocos e menor carga visual, mantendo os diagramas antigos como material técnico de suporte. Foram produzidos diagramas de visão geral, fluxo runtime, pipeline de risco, alertas/API e orquestração de runs.
+
 ---
 
 ## 8. Implementação, evidência runtime e orquestração de runs
@@ -811,6 +853,59 @@ Em paralelo, foi feita uma ronda de reforço da suite de testes. Foram acrescent
 
 A cobertura consolidada passou para `97.6%` de line coverage, `90.1%` de branch coverage e `97.1%` de method coverage. A melhoria foi feita apenas com testes, sem alterar contratos RabbitMQ, scoring, alert policy, schemas ou comportamento de produção. Ficaram assumidas como limites saudáveis algumas zonas de baixa cobertura residual, sobretudo `PostgresBootstrapTelemetry`, branches de `ActivitySource`, integração RabbitMQ real e escrita Influx real, por serem áreas de observabilidade ou integração que exigiriam testes frágeis, infraestrutura externa ou refactor específico.
 
+### Runtime Monitor e Developer Runtime Control
+
+Depois do merge com os avanços do website, foi iniciada uma frente de observabilidade e controlo runtime no frontend. O `Runtime Monitor` passou a apresentar estado da última run, inbox, tentativas de processamento, rejeições, quarentenas, risk assessments, alertas, risco agregado da área, freshness e gráficos de apoio.
+
+A vista `Developer Runtime Control` passou a concentrar diagnósticos fixos, submissão de runs com parâmetros operacionais, reset runtime e acesso ao Runtime Monitor. Esta vista foi pensada como ferramenta local/development, não como interface operacional final, e ajudou a tornar visíveis diferenças entre eventos recebidos, assessments persistidos, projeções atualizadas e alertas ativos.
+
+### Launcher local e controlo de ambiente
+
+Foi também corrigido o arranque local coordenado. O script `start-local-runtime.ps1` passou a ler `.env`, usar a porta efetiva do PostgreSQL, validar a disponibilidade da base de dados, detetar portas ocupadas, suportar `-ForceRestart`, arrancar a webUI com `--strictPort` e gravar um resumo com PIDs, portas, URLs e destino PostgreSQL efetivo.
+
+Esta alteração resolveu problemas de `Internal Server Error` causados por processos antigos, portas ocupadas ou API ligada ao PostgreSQL errado. A API passou ainda a devolver erro controlado quando não consegue ligar ao PostgreSQL, permitindo que o frontend mostre uma mensagem útil em vez de uma falha genérica.
+
+### Reset runtime controlado
+
+Foi adicionada uma ação de reset runtime controlado no website. A ação exige dry-run e confirmação textual explícita, limpa apenas tabelas runtime/pipeline/projection e preserva o control plane. Depois do reset, o Runtime Monitor passou a mostrar corretamente ausência de run, inbox vazia, attempts vazios, sem risk assessments, sem projeção de área e freshness nula.
+
+Esta funcionalidade tornou possível repetir demonstrações a partir de um estado limpo, reduzindo a influência de runs antigas. Ao mesmo tempo, a análise mostrou que o carry-forward continua a ser uma característica importante das projeções, exigindo regras futuras de freshness, stale/expired e limites temporais.
+
+### Auditoria backend e hardening runtime pós-C7
+
+Depois da primeira validação runtime, foi feita uma auditoria lógica focada no backend de simulação e prevenção. Foram excluídos desta passagem os temas de `.env`, segurança local, UI, drift documental e cobertura global, para concentrar a análise em riscos de runtime.
+
+A auditoria identificou quatro classes principais de problemas: eventos que poderiam ficar presos em `Processing`, rejeições de payload inválido que poderiam não ficar persistidas, dados operacionais não elegíveis que poderiam chegar ao scoring e snapshots agregados sem fronteira clara por `SimulationRunId`.
+
+A correção foi feita em patches incrementais. Primeiro, foi introduzida uma política de lease para recuperar eventos antigos em `Processing`, mantendo o `BasicAck` na posição anterior para eventos válidos. Em seguida, foram reforçadas as validações antes do scoring, impedindo que `Dropped`, métricas não suportadas, unidades incompatíveis ou enums inválidos gerassem `RiskAssessment` normal.
+
+Depois, os `RiskAssessment`, snapshots e projeções agregadas passaram a transportar `SimulationRunId`, permitindo separar runs diferentes da mesma área. Esta alteração exigiu uma migration EF Core para adicionar `SimulationRunId` a `projection.risk_assessment_log`, com índices e foreign key para `control.simulation_runs`.
+
+Durante a validação, foi detetado um problema na própria migration: o ficheiro com o `Up/Down` real existia, mas não era reconhecido pelo EF Core por falta de metadata/designer adequado. Uma migration duplicada criada acidentalmente gerou erro de compilação por duplicação de `Up/Down`. O estado das migrations foi corrigido, mantendo uma única migration válida, reconhecida pelo EF, aplicada à base de dados e confirmada por queries PostgreSQL.
+
+Após estas correções, foi feita nova validação runtime. O pipeline deixou de produzir `db_update_failed`, as tentativas de processamento passaram a terminar com sucesso, não surgiram rejeições nem quarentenas novas, e os risk assessments passaram a ser persistidos com `SimulationRunId`.
+
+| Validação | Resultado |
+|---|---|
+| `scenario_b` | `Completed` |
+| `scenario_c` | `Completed` |
+| `scenario_b`, eventos esperados/leituras aceites | 30 / 29 |
+| `scenario_c`, eventos esperados/leituras aceites | 30 / 20 |
+| `scenario_c` degradation profile | `missing-readings` |
+| Rejected | 0 |
+| Quarantined | 0 |
+| Processing attempts recentes | `Succeeded` |
+| Risk assessments | persistidos com `SimulationRunId` |
+| Area operational state | atualizado com risco `High` |
+
+Esta validação continua a ser técnica/runtime. Demonstra coerência operacional e reprodutibilidade básica da pipeline, mas não constitui validação científica do score de risco.
+
+### Runs pelo website e evidência
+
+A execução de runs a partir do website foi iniciada e demonstrou que o site consegue submeter runs, acompanhar o estado no Runtime Monitor e validar erros como `sensorCount` superior aos sensores ativos. Foram também identificadas lacunas de feedback e auditabilidade: a confirmação após `Start Run` ainda precisava de ser mais explícita e a recolha de evidência com `collectEvidence=true` devia produzir mais do que um `request.json`.
+
+Ficou definido que as runs lançadas pela UI devem gerar evidência completa, incluindo request, response, summary, diagnósticos before/after e relatório pós-run. Esta frente prepara a passagem de uma orquestração local por script para uma orquestração mais integrada no Backoffice/site.
+
 ---
 
 ## 9. Resultado da quinzena e próximos passos
@@ -820,6 +915,8 @@ Em síntese, esta quinzena consolidou a Pesquisa II como base metodológica e t�
 O resultado mais importante foi a definição de uma cadeia defensável entre cenário, verdade física, observação, evento, leitura normalizada, input de risco, avaliação, alerta e projeção. Esta cadeia permite defender que o sistema não calcula risco a partir de mensagens raw, mas sim a partir de dados canónicos, elegíveis, contextualizados e auditáveis.
 
 A fase final da quinzena também transformou parte desta visão em execução técnica: a pipeline ganhou fronteiras mais explícitas, os alertas passaram a ter política interna testável, a API passou a expor estado operacional sem recalcular risco, foi criada uma primeira camada de orquestração de runs com evidência por execução, e a suite de testes foi reforçada até uma cobertura consolidada de `97.6%` em linhas, `90.1%` em branches e `97.1%` em métodos.
+
+Na última parte da frente, o trabalho avançou para observabilidade web e hardening runtime. O Runtime Monitor e o Developer Runtime Control tornaram visíveis problemas que antes estavam escondidos, como carry-forward, freshness, diferença entre assessments e projeções, cenário C sem degradação observável e evidência incompleta em runs iniciadas pela UI. A auditoria backend e os patches posteriores reforçaram a durabilidade do inbox, a validação pre-scoring, o isolamento por `SimulationRunId` e a degradação efetiva do `scenario_c` através de `missing-readings`.
 
 O documento ficou mais forte, mas ainda há trabalho antes de considerar tudo fechado. A principal pendência documental continua a ser manter `Proposal.tex`, PDF, anexos, documentação técnica e evidência sincronizados com o estado real do código.
 
@@ -841,3 +938,10 @@ O documento ficou mais forte, mas ainda há trabalho antes de considerar tudo fe
 14. Continuar a evolução do orquestrador apenas depois de fechar a frente atual, preparando futura integração no Backoffice/API.
 15. Só depois avançar para FWI/KBDI, alertas finais com política operacional mais completa, agregação por área calibrada e validação externa.
 16. Manter a política de coverage saudável: cobrir comportamento funcional e caminhos críticos, mas não perseguir `100%` artificial em telemetry glue, branches de observabilidade ou integrações externas sem infraestrutura própria.
+17. Guardar evidência da validação runtime pós-hardening, incluindo migrations aplicadas, comparação B vs C, risk assessments por `SimulationRunId`, processing attempts com sucesso e screenshots do Runtime Monitor.
+18. Rever a UI/orquestração para garantir que mostra claramente o cenário efetivo, o `degradationProfile` resolvido, missing events e diferença entre score final e degradação observacional.
+19. Confirmar que a documentação técnica reflete as alterações de hardening: lease/recovery de `Processing`, validação pre-scoring, `SimulationRunId` em assessments/snapshots e `scenario_c` com `missing-readings`.
+20. Fechar a evidência automática de runs iniciadas pela UI, garantindo que `collectEvidence=true` produz artefactos suficientes para auditoria.
+21. Estabilizar regras de freshness, stale/expired e carry-forward, para limitar a influência de leituras antigas no estado operacional.
+22. Separar, se possível, commits de hardening runtime, migrations, cenários/manifests, UI/runtime monitor e evidência.
+23. Só depois avançar para testes UI, drift documentação-código, integração mais completa no Backoffice/API e validação externa.

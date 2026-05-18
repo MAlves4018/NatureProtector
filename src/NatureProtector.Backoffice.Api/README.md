@@ -45,6 +45,27 @@ Ainda não fecha autenticação nem comandos ricos de backoffice, mas já conseg
 - `GET /api/control/simulation-runs`
 - `GET /api/control/simulation-runs/{runId}`
 
+### Runtime Monitor
+
+- `GET /api/control/runtime/summary`
+  - query params: `areaCode` opcional, `recentMinutes` com janela recente por defeito de 30 minutos;
+  - agrega `simulation_runs`, inbox, attempts, rejected/quarantine, risk assessments recentes, estado operacional, alertas ativos e limitacoes de observabilidade;
+  - endpoint read-only: nao recalcula risco, nao recalcula alertas, nao consulta RabbitMQ Management API e nao expoe ficheiros de evidencia por HTTP.
+
+### Developer Runtime Control
+
+- `GET /api/control/runtime/diagnostics`
+- `POST /api/control/runtime/diagnostics/{diagnosticId}`
+  - executa apenas diagnosticos fixos e parametrizados; nao aceita SQL livre vindo do frontend.
+  - inclui diagnosticos para detalhes de `scenario_definitions` e comparacao da ultima run `scenario_b` vs `scenario_c`.
+- `POST /api/control/runtime/runs`
+  - Development-only; inicia `Simulator.Host` com `RunOverrides`; bloqueia runs paralelas por defeito.
+  - com `collectEvidence=true`, escreve evidencia local em `docs/evidence/dev-runtime/...` com request/response, summaries, diagnosticos e relatorios markdown.
+- `GET /api/control/runtime/runs/latest`
+- `GET /api/control/runtime/runs/{runId}`
+- `POST /api/control/runtime/reset`
+  - Development-only; limpa apenas estado runtime, exige confirmacao `RESET_RUNTIME_STATE`, suporta dry run e bloqueia se houver run ativa.
+
 ## Como funciona
 
 Quando `BackofficeApi:ControlPlaneEnabled = true`, a API:
@@ -64,6 +85,7 @@ Quando `BackofficeApi:ControlPlaneEnabled = false`, a API continua a arrancar, m
 - consulta do estado operacional por célula;
 - consulta de alertas ativos simples por área;
 - consulta das `simulation_runs`;
+- resumo agregado read-only para a vista tecnica Runtime Monitor;
 - ativação mínima de `configuration_versions`.
 
 ## O que ainda não fecha
