@@ -1,0 +1,51 @@
+﻿C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Shared\NatureProtector.Shared.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.10.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9
+  NatureProtector.Core -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Core\bin\Debug\net9.0\NatureProtector.Core.dll
+  NatureProtector.Shared -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Shared\bin\Debug\net9.0\NatureProtector.Shared.dll
+  NatureProtector.Core.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Core.Tests\bin\Debug\net9.0\NatureProtector.Core.Tests.dll
+Test run for C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Core.Tests\bin\Debug\net9.0\NatureProtector.Core.Tests.dll (.NETCoreApp,Version=v9.0)
+  NatureProtector.Prevention -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Prevention\bin\Debug\net9.0\NatureProtector.Prevention.dll
+  NatureProtector.Infrastructure.Influx -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Infrastructure.Influx\bin\Debug\net9.0\NatureProtector.Infrastructure.Influx.dll
+  NatureProtector.Infrastructure.Postgres -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Infrastructure.Postgres\bin\Debug\net9.0\NatureProtector.Infrastructure.Postgres.dll
+  NatureProtector.Shared.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Shared.Tests\bin\Debug\net9.0\NatureProtector.Shared.Tests.dll
+Test run for C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Shared.Tests\bin\Debug\net9.0\NatureProtector.Shared.Tests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+  NatureProtector.Prevention.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Prevention.Tests\bin\Debug\net9.0\NatureProtector.Prevention.Tests.dll
+  NatureProtector.Infrastructure.Influx.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Infrastructure.Influx.Tests\bin\Debug\net9.0\NatureProtector.Infrastructure.Influx.Tests.dll
+  NatureProtector.Simulator.Host -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Simulator.Host\bin\Debug\net9.0\NatureProtector.Simulator.Host.dll
+  NatureProtector.Prevention.Host -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Prevention.Host\bin\Debug\net9.0\NatureProtector.Prevention.Host.dll
+Test run for C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Prevention.Tests\bin\Debug\net9.0\NatureProtector.Prevention.Tests.dll (.NETCoreApp,Version=v9.0)
+Test run for C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Infrastructure.Influx.Tests\bin\Debug\net9.0\NatureProtector.Infrastructure.Influx.Tests.dll (.NETCoreApp,Version=v9.0)
+  NatureProtector.Backoffice.Api -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Backoffice.Api\bin\Debug\net9.0\NatureProtector.Backoffice.Api.dll
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   468, Skipped:     0, Total:   468, Duration: 176 ms - NatureProtector.Core.Tests.dll (net9.0)
+
+Passed!  - Failed:     0, Passed:     8, Skipped:     0, Total:     8, Duration: 193 ms - NatureProtector.Shared.Tests.dll (net9.0)
+  NatureProtector.IntegrationTests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.IntegrationTests\bin\Debug\net9.0\NatureProtector.IntegrationTests.dll
+  NatureProtector.Simulator.Host.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Simulator.Host.Tests\bin\Debug\net9.0\NatureProtector.Simulator.Host.Tests.dll
+Test run for C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.IntegrationTests\bin\Debug\net9.0\NatureProtector.IntegrationTests.dll (.NETCoreApp,Version=v9.0)
+  NatureProtector.Prevention.Host.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Prevention.Host.Tests\bin\Debug\net9.0\NatureProtector.Prevention.Host.Tests.dll
+Test run for C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Simulator.Host.Tests\bin\Debug\net9.0\NatureProtector.Simulator.Host.Tests.dll (.NETCoreApp,Version=v9.0)
+Test run for C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Prevention.Host.Tests\bin\Debug\net9.0\NatureProtector.Prevention.Host.Tests.dll (.NETCoreApp,Version=v9.0)
+  NatureProtector.Backoffice.Api.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Backoffice.Api.Tests\bin\Debug\net9.0\NatureProtector.Backoffice.Api.Tests.dll
+Test run for C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Backoffice.Api.Tests\bin\Debug\net9.0\NatureProtector.Backoffice.Api.Tests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   115, Skipped:     0, Total:   115, Duration: 148 ms - NatureProtector.Prevention.Tests.dll (net9.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 164 ms - NatureProtector.IntegrationTests.dll (net9.0)
+
+Passed!  - Failed:     0, Passed:   154, Skipped:     0, Total:   154, Duration: 2 s - NatureProtector.Prevention.Host.Tests.dll (net9.0)
+
+Passed!  - Failed:     0, Passed:    54, Skipped:     0, Total:    54, Duration: 3 s - NatureProtector.Backoffice.Api.Tests.dll (net9.0)
+
+Passed!  - Failed:     0, Passed:    39, Skipped:     0, Total:    39, Duration: 10 s - NatureProtector.Infrastructure.Influx.Tests.dll (net9.0)
+
+Passed!  - Failed:     0, Passed:   119, Skipped:     0, Total:   119, Duration: 17 s - NatureProtector.Simulator.Host.Tests.dll (net9.0)
+
+ExitCode: 0

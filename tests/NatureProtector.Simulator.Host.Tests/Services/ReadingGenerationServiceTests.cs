@@ -112,6 +112,29 @@ public sealed class ReadingGenerationServiceTests
         Assert.Equal(SensorOperationalState.Invalid, envelope.Payload.OperationalState);
     }
 
+    [Theory]
+    [InlineData("none")]
+    [InlineData("missing-readings")]
+    public void GenerateReading_ExplicitDegradationProfileDoesNotApplyScenarioFailureRate(string degradationProfile)
+    {
+        var sensor = CreateSensor(SensorType.Temperature, "Sensor-01");
+        var context = CreateContext(
+            sensors: [sensor],
+            failureRate: 1.0,
+            degradationProfile: degradationProfile);
+
+        var envelope = _service.GenerateReading(
+            context,
+            simulationRunId: Guid.NewGuid(),
+            sensor: sensor,
+            cycleIndex: 0,
+            eventTime: context.StartTimestamp,
+            random: new Random(10));
+
+        Assert.NotEqual(0.0, envelope.Payload.Value);
+        Assert.Equal(SensorOperationalState.Nominal, envelope.Payload.OperationalState);
+    }
+
     [Fact]
     public void GenerateObservation_CreatesTruthSnapshotBeforeLocalObservation()
     {

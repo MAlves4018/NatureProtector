@@ -1,0 +1,32 @@
+﻿  Determining projects to restore...
+C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Shared\NatureProtector.Shared.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.10.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9 [C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\NatureProtector.sln]
+  All projects are up-to-date for restore.
+C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Shared\NatureProtector.Shared.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.10.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9
+  NatureProtector.Shared -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Shared\bin\Debug\net9.0\NatureProtector.Shared.dll
+  NatureProtector.Shared.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Shared.Tests\bin\Debug\net9.0\NatureProtector.Shared.Tests.dll
+  NatureProtector.Core -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Core\bin\Debug\net9.0\NatureProtector.Core.dll
+  NatureProtector.Core.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Core.Tests\bin\Debug\net9.0\NatureProtector.Core.Tests.dll
+  NatureProtector.Prevention -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Prevention\bin\Debug\net9.0\NatureProtector.Prevention.dll
+  NatureProtector.Infrastructure.Postgres -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Infrastructure.Postgres\bin\Debug\net9.0\NatureProtector.Infrastructure.Postgres.dll
+  NatureProtector.Infrastructure.Influx -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Infrastructure.Influx\bin\Debug\net9.0\NatureProtector.Infrastructure.Influx.dll
+  NatureProtector.Prevention.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Prevention.Tests\bin\Debug\net9.0\NatureProtector.Prevention.Tests.dll
+  NatureProtector.Postgres.Bootstrap -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Postgres.Bootstrap\bin\Debug\net9.0\NatureProtector.Postgres.Bootstrap.dll
+  NatureProtector.Infrastructure.Influx.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Infrastructure.Influx.Tests\bin\Debug\net9.0\NatureProtector.Infrastructure.Influx.Tests.dll
+  NatureProtector.Simulator.Host -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Simulator.Host\bin\Debug\net9.0\NatureProtector.Simulator.Host.dll
+  NatureProtector.Prevention.Host -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Prevention.Host\bin\Debug\net9.0\NatureProtector.Prevention.Host.dll
+  NatureProtector.Backoffice.Api -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Backoffice.Api\bin\Debug\net9.0\NatureProtector.Backoffice.Api.dll
+  NatureProtector.IntegrationTests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.IntegrationTests\bin\Debug\net9.0\NatureProtector.IntegrationTests.dll
+  NatureProtector.Simulator.Host.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Simulator.Host.Tests\bin\Debug\net9.0\NatureProtector.Simulator.Host.Tests.dll
+  NatureProtector.Prevention.Host.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Prevention.Host.Tests\bin\Debug\net9.0\NatureProtector.Prevention.Host.Tests.dll
+  NatureProtector.Backoffice.Api.Tests -> C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\tests\NatureProtector.Backoffice.Api.Tests\bin\Debug\net9.0\NatureProtector.Backoffice.Api.Tests.dll
+
+Build succeeded.
+
+C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Shared\NatureProtector.Shared.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.10.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9 [C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\NatureProtector.sln]
+C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector\src\NatureProtector.Shared\NatureProtector.Shared.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.10.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9
+    2 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.91
+
+ExitCode: 0

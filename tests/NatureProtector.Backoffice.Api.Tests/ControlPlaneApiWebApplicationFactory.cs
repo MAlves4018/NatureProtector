@@ -478,6 +478,44 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
                 Limitations: []));
         }
 
+        public Task<RuntimeRunTimingSummaryResponse?> GetRuntimeRunTimingsAsync(Guid runId, CancellationToken cancellationToken)
+        {
+            var run = _simulationRuns.SingleOrDefault(item => item.Id == runId);
+            if (run is null)
+            {
+                return Task.FromResult<RuntimeRunTimingSummaryResponse?>(null);
+            }
+
+            return Task.FromResult<RuntimeRunTimingSummaryResponse?>(new RuntimeRunTimingSummaryResponse(
+                run.Id,
+                840_000,
+                run.StartedAt,
+                run.EndedAt,
+                new DateTimeOffset(2026, 4, 7, 20, 1, 5, TimeSpan.Zero),
+                new DateTimeOffset(2026, 4, 7, 20, 1, 10, TimeSpan.Zero),
+                new DateTimeOffset(2026, 4, 7, 20, 1, 12, TimeSpan.Zero),
+                new DateTimeOffset(2026, 4, 7, 20, 1, 20, TimeSpan.Zero),
+                new DateTimeOffset(2026, 4, 7, 20, 10, 0, TimeSpan.Zero),
+                5_000,
+                10_000,
+                20_000,
+                540_000,
+                new RuntimeAttemptTimingSummaryResponse(2, 2, 0, 0, 1_000, 1_500, 2_000),
+                [
+                    new RuntimeStageTimingSummaryResponse(
+                        "reading_risk_pipeline",
+                        "Succeeded",
+                        null,
+                        2,
+                        new DateTimeOffset(2026, 4, 7, 20, 1, 10, TimeSpan.Zero),
+                        new DateTimeOffset(2026, 4, 7, 20, 1, 12, TimeSpan.Zero),
+                        1_000,
+                        1_500,
+                        2_000)
+                ],
+                ["Fake control plane timings."]));
+        }
+
         public Task<AreaGeoJSONResponse?> GetAreaGeoJSONAsync(string areaCode, int? configurationVersion, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();

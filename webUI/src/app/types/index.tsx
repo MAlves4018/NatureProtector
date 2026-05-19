@@ -124,6 +124,47 @@ export interface RuntimeRunAuditResponse {
     limitations: RuntimeLimitationResponse[];
 }
 
+export interface RuntimeRunTimingSummaryResponse {
+    simulationRunId: string;
+    runDurationMs: number | null;
+    startedAt: string | null;
+    endedAt: string | null;
+    firstInboxReceivedAt: string | null;
+    firstProcessingAttemptStartedAt: string | null;
+    lastProcessingAttemptFinishedAt: string | null;
+    firstRiskAssessmentCreatedAt: string | null;
+    firstAlertTriggeredAt: string | null;
+    timeToFirstInboxMs: number | null;
+    timeToFirstProcessingAttemptMs: number | null;
+    timeToFirstRiskAssessmentMs: number | null;
+    timeToFirstAlertMs: number | null;
+    attempts: RuntimeAttemptTimingSummaryResponse;
+    stages: RuntimeStageTimingSummaryResponse[];
+    limitations: string[];
+}
+
+export interface RuntimeAttemptTimingSummaryResponse {
+    attemptCount: number;
+    successfulAttempts: number;
+    failedAttempts: number;
+    quarantinedAttempts: number;
+    minDurationMs: number | null;
+    avgDurationMs: number | null;
+    maxDurationMs: number | null;
+}
+
+export interface RuntimeStageTimingSummaryResponse {
+    stage: string;
+    outcome: string;
+    errorCode: string | null;
+    count: number;
+    firstStartedAt: string | null;
+    lastFinishedAt: string | null;
+    minDurationMs: number | null;
+    avgDurationMs: number | null;
+    maxDurationMs: number | null;
+}
+
 export interface RuntimeAreaSnapshotAuditResponse {
     snapshotTimestamp: string;
     aggregateRiskScore: number;

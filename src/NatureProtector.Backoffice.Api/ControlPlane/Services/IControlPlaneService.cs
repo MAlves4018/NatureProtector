@@ -38,6 +38,7 @@ public interface IControlPlaneService
         CancellationToken cancellationToken);
     Task<SimulationRunResponse?> GetSimulationRunAsync(Guid runId, CancellationToken cancellationToken);
     Task<RuntimeRunAuditResponse?> GetRuntimeRunAuditAsync(Guid runId, CancellationToken cancellationToken);
+    Task<RuntimeRunTimingSummaryResponse?> GetRuntimeRunTimingsAsync(Guid runId, CancellationToken cancellationToken);
     Task<AreaOperationalStateResponse?> GetAreaOperationalStateAsync(
         string areaCode,
         int? configurationVersion,

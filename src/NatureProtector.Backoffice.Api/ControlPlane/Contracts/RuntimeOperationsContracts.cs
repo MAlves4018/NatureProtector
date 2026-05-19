@@ -26,6 +26,44 @@ public sealed record RuntimeTableCountResponse(
     string Table,
     int Count);
 
+public sealed record RuntimeRunTimingSummaryResponse(
+    Guid SimulationRunId,
+    double? RunDurationMs,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? EndedAt,
+    DateTimeOffset? FirstInboxReceivedAt,
+    DateTimeOffset? FirstProcessingAttemptStartedAt,
+    DateTimeOffset? LastProcessingAttemptFinishedAt,
+    DateTimeOffset? FirstRiskAssessmentCreatedAt,
+    DateTimeOffset? FirstAlertTriggeredAt,
+    double? TimeToFirstInboxMs,
+    double? TimeToFirstProcessingAttemptMs,
+    double? TimeToFirstRiskAssessmentMs,
+    double? TimeToFirstAlertMs,
+    RuntimeAttemptTimingSummaryResponse Attempts,
+    IReadOnlyList<RuntimeStageTimingSummaryResponse> Stages,
+    IReadOnlyList<string> Limitations);
+
+public sealed record RuntimeAttemptTimingSummaryResponse(
+    int AttemptCount,
+    int SuccessfulAttempts,
+    int FailedAttempts,
+    int QuarantinedAttempts,
+    double? MinDurationMs,
+    double? AvgDurationMs,
+    double? MaxDurationMs);
+
+public sealed record RuntimeStageTimingSummaryResponse(
+    string Stage,
+    string Outcome,
+    string? ErrorCode,
+    int Count,
+    DateTimeOffset? FirstStartedAt,
+    DateTimeOffset? LastFinishedAt,
+    double? MinDurationMs,
+    double? AvgDurationMs,
+    double? MaxDurationMs);
+
 public sealed record RuntimeFreshnessSummaryResponse(
     int FreshCount,
     int StaleCount,

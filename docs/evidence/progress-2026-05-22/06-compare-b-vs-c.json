@@ -1,0 +1,34 @@
+﻿{
+"runs": {
+"scenario_b": {
+"status": "Completed",
+"rejected": 0,
+"inboxEvents": 30,
+"quarantined": 0,
+"missingEvents": 0,
+"expectedEvents": 30,
+"riskAssessments": 30,
+"simulationRunId": "d8203d4b-1839-4908-87ef-05633c1f1ae5",
+"degradationProfile": "none"
+},
+"scenario_c": {
+"status": "Completed",
+"rejected": 0,
+"inboxEvents": 24,
+"quarantined": 0,
+"missingEvents": 6,
+"expectedEvents": 30,
+"riskAssessments": 24,
+"simulationRunId": "36caca67-352c-41f1-80e3-8fe951a1582c",
+"degradationProfile": "missing-readings"
+}
+},
+"comparison": {
+"scenarioBInbox": 30,
+"scenarioCInbox": 24,
+"scenarioBExpected": 30,
+"scenarioCExpected": 30,
+"scenarioCShowsControlledDegradation": true
+},
+"generatedAtUtc": "2026-05-18T23:32:55.883011+00:00"
+}

@@ -1,0 +1,35 @@
+﻿ section |                  id                  | scenario_code | status | number_of_cycles | interval_seconds | execution_seed |                                                                                                                                                                                                                                                                                                                                      metadata                                                                                                                                                                                                                                                                                                                                       
+---------+--------------------------------------+---------------+--------+------------------+------------------+----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ run     | d8203d4b-1839-4908-87ef-05633c1f1ae5 | scenario_b    | 3      | 5                | 5                | 12345          | {"sensor_count":6,"scenario_category":"HighRisk","orchestrator_correlation_id":"0e1b4017-40ba-45a4-9ae0-bb3b73ed4a36","run_overrides":{"requested":{"sensor_count":6,"number_of_cycles":5,"interval_seconds":5,"seed":12345,"degradation_profile":"none","orchestrator_correlation_id":"0e1b4017-40ba-45a4-9ae0-bb3b73ed4a36"},"resolved":{"sensor_count":6,"number_of_cycles":5,"interval_seconds":5,"seed":12345,"degradation_profile":"none","orchestrator_correlation_id":"0e1b4017-40ba-45a4-9ae0-bb3b73ed4a36","selected_sensor_names":["pilot-humidity-0001","pilot-humidity-0230","pilot-temperature-0001","pilot-temperature-0230","pilot-wind-0001","pilot-wind-0230"]}}}
+(1 row)
+
+ section | inbox_events 
+---------+--------------
+ inbox   |           30
+(1 row)
+
+     section      | assessments | sensors |    first_timestamp     |     last_timestamp     
+------------------+-------------+---------+------------------------+------------------------
+ risk_assessments |          30 |       6 | 2020-09-13 10:00:00+00 | 2020-09-13 10:00:20+00
+(1 row)
+
+ section  | rejected 
+----------+----------
+ rejected |        0
+(1 row)
+
+   section   | quarantined 
+-------------+-------------
+ quarantined |           0
+(1 row)
+
+     section      |      sensor_name       | metric_type | events 
+------------------+------------------------+-------------+--------
+ events_by_sensor | pilot-humidity-0001    | Humidity    |      5
+ events_by_sensor | pilot-humidity-0230    | Humidity    |      5
+ events_by_sensor | pilot-temperature-0001 | Temperature |      5
+ events_by_sensor | pilot-temperature-0230 | Temperature |      5
+ events_by_sensor | pilot-wind-0001        | WindSpeed   |      5
+ events_by_sensor | pilot-wind-0230        | WindSpeed   |      5
+(6 rows)
+

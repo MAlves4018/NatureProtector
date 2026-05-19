@@ -31,6 +31,33 @@ public sealed class SimulationRunnerTests
     }
 
     [Fact]
+    public async Task ScenarioB_WithDegradationProfileNone_PublishesExpectedEventCount()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 5;
+        options.IntervalSeconds = 1;
+        options.FailureRate = 1.0;
+        options.DegradationProfile = "none";
+        options.Sensors =
+        [
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Temperature-01", type: SensorType.Temperature),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Temperature-02", type: SensorType.Temperature),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Humidity-01", type: SensorType.Humidity),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Humidity-02", type: SensorType.Humidity),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Wind-01", type: SensorType.Wind),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Wind-02", type: SensorType.Wind)
+        ];
+        var publisher = new CollectingReadingPublisher();
+        var runner = CreateRunner(options, publisher);
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        Assert.Equal(30, publisher.Published.Count);
+        Assert.All(publisher.Published, envelope =>
+            Assert.Equal(SensorOperationalState.Nominal, envelope.Payload.OperationalState));
+    }
+
+    [Fact]
     public async Task ExecuteAsync_MissingReadingsDegradation_OmitsDeterministicSubset()
     {
         var options = SimulatorOptionsMother.CreateValid();
@@ -51,6 +78,33 @@ public sealed class SimulationRunnerTests
 
         var expectedWithoutDegradation = context.NumberOfCycles * context.Sensors.Count;
         Assert.InRange(publisher.Published.Count, 1, expectedWithoutDegradation - 1);
+    }
+
+    [Fact]
+    public async Task ScenarioC_WithMissingReadings_PublishesFewerThanExpected()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 5;
+        options.IntervalSeconds = 1;
+        options.FailureRate = 1.0;
+        options.DegradationProfile = "missing-readings";
+        options.Sensors =
+        [
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Temperature-01", type: SensorType.Temperature),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Temperature-02", type: SensorType.Temperature),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Humidity-01", type: SensorType.Humidity),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Humidity-02", type: SensorType.Humidity),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Wind-01", type: SensorType.Wind),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Wind-02", type: SensorType.Wind)
+        ];
+        var publisher = new CollectingReadingPublisher();
+        var runner = CreateRunner(options, publisher);
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        Assert.InRange(publisher.Published.Count, 1, 29);
+        Assert.All(publisher.Published, envelope =>
+            Assert.Equal(SensorOperationalState.Nominal, envelope.Payload.OperationalState));
     }
 
     [Fact]

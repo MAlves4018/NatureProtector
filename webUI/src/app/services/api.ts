@@ -11,6 +11,7 @@ import {
     RuntimeRunAuditResponse,
     RuntimeRunStartRequest,
     RuntimeRunStartResponse,
+    RuntimeRunTimingSummaryResponse,
     RuntimeSummaryResponse,
     ScenarioResponse,
     SensorNodeResponse
@@ -55,6 +56,10 @@ export const api = {
 
     getRuntimeRunAudit: (runId: string) => {
         return httpClient.get<RuntimeRunAuditResponse>(`/control/runtime/runs/${runId}/audit`);
+    },
+
+    getRuntimeRunTimings: (runId: string) => {
+        return httpClient.get<RuntimeRunTimingSummaryResponse>(`/control/runtime/runs/${runId}/timings`);
     },
 
     getRuntimeDiagnostics: () => {

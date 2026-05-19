@@ -1,0 +1,29 @@
+﻿# git status --short
+ M docs/evidence/dev-runtime/20260518-194733/backoffice-api.log
+ M docs/evidence/dev-runtime/20260518-194733/prevention-host.log
+ M src/NatureProtector.Simulator.Host/Services/ReadingGenerationService.cs
+ M tests/NatureProtector.Simulator.Host.Tests/Services/ReadingGenerationServiceTests.cs
+ M tests/NatureProtector.Simulator.Host.Tests/Services/SimulationRunnerTests.cs
+?? docs/evidence/dev-runtime/20260518-222347-scenario-c-from-ui/
+?? docs/evidence/dev-runtime/20260518-222524-scenario-c-from-ui/
+?? docs/evidence/dev-runtime/20260518-222645-scenario-c-from-ui/
+?? docs/evidence/dev-runtime/20260519-002616/
+?? docs/evidence/progress-2026-05-22/
+?? docs/evidence/runs/20260519-011514-scenario_b-scenario-b-5cycles-6sensors-smoke/
+?? docs/evidence/runs/20260519-011713-scenario_c-scenario-c-5cycles-6sensors-missing-readings/
+?? docs/implementation/
+
+# git diff --name-only
+docs/evidence/dev-runtime/20260518-194733/backoffice-api.log
+docs/evidence/dev-runtime/20260518-194733/prevention-host.log
+src/NatureProtector.Simulator.Host/Services/ReadingGenerationService.cs
+tests/NatureProtector.Simulator.Host.Tests/Services/ReadingGenerationServiceTests.cs
+tests/NatureProtector.Simulator.Host.Tests/Services/SimulationRunnerTests.cs
+
+# git diff --stat
+ .../dev-runtime/20260518-194733/backoffice-api.log | 1136561 +++++++++++++++++
+ .../20260518-194733/prevention-host.log            | 1080651 ++++++++++++++++
+ .../Services/ReadingGenerationService.cs           |      15 +-
+ .../Services/ReadingGenerationServiceTests.cs      |      23 +
+ .../Services/SimulationRunnerTests.cs              |      54 +
+ 5 files changed, 2217303 insertions(+), 1 deletion(-)

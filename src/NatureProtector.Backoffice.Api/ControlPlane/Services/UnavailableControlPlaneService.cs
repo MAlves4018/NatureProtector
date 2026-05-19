@@ -68,6 +68,9 @@ public sealed class UnavailableControlPlaneService : IControlPlaneService
     public Task<RuntimeRunAuditResponse?> GetRuntimeRunAuditAsync(Guid runId, CancellationToken cancellationToken)
         => Task.FromResult<RuntimeRunAuditResponse?>(null);
 
+    public Task<RuntimeRunTimingSummaryResponse?> GetRuntimeRunTimingsAsync(Guid runId, CancellationToken cancellationToken)
+        => Task.FromResult<RuntimeRunTimingSummaryResponse?>(null);
+
     public Task<AreaOperationalStateResponse?> GetAreaOperationalStateAsync(
         string areaCode,
         int? configurationVersion,

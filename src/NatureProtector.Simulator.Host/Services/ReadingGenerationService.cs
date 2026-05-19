@@ -153,7 +153,7 @@ public sealed class ReadingGenerationService
         ArgumentNullException.ThrowIfNull(truthSnapshot);
         ArgumentNullException.ThrowIfNull(random);
 
-        var failureRate = context.Scenario.Parameters.FailureRate;
+        var failureRate = ResolveObservationFailureRate(context);
         var isAvailable = sensor.IsActive && random.NextDouble() >= failureRate;
         var observedValue = isAvailable
             ? ApplyObservationNoise(truthSnapshot, sensor, random)
@@ -265,6 +265,19 @@ public sealed class ReadingGenerationService
             SensorMetricType.WindSpeed => Clamp(value, min: 0.0, max: 35.0),
             _ => value
         };
+    }
+
+    private static double ResolveObservationFailureRate(SimulationContext context)
+    {
+        var degradationProfile = context.RunOverrides?.Resolved.DegradationProfile;
+        if (string.Equals(degradationProfile, "none", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(degradationProfile, "missing-readings", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(degradationProfile, "deterministic-missing-readings", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0.0;
+        }
+
+        return context.Scenario.Parameters.FailureRate;
     }
 
     private static SensorMetricType ResolveMetricType(SensorType sensorType)

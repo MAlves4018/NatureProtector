@@ -84,3 +84,10 @@ docs/evidence/dev-runtime/
 webUI/node_modules/
 webUI/dist/
 webUI/.vite/
+# Runtime evidence logs
+docs/evidence/dev-runtime/
+
+# Node / frontend
+webUI/node_modules/
+webUI/dist/
+webUI/.vite/

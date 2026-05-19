@@ -293,6 +293,35 @@ public sealed class ControlPlaneApiTests
     }
 
     [Fact]
+    public async Task RuntimeRunTimingsEndpoint_ReturnsTimingSummary()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/runtime/runs/90000000-0000-0000-0000-000000000001/timings");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+
+        Assert.Equal(Guid.Parse("90000000-0000-0000-0000-000000000001"), root.GetProperty("simulationRunId").GetGuid());
+        Assert.Equal(840_000, root.GetProperty("runDurationMs").GetDouble());
+        Assert.Equal(2, root.GetProperty("attempts").GetProperty("attemptCount").GetInt32());
+        Assert.NotEmpty(root.GetProperty("stages").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task RuntimeRunTimingsEndpoint_MissingRun_ReturnsNotFound()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/control/runtime/runs/{Guid.NewGuid()}/timings");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetSimulationRun_MissingRun_ReturnsNotFound()
     {
         await using var factory = new ControlPlaneApiWebApplicationFactory();

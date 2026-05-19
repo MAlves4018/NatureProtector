@@ -981,3 +981,245 @@ A frente mais recente mostrou progresso real no alinhamento com a `PesquisaII`, 
 21. Estabilizar regras de freshness, stale/expired e carry-forward, para limitar a influência de leituras antigas no estado operacional.
 22. Separar, se possível, commits de hardening runtime, migrations, cenários/manifests, UI/runtime monitor e evidência.
 23. Só depois avançar para testes UI, drift documentação-código, integração mais completa no Backoffice/API e validação externa.
+
+# Recapitulação Quinzenal
+
+## Período
+
+19 de maio a 2 de junho de 2026
+
+## Objetivo desta entrada
+
+Registar o trabalho realizado na reorganização e melhoria do website do NatureProtector, com foco em tornar a interface mais clara para demonstração, mais alinhada com o fluxo real do sistema e mais útil para explicar a relação entre cenários, runtime, risco, alertas, evidência e modelo interno.
+
+## Resumo Estruturado
+
+### O que foi feito
+
+1. Foi analisado o estado atual do website e identificou-se que já existiam várias funcionalidades úteis, mas distribuídas de forma pouco clara para apresentação.
+
+2. A interface foi reenquadrada para deixar de ser apenas um conjunto de dashboards e passar a funcionar como uma superfície de demonstração e explicação do sistema.
+
+3. Foi definido um novo mapa de navegação para o website, organizado em cinco grandes áreas:
+
+   * `Monitoring`;
+   * `Scenario Lab`;
+   * `Flow Explorer`;
+   * `Evidence & Comparison`;
+   * `Model & Provenance`.
+
+4. A página inicial foi revista para apresentar melhor o projeto, incluindo uma descrição geral, informação sobre os participantes e seleção da área de monitorização.
+
+5. A área `Monitoring` passou a concentrar a informação operacional da área selecionada, incluindo visão geral, mapa, células, sensores, risco e alertas.
+
+6. A área `Scenario Lab` passou a reunir a execução de cenários, definição dos cenários, informação da última run e controlo/reset do estado runtime.
+
+7. A área `Evidence & Comparison` passou a dar maior destaque à auditoria das runs e à comparação entre `scenario_b` e `scenario_c`.
+
+8. A comparação B/C foi promovida a uma vista própria, tornando mais fácil demonstrar o efeito da degradação operacional através de leituras em falta no `scenario_c`.
+
+9. A área `Flow Explorer` foi criada para ajudar a explicar o fluxo interno do sistema, desde a run até ao inbox, attempts, risco, projeções, alertas e API/UI.
+
+10. A área `Model & Provenance` foi criada para ligar a interface ao modelo conceptual do projeto, à proveniência dos dados e à relação entre conceitos e implementação.
+
+11. Foi identificada a necessidade de a UI representar melhor o que acontece no backend, mas sem sobrecarregar o ecrã com todos os detalhes técnicos.
+
+12. Ficou definido que a informação técnica deve ser apresentada por camadas: primeiro a visão de demonstração, depois o detalhe técnico quando necessário.
+
+13. Foram identificados problemas visuais e funcionais após a reorganização inicial, nomeadamente dupla navbar, duplicação do botão light/dark, dashboards embebidos incorretamente e dashboards por célula sem `sensor_id`.
+
+14. Foi definido que a interface não deve mostrar painéis Grafana partidos nem abrir dashboards com parâmetros em falta.
+
+15. Foi reforçada a necessidade de distinguir dados reais, dados persistidos, dados não expostos e informação meramente explicativa.
+
+16. A tab `Run Timings` foi inicialmente criada de forma simples, mas percebeu-se que o frontend não tinha dados suficientes para representar tempos reais de processamento.
+
+17. Para resolver essa limitação, foi criado um endpoint backend read-only para expor timings persistidos por run.
+
+18. O novo endpoint passou a expor dados como duração da run, primeiro evento recebido, primeira tentativa de processamento, primeiro risk assessment, primeiro alerta e duração de attempts.
+
+19. A UI passou a consumir esses dados na área `Evidence & Comparison > Run Timings`.
+
+20. Ficou documentada a limitação de que os stopwatches presentes nos logs ainda não estão estruturalmente associados a `SimulationRunId`, pelo que ainda não podem ser usados diretamente pela UI.
+
+21. Foi clarificado que o website deve preparar-se para RBAC no futuro, mas sem fingir que esconder tabs no frontend é segurança real.
+
+22. Ficou definido que permissões futuras devem distinguir perfis como visualização, análise, operação, desenvolvimento e administração.
+
+23. Foi reforçado que ações sensíveis, como reset runtime e diagnósticos avançados, devem futuramente depender de permissões mais elevadas.
+
+24. Foram identificados processos locais antigos a bloquear builds e a dificultar a validação da versão atualizada do site.
+
+25. Ficou definido que, para ver a versão atualizada do website, não é necessário mandar Docker abaixo quando este apenas corre infraestrutura; é necessário reiniciar os processos locais da aplicação.
+
+---
+
+## Resultado principal da quinzena
+
+O principal resultado desta quinzena foi transformar o website numa interface muito mais alinhada com a lógica real do NatureProtector.
+
+Antes, a aplicação já tinha várias funcionalidades importantes, como dashboards, mapa, runtime monitor, diagnostics, run orchestrator e comparação B/C. No entanto, estas funcionalidades estavam demasiado dispersas e nem sempre ajudavam a explicar o sistema de forma clara.
+
+Com a nova organização, a interface passou a seguir uma narrativa mais próxima do projeto:
+
+`área monitorizada -> cenário/run -> pipeline runtime -> risco/alertas -> evidência -> modelo/proveniência`
+
+Isto torna a aplicação mais útil para a demo, para o design review e para explicar o funcionamento interno do sistema.
+
+A `Monitoring` permite apresentar o estado operacional da área. O `Scenario Lab` permite preparar e executar runs. O `Flow Explorer` ajuda a explicar o percurso dos dados no backend. O `Evidence & Comparison` permite comparar execuções e justificar resultados. O `Model & Provenance` liga a interface à metodologia, aos conceitos e ao código.
+
+Outro resultado importante foi a melhoria da análise temporal. A tab `Run Timings` mostrou que a UI precisava de uma fonte de dados real para representar tempos de processamento. Em vez de inventar dados ou tentar ler logs locais diretamente no browser, foi criado um endpoint read-only baseado em dados persistidos. Isto tornou a análise de timings mais sólida e mais defensável.
+
+A comparação entre `scenario_b` e `scenario_c` também ganhou importância. A UI passou a mostrar de forma mais direta que o cenário C produz menos leituras aceites e mais eventos em falta, evidenciando a degradação operacional esperada. Esta comparação é útil para apresentação porque mostra comportamento observável da pipeline sem afirmar validação científica do risco.
+
+---
+
+## 1. Reorganização da interface
+
+A reorganização do website teve como objetivo reduzir a confusão entre funcionalidades de operação, desenvolvimento, diagnóstico e explicação.
+
+A nova navegação separa melhor os diferentes usos da aplicação:
+
+* `Monitoring` para acompanhar a área;
+* `Scenario Lab` para executar e consultar runs;
+* `Flow Explorer` para entender a pipeline;
+* `Evidence & Comparison` para auditar e comparar resultados;
+* `Model & Provenance` para explicar conceitos, proveniência e ligação ao código.
+
+Esta separação torna a interface mais fácil de apresentar e reduz a necessidade de navegar por páginas longas com muitos blocos misturados.
+
+Também foi reforçada a ideia de usar tabs para evitar scroll excessivo e permitir que cada zona tenha um objetivo claro.
+
+---
+
+## 2. Monitoring e visualização operacional
+
+A área de `Monitoring` passou a reunir as vistas mais diretamente relacionadas com o estado da área monitorizada.
+
+Foram organizadas tabs para visão geral, mapa/células, dashboards de sensores, risco da área e alertas.
+
+Esta zona deve permitir responder rapidamente a perguntas como:
+
+* que área está selecionada;
+* qual foi a última run;
+* qual é o risco atual;
+* existem alertas ativos;
+* que sensores/células estão representados;
+* que dados estão recentes ou desatualizados.
+
+Durante a validação, foram encontrados problemas nos dashboards embebidos, principalmente quando o iframe não apontava corretamente para Grafana ou quando faltava `sensor_id` nos dashboards por célula.
+
+A correção definida foi não mostrar dashboards partidos e apresentar estados vazios claros sempre que os dados necessários não estejam expostos.
+
+---
+
+## 3. Scenario Lab e controlo de runs
+
+O `Scenario Lab` passou a concentrar a execução e leitura de cenários.
+
+O run orchestrator continua a permitir configurar e lançar runs com parâmetros como cenário, número de sensores, ciclos, intervalo, seed e perfil de degradação.
+
+A definição dos cenários foi separada numa tab própria, tornando mais fácil explicar o que cada cenário representa.
+
+A informação da última run também foi reorganizada para ser mais legível.
+
+O reset runtime ficou isolado numa área própria, mantendo a lógica de confirmação e evitando misturar uma operação sensível com a narrativa normal da demo.
+
+Esta separação melhora a segurança operacional e a clareza da apresentação.
+
+---
+
+## 4. Evidence & Comparison
+
+A área `Evidence & Comparison` passou a ser uma das zonas mais importantes para demonstração.
+
+A comparação entre `scenario_b` e `scenario_c` foi destacada, permitindo observar diferenças entre uma execução sem degradação e uma execução com missing readings.
+
+Esta comparação passou a mostrar dados como:
+
+* eventos esperados;
+* leituras aceites;
+* eventos em falta;
+* risk assessments;
+* rejeições;
+* quarentenas;
+* estatísticas por métrica.
+
+A tab `Run Timings` também foi melhorada. Inicialmente, a UI mostrava vários campos como não expostos. Depois foi criado um endpoint backend read-only para expor timings reais a partir da base de dados.
+
+Com isso, a UI passou a conseguir mostrar duração da run, tempos até etapas relevantes e resumo de attempts.
+
+Ainda ficou por resolver a integração dos stopwatches dos logs, que exigirá estruturação futura dos dados por run.
+
+---
+
+## 5. Flow Explorer
+
+O `Flow Explorer` foi criado para ajudar a explicar o que acontece por baixo dos panos.
+
+A ideia central é representar o percurso da run pelo sistema:
+
+`Scenario Run -> Event Inbox -> Processing Attempts -> Risk -> State -> Alerts -> API/UI`
+
+Esta vista é importante porque aproxima a UI dos diagramas técnicos e ajuda a explicar a pipeline de forma visual.
+
+A primeira versão já cria a estrutura, mas ainda precisa de evoluir para mostrar mais estados reais e evidência por etapa.
+
+A melhoria futura mais importante é tornar o fluxo nominal menos estático, mostrando para cada passo se foi concluído, se tem dados parciais, se falhou ou se ainda não está exposto.
+
+---
+
+## 6. Model & Provenance
+
+A área `Model & Provenance` foi criada para explicar a relação entre conceitos, dados, proveniência e código.
+
+Esta área não é uma vista operacional. A sua função é apoiar a explicação técnica e metodológica do projeto.
+
+Ela deve ajudar a responder a perguntas como:
+
+* que conceitos existem na V1;
+* quais estão implementados;
+* quais são apenas conceptuais;
+* quais são persistidos;
+* quais aparecem na UI;
+* que código está associado a cada parte.
+
+A primeira versão já cria a base desta área, mas ainda precisa de ser melhorada para funcionar como matriz de rastreabilidade.
+
+A estrutura desejada é aproximar cada conceito ao seu estado, evidência e implementação.
+
+---
+
+## 7. Problemas encontrados e estabilização
+
+A reorganização revelou alguns problemas práticos.
+
+O primeiro foi a existência de duas navbars no Workspace, o que também causava duplicação do botão light/dark. Foi definido que no Workspace deve existir apenas uma topbar.
+
+O segundo foi a existência de iframes Grafana partidos, especialmente na área de risco. Foi decidido que a UI não deve mostrar uma segunda instância da própria aplicação dentro de um iframe nem painéis com `Not Found`.
+
+O terceiro foi a falta de `sensor_id` nos dashboards por célula. A regra definida foi que a UI só deve abrir dashboards quando conseguir resolver o sensor correto; caso contrário, deve mostrar uma mensagem clara.
+
+O quarto problema foi a existência de processos locais antigos a bloquear DLLs e builds. Ficou claro que, para validar o site atualizado, é necessário reiniciar os processos locais da aplicação.
+
+Quando Docker está apenas a correr PostgreSQL, RabbitMQ, InfluxDB ou Grafana, não é necessário mandar Docker abaixo para atualizar a UI ou a API.
+
+---
+
+## 8. Próximos passos
+
+1. Validar manualmente a versão atual do website depois de reiniciar os processos locais da aplicação.
+2. Confirmar que a nova tab `Run Timings` consome corretamente o endpoint de timings.
+3. Corrigir definitivamente a dupla navbar e a duplicação do botão light/dark.
+4. Remover ou corrigir dashboards Grafana partidos.
+5. Garantir que dashboards por célula nunca abrem com `sensor_id` vazio.
+6. Melhorar o `Nominal Flow`, mostrando estado e evidência por etapa.
+7. Melhorar o `Model & Provenance` para funcionar como matriz de rastreabilidade.
+8. Rever textos e acentos da Home.
+9. Decidir a consistência linguística da UI.
+10. Preparar a UI para RBAC futuro, sem apresentar isso como segurança enquanto não houver enforcement backend.
+11. Separar claramente vistas de demo e vistas de developer.
+12. Fazer nova run B/C limpa e recolher screenshots para apresentação.
+13. Atualizar a documentação técnica para refletir a nova organização do website.
+14. Preparar slides que façam o paralelismo entre diagramas, UI e fluxo real do sistema.
+15. Fazer uma validação final em projetor, avaliando legibilidade, densidade visual e necessidade de scroll.
