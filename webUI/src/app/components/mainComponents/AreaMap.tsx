@@ -2,7 +2,7 @@ import { Box, Button, Text } from '@chakra-ui/react';
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
-import { MapProps, SensorInfo } from '../../types';
+import { MapProps, SensorInfo, SensorNodeResponse } from '../../types';
 import L, { LatLng, LatLngExpression } from 'leaflet';
 import { TILES } from '../../utils/utils';
 
@@ -21,6 +21,11 @@ type CellDashboardMetric = {
   sensorTypes: string[];
 };
 
+type ResolvedCellSensor = {
+  sensorId: string;
+  displayName: string;
+};
+
 const CELL_DASHBOARD_METRICS: CellDashboardMetric[] = [
   { key: 'temperature', label: 'Temperature', missingText: 'No temperature sensor exposed for this cell', placeholder: '?t?', sensorTypes: ['temperature', 'temp'] },
   { key: 'humidity', label: 'Humidity', missingText: 'No humidity sensor exposed for this cell', placeholder: '?h?', sensorTypes: ['humidity', 'hum'] },
@@ -34,7 +39,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-export function AreaMap({ areaId, mapType, geoJSON, cells }: MapProps) {
+export function AreaMap({ areaId, mapType, geoJSON, cells, sensorNodes }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileRef = useRef<L.TileLayer | null>(null);
@@ -166,7 +171,7 @@ export function AreaMap({ areaId, mapType, geoJSON, cells }: MapProps) {
     }
   }, [geoJSON, cells]);
 
-  const dashboardItems = buildCellDashboards(areaId, cellCode, cells, dashboardLinks);
+  const dashboardItems = buildCellDashboards(areaId, cellCode, cells, dashboardLinks, sensorNodes);
 
   return (
     <Box position="relative" w="100%" h="100%" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -203,7 +208,7 @@ export function AreaMap({ areaId, mapType, geoJSON, cells }: MapProps) {
                   <Box key={item.key} border="1px solid #e2e8f0" borderRadius="md" overflow="hidden" minH="420px" bg="#f8fafc">
                     <Box p={3} borderBottom="1px solid #e2e8f0">
                       <Text fontWeight="bold">{item.label}</Text>
-                      <Text fontSize="sm" color="#64748b">Sensor: {item.sensorId || 'Not available'}</Text>
+                      <Text fontSize="sm" color="#64748b">Sensor: {item.sensorLabel || 'Not available'}</Text>
                     </Box>
                     {item.url ? (
                       <iframe
@@ -230,69 +235,179 @@ export function AreaMap({ areaId, mapType, geoJSON, cells }: MapProps) {
   );
 }
 
-function buildCellDashboards(areaId: string, cellCode: string, cells: MapProps['cells'], dashboardLinks: string[]) {
+function buildCellDashboards(areaId: string, cellCode: string, cells: MapProps['cells'], dashboardLinks: string[], sensorNodes?: SensorNodeResponse[]) {
   const sensors = cells?.find(cell => cell.cellCode === cellCode)?.sensorNodeIds ?? [];
   if (sensors.length === 0) {
     return CELL_DASHBOARD_METRICS.map(metric => ({
       ...metric,
       sensorId: null,
+      sensorLabel: null,
       url: null,
       message: 'Sensor mapping not exposed for this cell',
     }));
   }
 
   return CELL_DASHBOARD_METRICS.map(metric => {
-    const sensorId = resolveSensorId(sensors, metric);
-    const template = dashboardLinks.find(link => link.includes(metric.placeholder));
+    const sensor = resolveSensor(sensors, metric, cellCode, sensorNodes);
+    const sensorId = sensor?.sensorId ?? null;
+    const template = getTemplate(dashboardLinks, metric.placeholder);
 
     if (!sensorId) {
-      return { ...metric, sensorId: null, url: null, message: metric.missingText };
+      return { ...metric, sensorId: null, sensorLabel: null, url: null, message: metric.missingText };
     }
 
     if (!template || !areaId) {
-      return { ...metric, sensorId, url: null, message: 'Grafana dashboard not configured' };
+      return { ...metric, sensorId, sensorLabel: sensor?.displayName ?? sensorId, url: null, message: 'Grafana dashboard not configured' };
     }
 
     const rawUrl = template
       .replace(/\?1\?/g, encodeURIComponent(areaId))
-      .replace(metric.placeholder, encodeURIComponent(sensorId));
+      .replace(new RegExp(escapeRegExp(metric.placeholder), 'g'), encodeURIComponent(sensorId));
     const url = normalizeGrafanaUrl(rawUrl);
 
     return url
-      ? { ...metric, sensorId, url, message: null }
-      : { ...metric, sensorId, url: null, message: 'Grafana dashboard not configured' };
+      ? { ...metric, sensorId, sensorLabel: sensor?.displayName ?? sensorId, url, message: null }
+      : { ...metric, sensorId, sensorLabel: sensor?.displayName ?? sensorId, url: null, message: 'Grafana dashboard not configured' };
   });
 }
 
-function resolveSensorId(sensors: SensorInfo[], metric: CellDashboardMetric) {
-  const sensor = sensors.find(item => {
-    const type = String(item.type ?? '').toLowerCase();
-    return metric.sensorTypes.some(expected => type.includes(expected));
-  });
+function resolveSensor(
+  sensors: SensorInfo[],
+  metric: CellDashboardMetric,
+  cellCode: string,
+  sensorNodes: SensorNodeResponse[] = [],
+): ResolvedCellSensor | null {
+  const suffix = extractCellSuffix(cellCode);
 
-  return sensor?.id || null;
-}
+  for (const item of sensors) {
+    const candidate = normalizeSensorCandidate(item, sensorNodes);
+    if (!candidate.sensorId) {
+      continue;
+    }
 
-function normalizeGrafanaUrl(url: string) {
-  if (!url || url.includes('Enter value') || /\?t\?|\?h\?|\?w\?|\?1\?|\?\?\?/.test(url)) {
-    return null;
+    const matchesMetric = metric.sensorTypes.some(expected => candidate.haystack.includes(expected));
+    const matchesCell = !suffix ||
+      candidate.cellCode === cellCode ||
+      candidate.haystack.includes(suffix) ||
+      candidate.fromCellScopedList;
+
+    if (matchesMetric && matchesCell) {
+      return {
+        sensorId: candidate.sensorId,
+        displayName: candidate.displayName ?? candidate.sensorId,
+      };
+    }
   }
 
-  let parsed: URL;
+  return null;
+}
+
+function normalizeSensorCandidate(sensor: SensorInfo, sensorNodes: SensorNodeResponse[]) {
+  if (typeof sensor === 'string') {
+    const lookup = findSensorNode(sensor, sensorNodes);
+    const haystack = buildHaystack(sensor, lookup?.id, lookup?.name, lookup?.type, lookup?.cellCode);
+    return {
+      sensorId: lookup?.id ?? sensor,
+      displayName: lookup?.name ?? sensor,
+      cellCode: lookup?.cellCode ?? null,
+      haystack,
+      fromCellScopedList: true,
+    };
+  }
+
+  const rawId = sensor.id ?? sensor.sensorId ?? sensor.item1 ?? sensor.code ?? sensor.name ?? null;
+  const lookup = rawId ? findSensorNode(rawId, sensorNodes) : null;
+  const rawType = sensor.type ?? sensor.sensorType ?? sensor.metric ?? sensor.item2 ?? null;
+  const rawName = sensor.name ?? sensor.sensorName ?? sensor.code ?? null;
+  const haystack = buildHaystack(rawId, rawName, rawType, sensor.metric, lookup?.id, lookup?.name, lookup?.type, lookup?.cellCode);
+
+  return {
+    sensorId: lookup?.id ?? rawId,
+    displayName: lookup?.name ?? rawName ?? rawId,
+    cellCode: lookup?.cellCode ?? null,
+    haystack,
+    fromCellScopedList: true,
+  };
+}
+
+function findSensorNode(value: string, sensorNodes: SensorNodeResponse[]) {
+  const normalized = value.toLowerCase();
+  return sensorNodes.find(sensor =>
+    sensor.id.toLowerCase() === normalized ||
+    sensor.name.toLowerCase() === normalized,
+  ) ?? null;
+}
+
+function buildHaystack(...values: Array<string | null | undefined>) {
+  return values
+    .filter((value): value is string => Boolean(value))
+    .join(' ')
+    .toLowerCase();
+}
+
+function extractCellSuffix(cellCode: string) {
+  const match = cellCode.match(/(\d+)$/);
+  return match?.[1]?.toLowerCase() ?? null;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function validateGrafanaTemplate(template: string | undefined, placeholder: string) {
+  if (!template) {
+    return false;
+  }
+
+  return template.includes(placeholder) && template.includes('?1?');
+}
+
+function getTemplate(dashboardLinks: string[], placeholder: string) {
+  return dashboardLinks.find(link => validateGrafanaTemplate(link, placeholder));
+}
+
+function hasUnresolvedPlaceholder(url: string) {
+  return /\?t\?|\?h\?|\?w\?|\?1\?|\?\?\?/.test(url);
+}
+
+function isMissingGrafanaValue(url: string) {
+  return url.includes('Enter value');
+}
+
+function ensureKiosk(url: URL) {
+  if (!url.searchParams.has('kiosk')) {
+    url.searchParams.set('kiosk', '');
+  }
+
+  return url;
+}
+
+function hasSensorId(url: URL) {
+  const sensorId = url.searchParams.get('var-sensor_id');
+  return Boolean(sensorId && sensorId.trim().length > 0);
+}
+
+function isRenderableGrafanaUrl(url: string) {
+  return !isMissingGrafanaValue(url) && !hasUnresolvedPlaceholder(url);
+}
+
+function parseUrl(url: string) {
   try {
-    parsed = new URL(url, window.location.origin);
+    return new URL(url, window.location.origin);
   } catch {
     return null;
   }
+}
 
-  const sensorId = parsed.searchParams.get('var-sensor_id');
-  if (!sensorId || sensorId.trim().length === 0) {
+function normalizeGrafanaUrl(url: string) {
+  if (!url || !isRenderableGrafanaUrl(url)) {
     return null;
   }
 
-  if (!parsed.searchParams.has('kiosk')) {
-    parsed.searchParams.set('kiosk', '');
+  const parsed = parseUrl(url);
+  if (!parsed || !hasSensorId(parsed)) {
+    return null;
   }
 
-  return parsed.toString();
+  return ensureKiosk(parsed).toString();
 }

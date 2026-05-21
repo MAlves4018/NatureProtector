@@ -1,0 +1,46 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="lY6EF1gr_GSmjtRc8fyx">
+    <mxGraphModel dx="1270" dy="417" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d1-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=26;fontStyle=1;fontColor=#1F4E79;" value="Arquitetura em 3 blocos" vertex="1">
+          <mxGeometry height="40" width="827" x="-3.5" y="82" as="geometry" />
+        </mxCell>
+        <mxCell id="d1-subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontColor=#555555;" value="Configuração define a execução; a runtime processa; a observabilidade mostra o estado operacional." vertex="1">
+          <mxGeometry height="34" width="640" x="90" y="116" as="geometry" />
+        </mxCell>
+        <mxCell id="d1-config" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=2;fillColor=#FFF2CC;strokeColor=#D6B656;fontColor=#000000;fontSize=15;align=left;verticalAlign=top;spacing=16;" value="&lt;b&gt;Configuração e cenários&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Área piloto&lt;br&gt;• Sensores&lt;br&gt;• Cenários A/B/C&lt;br&gt;• RunOverrides" vertex="1">
+          <mxGeometry height="145" width="210" x="90" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="d1-runtime" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=2;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontColor=#000000;fontSize=15;align=left;verticalAlign=top;spacing=16;" value="&lt;b&gt;Runtime de prevenção&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Simulator.Host&lt;br&gt;• RabbitMQ&lt;br&gt;• Prevention.Host&lt;br&gt;• Backoffice.Api" vertex="1">
+          <mxGeometry height="143" width="196" x="306" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="d1-observe" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=2;fillColor=#D5E8D4;strokeColor=#82B366;fontColor=#000000;fontSize=15;align=left;verticalAlign=top;spacing=16;" value="&lt;b&gt;Estado e observabilidade&lt;/b&gt;&lt;br&gt;&lt;br&gt;• PostgreSQL&lt;br&gt;• InfluxDB&lt;br&gt;• Runtime Monitor&lt;br&gt;• Grafana / evidência" vertex="1">
+          <mxGeometry height="140" width="215" x="508" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="d1-arrow-1" edge="1" parent="1" source="d1-config" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6C8EBF;strokeWidth=3;endArrow=block;endFill=1;fontSize=12;fontStyle=1;fontColor=#1F4E79;labelBackgroundColor=#FFFFFF;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" target="d1-runtime" value="contexto + parâmetros">
+          <mxGeometry relative="1" x="0.0003" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="142" y="314" />
+              <mxPoint x="364" y="314" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d1-arrow-2" edge="1" parent="1" source="d1-runtime" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6C8EBF;strokeWidth=3;endArrow=block;endFill=1;fontSize=12;fontStyle=1;fontColor=#1F4E79;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="d1-observe" value="eventos + risco + projeções">
+          <mxGeometry relative="1" x="-0.0538" y="3" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="404" y="315" />
+              <mxPoint x="662" y="315" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d1-footer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#B7C9D9;fontColor=#1F4E79;fontStyle=1;fontSize=15;align=center;verticalAlign=middle;arcSize=8;" value="Separar configuração, execução e estado observável." vertex="1">
+          <mxGeometry height="39" width="418" x="201" y="325" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

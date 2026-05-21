@@ -292,8 +292,8 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
       {mainTab === "Monitoring" && (
         <WorkspacePanel colors={colors}>
           <Tabs values={MONITORING_TABS} selected={monitoringTab} onSelect={setMonitoringTab} colors={colors} compact />
-          {monitoringTab === "Overview" && <MonitoringOverview colors={colors} summary={summary} run={displayRun} audit={runAudit} geoJSON={geoJSON} cells={cells} areaId={areaId} />}
-          {monitoringTab === "Map & Cells" && <MapAndCells colors={colors} areaId={areaId} geoJSON={geoJSON} cells={cells} />}
+          {monitoringTab === "Overview" && <MonitoringOverview colors={colors} summary={summary} run={displayRun} audit={runAudit} geoJSON={geoJSON} cells={cells} sensorNodes={sensorNodes} areaId={areaId} />}
+          {monitoringTab === "Map & Cells" && <MapAndCells colors={colors} areaId={areaId} geoJSON={geoJSON} cells={cells} sensorNodes={sensorNodes} />}
           {monitoringTab === "Sensor Dashboards" && <SensorDashboards colors={colors} areaId={areaId} dashboardLinks={dashboardLinks} />}
           {monitoringTab === "Area Risk" && <AreaRiskView colors={colors} areaId={areaId} summary={summary} dashboardLink={areaRiskDashboardLink} />}
           {monitoringTab === "Alerts" && <AlertsView colors={colors} alerts={summary?.activeAlerts ?? []} />}
@@ -390,7 +390,7 @@ function WorkspaceTopBar(props: {
   );
 }
 
-function MonitoringOverview({ colors, summary, run, audit, geoJSON, cells, areaId }: { colors: Colors; summary: RuntimeSummaryResponse | null; run: RuntimeRunSummaryResponse | null; audit: RuntimeRunAuditResponse | null; geoJSON: any; cells: AreaCellResponse[]; areaId: string }) {
+function MonitoringOverview({ colors, summary, run, audit, geoJSON, cells, sensorNodes, areaId }: { colors: Colors; summary: RuntimeSummaryResponse | null; run: RuntimeRunSummaryResponse | null; audit: RuntimeRunAuditResponse | null; geoJSON: any; cells: AreaCellResponse[]; sensorNodes: SensorNodeResponse[]; areaId: string }) {
   return (
     <ViewStack>
       <MetricGrid>
@@ -423,20 +423,20 @@ function MonitoringOverview({ colors, summary, run, audit, geoJSON, cells, areaI
       <Panel colors={colors}>
         <SectionHeader title="Mini Map Preview" subtitle="Boundary and cells are read from existing area endpoints." />
         <div style={{ height: "340px", border: `1px solid ${colors.panelBorder}`, borderRadius: "8px", overflow: "hidden" }}>
-          {geoJSON ? <AreaMap areaId={areaId} mapType="standard" showGrid={false} geoJSON={geoJSON} cells={cells} /> : <EmptyState colors={colors} text="Map data is not available." />}
+          {geoJSON ? <AreaMap areaId={areaId} mapType="standard" showGrid={false} geoJSON={geoJSON} cells={cells} sensorNodes={sensorNodes} /> : <EmptyState colors={colors} text="Map data is not available." />}
         </div>
       </Panel>
     </ViewStack>
   );
 }
 
-function MapAndCells({ colors, areaId, geoJSON, cells }: { colors: Colors; areaId: string; geoJSON: any; cells: AreaCellResponse[] }) {
+function MapAndCells({ colors, areaId, geoJSON, cells, sensorNodes }: { colors: Colors; areaId: string; geoJSON: any; cells: AreaCellResponse[]; sensorNodes: SensorNodeResponse[] }) {
   return (
     <ViewStack>
       <Panel colors={colors}>
         <SectionHeader title="Map & Cells" subtitle="Existing Leaflet map, area boundary, grid cells and sensor markers." />
         <div style={{ height: "620px", border: `1px solid ${colors.panelBorder}`, borderRadius: "8px", overflow: "hidden" }}>
-          {geoJSON ? <AreaMap areaId={areaId} mapType="standard" showGrid={false} geoJSON={geoJSON} cells={cells} /> : <EmptyState colors={colors} text="Map data is not available." />}
+          {geoJSON ? <AreaMap areaId={areaId} mapType="standard" showGrid={false} geoJSON={geoJSON} cells={cells} sensorNodes={sensorNodes} /> : <EmptyState colors={colors} text="Map data is not available." />}
         </div>
       </Panel>
       <CollapsibleJson colors={colors} title="Cells exposed by API" value={cells} />

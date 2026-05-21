@@ -1,0 +1,45 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="ypeJE9HxtMnaR12kFFiV">
+    <mxGraphModel dx="1301" dy="431" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d3-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=26;fontStyle=1;fontColor=#1F4E79;" value="Run reprodutível e evidência B vs C" vertex="1">
+          <mxGeometry height="40" width="827" x="-93" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontColor=#555555;" value="Cada execução fica controlada por parâmetros e auditável por expected vs accepted." vertex="1">
+          <mxGeometry height="34" width="640" x="0.5" y="111" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-define" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=2;fillColor=#FFF2CC;strokeColor=#D6B656;fontColor=#000000;fontSize=15;align=left;verticalAlign=top;spacing=16;" value="&lt;b&gt;Definir run&lt;/b&gt;&lt;br&gt;&lt;br&gt;• scenarioCode&lt;br&gt;• sensorCount&lt;br&gt;• cycles / interval&lt;br&gt;• seed&lt;br&gt;• degradationProfile" vertex="1">
+          <mxGeometry height="170" width="169" x="38" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-execute" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=2;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontColor=#000000;fontSize=15;align=left;verticalAlign=top;spacing=16;" value="&lt;b&gt;Executar cenário&lt;/b&gt;&lt;br&gt;&lt;br&gt;• scenario_b: severo limpo&lt;br&gt;• scenario_c: severo degradado&lt;br&gt;• missing-readings&lt;br&gt;• sensores selecionados" vertex="1">
+          <mxGeometry height="170" width="215" x="213" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-audit" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=2;fillColor=#D5E8D4;strokeColor=#82B366;fontColor=#000000;fontSize=15;align=left;verticalAlign=top;spacing=16;" value="&lt;b&gt;Auditar resultado&lt;/b&gt;&lt;br&gt;&lt;br&gt;• expected events&lt;br&gt;• accepted readings&lt;br&gt;• missing events&lt;br&gt;• risk assessments&lt;br&gt;• alerts" vertex="1">
+          <mxGeometry height="170" width="166" x="434" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-arrow-1" edge="1" parent="1" source="d3-define" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6C8EBF;strokeWidth=3;endArrow=block;endFill=1;fontSize=12;fontStyle=1;fontColor=#1F4E79;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="d3-execute" value="run spec + overrides">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="123" y="337" />
+              <mxPoint x="291" y="337" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d3-arrow-2" edge="1" parent="1" source="d3-execute" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6C8EBF;strokeWidth=3;endArrow=block;endFill=1;fontSize=12;fontStyle=1;fontColor=#1F4E79;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;" target="d3-audit" value="resultados + evidência">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-b" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#6C8EBF;fontColor=#1F4E79;fontStyle=1;fontSize=13;align=center;verticalAlign=middle;arcSize=8;" value="B = severo sem degradação" vertex="1">
+          <mxGeometry height="42" width="215" x="58" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-c" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCEAEA;strokeColor=#C65A5A;fontColor=#7F1D1D;fontStyle=1;fontSize=13;align=center;verticalAlign=middle;arcSize=8;" value="C = severo + missing-readings" vertex="1">
+          <mxGeometry height="42" width="215" x="365" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-footer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#B7C9D9;fontColor=#1F4E79;fontStyle=1;fontSize=15;align=center;verticalAlign=middle;arcSize=8;" value="Mensagem-chave: a demo prova uma execução repetível, observável e auditável." vertex="1">
+          <mxGeometry height="56" width="562" x="38" y="413" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

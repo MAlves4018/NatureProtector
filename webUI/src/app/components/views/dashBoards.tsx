@@ -5,7 +5,7 @@ import {
 import { AreaRisk, GrafanaStrip } from '../mainComponents/GrafanaStrip';
 import { AreaMap } from '../mainComponents/AreaMap';
 import { getColors } from '../../utils/utils'
-import { AreaCellResponse } from "../../types"
+import { AreaCellResponse, SensorNodeResponse } from "../../types"
 import { useParams } from 'react-router-dom';
 import { api } from '../../services/api';
 
@@ -17,6 +17,7 @@ export function DashBoards({ isDark }: { isDark: boolean }) {
 
   const [geoJSON, setGeoJSON] = useState<any>(null);
   const [cells, setCells] = useState<AreaCellResponse[]>([]);
+  const [sensorNodes, setSensorNodes] = useState<SensorNodeResponse[]>([]);
 
   useEffect(() => {
     if (areaCodeParam) {
@@ -35,6 +36,11 @@ export function DashBoards({ isDark }: { isDark: boolean }) {
       }).catch(error => {
         console.error('Failed to fetch cells for area:', areaCodeParam, error);
       });
+      api.getAreaSensorNodes(areaCodeParam).then(response => {
+        setSensorNodes(response);
+      }).catch(error => {
+        console.error('Failed to fetch sensor nodes for area:', areaCodeParam, error);
+      });
     }
   }, [areaCodeParam]);
 
@@ -43,7 +49,7 @@ export function DashBoards({ isDark }: { isDark: boolean }) {
       <GrafanaStrip isDark={isDark} areaId={curAreaId} {...c} />
       <AreaRisk isDark={isDark} areaId={curAreaId} {...c} />
       <Box w="100%" h="800px" flexShrink={0}>
-        <AreaMap areaId={curAreaId} mapType="standard" showGrid={false} geoJSON={geoJSON} cells={cells}/>
+        <AreaMap areaId={curAreaId} mapType="standard" showGrid={false} geoJSON={geoJSON} cells={cells} sensorNodes={sensorNodes}/>
       </Box>
     </Flex >
   );

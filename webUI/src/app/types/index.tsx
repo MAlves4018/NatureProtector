@@ -32,12 +32,21 @@ export interface MapProps {
     isDark?: boolean;
     geoJSON?: any;
     cells?: AreaCellResponse[];
+    sensorNodes?: SensorNodeResponse[];
 }
 
-export interface SensorInfo { 
-    id: string; 
-    type: string;
-}
+export type SensorInfo = string | {
+    id?: string;
+    code?: string;
+    name?: string;
+    type?: string;
+    metric?: string;
+    sensorType?: string;
+    sensorId?: string;
+    sensorName?: string;
+    item1?: string;
+    item2?: string;
+};
 export interface AreaCellResponse {
     cellCode: string;
     sensorNodeIds: SensorInfo[];
