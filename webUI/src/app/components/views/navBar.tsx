@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, Text } from "@chakra-ui/react";
-import { Leaf, Sun, Moon } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { getColors } from '../../utils/utils';
 
 
@@ -16,7 +16,7 @@ export function NavBar(
             shadow="sm" flexShrink={0} transition="background 0.2s"
         >
             <Flex align="center" justify="center" w="36px" h="36px" borderRadius="full" border="2px solid #16a34a">
-                <Leaf size={18} color="#16a34a" />
+                <img src="images/NPIconNoBg.png" width="24px" height="24px" />
             </Flex>
             <Text fontWeight="semibold" fontSize="lg" color={c.textPrimary} letterSpacing="wide">
                 Nature Protector

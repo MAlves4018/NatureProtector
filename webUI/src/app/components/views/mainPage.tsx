@@ -1,4 +1,4 @@
-import { ArrowRight, Flame, GitBranch, Leaf, ShieldCheck } from "lucide-react";
+import { ArrowRight, Flame, GitBranch, ShieldCheck } from "lucide-react";
 import { useEffect, useReducer, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
@@ -45,7 +45,9 @@ export function MainPage({ isDark }: { isDark: boolean }) {
       fontFamily: "system-ui, -apple-system, sans-serif",
       padding: "32px 18px",
     }}>
+
       <div style={{ position: "absolute", inset: 0, background: c.pageBg }} />
+
 
       <div style={{
         position: "relative",
@@ -71,7 +73,7 @@ export function MainPage({ isDark }: { isDark: boolean }) {
               boxShadow: "0 0 32px rgba(34,197,94,0.20)",
               flexShrink: 0,
             }}>
-              <Leaf size={30} color="#22c55e" />
+              <img src="images/NPIconNoBg.png" width="42px" height="42px" />
             </div>
             <div>
               <div style={{ color: c.textPrimary, fontSize: "38px", fontWeight: 800, lineHeight: 1, letterSpacing: 0 }}>
