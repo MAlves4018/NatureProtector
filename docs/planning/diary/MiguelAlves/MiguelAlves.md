@@ -982,6 +982,7 @@ A frente mais recente mostrou progresso real no alinhamento com a `PesquisaII`, 
 22. Separar, se possível, commits de hardening runtime, migrations, cenários/manifests, UI/runtime monitor e evidência.
 23. Só depois avançar para testes UI, drift documentação-código, integração mais completa no Backoffice/API e validação externa.
 
+
 # Recapitulação Quinzenal
 
 ## Período
@@ -990,7 +991,7 @@ A frente mais recente mostrou progresso real no alinhamento com a `PesquisaII`, 
 
 ## Objetivo desta entrada
 
-Registar o trabalho realizado na reorganização e melhoria do website do NatureProtector, com foco em tornar a interface mais clara para demonstração, mais alinhada com o fluxo real do sistema e mais útil para explicar a relação entre cenários, runtime, risco, alertas, evidência e modelo interno.
+Registar o trabalho realizado na reorganização e melhoria do website do NatureProtector, na preparação dos diagramas e da apresentação, e na estabilização da infraestrutura local necessária para a demonstração. O foco foi tornar o sistema mais claro para apresentação, mais alinhado com o fluxo real da V1 e mais reprodutível para desenvolvimento, validação, onboarding e demonstração.
 
 ## Resumo Estruturado
 
@@ -1030,33 +1031,99 @@ Registar o trabalho realizado na reorganização e melhoria do website do Nature
 
 14. Foi definido que a interface não deve mostrar painéis Grafana partidos nem abrir dashboards com parâmetros em falta.
 
-15. Foi reforçada a necessidade de distinguir dados reais, dados persistidos, dados não expostos e informação meramente explicativa.
+15. Foi corrigida a regressão dos dashboards por célula, causada por desalinhamento entre o formato real recebido da API (`item1`/`item2`) e o formato esperado pela UI (`id`/`type`).
 
-16. A tab `Run Timings` foi inicialmente criada de forma simples, mas percebeu-se que o frontend não tinha dados suficientes para representar tempos reais de processamento.
+16. Os dashboards por célula passaram a resolver corretamente sensores de temperatura, humidade e vento, usando os identificadores persistidos necessários para o Grafana e mostrando nomes legíveis na interface.
 
-17. Para resolver essa limitação, foi criado um endpoint backend read-only para expor timings persistidos por run.
+17. Foi analisada a forma de embutir Grafana na UI e decidiu-se usar URLs `d-solo` com `panelId`, para apresentar apenas o painel necessário e não a interface completa do Grafana.
 
-18. O novo endpoint passou a expor dados como duração da run, primeiro evento recebido, primeira tentativa de processamento, primeiro risk assessment, primeiro alerta e duração de attempts.
+18. Foi reforçada a necessidade de distinguir dados reais, dados persistidos, dados não expostos e informação meramente explicativa.
 
-19. A UI passou a consumir esses dados na área `Evidence & Comparison > Run Timings`.
+19. A tab `Run Timings` foi inicialmente criada de forma simples, mas percebeu-se que o frontend não tinha dados suficientes para representar tempos reais de processamento.
 
-20. Ficou documentada a limitação de que os stopwatches presentes nos logs ainda não estão estruturalmente associados a `SimulationRunId`, pelo que ainda não podem ser usados diretamente pela UI.
+20. Para resolver essa limitação, foi criado um endpoint backend read-only para expor timings persistidos por run.
 
-21. Foi clarificado que o website deve preparar-se para RBAC no futuro, mas sem fingir que esconder tabs no frontend é segurança real.
+21. O novo endpoint passou a expor dados como duração da run, primeiro evento recebido, primeira tentativa de processamento, primeiro risk assessment, primeiro alerta e duração de attempts.
 
-22. Ficou definido que permissões futuras devem distinguir perfis como visualização, análise, operação, desenvolvimento e administração.
+22. A UI passou a consumir esses dados na área `Evidence & Comparison > Run Timings`.
 
-23. Foi reforçado que ações sensíveis, como reset runtime e diagnósticos avançados, devem futuramente depender de permissões mais elevadas.
+23. Ficou documentada a limitação de que os stopwatches presentes nos logs ainda não estão estruturalmente associados a `SimulationRunId`, pelo que ainda não podem ser usados diretamente pela UI.
 
-24. Foram identificados processos locais antigos a bloquear builds e a dificultar a validação da versão atualizada do site.
+24. Foi clarificado que o website deve preparar-se para RBAC no futuro, mas sem fingir que esconder tabs no frontend é segurança real.
 
-25. Ficou definido que, para ver a versão atualizada do website, não é necessário mandar Docker abaixo quando este apenas corre infraestrutura; é necessário reiniciar os processos locais da aplicação.
+25. Ficou definido que permissões futuras devem distinguir perfis como visualização, análise, operação, desenvolvimento e administração.
+
+26. Foi reforçado que ações sensíveis, como reset runtime e diagnósticos avançados, devem futuramente depender de permissões mais elevadas.
+
+27. Foram identificados processos locais antigos a bloquear builds e a dificultar a validação da versão atualizada do site.
+
+28. Ficou definido que, para ver a versão atualizada do website, não é necessário mandar Docker abaixo quando este apenas corre infraestrutura; é necessário reiniciar os processos locais da aplicação.
+
+29. Foram revistos os diagramas técnicos existentes e percebeu-se que vários estavam demasiado densos para apresentação, apesar de serem úteis como documentação técnica.
+
+30. Foram criadas duas linhas de diagramas: uma linha técnica canónica para documentação e uma linha simplificada para apresentação.
+
+31. Foram criados diagramas simplificados para apresentação, com poucos blocos, setas explícitas e linguagem mais próxima da narrativa oral da demo.
+
+32. Foram criados diagramas técnicos canónicos adicionais para representar a cadeia runtime V1 e o orquestrador de runs.
+
+33. Depois de feedback dos professores, foi decidido simplificar ainda mais os diagramas de apresentação, mantendo a ideia de três blocos principais, mas substituindo caixas técnicas excessivas por tópicos do que acontece dentro de cada bloco.
+
+34. Foi revisto o plano da apresentação para 15 minutos, com cerca de 5 minutos reservados para demonstração.
+
+35. Foi decidido que a apresentação deve reduzir o número de slides, evitar excesso de texto, manter o template original e usar frases curtas orientadas à ação.
+
+36. Foi preparada uma estratégia de apresentação com introdução, apresentação do projeto, solução geral, pesquisa/metodologia, diagramas internos essenciais e demonstração.
+
+37. Foi identificada a necessidade de apresentar tanto a primeira como a segunda fase de pesquisa, ligando a pesquisa ao que ficou implementado na V1.
+
+38. Foi analisado o problema de reprodutibilidade da infraestrutura local, especialmente a criação da store temporal `np_telemetry` no InfluxDB.
+
+39. Foi confirmado que o container `np-influxdb-init` não criava a database `np_telemetry`; apenas tratava permissões de volume.
+
+40. Foi criado um script idempotente para garantir a existência da database `np_telemetry` no InfluxDB.
+
+41. Foi criado um script de validação da baseline local para confirmar Docker, PostgreSQL, RabbitMQ, InfluxDB, Grafana e dados mínimos de controlo.
+
+42. Foi criado um script destrutivo controlado, `reset-local-infra.ps1`, para remover volumes e recriar a infraestrutura apenas com confirmação textual explícita.
+
+43. O teste destrutivo revelou que, após remover volumes, o InfluxDB novo não reconhecia automaticamente o token definido no `.env`.
+
+44. Para resolver essa falha, foi criado o script `Ensure-InfluxAdminTokenFile.ps1`, que materializa o `INFLUXDB_TOKEN` do `.env` num ficheiro local não versionado usado pelo InfluxDB 3 no arranque.
+
+45. O `docker-compose.yml` foi ajustado para montar esse ficheiro no container `np-influxdb` e configurar `INFLUXDB3_ADMIN_TOKEN_FILE`.
+
+46. Os scripts `up.ps1` e `reset-local-infra.ps1` passaram a preparar o ficheiro de token antes de arrancar o InfluxDB.
+
+47. Foi validado que, após reset completo dos volumes, a infraestrutura volta a subir, o InfluxDB aceita o token local, a database `np_telemetry` é criada automaticamente, o PostgreSQL é bootstrapado e a baseline passa sem falhas.
+
+48. Foi revisto o processo de setup local para distinguir melhor diagnóstico, instalação, infraestrutura, runtime e validação.
+
+49. Foi reforçada a decisão de que `up.ps1` não deve instalar dependências, não deve apagar volumes e não deve arrancar API/webUI; deve apenas preparar e levantar a infraestrutura local.
+
+50. Foi criado ou ajustado `Test-LocalPrerequisites.ps1` para funcionar como diagnóstico read-only de dependências locais, incluindo Docker, Docker Compose, .NET SDK, Node.js, npm, PowerShell, `.env` e portas relevantes.
+
+51. Foi criado `Install-LocalPrerequisites.ps1` como script opt-in para sugerir ou instalar dependências em falta através de `winget`, sem executar instalações por defeito.
+
+52. Foi criado `Setup-LocalEnvironment.ps1` como script de onboarding guiado, responsável por verificar pré-requisitos, preparar `.env`, chamar `up.ps1`, validar a baseline e, opcionalmente, arrancar runtime e abrir o browser.
+
+53. Foi definido que a instalação de dependências deve ser sempre explícita e autorizada, porque pode exigir privilégios administrativos, alteração de `PATH`, reinício da shell ou abertura manual do Docker Desktop.
+
+54. Foi atualizado o `local-baseline-setup.md` para documentar o processo completo: pré-requisitos, diagnóstico, instalação opt-in, setup guiado, arranque normal, validação, InfluxDB, token local, reset destrutivo e troubleshooting.
+
+55. Durante a validação do setup guiado, foi identificado um problema no wrapper que chamava scripts PowerShell e interpretava output de `stderr` como erro, especialmente quando `docker compose` escrevia mensagens informativas sobre containers.
+
+56. A função de invocação de scripts foi ajustada para capturar `stdout` e `stderr` de forma controlada, tratando `stderr` como erro apenas quando o processo termina com exit code diferente de zero.
+
+57. Foi detetada uma incompatibilidade adicional com Windows PowerShell 5.1, relacionada com `ProcessStartInfo.ArgumentList`, e a chamada aos scripts foi adaptada para usar `Arguments` com citação manual, mantendo compatibilidade com o ambiente usado.
+
+58. Foram executadas validações de parse dos scripts, validação de pré-requisitos, validação do instalador em modo `WhatIf`, setup guiado sem runtime, baseline de infraestrutura e build/testes do projeto.
 
 ---
 
 ## Resultado principal da quinzena
 
-O principal resultado desta quinzena foi transformar o website numa interface muito mais alinhada com a lógica real do NatureProtector.
+O principal resultado desta quinzena foi transformar o website numa interface muito mais alinhada com a lógica real do NatureProtector e, em paralelo, estabilizar a infraestrutura necessária para a demonstração e para o onboarding local.
 
 Antes, a aplicação já tinha várias funcionalidades importantes, como dashboards, mapa, runtime monitor, diagnostics, run orchestrator e comparação B/C. No entanto, estas funcionalidades estavam demasiado dispersas e nem sempre ajudavam a explicar o sistema de forma clara.
 
@@ -1071,6 +1138,12 @@ A `Monitoring` permite apresentar o estado operacional da área. O `Scenario Lab
 Outro resultado importante foi a melhoria da análise temporal. A tab `Run Timings` mostrou que a UI precisava de uma fonte de dados real para representar tempos de processamento. Em vez de inventar dados ou tentar ler logs locais diretamente no browser, foi criado um endpoint read-only baseado em dados persistidos. Isto tornou a análise de timings mais sólida e mais defensável.
 
 A comparação entre `scenario_b` e `scenario_c` também ganhou importância. A UI passou a mostrar de forma mais direta que o cenário C produz menos leituras aceites e mais eventos em falta, evidenciando a degradação operacional esperada. Esta comparação é útil para apresentação porque mostra comportamento observável da pipeline sem afirmar validação científica do risco.
+
+Também foi feito trabalho importante na preparação da apresentação. Os diagramas técnicos existentes eram úteis para documentação, mas excessivamente densos para uma apresentação curta. Depois do feedback recebido, foi decidido usar diagramas simplificados, com menos blocos, setas mais claras e texto mais direto. A apresentação foi reorganizada para reduzir ruído visual, evitar slides demasiado preenchidos e reservar tempo suficiente para a demonstração.
+
+Por fim, foi resolvido um problema relevante de reprodutibilidade da infraestrutura local. Confirmou-se que, depois de remover volumes Docker, o InfluxDB não aceitava automaticamente o token do `.env` e a database `np_telemetry` não ficava garantida. Foram criados scripts para preparar o token admin local, garantir a database temporal e validar a baseline. O teste final confirmou que a infraestrutura consegue ser recriada a partir de volumes limpos e voltar a ficar funcional.
+
+Na continuação deste trabalho, o processo de setup foi tornado mais explícito e seguro. A equipa separou diagnóstico de dependências, instalação opt-in, arranque da infraestrutura, arranque do runtime e validação final. Esta separação evita que um comando como `up.ps1` passe a fazer instalações ou alterações perigosas sem o utilizador perceber, mas ainda assim dá um caminho mais simples para alguém novo conseguir preparar a máquina e correr o projeto.
 
 ---
 
@@ -1109,7 +1182,13 @@ Esta zona deve permitir responder rapidamente a perguntas como:
 
 Durante a validação, foram encontrados problemas nos dashboards embebidos, principalmente quando o iframe não apontava corretamente para Grafana ou quando faltava `sensor_id` nos dashboards por célula.
 
-A correção definida foi não mostrar dashboards partidos e apresentar estados vazios claros sempre que os dados necessários não estejam expostos.
+Um problema concreto foi a regressão no mapeamento dos dashboards por célula. A API expunha os sensores associados às células em formato `Tuple<Guid,string>`, serializado como `item1` e `item2`, mas a UI reorganizada passou a esperar campos como `id` e `type`. Como resultado, a célula era encontrada, mas a UI não conseguia resolver os sensores de temperatura, humidade e vento, mostrando mensagens como `Sensor: Not available`.
+
+A correção consistiu em tornar o resolver da UI compatível com o contrato real exposto pela API. A UI passou a suportar `item1`/`item2`, `id`/`type`, strings, nomes, códigos e informação complementar dos `sensorNodes`. Com isto, os dashboards por célula voltaram a resolver sensores como `pilot-temperature-0001`, `pilot-humidity-0001` e `pilot-wind-0001`, usando internamente os GUIDs necessários para o `var-sensor_id` no Grafana.
+
+Também foi analisado o problema de a UI mostrar a interface completa do Grafana dentro dos iframes. Para a apresentação, foi decidido usar URLs `d-solo` com `panelId`, para que cada iframe mostre apenas o painel necessário, sem a navegação completa do Grafana.
+
+A regra definida foi não mostrar dashboards partidos e apresentar estados vazios claros sempre que os dados necessários não estejam expostos.
 
 ---
 
@@ -1126,6 +1205,8 @@ A informação da última run também foi reorganizada para ser mais legível.
 O reset runtime ficou isolado numa área própria, mantendo a lógica de confirmação e evitando misturar uma operação sensível com a narrativa normal da demo.
 
 Esta separação melhora a segurança operacional e a clareza da apresentação.
+
+Durante os testes, foi também identificado que o `scenario_c` se comportava demasiado parecido com o `scenario_b` quando a degradação não era aplicada de forma explícita. A partir daí, foi reforçada a necessidade de distinguir claramente definição do cenário, overrides da run e perfil de degradação. O cenário C passou a estar associado a `missing-readings`, enquanto o cenário B preserva comportamento sem degradação automática.
 
 ---
 
@@ -1190,7 +1271,135 @@ A estrutura desejada é aproximar cada conceito ao seu estado, evidência e impl
 
 ---
 
-## 7. Problemas encontrados e estabilização
+## 7. Diagramas e preparação da apresentação
+
+Durante esta quinzena foi feita uma revisão dos diagramas existentes e da forma como estes deviam ser usados na apresentação.
+
+Os diagramas técnicos existentes tinham valor para documentação, porque representavam a arquitetura, a pipeline, a persistência, o bootstrap, os cenários, os testes e o fluxo de rejeição/retry/quarentena. No entanto, para apresentação, eram demasiado densos. Tinham muitos blocos, muitos nomes técnicos e demasiado detalhe para serem compreendidos rapidamente por quem assiste.
+
+Inicialmente foram criados diagramas simplificados para apresentação, como:
+
+* visão geral do projeto;
+* fluxo runtime simples;
+* pipeline de risco simples;
+* alertas e API;
+* orquestrador de runs.
+
+Também foram criados diagramas técnicos canónicos adicionais para documentação, incluindo a cadeia runtime V1 e o funcionamento do scenario run orchestrator.
+
+Depois do feedback dos professores, ficou claro que mesmo alguns diagramas simplificados continuavam demasiado próximos de diagramas técnicos. A sugestão recebida foi manter a lógica dos três blocos principais, mas retirar o excesso de caixas internas. Em vez de mostrar muitos componentes, os slides devem mostrar blocos maiores com tópicos do que acontece dentro de cada bloco e setas que expliquem que informação passa entre eles.
+
+A partir desse feedback, ficou definido que os diagramas para a apresentação devem seguir estas regras:
+
+* poucos blocos;
+* texto curto;
+* frases orientadas à ação;
+* setas com significado claro;
+* menos nomes de classes e componentes internos;
+* mais foco no que o sistema faz;
+* detalhe técnico reservado para perguntas ou slides extra;
+* evitar slides visualmente cheios;
+* manter o template original da apresentação.
+
+Também foi revista a estrutura geral da apresentação. Como o tempo total previsto é de 15 minutos, com cerca de 5 minutos para demonstração, ficou definido que a parte inicial deve ser objetiva: introdução, apresentação do projeto, solução geral, investigação/metodologia, diagramas internos essenciais e passagem para a demo.
+
+Foi considerado importante apresentar não só a primeira fase da pesquisa, mas também a evolução posterior. A apresentação deve mostrar como a pesquisa influenciou a V1, sem afirmar que a V1 é uma validação científica final. A mensagem central deve manter-se: a V1 é uma pipeline técnica e metodológica funcional, com validação técnica e runtime, enquanto a calibração científica final fica como trabalho futuro.
+
+---
+
+## 8. Estabilização da infraestrutura local e InfluxDB
+
+Foi analisado um problema de reprodutibilidade da infraestrutura local, relacionado com o InfluxDB e a criação da database temporal `np_telemetry`.
+
+O problema surgiu quando se quis garantir que uma pessoa que fizesse pull do repositório conseguiria levantar tudo sem passos manuais. A expectativa era que, ao correr os scripts locais, PostgreSQL, RabbitMQ, InfluxDB, Grafana, API, Prevention Host e webUI ficassem prontos. No entanto, percebeu-se que `np_telemetry` podia não existir em ambientes novos ou depois de remover volumes Docker.
+
+A primeira análise mostrou que o container `np-influxdb-init` existia, mas não fazia o provisioning lógico do InfluxDB. Ele apenas tratava permissões de volume. Portanto, o ambiente tinha um container chamado init, mas esse init não criava a database temporal, não validava token e não garantia a store usada pela observabilidade.
+
+Para resolver a primeira parte do problema, foi criado o script `scripts/influx/Ensure-InfluxDatabase.ps1`. Este script lê a configuração, autentica no InfluxDB e garante que `np_telemetry` existe. O script é idempotente: se a database já existir, não faz alterações desnecessárias; se faltar, cria-a.
+
+Também foi criado ou revisto o script `scripts/setup/Test-LocalBaseline.ps1`, para validar sistematicamente a baseline local. Durante a validação, foi encontrado um problema adicional: o script usava `docker compose exec` e `docker compose ps` de forma dependente do contexto atual do PowerShell. Isto causava erros como `no configuration file provided`. Como a baseline local usa containers com nomes fixos (`np-postgres`, `np-rabbitmq`, `np-influxdb`, `np-grafana`), o script foi ajustado para usar `docker exec` diretamente sobre esses containers.
+
+Depois disso, `Test-LocalBaseline.ps1 -InfrastructureOnly` passou a validar corretamente Docker, PostgreSQL, RabbitMQ, InfluxDB, Grafana e a existência de `np_telemetry`.
+
+Para testar a reconstrução do ambiente do zero, foi criado `infra/scripts/reset-local-infra.ps1`. Este script é destrutivo e remove volumes locais, mas ficou protegido por confirmação textual explícita: `-Confirm RESET_LOCAL_INFRA`. Antes de o usar, foi validado que ele recusa executar se a confirmação não for exatamente a esperada.
+
+Ao correr o reset destrutivo, foi descoberta a falha principal: com volumes novos, o InfluxDB arrancava, mas não reconhecia automaticamente o `INFLUXDB_TOKEN` do `.env`. O script `Ensure-InfluxDatabase.ps1` falhava com `401 Unauthorized`. Isto provou que o ambiente anterior funcionava porque o volume antigo já tinha estado interno configurado, e não porque o repositório garantia um bootstrap completo do InfluxDB.
+
+A correção final foi criar `scripts/influx/Ensure-InfluxAdminTokenFile.ps1`. Este script lê o `INFLUXDB_TOKEN` do `.env`, valida que começa por `apiv3_` e gera um ficheiro local não versionado em `data/runtime/influx/admin-token.json`. O ficheiro é ignorado pelo Git e serve apenas para o InfluxDB 3 criar/aceitar o token admin no primeiro arranque sobre volumes novos.
+
+O `docker-compose.yml` foi ajustado para montar esse ficheiro no container `np-influxdb` e configurar `INFLUXDB3_ADMIN_TOKEN_FILE`. Os scripts `up.ps1` e `reset-local-infra.ps1` foram atualizados para preparar o ficheiro antes de arrancar o InfluxDB.
+
+Foi ainda encontrada uma incompatibilidade com Windows PowerShell 5.1, porque `Set-Content -Encoding utf8NoBOM` não existe nessa versão. A escrita do ficheiro foi ajustada para usar `System.IO.File.WriteAllText` com `System.Text.UTF8Encoding($false)`, mantendo UTF-8 sem BOM e compatibilidade com o ambiente usado.
+
+O teste final confirmou o comportamento esperado. Depois de remover volumes, a infraestrutura voltou a subir, o InfluxDB aceitou o token do `.env`, a database `np_telemetry` foi criada automaticamente, o bootstrap PostgreSQL recriou o plano de controlo e `Test-LocalBaseline.ps1 -InfrastructureOnly` passou com 0 falhas e 0 avisos.
+
+Esta alteração melhora a robustez da V1 porque torna a baseline local reprodutível e menos dependente de estado pré-existente na máquina. Também evita passos manuais no InfluxDB e torna mais claro o papel de cada script:
+
+* `up.ps1` levanta a infraestrutura sem destruir dados;
+* `down.ps1` para containers preservando volumes;
+* `reset-local-infra.ps1` remove volumes apenas com confirmação explícita;
+* `Ensure-InfluxAdminTokenFile.ps1` prepara o token local do InfluxDB;
+* `Ensure-InfluxDatabase.ps1` garante a database `np_telemetry`;
+* `Test-LocalBaseline.ps1` valida se a infraestrutura está pronta.
+
+---
+
+## 9. Setup guiado e instalação de dependências
+
+Depois de estabilizar a infraestrutura Docker e o InfluxDB, foi revista a experiência de setup local para alguém novo no projeto.
+
+A questão principal foi perceber se o projeto já podia ser corrido de forma simples por uma pessoa que fizesse pull do repositório. A conclusão foi que a infraestrutura já estava mais robusta, mas ainda faltava separar melhor três momentos diferentes:
+
+* verificar se a máquina tem dependências;
+* instalar ou orientar instalação de dependências em falta;
+* levantar a infraestrutura e runtime do projeto.
+
+Foi decidido que o `up.ps1` não deve instalar dependências. Esta decisão foi importante porque instalar Docker Desktop, Node.js, .NET SDK ou Git pode exigir permissões de administrador, alterar `PATH`, obrigar a reiniciar a shell ou exigir que o Docker Desktop seja aberto manualmente. Se o `up.ps1` fizesse isso automaticamente, deixaria de ser previsível e poderia alterar a máquina do utilizador sem clareza.
+
+A solução foi manter o `up.ps1` focado apenas em infraestrutura e criar scripts próprios para diagnóstico e onboarding.
+
+O `scripts/setup/Test-LocalPrerequisites.ps1` passou a assumir o papel de diagnóstico read-only. Este script verifica ferramentas e condições necessárias para o ambiente local, incluindo PowerShell, Git, Docker CLI, Docker engine, Docker Compose v2, .NET SDK, Node.js, npm, `.env`, `.env.example` e portas relevantes. O objetivo é dizer claramente o que está pronto, o que falta e o que pode bloquear o arranque.
+
+O `scripts/setup/Install-LocalPrerequisites.ps1` foi criado como instalador/sugestor opt-in. Sem flags destrutivas ou automáticas, o script apenas sugere comandos, normalmente via `winget`. Quando executado em modo `WhatIf`, não instala nada. A instalação real só deve acontecer com flags explícitas. Isto evita que a preparação da máquina se misture com o arranque normal do projeto.
+
+O `scripts/setup/Setup-LocalEnvironment.ps1` foi criado como fluxo guiado de onboarding. Este script chama a verificação de pré-requisitos, prepara `.env` se faltar, chama `up.ps1`, valida a infraestrutura com `Test-LocalBaseline.ps1 -InfrastructureOnly` e, opcionalmente, arranca o runtime com `start-local-runtime.ps1` quando são usados os parâmetros `-StartRuntime` e `-OpenBrowser`.
+
+A separação final ficou assim:
+
+* `Test-LocalPrerequisites.ps1` diagnostica dependências;
+* `Install-LocalPrerequisites.ps1` sugere ou instala dependências apenas com autorização explícita;
+* `Setup-LocalEnvironment.ps1` orquestra o setup local;
+* `up.ps1` sobe a infraestrutura;
+* `start-local-runtime.ps1` arranca API, Prevention Host e webUI;
+* `Test-LocalBaseline.ps1` valida infraestrutura e runtime;
+* `reset-local-infra.ps1` é o único caminho destrutivo e continua protegido por confirmação textual.
+
+Durante a validação do `Setup-LocalEnvironment.ps1`, foi encontrado um problema no wrapper que chamava outros scripts PowerShell. O script capturava `stderr` com `2>&1`, e algumas mensagens informativas do Docker Compose eram tratadas como erro pelo Windows PowerShell. Isto fazia com que o setup guiado falhasse apesar de a infraestrutura estar correta. O wrapper foi ajustado para capturar `stdout` e `stderr` através de `System.Diagnostics.ProcessStartInfo`, tratando `stderr` como erro apenas quando o processo termina com exit code diferente de zero.
+
+Depois surgiu outra incompatibilidade com Windows PowerShell 5.1: `ProcessStartInfo.ArgumentList` podia estar indisponível ou nulo. A chamada foi então adaptada para montar a string de argumentos manualmente em `ProcessStartInfo.Arguments`, mantendo compatibilidade com o ambiente usado.
+
+A validação incluiu parse dos scripts, execução de `Test-LocalPrerequisites.ps1`, execução de `Install-LocalPrerequisites.ps1 -WhatIf`, execução de `Setup-LocalEnvironment.ps1` sem runtime e validação da infraestrutura com `Test-LocalBaseline.ps1 -InfrastructureOnly`. Também foram executados build e testes do projeto para confirmar que as alterações de scripts e documentação não introduziram regressões funcionais.
+
+Esta frente melhora a capacidade de onboarding do projeto. Em vez de depender de instruções dispersas ou conhecimento tácito, passa a existir um percurso mais claro:
+
+```powershell
+.\scripts\setup\Test-LocalPrerequisites.ps1
+.\scripts\setup\Install-LocalPrerequisites.ps1 -WhatIf
+.\scripts\setup\Setup-LocalEnvironment.ps1
+````
+
+Para o uso normal, depois de a máquina estar preparada, o fluxo continua curto:
+
+```powershell
+.\infra\scripts\up.ps1
+.\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+```
+
+Isto reduz a fricção para novos utilizadores sem tornar o arranque normal perigoso ou imprevisível.
+
+---
+
+## 10. Problemas encontrados e estabilização
 
 A reorganização revelou alguns problemas práticos.
 
@@ -1202,16 +1411,52 @@ O terceiro foi a falta de `sensor_id` nos dashboards por célula. A regra defini
 
 O quarto problema foi a existência de processos locais antigos a bloquear DLLs e builds. Ficou claro que, para validar o site atualizado, é necessário reiniciar os processos locais da aplicação.
 
-Quando Docker está apenas a correr PostgreSQL, RabbitMQ, InfluxDB ou Grafana, não é necessário mandar Docker abaixo para atualizar a UI ou a API.
+O quinto problema foi a falta de reprodutibilidade total do InfluxDB após remoção de volumes. Esta falha foi corrigida com o bootstrap explícito do token admin e com a criação automática de `np_telemetry`.
+
+O sexto problema foi a falta de um fluxo claro para onboarding local. A infraestrutura já tinha scripts de arranque e validação, mas ainda não existia uma separação suficientemente clara entre verificar dependências, instalar dependências, subir infraestrutura, arrancar runtime e validar o sistema. Isto foi estabilizado com a criação dos scripts de setup guiado e instalação opt-in.
+
+O sétimo problema foi a compatibilidade com Windows PowerShell 5.1. Alguns detalhes que funcionariam em PowerShell 7, como `utf8NoBOM` em `Set-Content` ou `ArgumentList` em `ProcessStartInfo`, não funcionaram no ambiente usado. Estes pontos foram corrigidos para manter compatibilidade com o PowerShell disponível na máquina.
+
+Quando Docker está apenas a correr PostgreSQL, RabbitMQ, InfluxDB ou Grafana, não é necessário mandar Docker abaixo para atualizar a UI ou a API. No entanto, quando se quer testar reprodutibilidade total, o reset destrutivo deve ser feito apenas através do script próprio e com confirmação explícita.
 
 ---
 
-## 8. Próximos passos
+## 11. Validação realizada
+
+A validação incluiu vários checkpoints.
+
+Foi validada a sintaxe dos scripts PowerShell alterados.
+
+Foi confirmado que apenas o script `reset-local-infra.ps1` remove volumes Docker, e que esse script não executa sem a confirmação textual correta.
+
+Foi validada a criação do ficheiro local de token do InfluxDB, confirmando que o ficheiro fica em `data/runtime/influx/admin-token.json` e é ignorado pelo Git.
+
+Foi validado o `docker-compose.yml`, garantindo que o ficheiro de token é montado no container `np-influxdb`.
+
+Foi executado um reset destrutivo controlado, removendo volumes locais e recriando a infraestrutura.
+
+Foi confirmado que `np_telemetry` estava ausente depois do reset, foi criada automaticamente e ficou verificada.
+
+Foi confirmado que o bootstrap PostgreSQL recriou o plano de controlo, incluindo área, células, sensores, perfis, redes, cenários e ligações de datasets.
+
+Foi executado `Test-LocalBaseline.ps1 -InfrastructureOnly`, que terminou com:
+
+`0 required failure(s), 0 total failure(s), 0 warning(s)`
+
+Isto confirmou que a baseline de infraestrutura ficou funcional após reconstrução a partir de volumes limpos.
+
+Também foi validado o novo fluxo de setup local. Foram corridos os scripts de diagnóstico de pré-requisitos, instalação em modo `WhatIf`, setup guiado sem runtime e validação da infraestrutura. O instalador não executou instalações por defeito, apenas sugeriu ações. O setup guiado conseguiu preparar e validar a infraestrutura sem apagar volumes.
+
+Por fim, foram executados build e testes do projeto, que passaram. O warning `NU1902` associado ao pacote `OpenTelemetry.Exporter.OpenTelemetryProtocol` permaneceu como aviso conhecido, não introduzido por esta frente.
+
+---
+
+## 12. Próximos passos
 
 1. Validar manualmente a versão atual do website depois de reiniciar os processos locais da aplicação.
-2. Confirmar que a nova tab `Run Timings` consome corretamente o endpoint de timings.
-3. Corrigir definitivamente a dupla navbar e a duplicação do botão light/dark.
-4. Remover ou corrigir dashboards Grafana partidos.
+2. Confirmar que a tab `Run Timings` consome corretamente o endpoint de timings.
+3. Corrigir definitivamente qualquer duplicação visual remanescente, como dupla navbar ou botão light/dark duplicado.
+4. Garantir que dashboards Grafana por célula usam `d-solo` e `panelId`, mostrando apenas o painel necessário.
 5. Garantir que dashboards por célula nunca abrem com `sensor_id` vazio.
 6. Melhorar o `Nominal Flow`, mostrando estado e evidência por etapa.
 7. Melhorar o `Model & Provenance` para funcionar como matriz de rastreabilidade.
@@ -1220,6 +1465,12 @@ Quando Docker está apenas a correr PostgreSQL, RabbitMQ, InfluxDB ou Grafana, n
 10. Preparar a UI para RBAC futuro, sem apresentar isso como segurança enquanto não houver enforcement backend.
 11. Separar claramente vistas de demo e vistas de developer.
 12. Fazer nova run B/C limpa e recolher screenshots para apresentação.
-13. Atualizar a documentação técnica para refletir a nova organização do website.
+13. Atualizar a documentação técnica para refletir a nova organização do website e os scripts de infraestrutura.
 14. Preparar slides que façam o paralelismo entre diagramas, UI e fluxo real do sistema.
-15. Fazer uma validação final em projetor, avaliando legibilidade, densidade visual e necessidade de scroll.
+15. Simplificar os diagramas finais de apresentação, mantendo poucos blocos e setas com significado claro.
+16. Fazer uma validação final em projetor, avaliando legibilidade, densidade visual e necessidade de scroll.
+17. Confirmar que a infraestrutura local continua a subir corretamente com `up.ps1` depois do reset destrutivo validado.
+18. Evitar versionar evidência que exponha tokens, especialmente outputs de `docker compose config` ou ficheiros em `data/runtime`.
+19. Validar `Setup-LocalEnvironment.ps1 -StartRuntime -OpenBrowser` num ambiente limpo, sem processos antigos nas portas `5254` e `5173`.
+20. Decidir se `Install-LocalPrerequisites.ps1` deve permanecer apenas como guia/WhatIf ou se deve suportar instalação real com `-InstallMissing -Yes`.
+21. Garantir que a documentação de setup distingue claramente primeira utilização, uso diário, validação e reset destrutivo.

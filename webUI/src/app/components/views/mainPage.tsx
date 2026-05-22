@@ -61,20 +61,13 @@ export function MainPage({ isDark }: { isDark: boolean }) {
       }}>
         <section style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "50%",
-              border: "2.5px solid #22c55e",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(22,163,74,0.12)",
-              boxShadow: "0 0 32px rgba(34,197,94,0.20)",
-              flexShrink: 0,
-            }}>
-              <img src="images/NPIconNoBg.png" width="42px" height="42px" />
-            </div>
+            <img
+              src="images/NPIconNoBg.png"
+              alt="Nature Protector"
+              width="58px"
+              height="58px"
+              style={{ flexShrink: 0 }}
+            />
             <div>
               <div style={{ color: c.textPrimary, fontSize: "38px", fontWeight: 800, lineHeight: 1, letterSpacing: 0 }}>
                 Nature Protector

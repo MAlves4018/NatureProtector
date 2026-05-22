@@ -49,10 +49,12 @@ services:
       - info
     environment:
       INFLUXDB_NODE_ID: node1
+      INFLUXDB3_ADMIN_TOKEN_FILE: /run/secrets/influx-admin-token.json
     ports:
       - "${INFLUXDB_PORT}:8181"
     volumes:
       - influxdb_data:/home/influxdb3/.influxdb
+      - ./data/runtime/influx/admin-token.json:/run/secrets/influx-admin-token.json:ro
     depends_on:
       influxdb-init:
         condition: service_completed_successfully

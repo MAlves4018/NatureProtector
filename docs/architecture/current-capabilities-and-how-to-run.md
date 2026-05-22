@@ -72,12 +72,14 @@ Pré-condição importante para os comandos `dotnet`:
 
 ```powershell
 .\infra\scripts\up.ps1
+.\scripts\influx\Ensure-InfluxDatabase.ps1
 .\infra\scripts\smoke-test.ps1
 ```
 
 ### O que estes scripts fazem
 
-- [`../../infra/scripts/up.ps1`](../../infra/scripts/up.ps1) cria `.env` a partir de [`.env.example`](../../.env.example) quando necessário e sobe o `docker compose`;
+- [`../../infra/scripts/up.ps1`](../../infra/scripts/up.ps1) cria `.env` a partir de [`.env.example`](../../.env.example) quando necessário, sobe o `docker compose` e garante a database InfluxDB `np_telemetry`;
+- [`../../scripts/influx/Ensure-InfluxDatabase.ps1`](../../scripts/influx/Ensure-InfluxDatabase.ps1) e idempotente e pode ser corrido manualmente para confirmar/criar `np_telemetry`;
 - [`../../infra/scripts/smoke-test.ps1`](../../infra/scripts/smoke-test.ps1) mostra o estado dos contentores.
 
 ### Serviços e portas esperados

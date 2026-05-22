@@ -91,3 +91,6 @@ docs/evidence/dev-runtime/
 webUI/node_modules/
 webUI/dist/
 webUI/.vite/
+
+/data/runtime/influx/admin-token.json
+/docs/evidence/diagnostics/

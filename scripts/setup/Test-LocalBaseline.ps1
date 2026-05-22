@@ -9,7 +9,11 @@ Simulator.Host/Prevention.Host.
 #>
 
 [CmdletBinding()]
-param()
+param(
+    [switch]$InfrastructureOnly,
+    [switch]$Runtime,
+    [switch]$Full
+)
 
 $ErrorActionPreference = "Continue"
 $ProgressPreference = "SilentlyContinue"
@@ -63,18 +67,12 @@ function Read-DotEnv {
 
     foreach ($rawLine in Get-Content -LiteralPath $Path) {
         $line = $rawLine.Trim()
-        if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("#")) {
+        if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("#") -or -not $line.Contains("=")) {
             continue
         }
 
-        $separator = $line.IndexOf("=")
-        if ($separator -le 0) {
-            continue
-        }
-
-        $key = $line.Substring(0, $separator).Trim()
-        $value = $line.Substring($separator + 1).Trim().Trim('"')
-        $values[$key] = $value
+        $parts = $line.Split("=", 2)
+        $values[$parts[0].Trim()] = $parts[1].Trim().Trim('"')
     }
 
     return $values
@@ -92,8 +90,8 @@ function Get-ConfigValue {
         return $fromEnvironment
     }
 
-    if ($Values.ContainsKey($Name) -and -not [string]::IsNullOrWhiteSpace($Values[$Name])) {
-        return $Values[$Name]
+    if ($Values.ContainsKey($Name) -and -not [string]::IsNullOrWhiteSpace([string]$Values[$Name])) {
+        return [string]$Values[$Name]
     }
 
     return $Fallback
@@ -131,11 +129,12 @@ function Invoke-HttpCheck {
     )
 
     try {
-        $response = Invoke-WebRequest -Uri $Uri -Headers $Headers -TimeoutSec 5 -ErrorAction Stop
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $Uri -Headers $Headers -TimeoutSec 5 -ErrorAction Stop
         return [pscustomobject]@{
             Success = $true
             StatusCode = [int]$response.StatusCode
             Error = $null
+            Content = [string]$response.Content
         }
     }
     catch {
@@ -148,6 +147,7 @@ function Invoke-HttpCheck {
             Success = $false
             StatusCode = $statusCode
             Error = $_.Exception.Message
+            Content = ""
         }
     }
 }
@@ -164,10 +164,11 @@ function Get-BasicAuthHeader {
     }
 }
 
-function Test-ExternalCommand {
+function Invoke-ExternalCommand {
     param(
         [string]$Name,
-        [string[]]$Arguments
+        [string[]]$Arguments,
+        [hashtable]$Environment = @{}
     )
 
     try {
@@ -177,6 +178,10 @@ function Test-ExternalCommand {
         $startInfo.UseShellExecute = $false
         $startInfo.RedirectStandardOutput = $true
         $startInfo.RedirectStandardError = $true
+
+        foreach ($entry in $Environment.GetEnumerator()) {
+            $startInfo.Environment[$entry.Key] = [string]$entry.Value
+        }
 
         if ($Arguments.Count -gt 0) {
             $quotedArguments = foreach ($argument in $Arguments) {
@@ -200,7 +205,6 @@ function Test-ExternalCommand {
 
         $text = (($standardOutput + $standardError) | Out-String).Trim()
         $exitCode = $process.ExitCode
-
         if ($text -match "error during connect|Acesso negado|Access is denied|permission denied|Cannot connect") {
             $exitCode = 1
         }
@@ -218,44 +222,161 @@ function Test-ExternalCommand {
     }
 }
 
-function Get-InfluxEnabled {
-    param([string]$RepoRoot)
+function Test-DockerContainerRunning {
+    param(
+        [string]$ContainerName,
+        [string]$Name
+    )
 
-    $environmentValue = [Environment]::GetEnvironmentVariable("InfluxDb__Enabled")
-    if ([string]::IsNullOrWhiteSpace($environmentValue)) {
-        $environmentValue = [Environment]::GetEnvironmentVariable("INFLUXDB_ENABLED")
+    $result = Invoke-ExternalCommand "docker" @(
+        "inspect",
+        "-f",
+        "{{.State.Running}}",
+        $ContainerName
+    )
+
+    if ($result.ExitCode -eq 0 -and $result.Output.Trim().ToLowerInvariant() -eq "true") {
+        Add-Result "OK" $Name "$ContainerName is running" $true
+        return $true
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($environmentValue)) {
-        $parsed = $false
-        if ([bool]::TryParse($environmentValue, [ref]$parsed)) {
-            return $parsed
-        }
-    }
-
-    $settingsPath = Join-Path $RepoRoot "src\NatureProtector.Prevention.Host\appsettings.json"
-    if (-not (Test-Path -LiteralPath $settingsPath)) {
-        return $false
-    }
-
-    try {
-        $settings = Get-Content -Raw -LiteralPath $settingsPath | ConvertFrom-Json
-        if ($null -ne $settings.InfluxDb -and $null -ne $settings.InfluxDb.Enabled) {
-            return [bool]$settings.InfluxDb.Enabled
-        }
-    }
-    catch {
-        return $false
-    }
-
+    Add-Result "FAIL" $Name "$ContainerName is not running or not found: $($result.Output)" $true
     return $false
+}
+
+function Test-PostgresTable {
+    param(
+        [string]$ContainerName,
+        [string]$TablePattern,
+        [string]$Name,
+        [string]$User,
+        [string]$Database
+    )
+
+    $result = Invoke-ExternalCommand "docker" @(
+        "exec",
+        $ContainerName,
+        "psql",
+        "-U",
+        $User,
+        "-d",
+        $Database,
+        "-tAc",
+        "select count(*) from pg_tables where schemaname || '.' || tablename like '$TablePattern';"
+    )
+
+    if ($result.ExitCode -eq 0) {
+        $count = 0
+        [void][int]::TryParse($result.Output.Trim(), [ref]$count)
+        if ($count -gt 0) {
+            Add-Result "OK" $Name "$count table(s) found" $true
+        }
+        else {
+            Add-Result "WARN" $Name "no matching tables found; run scripts\postgres\bootstrap-control-plane.ps1 if this is a fresh database" $false
+        }
+    }
+    else {
+        Add-Result "WARN" $Name "could not query PostgreSQL tables: $($result.Output)" $false
+    }
+}
+
+function Test-InfluxDatabase {
+    param(
+        [string]$ContainerName,
+        [string]$Token,
+        [string]$Database
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Token)) {
+        Add-Result "FAIL" "InfluxDB token" "INFLUXDB_TOKEN is missing; cannot validate database '$Database'" $true
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Database)) {
+        Add-Result "FAIL" "InfluxDB database config" "Missing INFLUXDB_DATABASE in .env. Add INFLUXDB_DATABASE=np_telemetry." $true
+        return
+    }
+
+    $result = Invoke-ExternalCommand `
+        -Name "docker" `
+        -Arguments @("exec", "-e", "INFLUXDB3_AUTH_TOKEN", $ContainerName, "influxdb3", "show", "databases", "-H", "http://127.0.0.1:8181", "--format", "csv") `
+        -Environment @{ INFLUXDB3_AUTH_TOKEN = $Token }
+
+    if ($result.ExitCode -ne 0) {
+        Add-Result "FAIL" "InfluxDB database list" "could not list databases: $($result.Output)" $true
+        return
+    }
+
+    $databases = @(
+        $result.Output -split "(`r`n|`n|`r)" |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_ -ne "iox::database" }
+    )
+
+    if ($databases -contains $Database) {
+        Add-Result "OK" "InfluxDB database" "$Database exists" $true
+    }
+    else {
+        Add-Result "FAIL" "InfluxDB database" "$Database does not exist; run .\scripts\influx\Ensure-InfluxDatabase.ps1" $true
+    }
+}
+
+function Test-ControlPlaneCounts {
+    param(
+        [string]$ContainerName,
+        [string]$User,
+        [string]$Database
+    )
+
+    $queries = @(
+        @{ Name = "Control areas"; Sql = "select count(*) from control.areas;" },
+        @{ Name = "Control grid cells"; Sql = "select count(*) from control.grid_cells;" },
+        @{ Name = "Control sensors"; Sql = "select count(*) from control.sensor_nodes;" },
+        @{ Name = "Control scenarios"; Sql = "select count(*) from control.scenario_definitions;" }
+    )
+
+    foreach ($query in $queries) {
+        $result = Invoke-ExternalCommand "docker" @(
+            "exec",
+            $ContainerName,
+            "psql",
+            "-U",
+            $User,
+            "-d",
+            $Database,
+            "-tAc",
+            $query.Sql
+        )
+
+        if ($result.ExitCode -eq 0) {
+            $count = 0
+            [void][int]::TryParse($result.Output.Trim(), [ref]$count)
+            if ($count -gt 0) {
+                Add-Result "OK" $query.Name "$count row(s)" $true
+            }
+            else {
+                Add-Result "WARN" $query.Name "0 rows; run scripts\postgres\bootstrap-control-plane.ps1 before full runtime validation" $false
+            }
+        }
+        else {
+            Add-Result "WARN" $query.Name "could not query count: $($result.Output)" $false
+        }
+    }
 }
 
 $repoRoot = Find-RepositoryRoot
 Set-Location $repoRoot
 
+if (-not $InfrastructureOnly -and -not $Runtime -and -not $Full) {
+    $InfrastructureOnly = $true
+}
+
+$checkInfrastructure = $InfrastructureOnly -or $Runtime -or $Full
+$checkRuntime = $Runtime -or $Full
+
 Write-Host "NatureProtector local baseline check"
 Write-Host "Repository root: $repoRoot"
+Write-Host "Mode: $(if ($Full) { 'Full' } elseif ($Runtime) { 'Runtime' } else { 'InfrastructureOnly' })"
 Write-Host ""
 
 $dotEnvPath = Join-Path $repoRoot ".env"
@@ -271,91 +392,135 @@ $rabbitUser = Get-ConfigValue $envValues "RABBITMQ_DEFAULT_USER" "np"
 $rabbitPass = Get-ConfigValue $envValues "RABBITMQ_DEFAULT_PASS" "np_dev_pass"
 $rabbitAmqpPort = [int](Get-ConfigValue $envValues "RABBITMQ_AMQP_PORT" "5672")
 $rabbitManagementPort = [int](Get-ConfigValue $envValues "RABBITMQ_MANAGEMENT_PORT" "15672")
+$rabbitContainer = Get-ConfigValue $envValues "RABBITMQ_CONTAINER" "np-rabbitmq"
 
 $postgresDb = Get-ConfigValue $envValues "POSTGRES_DB" "natureprotector"
 $postgresUser = Get-ConfigValue $envValues "POSTGRES_USER" "np"
 $postgresPort = [int](Get-ConfigValue $envValues "POSTGRES_PORT" "5432")
+$postgresContainer = Get-ConfigValue $envValues "POSTGRES_CONTAINER" "np-postgres"
 
 $influxPort = [int](Get-ConfigValue $envValues "INFLUXDB_PORT" "8181")
+$influxUrl = Get-ConfigValue $envValues "INFLUXDB_URL" "http://localhost:$influxPort"
+$influxToken = Get-ConfigValue $envValues "INFLUXDB_TOKEN" ""
+$influxDatabase = Get-ConfigValue $envValues "INFLUXDB_DATABASE" ""
+$influxContainer = Get-ConfigValue $envValues "INFLUXDB_CONTAINER" "np-influxdb"
+
 $grafanaPort = [int](Get-ConfigValue $envValues "GRAFANA_PORT" "3000")
+$grafanaContainer = Get-ConfigValue $envValues "GRAFANA_CONTAINER" "np-grafana"
 
-$dockerInfo = Test-ExternalCommand "docker" @("info", "--format", "{{.ServerVersion}}")
-if ($dockerInfo.ExitCode -eq 0) {
-    Add-Result "OK" "Docker daemon" $dockerInfo.Output $true
-}
-else {
-    Add-Result "FAIL" "Docker daemon" "docker info failed: $($dockerInfo.Output)" $true
+$apiPort = [int](Get-ConfigValue $envValues "BACKOFFICE_API_PORT" "5254")
+$webPort = [int](Get-ConfigValue $envValues "WEBUI_PORT" "5173")
+
+if ($checkInfrastructure) {
+    $dockerInfo = Invoke-ExternalCommand "docker" @("info", "--format", "{{.ServerVersion}}")
+    if ($dockerInfo.ExitCode -eq 0) {
+        Add-Result "OK" "Docker daemon" $dockerInfo.Output $true
+    }
+    else {
+        Add-Result "FAIL" "Docker daemon" "docker info failed: $($dockerInfo.Output)" $true
+    }
+
+    Test-DockerContainerRunning $postgresContainer "PostgreSQL container" | Out-Null
+    Test-DockerContainerRunning $rabbitContainer "RabbitMQ container" | Out-Null
+    Test-DockerContainerRunning $influxContainer "InfluxDB container" | Out-Null
+    Test-DockerContainerRunning $grafanaContainer "Grafana container" | Out-Null
+
+    if (Test-TcpPort "localhost" $rabbitAmqpPort) {
+        Add-Result "OK" "RabbitMQ AMQP" "localhost:$rabbitAmqpPort accepts TCP connections" $true
+    }
+    else {
+        Add-Result "FAIL" "RabbitMQ AMQP" "localhost:$rabbitAmqpPort is not reachable" $true
+    }
+
+    $rabbitHeaders = Get-BasicAuthHeader $rabbitUser $rabbitPass
+    $rabbitUri = "http://localhost:$rabbitManagementPort/api/overview"
+    $rabbitHttp = Invoke-HttpCheck $rabbitUri $rabbitHeaders
+    if ($rabbitHttp.Success) {
+        Add-Result "OK" "RabbitMQ management" "$rabbitUri returned HTTP $($rabbitHttp.StatusCode)" $true
+    }
+    else {
+        Add-Result "FAIL" "RabbitMQ management" "$rabbitUri failed: $($rabbitHttp.Error)" $true
+    }
+
+    $pgReady = Invoke-ExternalCommand "docker" @(
+        "exec",
+        $postgresContainer,
+        "pg_isready",
+        "-U",
+        $postgresUser,
+        "-d",
+        $postgresDb
+    )
+
+    if ($pgReady.ExitCode -eq 0) {
+        Add-Result "OK" "PostgreSQL" $pgReady.Output $true
+    }
+    elseif (Test-TcpPort "localhost" $postgresPort) {
+        Add-Result "FAIL" "PostgreSQL" "TCP localhost:$postgresPort is open, but pg_isready failed: $($pgReady.Output)" $true
+    }
+    else {
+        Add-Result "FAIL" "PostgreSQL" "localhost:$postgresPort is not reachable and pg_isready failed: $($pgReady.Output)" $true
+    }
+
+    Test-PostgresTable $postgresContainer "control.%" "PostgreSQL control schema" $postgresUser $postgresDb
+
+    $influxHeaders = @{}
+    if (-not [string]::IsNullOrWhiteSpace($influxToken)) {
+        $influxHeaders.Authorization = "Bearer $influxToken"
+    }
+
+    $influxHttp = Invoke-HttpCheck "$influxUrl/health" $influxHeaders
+    if ($influxHttp.Success) {
+        Add-Result "OK" "InfluxDB" "$influxUrl/health returned HTTP $($influxHttp.StatusCode)" $true
+    }
+    elseif (Test-TcpPort "localhost" $influxPort) {
+        Add-Result "FAIL" "InfluxDB" "localhost:$influxPort accepts TCP connections, but authenticated /health failed: $($influxHttp.Error)" $true
+    }
+    else {
+        Add-Result "FAIL" "InfluxDB" "localhost:$influxPort is not reachable" $true
+    }
+
+    Test-InfluxDatabase $influxContainer $influxToken $influxDatabase
+
+    $grafanaUri = "http://localhost:$grafanaPort/api/health"
+    $grafanaHttp = Invoke-HttpCheck $grafanaUri
+    if ($grafanaHttp.Success) {
+        Add-Result "OK" "Grafana" "$grafanaUri returned HTTP $($grafanaHttp.StatusCode)" $true
+    }
+    else {
+        Add-Result "FAIL" "Grafana" "$grafanaUri failed: $($grafanaHttp.Error)" $true
+    }
 }
 
-$composePs = Test-ExternalCommand "docker" @("compose", "ps")
-if ($composePs.ExitCode -eq 0) {
-    Add-Result "OK" "Docker Compose project" "docker compose ps completed" $true
-}
-else {
-    Add-Result "FAIL" "Docker Compose project" "docker compose ps failed: $($composePs.Output)" $true
-}
+if ($checkRuntime) {
+    $backofficeUri = "http://localhost:$apiPort/api/control/configurations/active"
+    $backofficeHttp = Invoke-HttpCheck $backofficeUri
+    if ($backofficeHttp.Success) {
+        Add-Result "OK" "Backoffice API" "$backofficeUri returned HTTP $($backofficeHttp.StatusCode)" $true
+    }
+    else {
+        Add-Result "FAIL" "Backoffice API" "not available or not ready at ${backofficeUri}: $($backofficeHttp.Error)" $true
+    }
 
-if (Test-TcpPort "localhost" $rabbitAmqpPort) {
-    Add-Result "OK" "RabbitMQ AMQP" "localhost:$rabbitAmqpPort accepts TCP connections" $true
-}
-else {
-    Add-Result "FAIL" "RabbitMQ AMQP" "localhost:$rabbitAmqpPort is not reachable" $true
-}
+    $webUri = "http://localhost:$webPort"
+    $webHttp = Invoke-HttpCheck $webUri
+    if ($webHttp.Success) {
+        Add-Result "OK" "webUI" "$webUri returned HTTP $($webHttp.StatusCode)" $true
+    }
+    else {
+        Add-Result "FAIL" "webUI" "not available or not ready at ${webUri}: $($webHttp.Error)" $true
+    }
 
-$rabbitHeaders = Get-BasicAuthHeader $rabbitUser $rabbitPass
-$rabbitUri = "http://localhost:$rabbitManagementPort/api/overview"
-$rabbitHttp = Invoke-HttpCheck $rabbitUri $rabbitHeaders
-if ($rabbitHttp.Success) {
-    Add-Result "OK" "RabbitMQ management" "$rabbitUri returned HTTP $($rabbitHttp.StatusCode)" $true
-}
-else {
-    Add-Result "FAIL" "RabbitMQ management" "$rabbitUri failed: $($rabbitHttp.Error)" $true
-}
+    $summaryUri = "http://localhost:$apiPort/api/dev/runtime/summary"
+    $summaryHttp = Invoke-HttpCheck $summaryUri
+    if ($summaryHttp.Success) {
+        Add-Result "OK" "Runtime summary" "$summaryUri returned HTTP $($summaryHttp.StatusCode)" $false
+    }
+    else {
+        Add-Result "OK" "Runtime summary optional" "optional endpoint not exposed in this version or not available at ${summaryUri}" $false
+    }
 
-$pgReady = Test-ExternalCommand "docker" @("compose", "exec", "-T", "postgres", "pg_isready", "-U", $postgresUser, "-d", $postgresDb)
-if ($pgReady.ExitCode -eq 0) {
-    Add-Result "OK" "PostgreSQL" $pgReady.Output $true
-}
-elseif (Test-TcpPort "localhost" $postgresPort) {
-    Add-Result "FAIL" "PostgreSQL" "TCP localhost:$postgresPort is open, but pg_isready failed: $($pgReady.Output)" $true
-}
-else {
-    Add-Result "FAIL" "PostgreSQL" "localhost:$postgresPort is not reachable and pg_isready failed: $($pgReady.Output)" $true
-}
-
-$influxEnabled = Get-InfluxEnabled $repoRoot
-$influxRequired = $influxEnabled
-$influxUri = "http://localhost:$influxPort/health"
-$influxHttp = Invoke-HttpCheck $influxUri
-if ($influxHttp.Success) {
-    Add-Result "OK" "InfluxDB" "$influxUri returned HTTP $($influxHttp.StatusCode)" $influxRequired
-}
-elseif (Test-TcpPort "localhost" $influxPort) {
-    Add-Result "OK" "InfluxDB" "localhost:$influxPort accepts TCP connections; /health did not return a clean response" $influxRequired
-}
-elseif ($influxRequired) {
-    Add-Result "FAIL" "InfluxDB" "InfluxDb is enabled but localhost:$influxPort is not reachable" $true
-}
-else {
-    Add-Result "WARN" "InfluxDB" "not reachable, but Prevention.Host has InfluxDb:Enabled=false locally" $false
-}
-
-$grafanaUri = "http://localhost:$grafanaPort/api/health"
-$grafanaHttp = Invoke-HttpCheck $grafanaUri
-if ($grafanaHttp.Success) {
-    Add-Result "OK" "Grafana" "$grafanaUri returned HTTP $($grafanaHttp.StatusCode)" $true
-}
-else {
-    Add-Result "FAIL" "Grafana" "$grafanaUri failed: $($grafanaHttp.Error)" $true
-}
-
-$backofficeUri = "http://localhost:5254/api/control/configurations/active"
-$backofficeHttp = Invoke-HttpCheck $backofficeUri
-if ($backofficeHttp.Success) {
-    Add-Result "OK" "Backoffice API" "$backofficeUri returned HTTP $($backofficeHttp.StatusCode)" $false
-}
-else {
-    Add-Result "WARN" "Backoffice API" "not available or not ready at ${backofficeUri}: $($backofficeHttp.Error)" $false
+    Test-ControlPlaneCounts $postgresContainer $postgresUser $postgresDb
 }
 
 Write-Host ""

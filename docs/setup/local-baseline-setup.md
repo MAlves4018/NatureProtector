@@ -1,234 +1,331 @@
-# Configuração da baseline local
+# Configuracao da baseline local
 
-Este documento é a primeira checklist assistida de configuração para executar a baseline local atual do NatureProtector. É intencionalmente conservador: documenta o que o repositório já suporta e evita alterar a lógica da pipeline, os contratos RabbitMQ, o cálculo de risco, Aspire/AppHost ou o build do frontend.
+Este documento descreve o setup local do NatureProtector para onboarding e
+reprodutibilidade. O objetivo e deixar claro o que pertence a dependencias, o
+que pertence a infraestrutura Docker, o que pertence ao runtime da aplicacao, e
+como validar cada camada sem apagar dados locais.
 
-## Âmbito
+## 1. Objetivo da baseline local
 
-O caminho de runtime local suportado é:
+A baseline local suporta o fluxo:
 
-`Simulator.Host -> RabbitMQ -> Prevention.Host -> PostgreSQL/InfluxDB -> Backoffice.Api/Grafana`
-
-A baseline estável continua a ser o backend .NET mais a infraestrutura local. A pasta `webUI` contém um candidato de frontend em Vite, mas ainda não está descrita no README da raiz como uma web UI final integrada.
-
-## Pré-requisitos
-
-Necessários para a baseline backend:
-
-- .NET SDK 9.0
-- Docker Desktop ou outro motor Docker
-- Docker Compose v2, disponível como `docker compose`
-- PowerShell, Windows PowerShell 5.1 ou PowerShell 7+
-
-Recomendado:
-
-- Git, para fluxos normais de trabalho no repositório
-
-Necessários apenas para o candidato de frontend atual:
-
-- Node.js
-- npm
-
-Apenas ferramentas de documentação/relatório:
-
-- MiKTeX, ou outra distribuição LaTeX, é relevante para o relatório LaTeX em `docs/report`.
-- Strawberry Perl é útil em alguns fluxos LaTeX/MiKTeX, especialmente ferramentas como `latexmk` ou auxiliares de glossário/índice, mas não é necessário para a baseline backend.
-
-Para o relatório LaTeX, validar pelo menos:
-
-```powershell
-perl -v
-pdflatex --version
-latexmk -v
+```text
+Simulator.Host -> RabbitMQ -> Prevention.Host -> PostgreSQL/InfluxDB -> Backoffice.Api/Grafana -> webUI
 ```
 
-Se `latexmk` não estiver disponível, instalar pelo MiKTeX Package Manager ou executar:
+PostgreSQL e o estado operacional duravel. InfluxDB 3 e usado para
+observabilidade temporal e dashboards. RabbitMQ transporta eventos. Grafana,
+Backoffice.Api e webUI apoiam observabilidade, consulta e desenvolvimento.
+
+## 2. Dependencias, infraestrutura e runtime
+
+Dependencias sao ferramentas instaladas na maquina:
+
+- PowerShell.
+- Git.
+- Docker CLI, Docker engine e Docker Compose v2.
+- .NET SDK esperado pelo repositorio.
+- Node.js e npm.
+
+Infraestrutura e o conjunto Docker Compose:
+
+- `np-postgres`.
+- `np-rabbitmq`.
+- `np-influxdb`.
+- `np-grafana`.
+
+Runtime e a aplicacao local:
+
+- Backoffice.Api.
+- Prevention.Host.
+- webUI.
+- Simulator.Host quando corrido em fluxos de cenario.
+
+Esta separacao e intencional: `up.ps1` sobe infraestrutura, mas nao instala
+dependencias e nao arranca API/webUI.
+
+## 3. Pre-requisitos
+
+Validar a maquina:
 
 ```powershell
-mpm --install=latexmk
+.\scripts\setup\Test-LocalPrerequisites.ps1
 ```
 
-Depois de instalar MiKTeX, Strawberry Perl ou pacotes novos, pode ser necessário fechar e reabrir o PowerShell para o `PATH` ser recarregado.
+O script e read-only. Ele imprime `[OK]`, `[WARN]` ou `[FAIL]` e devolve exit
+code diferente de zero quando falta uma dependencia obrigatoria.
 
-Assim, os scripts de configuração tratam Node/npm, Strawberry Perl e MiKTeX como avisos, exceto quando o frontend ou o fluxo de documentação for a tarefa a executar.
+Valida:
 
-## Ficheiro de ambiente
+- PowerShell e versao.
+- Git.
+- Docker CLI.
+- Docker engine ativo.
+- Docker Compose v2.
+- .NET SDK compativel com o `TargetFramework` do repo.
+- Node.js.
+- npm.
+- `.env.example`.
+- `.env`, quando existe, e estado basico do `INFLUXDB_TOKEN`.
+- portas de PostgreSQL, RabbitMQ, InfluxDB, Grafana, Backoffice.Api e webUI.
 
-Criar um `.env` local a partir do exemplo:
+`.env` em falta e um aviso, nao uma falha de dependencia: o setup guiado e o
+`up.ps1` podem cria-lo a partir de `.env.example`.
+
+## 4. Instalar dependencias em falta
+
+Ver sugestoes sem instalar:
+
+```powershell
+.\scripts\setup\Install-LocalPrerequisites.ps1 -WhatIf
+```
+
+O instalador e opt-in. Ele nao mexe em `.env`, nao sobe Docker Compose, nao
+arranca runtime e nao apaga volumes.
+
+Para instalar dependencias suportadas em falta com `winget`:
+
+```powershell
+.\scripts\setup\Install-LocalPrerequisites.ps1 -InstallMissing
+```
+
+Tambem existem flags individuais:
+
+```powershell
+.\scripts\setup\Install-LocalPrerequisites.ps1 -InstallGit
+.\scripts\setup\Install-LocalPrerequisites.ps1 -InstallDotNet
+.\scripts\setup\Install-LocalPrerequisites.ps1 -InstallNode
+.\scripts\setup\Install-LocalPrerequisites.ps1 -InstallDocker
+```
+
+Sem `-Yes`, o script pede confirmacao antes de cada instalacao. Docker Desktop
+pode exigir privilegios, login, restart e abertura manual depois da instalacao.
+O script nao abre Docker Desktop automaticamente.
+
+Depois de instalar ferramentas, abrir uma nova shell e repetir:
+
+```powershell
+.\scripts\setup\Test-LocalPrerequisites.ps1
+```
+
+## 5. `.env` e configuracao local
+
+Criar `.env` manualmente:
 
 ```powershell
 Copy-Item .\.env.example .\.env
 ```
 
-Rever as portas e credenciais locais antes de iniciar o Docker. O ficheiro Compose usa os valores de `.env`, incluindo:
+Ou deixar `Setup-LocalEnvironment.ps1`/`up.ps1` criarem o ficheiro quando ele
+nao existe. Depois rever os valores locais.
 
-* RabbitMQ AMQP: `RABBITMQ_AMQP_PORT`, exemplo por omissão `5672`
-* Gestão RabbitMQ: `RABBITMQ_MANAGEMENT_PORT`, exemplo por omissão `15672`
-* PostgreSQL: `POSTGRES_PORT`, exemplo por omissão `5432`
-* InfluxDB: `INFLUXDB_PORT`, exemplo por omissão `8181`
-* Grafana: `GRAFANA_PORT`, exemplo por omissão `3000`
+Variaveis principais:
 
-Se uma porta já estiver ocupada, alterar o valor correspondente em `.env` antes de iniciar o Compose.
-
-## Iniciar serviços Docker
-
-O helper existente cria `.env` a partir de `.env.example` quando está em falta e depois inicia os serviços da baseline:
-
-```powershell
-.\infra\scripts\up.ps1
-.\infra\scripts\smoke-test.ps1
+```text
+POSTGRES_PORT=5432
+RABBITMQ_AMQP_PORT=5672
+RABBITMQ_MANAGEMENT_PORT=15672
+INFLUXDB_PORT=8181
+INFLUXDB_DATABASE=np_telemetry
+INFLUXDB_BUCKET=np_telemetry
+GRAFANA_PORT=3000
+BACKOFFICE_API_PORT=5254
+WEBUI_PORT=5173
 ```
 
-A baseline Compose inicia atualmente:
+`.env.example` usa um placeholder para `INFLUXDB_TOKEN`. Antes de subir a
+infraestrutura, substituir por um token local `apiv3_...`. O reposititorio nao
+deve versionar tokens reais.
 
-* `np-rabbitmq`
-* `np-postgres`
-* `np-influxdb`
-* `np-grafana`
+## 6. InfluxDB, token local e `np_telemetry`
 
-## Bootstrap do control plane
+O Docker Compose monta:
 
-Depois de o PostgreSQL estar a correr, semear o control plane:
-
-```powershell
-.\scripts\postgres\bootstrap-control-plane.ps1
+```text
+data/runtime/influx/admin-token.json -> /run/secrets/influx-admin-token.json
 ```
 
-Isto executa o projeto `NatureProtector.Postgres.Bootstrap` e materializa os dados iniciais de `control` necessários ao `Simulator.Host`, `Prevention.Host` e `Backoffice.Api`.
+Esse ficheiro e derivado de `.env`, e e ignorado pelo Git:
 
-## Iniciar os hosts .NET
-
-Em terminais separados a partir da raiz do repositório:
-
-```powershell
-.\scripts\dotnet\Use-RepoDotnetEnvironment.ps1
-dotnet run --project .\src\NatureProtector.Backoffice.Api
+```text
+/data/runtime/influx/admin-token.json
 ```
 
-```powershell
-.\scripts\dotnet\Use-RepoDotnetEnvironment.ps1
-dotnet run --project .\src\NatureProtector.Prevention.Host
-```
+Scripts envolvidos:
 
-```powershell
-.\scripts\dotnet\Use-RepoDotnetEnvironment.ps1
-dotnet run --project .\src\NatureProtector.Simulator.Host
-```
+- `scripts/influx/Ensure-InfluxAdminTokenFile.ps1` le `INFLUXDB_TOKEN` de `.env`
+  e gera `data/runtime/influx/admin-token.json`.
+- `scripts/influx/Ensure-InfluxDatabase.ps1` autentica no InfluxDB 3 e garante
+  que `np_telemetry` existe.
+- `infra/scripts/up.ps1` chama ambos na ordem correta.
 
-`Backoffice.Api` usa `http://localhost:5254` no seu perfil de arranque.
+`np-influxdb-init` so prepara permissoes do volume. Ele nao cria databases.
 
-## Validar a baseline
+## 7. Setup guiado
 
-Executar os scripts de validação só de leitura a partir da raiz do repositório:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup\Test-LocalPrerequisites.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup\Test-LocalBaseline.ps1
-```
-
-Se a política local de PowerShell permitir execução de scripts, também é possível usar:
+Fluxo recomendado para alguem novo:
 
 ```powershell
 .\scripts\setup\Test-LocalPrerequisites.ps1
-.\scripts\setup\Test-LocalBaseline.ps1
+.\scripts\setup\Install-LocalPrerequisites.ps1 -WhatIf
+.\scripts\setup\Setup-LocalEnvironment.ps1 -StartRuntime -OpenBrowser
 ```
 
-As verificações manuais também são úteis:
+`Install-LocalPrerequisites.ps1` so instala com flags explicitas, como
+`-InstallMissing` ou `-InstallNode`.
 
-* Gestão RabbitMQ: abrir `http://localhost:15672`, ou a porta configurada em `.env`, e verificar a fila `np.ingestion.readings`.
-* PostgreSQL: verificar que o bootstrap criou `control.*` e que o processamento em runtime cria/atualiza `pipeline.*` e `projection.*`.
-* InfluxDB: verificar que `np-influxdb` está a correr se for necessário usar Grafana/telemetria temporal. Se `InfluxDb:Enabled=false`, a indisponibilidade de Influx não deve bloquear a pipeline backend principal.
-* Grafana: abrir `http://localhost:3000`, ou a porta configurada em `.env`, e verificar o datasource/dashboard provisionado.
-* Backoffice API: chamar `http://localhost:5254/api/control/configurations/active` e `http://localhost:5254/api/control/areas` depois de a API estar a correr.
-
-## Modos InfluxDB
-
-`src/NatureProtector.Prevention.Host/appsettings.json` tem atualmente:
-
-```json
-"InfluxDb": {
-  "Enabled": false,
-  "FailPipelineOnWriteError": false
-}
-```
-
-Com `InfluxDb:Enabled=false`, a injeção de dependências resolve um writer Influx no-op. A pipeline de prevenção consegue processar através de RabbitMQ, PostgreSQL, projeções e Backoffice API sem escrever dados de séries temporais.
-
-Com `InfluxDb:Enabled=true`, o host cria um writer Influx real. Nesse modo, o `.env` local tem de fornecer um `INFLUXDB_TOKEN` válido, organização e valores de bucket/base de dados. `FailPipelineOnWriteError=false` mantém falhas de escrita Influx como não críticas para a pipeline operacional; colocá-lo a `true` faz com que falhas de escrita Influx façam falhar a tentativa de processamento.
-
-## Candidato de frontend
-
-O repositório contém `webUI/package.json`, `package-lock.json`, `vite.config.ts` e source React em `webUI/src`.
-
-O frontend deve ser tratado como candidato de UI e não como parte obrigatória da baseline backend. Para validar o estado atual:
+Sem flags, o setup guiado prepara infraestrutura e valida baseline:
 
 ```powershell
-Set-Location .\webUI
-npm install
-npm run build
-npm run dev
+.\scripts\setup\Setup-LocalEnvironment.ps1
 ```
 
-Se os scripts `build` ou `dev` não existirem no `package.json` de uma branch local, usar o fluxo Vite explícito:
+Executa:
+
+```text
+Test-LocalPrerequisites
+copy .env.example -> .env, se faltar
+up.ps1
+Test-LocalBaseline -InfrastructureOnly
+```
+
+Com runtime:
 
 ```powershell
-npx vite build
-npx vite
+.\scripts\setup\Setup-LocalEnvironment.ps1 -StartRuntime -OpenBrowser
 ```
 
-Iniciar o Vite apenas depois de o build passar. O proxy Vite mapeia `/api` para `http://localhost:5254`, por isso o `Backoffice.Api` deve estar a correr para vistas apoiadas pela API.
+Executa tambem:
 
-Limitações ou pontos a validar no frontend:
+```text
+start-local-runtime.ps1 -OpenBrowser -ForceRestart
+Test-LocalBaseline -Full
+```
 
-* confirmar que `vite.config.ts` está compatível com o modo ESM;
-* confirmar que os imports de estilos existem no caminho esperado;
-* confirmar que os aliases usados no código estão definidos no `vite.config.ts` e/ou `tsconfig.json`;
-* confirmar que `npm run build` passa antes de considerar a UI operacional.
+O setup guiado nao chama `reset-local-infra.ps1`.
 
-Por estes pontos, o frontend deve ser tratado como ainda não totalmente configurado até o build provar o contrário.
+## 8. Arranque normal do dia a dia
 
-## Resolução de problemas
+Para maquina ja preparada:
 
-Docker não está a correr:
+```powershell
+.\infra\scripts\up.ps1
+.\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+```
 
-* Iniciar o Docker Desktop ou o motor Docker local.
-* Voltar a executar `docker info` e depois `.\infra\scripts\up.ps1`.
+`up.ps1`:
 
-Portas ocupadas:
+- muda para a raiz do repo;
+- cria `.env` se faltar;
+- valida Docker CLI, engine e Compose v2 de forma minima;
+- gera o token file local de InfluxDB;
+- executa `docker compose up -d`;
+- garante `np_telemetry`;
+- nao instala dependencias;
+- nao apaga volumes;
+- nao arranca API/webUI.
 
-* Verificar os valores em `.env`.
-* Alterar a porta em conflito antes de iniciar o Compose.
-* Voltar a executar `docker compose up -d`.
+## 9. Validacao da baseline
 
-`.env` está em falta:
+Validar infraestrutura:
 
-* Executar `Copy-Item .\.env.example .\.env`, ou usar `.\infra\scripts\up.ps1`.
-* Rever credenciais e portas depois de o ficheiro ser criado.
+```powershell
+.\scripts\setup\Test-LocalBaseline.ps1 -InfrastructureOnly
+```
 
-PowerShell bloqueia a execução de `.ps1`:
+Valida:
 
-* Executar o script apenas para o processo atual com `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup\Test-LocalPrerequisites.ps1`.
-* Fazer o mesmo para `Test-LocalBaseline.ps1`, se necessário.
+- Docker daemon.
+- Containers `np-postgres`, `np-rabbitmq`, `np-influxdb`, `np-grafana`.
+- RabbitMQ AMQP e Management.
+- PostgreSQL e schema `control`.
+- InfluxDB e database `np_telemetry`.
+- Grafana.
 
-Acesso ao `NuGet.Config` é negado:
+Validar tudo:
 
-* Fechar IDEs ou terminais que possam estar a bloquear ficheiros.
-* Voltar a executar o comando a partir de uma shell normal de utilizador na raiz do repositório.
-* Se o caminho do repositório estiver sincronizado por software de backup/cloud, pausar a sincronização durante o build.
+```powershell
+.\scripts\setup\Test-LocalBaseline.ps1 -Full
+```
 
-`npm install` falha:
+Valida tambem:
 
-* Confirmar `node --version` e `npm --version`.
-* Executar a partir de `webUI`, não da raiz do repositório.
-* Se a falha for um problema de resolução de pacotes, inspecionar a diferença entre `package.json` e `package-lock.json` antes de alterar dependências.
+- Backoffice.Api.
+- webUI.
+- control plane com areas, celulas, sensores e cenarios.
+- endpoints opcionais apenas quando expostos nesta versao.
 
-`npx vite build` ou `npm run build` falha:
+## 10. Reset destrutivo
 
-* Corrigir primeiro a configuração do frontend; não iniciar o Vite como workaround.
-* Verificar ficheiros em falta, aliases em falta e configuração TypeScript em falta.
-* Manter a configuração backend separada das correções frontend.
+Reset destrutivo, apenas com confirmacao textual:
 
-InfluxDB não tem token ou configuração:
+```powershell
+.\infra\scripts\reset-local-infra.ps1 -Confirm RESET_LOCAL_INFRA
+```
 
-* Confirmar `INFLUXDB_TOKEN`, `INFLUXDB_ORGANIZATION` e `INFLUXDB_BUCKET` em `.env`.
-* Manter `InfluxDb:Enabled=false` para a baseline backend mais simples.
-* Não gerar nem rodar tokens automaticamente nesta primeira camada de setup.
+Este comando apaga volumes locais da baseline. Nao e o comando normal. Usar
+apenas para reconstrucao total ou teste de reprodutibilidade.
+
+`down.ps1` e diferente:
+
+```powershell
+.\infra\scripts\down.ps1
+```
+
+Ele para containers com `docker compose down` e preserva volumes.
+
+## 11. Numero minimo de comandos
+
+Maquina ja preparada:
+
+```powershell
+.\infra\scripts\up.ps1
+.\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+```
+
+Primeira vez com validacao:
+
+```powershell
+.\scripts\setup\Test-LocalPrerequisites.ps1
+.\scripts\setup\Setup-LocalEnvironment.ps1 -StartRuntime -OpenBrowser
+```
+
+## 12. Troubleshooting
+
+PowerShell bloqueia `.ps1`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup\Test-LocalPrerequisites.ps1
+```
+
+Docker engine indisponivel:
+
+- abrir Docker Desktop manualmente;
+- esperar o engine ficar pronto;
+- repetir `Test-LocalPrerequisites.ps1`.
+
+`INFLUXDB_TOKEN` ainda e placeholder:
+
+- editar `.env`;
+- definir um token local que comece por `apiv3_`;
+- repetir `.\infra\scripts\up.ps1`.
+
+`np_telemetry` nao existe:
+
+```powershell
+.\scripts\influx\Ensure-InfluxDatabase.ps1
+.\scripts\setup\Test-LocalBaseline.ps1 -InfrastructureOnly
+```
+
+Control plane vazio:
+
+```powershell
+.\scripts\postgres\bootstrap-control-plane.ps1
+.\scripts\setup\Test-LocalBaseline.ps1 -Full
+```
+
+Porta ocupada:
+
+- rever `Test-LocalPrerequisites.ps1`;
+- alterar a porta correspondente em `.env`;
+- repetir `up.ps1`.

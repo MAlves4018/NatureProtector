@@ -15,9 +15,12 @@ export function NavBar(
             bg={c.navBg} borderBottom="1px solid" borderColor={c.navBorder}
             shadow="sm" flexShrink={0} transition="background 0.2s"
         >
-            <Flex align="center" justify="center" w="36px" h="36px" borderRadius="full" border="2px solid #16a34a">
-                <img src="images/NPIconNoBg.png" width="24px" height="24px" />
-            </Flex>
+            <img
+                src="images/NPIconNoBg.png"
+                width="36px"
+                height="36px"
+                alt="Nature Protector"
+            />
             <Text fontWeight="semibold" fontSize="lg" color={c.textPrimary} letterSpacing="wide">
                 Nature Protector
             </Text>
