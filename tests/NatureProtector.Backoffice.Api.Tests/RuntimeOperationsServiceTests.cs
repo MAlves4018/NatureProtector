@@ -90,6 +90,54 @@ public sealed class RuntimeOperationsServiceTests
         Assert.Contains(result!.Rows, row => row["metricType"] == "Temperature" && row["avgScore"] == "0.72");
     }
 
+    [Theory]
+    [InlineData("latest-run-np-vs-fwi-kbdi")]
+    [InlineData("latest-run-np-vs-fwi")]
+    [InlineData("latest-run-components")]
+    [InlineData("latest-run-quality-by-profile")]
+    [InlineData("latest-run-cell-context")]
+    [InlineData("latest-run-fwi-input-completeness")]
+    [InlineData("latest-run-kbdi-input-completeness")]
+    [InlineData("latest-run-coverage-freshness")]
+    public async Task RuntimeDiagnostics_V1EvidenceDiagnostics_ReturnPersistedRows(string diagnosticId)
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.ExecuteRuntimeDiagnosticAsync(
+            diagnosticId,
+            new RuntimeDiagnosticRequest("proenca-a-nova", 30),
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result!.Rows);
+    }
+
+    [Fact]
+    public async Task RuntimeSummary_IncludesScoreComponentsAndIndexComparison()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var summary = await service.GetRuntimeSummaryAsync("proenca-a-nova", 30, CancellationToken.None);
+
+        Assert.NotNull(summary.ScoreComponents);
+        Assert.Equal(0.72, summary.ScoreComponents!.NpScore);
+        Assert.Equal(0.76, summary.ScoreComponents.BaseRisk);
+        Assert.Equal(72, summary.ScoreComponents.Score100);
+        Assert.Equal("Meteorology", summary.ScoreComponents.DominantDriver);
+        Assert.Equal("Candidate Parameter Set V1.0", summary.ScoreComponents.ParameterSetVersion);
+
+        Assert.NotNull(summary.IndexComparison);
+        Assert.Equal(18.5, summary.IndexComparison!.FireWeatherIndex);
+        Assert.Equal(0.62, summary.IndexComparison.NormalizedFireWeatherIndex);
+        Assert.Equal(420, summary.IndexComparison.KeetchByramDroughtIndex);
+        Assert.Equal(0.525, summary.IndexComparison.NormalizedKeetchByramDroughtIndex);
+        Assert.Equal("Complete", summary.IndexComparison.FireWeatherCalculationStatus);
+    }
+
     [Fact]
     public async Task RuntimeDiagnostics_ScenarioDefinitionDetails_ReturnsSimulatorOptionsFlags()
     {
@@ -122,6 +170,29 @@ public sealed class RuntimeOperationsServiceTests
 
         Assert.Contains(result.Warnings, warning => warning.Contains("scenario_c", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public async Task StartRuntimeRun_MultipleDegradationProfiles_AreReturnedInValidatedRequest()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.StartRuntimeRunAsync(
+            ValidRunRequest() with
+            {
+                ScenarioCode = "scenario_c",
+                DegradationProfile = null,
+                DegradationProfiles = ["missing-readings", "noise"]
+            },
+            CancellationToken.None);
+
+        Assert.Equal("Validated", result.Status);
+        Assert.Equal("missing-readings+noise", result.Requested.DegradationProfile);
+        Assert.Equal(new[] { "missing-readings", "noise" }, result.Requested.DegradationProfiles);
+        Assert.DoesNotContain(result.Warnings, warning => warning.Contains("may behave like a clean scenario", StringComparison.OrdinalIgnoreCase));
+    }
+
 
     [Fact]
     public async Task StartRuntimeRun_SensorCountAboveActiveSensors_IsRejected()
@@ -383,6 +454,7 @@ public sealed class RuntimeOperationsServiceTests
                           "interval_seconds": 5,
                           "seed": 12345,
                           "degradation_profile": "none",
+                          "degradation_profiles": ["none"],
                           "orchestrator_correlation_id": "corr-tests",
                           "selected_sensor_names": ["pilot-temperature-0001"]
                         }
@@ -442,13 +514,56 @@ public sealed class RuntimeOperationsServiceTests
             {
                 Id = Guid.NewGuid(),
                 AreaId = areaId,
+                SimulationRunId = runId,
                 SensorId = sensorId,
                 GridCellId = cellId,
                 SourceEventId = eventId,
                 Timestamp = now.AddHours(-1),
                 RiskScore = 0.72,
+                BaseRisk = 0.76,
+                AdjustedScore = 0.72,
+                Score100 = 72,
+                MeteorologyComponent = 0.8,
+                DroughtComponent = 0.5,
+                TerritoryComponent = 0.7,
+                HazardComponent = 0.7,
+                FuelComponent = 0.6,
+                GeomorphologyComponent = 0.8,
+                ConfidenceFactor = 0.95,
+                IntegrityFactor = 1,
+                DominantDriver = "Meteorology",
+                ParameterSetVersion = "Candidate Parameter Set V1.0",
+                CalculationStatus = "Complete",
                 RiskLevel = "High",
                 CreatedAt = now.AddMinutes(-4)
+            });
+
+            dbContext.DailyCellStates.Add(new DailyCellStateRecord
+            {
+                Id = Guid.NewGuid(),
+                AreaId = areaId,
+                GridCellId = cellId,
+                SimulationRunId = runId,
+                ConfigurationVersionId = configurationVersionId,
+                LogicalDate = now.Date,
+                DailyPrecipitationMillimeters = 0.4,
+                MaxTemperatureCelsius = 36.1,
+                LatestHumidityPercent = 24,
+                LatestWindSpeedMetersPerSecond = 8.2,
+                AntecedentState = "CandidateDefault",
+                DroughtContext = "KBDI candidate",
+                FireWeatherIndex = 18.5,
+                NormalizedFireWeatherIndex = 0.62,
+                FireWeatherCalculationStatus = "Complete",
+                KeetchByramDroughtIndex = 420,
+                NormalizedKeetchByramDroughtIndex = 0.525,
+                KbdiCalculationStatus = "Complete",
+                FireIndexProvenance = "calculated_candidate",
+                CandidateParameterSetVersion = "Candidate Parameter Set V1.0",
+                Provenance = "test",
+                LastUpdatedAt = now.AddMinutes(-4),
+                CreatedAt = now.AddMinutes(-4),
+                UpdatedAt = now.AddMinutes(-4)
             });
 
             dbContext.AreaRiskSnapshotLogs.Add(new AreaRiskSnapshotLogRecord
@@ -474,6 +589,9 @@ public sealed class RuntimeOperationsServiceTests
                 AggregateRiskScore = 0.72,
                 AggregateRiskLevel = "High",
                 Severity = "High",
+                CoverageStatus = "LowCoverage",
+                FreshnessStatus = "Fresh",
+                CarryForwardStatus = "Current",
                 Summary = "Synthetic state",
                 AssessmentCount = 1,
                 UpdatedAt = now.AddMinutes(-4)
@@ -489,6 +607,9 @@ public sealed class RuntimeOperationsServiceTests
                 RiskScore = 0.72,
                 RiskLevel = "High",
                 Severity = "High",
+                CoverageStatus = "LowCoverage",
+                FreshnessStatus = "Fresh",
+                CarryForwardStatus = "Current",
                 UpdatedAt = now.AddMinutes(-4)
             });
 

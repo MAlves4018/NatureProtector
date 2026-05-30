@@ -38,6 +38,7 @@ public sealed class GeneratedScenarioManifestLoaderTests
             "FailureRate": 0.25,
             "NoiseLevel": 0.45,
             "DegradationProfile": "missing-readings",
+            "DegradationProfiles": ["missing-readings", "noise"],
             "TimeAcceleration": 2.0,
             "NumberOfCycles": 9,
             "IntervalSeconds": 4
@@ -61,6 +62,7 @@ public sealed class GeneratedScenarioManifestLoaderTests
         Assert.Equal(0.25, options.FailureRate);
         Assert.Equal(0.45, options.NoiseLevel);
         Assert.Equal("missing-readings", options.DegradationProfile);
+        Assert.Equal(new[] { "missing-readings", "noise" }, options.DegradationProfiles);
         Assert.Equal(2.0, options.TimeAcceleration);
         Assert.Equal(9, options.NumberOfCycles);
         Assert.Equal(4, options.IntervalSeconds);

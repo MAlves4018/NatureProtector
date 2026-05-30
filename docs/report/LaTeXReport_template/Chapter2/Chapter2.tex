@@ -1,5 +1,93 @@
+\chapter{Estado da Arte}
 
-\chapter{State of the art} 
-\label{ch:Chapter2}
-\vfill \minitoc \newpage
+\section{Visão Geral do Capítulo}
 
+Este capítulo apresenta o enquadramento conceptual e técnico que sustenta o desenvolvimento do NatureProtector V1. O objetivo não é realizar uma revisão científica exaustiva sobre modelação de incêndios, mas identificar os principais fatores, sistemas e limitações que justificam a necessidade de uma base técnica orientada à prevenção, rastreabilidade e validação em tempo de execução.
+
+O risco de incêndio resulta da interação entre fatores meteorológicos, ambientais, territoriais e operacionais. Sistemas oficiais e índices reconhecidos fornecem referências importantes para compreender o problema, mas dependem de dados específicos, metodologias próprias, calibração, validação e interpretação institucional~\citep{nrcan_fwi_system,ipma_fwi,ec_jrc_effis}. O NatureProtector V1 não pretende substituir esses sistemas, nem reproduzir os seus modelos. A sua função, nesta fase, é estabelecer uma base técnica capaz de receber observações, processá-las de forma rastreável, produzir avaliações candidatas de risco e expor estado operacional através de projeções, API e ferramentas de observabilidade.
+
+\section{Incêndios Rurais e Florestais como Problema Multiescalar}
+
+Os incêndios rurais e florestais constituem um problema complexo que não pode ser explicado por uma única variável. A ocorrência e evolução de um incêndio dependem da interação entre meteorologia, combustível vegetal, secura, topografia, uso do solo, ocupação humana, acessibilidade, capacidade de resposta e histórico de gestão territorial~\citep{icnf_incendios_rurais,nrcan_fwi_system,clms_corine_land_cover}. Esta interação torna o problema simultaneamente ambiental, técnico, social e operacional.
+
+A escala do problema também é variável. A nível regional, o perigo de incêndio pode ser influenciado por padrões meteorológicos, ondas de calor, períodos prolongados de seca e características gerais do território. A nível local, áreas próximas podem apresentar diferenças significativas devido à vegetação, declive, exposição solar, continuidade de combustível ou condições observadas por sensores. A nível operacional, a utilidade da informação depende da sua atualização, interpretação e capacidade de apoiar decisões~\citep{copernicus_effis,ec_jrc_effis}.
+
+Esta natureza multiescalar cria dificuldades para sistemas de prevenção. Um indicador agregado pode ser útil para comunicação geral, mas pode ser insuficiente para explicar a origem do risco, a qualidade dos dados utilizados ou a diferença entre áreas específicas. Do mesmo modo, uma leitura local isolada pode ser informativa, mas não deve ser interpretada sem contexto, qualidade, histórico ou critérios de elegibilidade.
+
+Neste relatório, a expressão risco operacional é usada para descrever o indicador interno produzido pela V1. Esta utilização não deve ser confundida com uma definição científica completa de risco, nem com produtos oficiais de perigo de incêndio.
+
+\section{Fatores Relevantes na Avaliação do Risco de Incêndio}
+
+A avaliação do risco ou perigo de incêndio envolve múltiplas dimensões. Embora diferentes sistemas utilizem metodologias distintas, é comum considerar fatores meteorológicos, estado do combustível, secura persistente, características do terreno e contexto operacional~\citep{nrcan_fwi_system,keetch_byram_1968,haines_1988}.
+
+\subsection{Condições Meteorológicas}
+
+As condições meteorológicas têm influência direta no perigo de incêndio. Temperatura, humidade relativa, vento e precipitação afetam a humidade dos combustíveis, a probabilidade de ignição e a capacidade de propagação do fogo. Temperaturas elevadas e humidade reduzida tendem a aumentar a inflamabilidade da vegetação. O vento pode acelerar a propagação e dificultar ações de combate. A precipitação recente e acumulada contribui para compreender a disponibilidade de humidade no solo e na vegetação~\citep{nrcan_fwi_system,wmo_no8}.
+
+Num sistema técnico de prevenção, observações meteorológicas são entradas relevantes. No entanto, a sua utilidade depende da qualidade da leitura, da representatividade espacial, da consistência temporal e do contexto em que são interpretadas. Uma leitura isolada não é, por si só, suficiente para produzir uma avaliação científica robusta do perigo de incêndio.
+
+\subsection{Combustível, Vegetação e Uso do Solo}
+
+A disponibilidade, continuidade e estado do combustível vegetal influenciam a possibilidade de ignição e propagação. Áreas com vegetação densa, combustível seco ou continuidade horizontal e vertical podem apresentar maior perigosidade do que áreas com menor carga combustível ou descontinuidade~\citep{nrcan_fwi_system,clms_corine_land_cover}.
+
+O uso do solo e a cobertura vegetal são, por isso, elementos relevantes para diferenciar locais sujeitos às mesmas condições meteorológicas. Duas células territoriais podem ter meteorologia semelhante, mas níveis de perigosidade distintos devido à vegetação, ocupação do solo ou acessibilidade~\citep{clms_corine_land_cover,dgt_cos}.
+
+Na V1 do NatureProtector, estes fatores podem ser representados de forma simplificada como componentes candidatos do modelo operacional. Contudo, tal representação não deve ser interpretada como calibração científica. Pesos, classes e limiares territoriais devem ser tratados como parâmetros candidatos de uma base técnica.
+
+\subsection{Secura Persistente e Condições Antecedentes}
+
+A secura não depende apenas das condições instantâneas. Períodos prolongados sem precipitação, défices de humidade e acumulação de condições favoráveis à ignição podem aumentar a suscetibilidade do território. Esta dimensão temporal é particularmente relevante porque o perigo de incêndio pode manter-se elevado mesmo quando uma leitura meteorológica pontual não parece extrema~\citep{keetch_byram_1968,nrcan_fwi_system}.
+
+Índices e modelos que consideram secura persistente demonstram a importância de incorporar memória temporal. Para o NatureProtector V1, isto reforça a necessidade de distinguir uma base técnica inicial de um modelo científico final. A V1 pode estruturar a pipeline e preparar componentes associados à secura, mas a calibração científica desses componentes deve ser tratada como trabalho futuro.
+
+\subsection{Terreno e Contexto Local}
+
+Características do terreno, como declive, exposição, altitude e acessibilidade, podem influenciar o comportamento do fogo e a dificuldade de intervenção. O contexto local também pode incluir proximidade a infraestruturas, zonas habitadas, caminhos, pontos de água ou áreas ambientalmente sensíveis~\citep{clms_corine_land_cover,dgt_cos}.
+
+Estes fatores não determinam isoladamente a ocorrência de incêndio, mas contribuem para a avaliação operacional do risco. A sua integração num sistema técnico deve ser feita com cuidado, distinguindo variáveis observadas, hipóteses operacionais e parâmetros candidatos.
+
+\section{Sistemas, Índices e Referências Existentes}
+
+Existem sistemas e índices amplamente utilizados para apoiar a avaliação do perigo de incêndio. Estes sistemas constituem referências importantes para enquadrar o NatureProtector, mas não devem ser confundidos com a implementação V1.
+
+O \textit{Fire Weather Index} é uma das referências internacionais mais conhecidas para avaliação meteorológica do perigo de incêndio~\citep{nrcan_fwi_system,ipma_fwi}. A sua estrutura considera variáveis meteorológicas e subíndices relacionados com humidade dos combustíveis, propagação potencial e intensidade do fogo. A sua existência demonstra a importância de variáveis como temperatura, humidade, vento, precipitação e continuidade temporal.
+
+No entanto, o NatureProtector V1 não implementa nem reproduz o FWI. O FWI é relevante como referência conceptual, porque mostra a importância da meteorologia, da secura e da memória temporal na avaliação do perigo de incêndio. Não valida diretamente os pesos, limiares, classes ou fórmulas internas utilizados na V1.
+
+Indicadores de seca e secura, como índices baseados em défice hídrico, humidade do solo ou acumulação de condições secas, mostram que a avaliação do perigo de incêndio não pode depender apenas de leituras instantâneas~\citep{keetch_byram_1968}. A secura persistente é uma dimensão relevante para compreender vulnerabilidade do combustível e suscetibilidade à ignição. No contexto do NatureProtector, esta perspetiva justifica a existência conceptual de componentes associadas à secura, mas não valida automaticamente a sua parametrização na V1.
+
+Sistemas nacionais e europeus de monitorização e comunicação de perigo de incêndio combinam dados, metodologias, interpretação técnica e procedimentos institucionais~\citep{ipma_fwi,ipma_pir_rcm,ec_jrc_effis,copernicus_effis}. Estes sistemas mostram como a informação de risco pode ser produzida, agregada, comunicada e utilizada em contexto operacional. O NatureProtector V1 não deve ser descrito como equivalente a esses sistemas. A relação adequada é de enquadramento e inspiração metodológica.
+
+\section{Abordagens Atuais de Monitorização e Gestão}
+
+A monitorização e gestão do risco de incêndio recorrem frequentemente a diferentes fontes de informação: observações meteorológicas, dados de satélite, cartografia de combustíveis, histórico de ocorrências, relatórios de campo, avisos oficiais e interpretação por especialistas~\citep{copernicus_effis,ec_jrc_effis,nasa_firms,clms_corine_land_cover}. Esta diversidade de fontes torna o problema também um desafio de integração de dados.
+
+Do ponto de vista de engenharia de software, tal diversidade implica lidar com formatos diferentes, periodicidades distintas, escalas espaciais variadas e níveis de fiabilidade heterogéneos. Um sistema de apoio à prevenção deve, por isso, ser capaz de registar a origem dos dados, avaliar a sua qualidade, lidar com falhas e expor resultados de forma rastreável.
+
+Sistemas institucionais tendem a apoiar-se em processos validados, dados oficiais e experiência operacional. Num projeto como o NatureProtector V1, o desafio imediato é diferente: construir uma base técnica que permita simular observações, processá-las de forma durável, produzir projeções operacionais e recolher evidência sobre o funcionamento da pipeline. Esta base é necessária antes de avançar para validação científica ou integração operacional mais ambiciosa.
+
+\section{Lacunas Relevantes e Posicionamento da V1}
+
+A análise do problema e das abordagens existentes permite identificar lacunas relevantes para o posicionamento do NatureProtector V1.
+
+Em primeiro lugar, indicadores de risco são mais úteis quando a sua origem pode ser inspecionada. Um sistema deve permitir compreender que observações foram recebidas, quais foram processadas, quais foram rejeitadas, quais deram origem a avaliações de risco e como essas avaliações foram projetadas em estado operacional. O NatureProtector V1 responde a esta necessidade através de uma pipeline durável, com inbox de eventos, tentativas de processamento, eventos rejeitados, eventos em quarentena, leituras aceites, avaliações de risco e projeções.
+
+Em segundo lugar, uma leitura inválida, incompleta ou bloqueada não deve ser convertida automaticamente num score de risco baixo. Esta distinção é essencial em sistemas de apoio à decisão. Caso contrário, falhas observacionais poderiam ser interpretadas como segurança operacional. A V1 incorpora esta preocupação ao separar qualidade, elegibilidade e risco. Uma leitura bloqueada significa que não existem condições para produzir uma avaliação válida, e não que o risco físico seja baixo.
+
+Em terceiro lugar, eventos brutos e avaliações individuais não são suficientes para consumo operacional. É necessário transformar os resultados da pipeline em modelos de leitura adequados para API, dashboards e análise. Isto justifica a existência de projeções por célula, por área e por estado de alerta.
+
+Por fim, num projeto académico de software, afirmar que o sistema funciona não é suficiente. É necessário recolher evidência verificável: registos na base de dados, respostas da API, resultados de testes, contagens em tempo de execução e classificação de erros. O NatureProtector V1 integra esta preocupação através da recolha de evidência em tempo de execução e da execução de testes automatizados.
+
+Com base neste enquadramento, o NatureProtector V1 deve ser entendido como:
+
+\begin{itemize}
+    \item uma base técnica local;
+    \item uma pipeline de prevenção orientada a eventos;
+    \item uma arquitetura em tempo de execução rastreável;
+    \item uma implementação de avaliação candidata de risco;
+    \item um demonstrador de projeções operacionais e API;
+    \item uma base para futura calibração, validação e integração operacional.
+\end{itemize}
+
+O NatureProtector V1 não é um índice oficial de perigo de incêndio, não substitui sistemas nacionais ou europeus, não constitui um modelo cientificamente calibrado de previsão de incêndios e não deve ser interpretado como plataforma operacional pronta para produção.
+Este enquadramento justifica a necessidade de uma base técnica rastreável, capaz de separar observações, qualidade dos dados, avaliação candidata de risco, projeções operacionais e evidência de validação.

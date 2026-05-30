@@ -352,9 +352,10 @@ public sealed class ReadingRiskPipelineTests
         Assert.NotNull(scoringService.LastInput);
         Assert.Equal(RiskInputStatus.PartialButUsable, scoringService.LastInput!.InputStatus);
         Assert.Equal(RiskEligibilityReason.DelayedReading, scoringService.LastInput.EligibilityReason);
-        Assert.Equal(ObservationalConfidenceLevel.Medium, scoringService.LastInput.ObservationalConfidence);
-        Assert.Equal(OperationalIntegrityLevel.Degraded, scoringService.LastInput.OperationalIntegrity);
+        Assert.Equal(ObservationalConfidenceLevel.Low, scoringService.LastInput.ObservationalConfidence);
+        Assert.Equal(OperationalIntegrityLevel.Compromised, scoringService.LastInput.OperationalIntegrity);
         Assert.Contains("Delayed", scoringService.LastInput.QualityFlags);
+        Assert.Contains(RiskInput.LowCoverageFlag, scoringService.LastInput.QualityFlags);
         var carried = Assert.Single(scoringService.LastInput.ClassifierResults);
         Assert.Equal("temporal_classifier", carried.ClassifierName);
     }
@@ -400,11 +401,13 @@ public sealed class ReadingRiskPipelineTests
         await pipeline.ProcessAcceptedReadingAsync(second, CancellationToken.None);
 
         Assert.Equal(2, scoringService.Inputs.Count);
-        Assert.Equal(DailyCellStateStatus.Missing, scoringService.Inputs[0].DailyCellStateStatus);
-        Assert.Contains(RiskInput.MissingDailyCellStateFlag, scoringService.Inputs[0].QualityFlags);
+        Assert.Equal(DailyCellStateStatus.Present, scoringService.Inputs[0].DailyCellStateStatus);
+        Assert.DoesNotContain(RiskInput.MissingDailyCellStateFlag, scoringService.Inputs[0].QualityFlags);
+        Assert.NotNull(scoringService.Inputs[0].DailyCellState);
+        Assert.Equal(28.0, scoringService.Inputs[0].DailyCellState!.MaxTemperatureCelsius);
         Assert.Equal(DailyCellStateStatus.Present, scoringService.Inputs[1].DailyCellStateStatus);
         Assert.NotNull(scoringService.Inputs[1].DailyCellState);
-        Assert.Equal(28.0, scoringService.Inputs[1].DailyCellState!.MaxTemperatureCelsius);
+        Assert.Equal(33.0, scoringService.Inputs[1].DailyCellState!.MaxTemperatureCelsius);
     }
 
     [Fact]

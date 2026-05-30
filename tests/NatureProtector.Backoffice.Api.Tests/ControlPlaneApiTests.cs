@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Net;
+using System.Net.Http.Json;
 
 namespace NatureProtector.Backoffice.Api.Tests;
 
@@ -288,8 +289,105 @@ public sealed class ControlPlaneApiTests
         Assert.Equal(2, root.GetProperty("pipeline").GetProperty("inboxTotal").GetInt32());
         Assert.Equal(2, root.GetProperty("risk").GetProperty("recentCount").GetInt32());
         Assert.Equal("Alarm", root.GetProperty("areaOperationalState").GetProperty("alertState").GetString());
+        Assert.Equal("VeryHigh", root.GetProperty("scoreComponents").GetProperty("npRiskClass").GetString());
+        Assert.Equal("Moderate", root.GetProperty("indexComparison").GetProperty("fireWeatherIpmaClass").GetString());
+        Assert.Equal("VeryLowDryness", root.GetProperty("indexComparison").GetProperty("kbdiDrynessClass").GetString());
+        Assert.Equal("High", root.GetProperty("indexComparison").GetProperty("portugueseContextRiskProxyClass").GetString());
+        Assert.Equal("NotAvailable", root.GetProperty("indexComparison").GetProperty("localFwiPercentileStatus").GetString());
         Assert.Equal(1, root.GetProperty("activeAlerts").GetArrayLength());
         Assert.NotEmpty(root.GetProperty("limitations").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task AreaGeoJsonEndpoint_ReturnsGeometry()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/areas/proenca-a-nova/GeoJSON?configurationVersion=1");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(Guid.Parse("00000000-0000-0000-0000-000000000001"), document.RootElement.GetProperty("id").GetGuid());
+        Assert.Equal("{\"type\":\"Polygon\",\"coordinates\":[]}", document.RootElement.GetProperty("geometryGeoJson").GetString());
+    }
+
+    [Fact]
+    public async Task RuntimeDiagnosticsEndpoints_ReturnCatalogResultAndNotFound()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var catalogResponse = await client.GetAsync("/api/control/runtime/diagnostics");
+        var resultResponse = await client.PostAsync(
+            "/api/control/runtime/diagnostics/runtime-table-counts",
+            JsonContent.Create(new { areaCode = "proenca-a-nova", recentMinutes = 30 }));
+        var missingResponse = await client.PostAsync(
+            "/api/control/runtime/diagnostics/missing-diagnostic",
+            JsonContent.Create(new { areaCode = "proenca-a-nova" }));
+
+        catalogResponse.EnsureSuccessStatusCode();
+        resultResponse.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.NotFound, missingResponse.StatusCode);
+
+        using var catalogDocument = JsonDocument.Parse(await catalogResponse.Content.ReadAsStringAsync());
+        using var resultDocument = JsonDocument.Parse(await resultResponse.Content.ReadAsStringAsync());
+
+        Assert.Equal("runtime-table-counts", catalogDocument.RootElement.GetProperty("diagnostics")[0].GetProperty("id").GetString());
+        Assert.Equal("runtime-table-counts", resultDocument.RootElement.GetProperty("id").GetString());
+        Assert.Equal("control", resultDocument.RootElement.GetProperty("rows")[0].GetProperty("schema").GetString());
+    }
+
+    [Fact]
+    public async Task RuntimeRunAuditEndpoint_ReturnsBvCAndIndexContext()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/runtime/runs/90000000-0000-0000-0000-000000000001/audit");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+
+        Assert.Equal(72, root.GetProperty("expectedEvents").GetInt32());
+        Assert.Equal(70, root.GetProperty("acceptedReadings").GetInt32());
+        Assert.Equal(2, root.GetProperty("missingEvents").GetInt32());
+        Assert.Equal("CompleteEligible", root.GetProperty("eligibilitySummary")[0].GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task RuntimeRunStartAndReset_RespectDevelopmentAndReturnResponses()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var startResponse = await client.PostAsync(
+            "/api/control/runtime/runs",
+            JsonContent.Create(new
+            {
+                areaCode = "proenca-a-nova",
+                scenarioCode = "scenario_c",
+                sensorCount = 6,
+                numberOfCycles = 5,
+                intervalSeconds = 30,
+                seed = 42,
+                degradationProfile = "missing-readings",
+                degradationProfiles = new[] { "missing-readings" }
+            }));
+        var resetResponse = await client.PostAsync(
+            "/api/control/runtime/reset",
+            JsonContent.Create(new { scope = "runtime", confirm = "RESET", dryRun = true }));
+
+        startResponse.EnsureSuccessStatusCode();
+        resetResponse.EnsureSuccessStatusCode();
+
+        using var startDocument = JsonDocument.Parse(await startResponse.Content.ReadAsStringAsync());
+        using var resetDocument = JsonDocument.Parse(await resetResponse.Content.ReadAsStringAsync());
+
+        Assert.Equal("Validated", startDocument.RootElement.GetProperty("status").GetString());
+        Assert.Equal("DryRun", resetDocument.RootElement.GetProperty("status").GetString());
     }
 
     [Fact]

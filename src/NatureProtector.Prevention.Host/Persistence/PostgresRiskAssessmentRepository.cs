@@ -69,6 +69,21 @@ public sealed class PostgresRiskAssessmentRepository(
             SourceEventId = sourceEventId,
             Timestamp = assessment.Timestamp,
             RiskScore = assessment.RiskScore,
+            BaseRisk = assessment.BaseRisk,
+            AdjustedScore = assessment.AdjustedScore,
+            Score100 = assessment.Score100,
+            MeteorologyComponent = assessment.MeteorologyComponent,
+            DroughtComponent = assessment.DroughtComponent,
+            TerritoryComponent = assessment.TerritoryComponent,
+            HazardComponent = assessment.HazardComponent,
+            FuelComponent = assessment.FuelComponent,
+            GeomorphologyComponent = assessment.GeomorphologyComponent,
+            ConfidenceFactor = assessment.ConfidenceFactor,
+            IntegrityFactor = assessment.IntegrityFactor,
+            DominantDriver = assessment.DominantDriver,
+            ParameterSetVersion = assessment.ParameterSetVersion,
+            CalculationStatus = assessment.CalculationStatus,
+            Limitations = assessment.Limitations,
             RiskLevel = assessment.RiskLevel.ToString(),
             ExplanationSummary = assessment.ExplanationSummary,
             CreatedAt = DateTimeOffset.UtcNow
@@ -171,10 +186,30 @@ public sealed class PostgresRiskAssessmentRepository(
     /// </summary>
     private static RiskAssessment ToDomainAssessment(RiskAssessmentLogRecord entity)
     {
+        var baseRisk = entity.BaseRisk == 0.0 && entity.AdjustedScore == 0.0 && entity.RiskScore != 0.0
+            ? entity.RiskScore
+            : entity.BaseRisk;
+        var adjustedScore = entity.AdjustedScore == 0.0 && entity.RiskScore != 0.0
+            ? entity.RiskScore
+            : entity.AdjustedScore;
+
         return new RiskAssessment(
             entity.Id,
             entity.Timestamp,
-            entity.RiskScore,
-            entity.ExplanationSummary);
+            baseRisk,
+            adjustedScore,
+            entity.ExplanationSummary,
+            entity.MeteorologyComponent,
+            entity.DroughtComponent,
+            entity.TerritoryComponent,
+            entity.HazardComponent,
+            entity.FuelComponent,
+            entity.GeomorphologyComponent,
+            entity.ConfidenceFactor == 0.0 ? 1.0 : entity.ConfidenceFactor,
+            entity.IntegrityFactor == 0.0 ? 1.0 : entity.IntegrityFactor,
+            entity.DominantDriver,
+            entity.ParameterSetVersion,
+            entity.CalculationStatus,
+            entity.Limitations);
     }
 }

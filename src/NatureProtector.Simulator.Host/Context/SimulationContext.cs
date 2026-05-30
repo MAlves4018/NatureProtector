@@ -166,7 +166,11 @@ public sealed record SimulationRunOverridesRequested(
     int? IntervalSeconds,
     int? Seed,
     string? DegradationProfile,
-    string? OrchestratorCorrelationId);
+    string? OrchestratorCorrelationId)
+{
+    public IReadOnlyList<string> DegradationProfiles { get; init; } =
+        SimulationDegradationProfiles.Normalize(null, DegradationProfile);
+}
 
 public sealed record SimulationRunOverridesResolved(
     int SensorCount,
@@ -175,7 +179,11 @@ public sealed record SimulationRunOverridesResolved(
     int? PreferredSeed,
     string? DegradationProfile,
     string? OrchestratorCorrelationId,
-    IReadOnlyList<string> SelectedSensorNames);
+    IReadOnlyList<string> SelectedSensorNames)
+{
+    public IReadOnlyList<string> DegradationProfiles { get; init; } =
+        SimulationDegradationProfiles.Normalize(null, DegradationProfile);
+}
 
 public sealed record SimulationRunOverridesSnapshot(
     SimulationRunOverridesRequested Requested,

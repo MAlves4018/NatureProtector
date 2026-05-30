@@ -437,6 +437,12 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.ToTable("risk_assessment_log", PostgresSchemaNames.Projection);
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.RiskLevel).HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.DominantDriver).HasMaxLength(50).HasDefaultValue("Mixed").IsRequired();
+        builder.Property(entity => entity.ParameterSetVersion).HasMaxLength(100).HasDefaultValue("Unknown").IsRequired();
+        builder.Property(entity => entity.CalculationStatus).HasMaxLength(50).HasDefaultValue("CandidateFallback").IsRequired();
+        builder.Property(entity => entity.ConfidenceFactor).HasDefaultValue(1.0);
+        builder.Property(entity => entity.IntegrityFactor).HasDefaultValue(1.0);
+        builder.Property(entity => entity.Limitations).HasMaxLength(1000);
         builder.Property(entity => entity.ExplanationSummary).HasMaxLength(2000);
         builder.HasIndex(entity => entity.SourceEventId).IsUnique();
         builder.HasIndex(entity => entity.SimulationRunId);
@@ -486,11 +492,15 @@ public sealed class NatureProtectorControlDbContext : DbContext
 
         builder.ToTable("daily_cell_state", PostgresSchemaNames.Projection);
         builder.HasKey(entity => entity.Id);
-        builder.Property(entity => entity.AntecedentState).HasMaxLength(100).IsRequired();
-        builder.Property(entity => entity.DroughtContext).HasMaxLength(100).IsRequired();
-        builder.Property(entity => entity.FireIndexProvenance).HasMaxLength(100).IsRequired();
+        builder.Property(entity => entity.AntecedentState).HasColumnType("text").IsRequired();
+        builder.Property(entity => entity.DroughtContext).HasColumnType("text").IsRequired();
+        builder.Property(entity => entity.KbdiCalculationStatus).HasMaxLength(50).HasDefaultValue("Missing").IsRequired();
+        builder.Property(entity => entity.KbdiLimitations).HasColumnType("text");
+        builder.Property(entity => entity.FireIndexProvenance).HasColumnType("text").IsRequired();
+        builder.Property(entity => entity.FireWeatherCalculationStatus).HasMaxLength(50).HasDefaultValue("Missing").IsRequired();
+        builder.Property(entity => entity.FireWeatherLimitations).HasColumnType("text");
         builder.Property(entity => entity.CandidateParameterSetVersion).HasMaxLength(100).IsRequired();
-        builder.Property(entity => entity.Provenance).HasMaxLength(200).IsRequired();
+        builder.Property(entity => entity.Provenance).HasColumnType("text").IsRequired();
         builder.HasIndex(entity => new { entity.AreaId, entity.GridCellId, entity.LogicalDate, entity.SimulationRunId }).IsUnique();
         builder.HasIndex(entity => new { entity.SensorId, entity.LogicalDate });
         builder.HasOne(entity => entity.Area)
@@ -523,6 +533,9 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.RiskLevel).HasMaxLength(50).IsRequired();
         builder.Property(entity => entity.Severity).HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.CoverageStatus).HasMaxLength(50).HasDefaultValue("Complete").IsRequired();
+        builder.Property(entity => entity.FreshnessStatus).HasMaxLength(50).HasDefaultValue("Fresh").IsRequired();
+        builder.Property(entity => entity.CarryForwardStatus).HasMaxLength(50).HasDefaultValue("Current").IsRequired();
         builder.Property(entity => entity.Summary).HasMaxLength(2000);
         builder.HasIndex(entity => entity.GridCellId).IsUnique();
         builder.HasIndex(entity => new { entity.AreaId, entity.SnapshotTimestamp });
@@ -548,6 +561,9 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.AggregateRiskLevel).HasMaxLength(50).IsRequired();
         builder.Property(entity => entity.Severity).HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.CoverageStatus).HasMaxLength(50).HasDefaultValue("Complete").IsRequired();
+        builder.Property(entity => entity.FreshnessStatus).HasMaxLength(50).HasDefaultValue("Fresh").IsRequired();
+        builder.Property(entity => entity.CarryForwardStatus).HasMaxLength(50).HasDefaultValue("Current").IsRequired();
         builder.Property(entity => entity.PendingAlertState).HasMaxLength(50).HasDefaultValue("None").IsRequired();
         builder.Property(entity => entity.Summary).HasMaxLength(2000);
         builder.HasIndex(entity => entity.AreaId).IsUnique();

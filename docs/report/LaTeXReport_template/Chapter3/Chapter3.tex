@@ -1,25 +1,79 @@
-\chapter{Requirements}
-\label{ch:Chapter3}
-\vfill \minitoc \newpage
+\chapter{Requisitos e Âmbito}
 
-%isto é apenas uma ideia base, mais abas devem ser adicionadas
+\section{Objetivo do Capítulo}
 
-\section{Functional Requirements}
+Este capítulo define o âmbito e os requisitos do NatureProtector V1. A sua função é clarificar o que a entrega atual demonstra, o que fica fora do âmbito e como a implementação deve ser avaliada.
 
-	\subsection{Mandatory Requirements}
+A V1 corresponde a uma base técnica e metodológica (\textit{baseline}) do módulo de prevenção. O seu foco está na execução local, no processamento orientado a eventos, na persistência durável, na avaliação candidata de risco, nas projeções operacionais, na exposição por API, na observabilidade e na recolha de evidência em tempo de execução.
 
-	\subsection{Optional Requirements}
+A V1 não corresponde a um modelo cientificamente calibrado de previsão de incêndios, nem a um índice oficial de perigo de incêndio. A validação realizada confirma o funcionamento técnico da pipeline implementada; não valida a precisão científica dos seus parâmetros face a ocorrências reais.
 
-\section{Functionallity}
+\section{Finalidade e Âmbito da V1}
 
-\section{Módulo de Prevenção}
+A finalidade da entrega é demonstrar que observações ambientais simuladas podem ser transformadas em estado operacional através de uma pipeline durável e rastreável.
 
-	\subsubsection{Implementation of the API}
+A cadeia principal a demonstrar é:
 
-\section{Interfaces}
+\begin{center}
+\texttt{simulação} $\rightarrow$ \texttt{eventos} $\rightarrow$ \texttt{ingestão durável} $\rightarrow$ \texttt{validação} $\rightarrow$ \texttt{risco} $\rightarrow$ \texttt{projeções} $\rightarrow$ \texttt{API / observabilidade}
+\end{center}
 
-	\subsection{Inteface Gerográfica}
+O valor principal da V1 é a integração técnica. O sistema deve demonstrar que os seus componentes conseguem executar em conjunto, trocar dados, persistir estado, expor projeções operacionais e produzir evidência inspecionável após a execução. A opção por transporte orientado a eventos e processamento durável é coerente com práticas usadas em sistemas assíncronos, onde é importante distinguir publicação, entrega, consumo, confirmação e processamento efetivo~\citep{rabbitmq_amqp_model,rabbitmq_consumer_acknowledgements,richardson_idempotent_consumer}.
 
-	\subsection{Dashboard}
+Estão incluídos no âmbito: ambiente de execução local, configuração de uma área piloto, leituras simuladas de sensores, transporte de eventos por RabbitMQ, ingestão durável, registo de tentativas de processamento, tratamento de eventos rejeitados e em quarentena, validação e elegibilidade das leituras, geração de avaliações candidatas de risco, projeções operacionais, política interna de alertas, Backoffice API, observabilidade com InfluxDB e Grafana, testes automatizados e recolha de evidência em tempo de execução.
 
-\section{Registos}
+Os scores, pesos, limiares, classes e parâmetros internos usados na V1 devem ser interpretados como parâmetros candidatos V1.0. São usados para exercitar a pipeline e demonstrar comportamento técnico, não para afirmar validade científica ou equivalência com sistemas oficiais. Esta distinção é necessária porque sistemas e índices reconhecidos de perigo de incêndio, como o FWI e produtos institucionais nacionais ou europeus, dependem de metodologias, dados e processos de validação próprios~\citep{nrcan_fwi_system,ipma_fwi,ipma_pir_rcm,ec_jrc_effis}.
+
+\section{Fora de Âmbito}
+
+A V1 exclui explicitamente elementos que exigiriam validação científica, integração externa avançada ou maturidade produtiva. Estes elementos não são requisitos falhados; são limites deliberados da entrega.
+
+Ficam fora do âmbito a calibração científica dos scores, pesos e limiares; a validação contra ocorrências reais de incêndio; a equivalência com sistemas ou índices oficiais, como FWI, produtos do IPMA, EFFIS, RCM ou PIR; a integração com sensores físicos reais; a integração com feeds meteorológicos, satélite ou dados territoriais reais; a implantação em produção; a autenticação, autorização e robustecimento operacional; workflows completos de alerta, notificação, confirmação e escalonamento; e uma interface operacional final para utilização em campo~\citep{nrcan_fwi_system,ipma_fwi,ipma_pir_rcm,copernicus_effis}.
+
+Assim, a formulação correta é que a V1 entrega uma base técnica rastreável para o módulo de prevenção. A calibração científica, a validação externa e a integração operacional pertencem a fases futuras.
+
+\section{Requisitos e Critérios de Aceitação}
+
+A Tabela~\ref{tab:v1-requirements} resume os principais requisitos da V1 e a evidência esperada para os aceitar tecnicamente. A opção por uma tabela compacta evita repetir, neste capítulo, detalhes que são explicados nos capítulos de implementação e validação.
+
+\begin{table}[h]
+\centering
+\caption{Requisitos e evidência esperada da V1.}
+\label{tab:v1-requirements}
+\begin{tabular}{p{0.10\textwidth} p{0.46\textwidth} p{0.32\textwidth}}
+\hline
+\textbf{ID} & \textbf{Requisito} & \textbf{Evidência esperada} \\
+\hline
+RF1 & Executar cenários de simulação para uma área piloto. & Registos de \texttt{simulation\_runs}. \\
+RF2 & Publicar e transportar leituras simuladas como eventos. & \texttt{SensorReadingProduced}, RabbitMQ e inbox. \\
+RF3 & Persistir eventos recebidos numa pipeline durável. & \texttt{event\_inbox} e \texttt{processing\_attempts}. \\
+RF4 & Classificar rejeições e quarentenas. & \texttt{rejected\_events} e \texttt{quarantined\_events}. \\
+RF5 & Validar, normalizar e decidir elegibilidade das leituras. & \texttt{NormalizedReading}, \texttt{QualityFlags}, \texttt{RiskEligibilityResult}. \\
+RF6 & Gerar avaliações candidatas de risco para leituras elegíveis. & \texttt{risk\_assessment\_log}. \\
+RF7 & Atualizar projeções operacionais por célula e por área. & \texttt{cell\_operational\_state} e \texttt{area\_operational\_state}. \\
+RF8 & Aplicar política interna de alertas. & \texttt{alert\_state} e testes de alertas. \\
+RF9 & Expor estado operacional através da Backoffice API. & Respostas da API coerentes com projeções persistidas. \\
+RF10 & Apoiar observabilidade. & InfluxDB, Grafana, logs e evidência em tempo de execução. \\
+RNF1 & Garantir rastreabilidade e auditabilidade. & Eventos, tentativas, avaliações, projeções e ficheiros de evidência. \\
+RNF2 & Suportar reprodutibilidade e testabilidade. & Scripts, comandos documentados e \texttt{dotnet test}. \\
+RNF3 & Manter separação de responsabilidades. & Separação entre simulação, transporte, pipeline, persistência, API e observabilidade. \\
+RNF4 & Preservar honestidade metodológica. & Separação explícita entre validação técnica e científica. \\
+\hline
+\end{tabular}
+\end{table}
+
+Um requisito crítico é que leituras bloqueadas não sejam convertidas em avaliações de risco zero. Uma leitura bloqueada significa ausência de condições para produzir uma avaliação válida, não evidência de risco físico baixo.
+
+A V1 é considerada tecnicamente aceitável se a infraestrutura local estiver ativa, o plano de controlo estiver carregado, os eventos chegarem à pipeline, o processamento for registado, rejeições e quarentenas forem classificadas, existirem avaliações de risco e projeções operacionais, a API expuser estado coerente e a suite de testes automatizados passar.
+
+\section{Validação Técnica e Validação Científica}
+
+A distinção entre validação técnica e validação científica é central neste relatório. A validação técnica responde a perguntas sobre execução, processamento, persistência, projeções, API e testes. A validação científica responderia a perguntas sobre calibração dos scores, correspondência dos limiares a níveis reais de perigo, generalização entre regiões, falsos positivos, falsos negativos e comparação estatística com sistemas oficiais.
+
+Essas perguntas científicas exigem dados reais, calibração, análise estatística e validação externa; por isso, ficam fora do âmbito da V1. Sistemas e índices usados operacionalmente para perigo de incêndio recorrem a metodologias próprias e a dados específicos, pelo que não é metodologicamente correto afirmar equivalência sem validação comparativa adequada~\citep{nrcan_fwi_system,ipma_fwi,ipma_pir_rcm,ec_jrc_effis}. A V1 pode ser tecnicamente válida e, simultaneamente, continuar a exigir calibração científica em trabalho futuro.
+
+O veredito de aceitação esperado não é ``cientificamente válido''. O veredito adequado é:
+
+\begin{quote}
+A base NatureProtector V1 é tecnicamente operacional e aceitável com limitações se executar localmente, produzir evidência durável, expor projeções operacionais e passar a suite de testes automatizados.
+\end{quote}

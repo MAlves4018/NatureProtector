@@ -46,6 +46,7 @@ public sealed class SimpleRiskScoringServiceTests
         Assert.Equal(expectedScore, assessment.BaseRisk, precision: 3);
         Assert.Equal(expectedScore, assessment.AdjustedScore, precision: 3);
         Assert.Equal(expectedScore, assessment.RiskScore, precision: 3);
+        Assert.Equal(CandidateParameterSetV1.ToScore100(assessment.AdjustedScore), assessment.Score100);
     }
 
     [Theory]
@@ -113,11 +114,21 @@ public sealed class SimpleRiskScoringServiceTests
         Assert.Contains("M=", assessment.ExplanationSummary);
         Assert.Contains("D=", assessment.ExplanationSummary);
         Assert.Contains("T=", assessment.ExplanationSummary);
+        Assert.Contains("H=", assessment.ExplanationSummary);
+        Assert.Contains("F=", assessment.ExplanationSummary);
+        Assert.Contains("G=", assessment.ExplanationSummary);
         Assert.Contains("BaseRisk=", assessment.ExplanationSummary);
         Assert.Contains("AdjustedScore=", assessment.ExplanationSummary);
+        Assert.Contains("Score100=", assessment.ExplanationSummary);
         Assert.Contains("C=", assessment.ExplanationSummary);
         Assert.Contains("I=", assessment.ExplanationSummary);
+        Assert.Contains("DominantDriver=", assessment.ExplanationSummary);
+        Assert.Contains("CalculationStatus=", assessment.ExplanationSummary);
+        Assert.Contains("TerritorySource=", assessment.ExplanationSummary);
         Assert.Contains("Candidate Parameter Set V1.0", assessment.ExplanationSummary);
+        Assert.Equal("Meteorology", assessment.DominantDriver);
+        Assert.Equal("Candidate Parameter Set V1.0", assessment.ParameterSetVersion);
+        Assert.Equal("CandidateFallback", assessment.CalculationStatus);
     }
 
     [Fact]
@@ -144,6 +155,9 @@ public sealed class SimpleRiskScoringServiceTests
         Assert.Equal(expectedBaseRisk, assessment.BaseRisk, precision: 3);
         Assert.Equal(expectedAdjusted, assessment.AdjustedScore, precision: 3);
         Assert.Equal(assessment.AdjustedScore, assessment.RiskScore, precision: 6);
+        Assert.Equal("QualityPenalty", assessment.DominantDriver);
+        Assert.Equal(0.97, assessment.ConfidenceFactor, precision: 3);
+        Assert.Equal(0.90, assessment.IntegrityFactor, precision: 3);
         Assert.Contains("InputStatus=PartialButUsable", assessment.ExplanationSummary);
     }
 
@@ -174,6 +188,11 @@ public sealed class SimpleRiskScoringServiceTests
 
         Assert.Equal(0.791, assessment.BaseRisk, precision: 3);
         Assert.Equal(assessment.BaseRisk, assessment.AdjustedScore, precision: 6);
+        Assert.Equal(0.8225, assessment.MeteorologyComponent, precision: 3);
+        Assert.Equal(0.80, assessment.TerritoryComponent, precision: 3);
+        Assert.Equal(0.80, assessment.HazardComponent, precision: 3);
+        Assert.Equal(0.50, assessment.FuelComponent, precision: 3);
+        Assert.Equal(0.50, assessment.GeomorphologyComponent, precision: 3);
         Assert.Contains("M=", assessment.ExplanationSummary);
         Assert.Contains("D=", assessment.ExplanationSummary);
         Assert.Contains("T=", assessment.ExplanationSummary);
@@ -188,12 +207,18 @@ public sealed class SimpleRiskScoringServiceTests
             FireWeatherIndexContext = new FireWeatherIndexContext(
                 FireWeatherIndex: 65.377,
                 KeetchByramDroughtIndex: 650.106,
-                Provenance: "imported_reference")
+                Provenance: "imported_reference",
+                CalculationStatus: FireWeatherIndexCalculationStatus.CompleteWithCandidateDefaults,
+                KbdiStatus: KbdiCalculationStatus.CompleteWithCandidateDefaults,
+                Limitations: "antecedent_fwi_codes_candidate_defaults;antecedent_kbdi_candidate_default")
         };
 
         var assessment = _service.CreateAssessment(input);
 
         Assert.True(assessment.BaseRisk > 0.70);
+        Assert.Equal("CompleteWithCandidateDefaults", assessment.CalculationStatus);
+        Assert.Contains("antecedent_fwi_codes_candidate_defaults", assessment.Limitations);
+        Assert.Contains("antecedent_kbdi_candidate_default", assessment.Limitations);
         Assert.Contains("FWI=", assessment.ExplanationSummary);
         Assert.Contains("KBDI=", assessment.ExplanationSummary);
         Assert.Contains("FireIndexProvenance=imported_reference", assessment.ExplanationSummary);

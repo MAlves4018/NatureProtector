@@ -132,10 +132,21 @@ public sealed class PostgresControlPlaneServiceTests
         Assert.Equal("Critical", areaState.Severity);
         Assert.Equal(12, areaState.AssessmentCount);
         Assert.Equal("Alarm", areaState.AlertState);
+        Assert.Equal("Complete", areaState.CoverageStatus);
+        Assert.Equal("Fresh", areaState.FreshnessStatus);
+        Assert.Equal("Current", areaState.CarryForwardStatus);
+        Assert.Equal(areaState.SnapshotTimestamp, areaState.LastAssessmentTimestamp);
+        Assert.Equal(areaState.UpdatedAt, areaState.LastProjectionUpdatedAt);
+        Assert.Equal("coverage=Complete; freshness=Fresh; carryForward=Current", areaState.OperationalStatusReason);
 
         Assert.Equal(2, cellStates.Count);
         Assert.Equal(["PRO-002", "PRO-001"], cellStates.Select(state => state.CellCode));
         Assert.Equal("pro-humidity-001", cellStates[0].SensorName);
+        Assert.Equal("Complete", cellStates[0].CoverageStatus);
+        Assert.Equal("Fresh", cellStates[0].FreshnessStatus);
+        Assert.Equal("Current", cellStates[0].CarryForwardStatus);
+        Assert.Equal(cellStates[0].SnapshotTimestamp, cellStates[0].LastRiskAssessmentTimestamp);
+        Assert.Equal("coverage=Complete; freshness=Fresh; carryForward=Current", cellStates[0].OperationalStatusReason);
 
         var alert = Assert.Single(alerts);
         Assert.Equal("area-risk-high", alert.AlertCode);
@@ -485,6 +496,9 @@ public sealed class PostgresControlPlaneServiceTests
                 AggregateRiskScore = 0.91,
                 AggregateRiskLevel = "VeryHigh",
                 Severity = "Critical",
+                CoverageStatus = "Complete",
+                FreshnessStatus = "Fresh",
+                CarryForwardStatus = "Current",
                 Summary = "Very high area risk",
                 AssessmentCount = 12,
                 UpdatedAt = new DateTimeOffset(2026, 4, 12, 12, 19, 30, TimeSpan.Zero)
@@ -501,6 +515,9 @@ public sealed class PostgresControlPlaneServiceTests
                     RiskScore = 0.72,
                     RiskLevel = "High",
                     Severity = "High",
+                    CoverageStatus = "Complete",
+                    FreshnessStatus = "Stale",
+                    CarryForwardStatus = "CarriedForward",
                     Summary = "High temperature risk",
                     UpdatedAt = new DateTimeOffset(2026, 4, 12, 12, 18, 30, TimeSpan.Zero)
                 },
@@ -514,6 +531,9 @@ public sealed class PostgresControlPlaneServiceTests
                     RiskScore = 0.95,
                     RiskLevel = "Extreme",
                     Severity = "Emergency",
+                    CoverageStatus = "Complete",
+                    FreshnessStatus = "Fresh",
+                    CarryForwardStatus = "Current",
                     Summary = "Critical humidity risk",
                     UpdatedAt = new DateTimeOffset(2026, 4, 12, 12, 19, 40, TimeSpan.Zero)
                 });

@@ -163,6 +163,24 @@ public sealed class RiskEligibilityServiceTests
     }
 
     [Fact]
+    public async Task Blocked_WhenRangeClassifierMarksOutlier()
+    {
+        var service = new RiskEligibilityService();
+        var reading = CreateReading(value: 80.0);
+
+        var result = await service.EvaluateAsync(reading, CancellationToken.None);
+
+        Assert.False(result.IsEligible);
+        Assert.Equal(RiskInputStatus.Blocked, result.Status);
+        Assert.Contains("Outlier", result.QualityFlags);
+        Assert.Contains("range_clipping", result.QualityFlags);
+        var classifier = Assert.Single(result.ClassifierResults);
+        Assert.Equal(ReadingRangeClassifier.ClassifierName, classifier.ClassifierName);
+        Assert.Equal(ClassifierAction.Block, classifier.Action);
+    }
+
+
+    [Fact]
     public void EligibleSingleton_HasExpectedReasonCode_AndStatus()
     {
         var result = RiskEligibilityResult.Eligible;
@@ -244,6 +262,7 @@ public sealed class RiskEligibilityServiceTests
         SensorOperationalState operationalState = SensorOperationalState.Nominal,
         SensorMetricType metricType = SensorMetricType.Temperature,
         MeasurementUnit unit = MeasurementUnit.Celsius,
+        double value = 28.4,
         DateTimeOffset? eventTime = null,
         DateTimeOffset? ingestTime = null)
     {
@@ -255,7 +274,7 @@ public sealed class RiskEligibilityServiceTests
             SensorId: Guid.NewGuid(),
             SensorName: "Sensor-PT-03",
             MetricType: metricType,
-            Value: 28.4,
+            Value: value,
             Unit: unit,
             Latitude: 39.78,
             Longitude: -7.88,

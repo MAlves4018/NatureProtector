@@ -83,17 +83,27 @@ public sealed class PostgresSimulationContextSource(
                 : _options.StartTimestamp ?? DateTimeOffset.UtcNow;
 
         var runOverrides = _options.RunOverrides ?? new SimulatorRunOverridesOptions();
+        var requestedProfiles = SimulationDegradationProfiles.Normalize(
+            runOverrides.DegradationProfiles,
+            runOverrides.DegradationProfile);
         var requestedOverrides = new SimulationRunOverridesRequested(
             SensorCount: runOverrides.SensorCount,
             NumberOfCycles: runOverrides.NumberOfCycles,
             IntervalSeconds: runOverrides.IntervalSeconds,
             Seed: runOverrides.Seed,
             DegradationProfile: runOverrides.DegradationProfile,
-            OrchestratorCorrelationId: runOverrides.OrchestratorCorrelationId);
+            OrchestratorCorrelationId: runOverrides.OrchestratorCorrelationId)
+        {
+            DegradationProfiles = requestedProfiles
+        };
         var scenarioDegradationProfile = GetOptionalString(simulatorOptions, "DegradationProfile");
-        var effectiveDegradationProfile = ResolveDegradationProfile(
+        var scenarioDegradationProfiles = GetOptionalStringArray(simulatorOptions, "DegradationProfiles");
+        var effectiveDegradationProfiles = SimulationDegradationProfiles.Resolve(
+            runOverrides.DegradationProfiles,
             requestedOverrides.DegradationProfile,
+            scenarioDegradationProfiles,
             scenarioDegradationProfile);
+        var effectiveDegradationProfile = SimulationDegradationProfiles.ToLegacyProfile(effectiveDegradationProfiles);
 
         var intervalSeconds = ResolveIntWithPrecedence(
             requestedValue: requestedOverrides.IntervalSeconds,
@@ -127,7 +137,10 @@ public sealed class PostgresSimulationContextSource(
                     PreferredSeed: preferredSeed,
                     DegradationProfile: effectiveDegradationProfile,
                     OrchestratorCorrelationId: requestedOverrides.OrchestratorCorrelationId,
-                    SelectedSensorNames: selectedSensors.Select(sensor => sensor.Name).ToArray())));
+                    SelectedSensorNames: selectedSensors.Select(sensor => sensor.Name).ToArray())
+                {
+                    DegradationProfiles = effectiveDegradationProfiles
+                }));
 
         activity?.SetTag(TelemetryTags.AreaId, context.AreaId);
         activity?.SetTag(TelemetryTags.ScenarioId, context.Scenario.Id);
@@ -290,14 +303,21 @@ public sealed class PostgresSimulationContextSource(
                 : null;
     }
 
-    private static string? ResolveDegradationProfile(string? overrideProfile, string? scenarioProfile)
+    private static IReadOnlyList<string> GetOptionalStringArray(JsonElement element, string propertyName)
     {
-        if (!string.IsNullOrWhiteSpace(overrideProfile))
+        if (!element.TryGetProperty(propertyName, out var property) ||
+            property.ValueKind != JsonValueKind.Array)
         {
-            return overrideProfile.Trim();
+            return [];
         }
 
-        return string.IsNullOrWhiteSpace(scenarioProfile) ? null : scenarioProfile.Trim();
+        return property
+            .EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .ToArray();
     }
 
     private static int ResolveIntWithPrecedence(

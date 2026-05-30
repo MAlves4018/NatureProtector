@@ -7,7 +7,7 @@
 %/////////////////////////////////////////////////////////////////////
 
 
-\documentclass[12pt, a4paper, openright, twoside]{report}
+\documentclass[12pt, a4paper, oneside, openany]{report}
 
 
 
@@ -55,7 +55,7 @@
 \usepackage[Lenny]{fncychap}
 
 % Chapter minitoc
-\usepackage{minitoc}
+%\usepackage{minitoc}
 
 % English language
 \usepackage[english]{babel}
@@ -294,17 +294,17 @@
 
 
 % Load acronym definitions
-\loadglsentries[\acronymtype]{Acronyms/Acronyms}
+%\loadglsentries[\acronymtype]{Acronyms/Acronyms}
 
 % Generate the glossary
-\makeglossaries
+%\makeglossaries
 
 
 \usepackage{silence}
 
-\WarningFilter{minitoc(hints)}{W0023}
-\WarningFilter{minitoc(hints)}{W0028}
-\WarningFilter{minitoc(hints)}{W0030}
+%\WarningFilter{minitoc(hints)}{W0023}
+%\WarningFilter{minitoc(hints)}{W0028}
+%\WarningFilter{minitoc(hints)}{W0030}
 
 \WarningFilter{blindtext}{} % this takes care of the `blindtext` messages
 
@@ -331,8 +331,9 @@
 \include{FrontCover/provisoryFrontCover} 
 
 \clearpage
-\thispagestyle{empty}
-\cleardoublepage
+% Removed forced blank page after cover.
+% \thispagestyle{empty}
+% \cleardoublepage
 
 
 
@@ -363,7 +364,8 @@
 
 % English Abstract
 \typeout{Abstract}
-\include{Abstract/Abstract}
+\input{Abstract/Abstract}
+\clearpage
 %\newpage \mbox{}    % Blank page.
 
 
@@ -398,10 +400,15 @@
 %\printglossary[title=List of Acronyms,toctitle=List of Acronyms,nonumberlist=true]
 
 % List of Acronyms with no page numbers and custom indentation between acronym and description
-\printglossary[title=List of Acronyms,toctitle=List of Acronyms,nonumberlist=true,type=\acronymtype,style=super]
+% Removed because the acronym list was almost empty and consumed pages.
+% Lista manual compacta de acrónimos e símbolos
 
 
-\cleardoublepage
+%\typeout{Lista de Acrónimos e Símbolos}
+%\input{Acronyms/Acronyms}
+\clearpage
+
+\clearpage
 
 
 %
@@ -427,13 +434,15 @@
 % List of Algorithms
 %
 %///////////////////////////////////////////////
-\dominitoc
+%\dominitoc
+\setcounter{tocdepth}{0}
 \tableofcontents 
-\listoffigures 
+% Removed because the list of figures was almost empty and consumed pages.
+% \listoffigures 
 %\listoftables   
 %\listofalgorithms \addcontentsline{toc}{chapter}{List of Algorithms} 
 
-\cleardoublepage
+\clearpage
 
 % Arabic numbering
 \pagenumbering{arabic}
@@ -447,7 +456,7 @@
 %   Introduction
 %////////////////////////////////////////////////////////////////////////
 % Se contiver Resumo e Abstract
-\setcounter{mtc}{3} % First page containing the minitoc
+%\setcounter{mtc}{3} % First page containing the minitoc
 
 % Se contiver Abstract apenas
 %\setcounter{mtc}{6} % First page containing the minitoc
@@ -499,7 +508,7 @@
 %   
 %
 %/////////////////////////////////////////////////////////////
-%\include{Chapter6/Chapter6}
+\include{Chapter6/Chapter6}
 
 
 
@@ -508,7 +517,7 @@
 %
 %   
 %////////////////////////////////////////////////////////////////////////
-%\include{Chapter7/Chapter7}
+\include{Chapter7/Chapter7}
 
 
 %/////////////////////////////////////////////////////////////
@@ -517,7 +526,7 @@
 %   Conclusions and Future Work
 %
 %/////////////////////////////////////////////////////////////
-\include{Chapter8/Chapter8}
+\input{Chapter8/Chapter8}
 
 
 
@@ -544,45 +553,47 @@
 %
 %\renewcommand\thesection{\Alph{section}}
 
-\renewcommand\chaptername{Appendix}
-
-% Use:
-%\appendix
+% Appendices removed because they were empty/desalinhados and generated blank pages.
+% \renewcommand\chaptername{Appendix}
 %
-% Or use:
-\begin{appendices}
-
-%\adjustmtc
-
-%/////////////////////////////////////////////////////////////
-%   Appendix A
-% 
-%   
+% % Use:
+% %\appendix
+% %
+% % Or use:
+% \begin{appendices}
 %
-%/////////////////////////////////////////////////////////////
-\include{AppendixA/AppendixA}
-
-
-%/////////////////////////////////////////////////////////////
-%   Appendix B
-% 
-%   
+% %\adjustmtc
 %
-%/////////////////////////////////////////////////////////////
-%\include{AppendixB/AppendixB}
-
-
-%/////////////////////////////////////////////////////////////
-%   Appendix C
-% 
-%   
+% %/////////////////////////////////////////////////////////////
+% %   Appendix A
+% % 
+% %   
+% %
+% %/////////////////////////////////////////////////////////////
+% \include{AppendixA/AppendixA}
 %
-%/////////////////////////////////////////////////////////////
-%\include{AppendixC/AppendixC}
-
-
-\end{appendices}
-
+%
+% %/////////////////////////////////////////////////////////////
+% %   Appendix B
+% % 
+% %   
+% %
+% %/////////////////////////////////////////////////////////////
+% %\include{AppendixB/AppendixB}
+%
+%
+% %/////////////////////////////////////////////////////////////
+% %   Appendix C
+% % 
+% %   
+% %
+% %/////////////////////////////////////////////////////////////
+% %\include{AppendixC/AppendixC}
+%
+%
+% \end{appendices}
+%
+%
 
 % -------------------------------------------------------------
 %   Bibliography
@@ -591,13 +602,20 @@
 %\bibliographystyle{elsarticle-num} % Elsevier template (See Elsevier sample file)
 
 %% APA style
-\bibliographystyle{model5-names}
+% Bibliography temporarily removed because the current References section was empty.
+% Re-enable these two lines when References/References.bib has real entries and citations use valid keys.
+\clearpage
+\renewcommand{\bibsection}{%
+  \phantomsection
+  \addcontentsline{toc}{chapter}{References}
+  {\Large\bfseries References\par}
+  \vspace{0.8em}
+}
 
+\bibliographystyle{apacite}
 \bibliography{References/References}
 
-
-
-\cleardoublepage
+% \cleardoublepage
 
 
 \end{document}

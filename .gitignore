@@ -6,6 +6,8 @@ riderModule.iml
 /.venv-data/
 /.venv-data312/
 /.nuget/packages/
+.tmp_pypdf/
+.venv/
 
 /data/external/**
 !/data/external/**/.gitkeep
@@ -34,10 +36,6 @@ docs/structurizr/output/*
 !docs/structurizr/output/.gitkeep
 docs/structurizr/.structurizr/
 docs/structurizr/workspace.json
-
-webUI/node_modules/
-webUI/dist/
-webUI/.vite/
 
 .env
 node_modules/.package-lock.json
@@ -80,17 +78,22 @@ node_modules/csstype/LICENSE
 node_modules/csstype/package.json
 node_modules/csstype/README.md
 
-docs/evidence/dev-runtime/
-webUI/node_modules/
-webUI/dist/
-webUI/.vite/
 # Runtime evidence logs
-docs/evidence/dev-runtime/
-
+docs/evidence/dev-runtime/*
+docs/evidence/runs/*
+/docs/evidence/diagnostics/
 # Node / frontend
 webUI/node_modules/
 webUI/dist/
 webUI/.vite/
 
 /data/runtime/influx/admin-token.json
-/docs/evidence/diagnostics/
+
+# Local build/test output
+.testbin/
+**/.testbin/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.py[cod]

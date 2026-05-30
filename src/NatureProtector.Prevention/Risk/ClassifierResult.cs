@@ -9,6 +9,15 @@ public sealed record ClassifierResult(
     DateTimeOffset EvaluatedAt,
     string RuleSetVersion)
 {
+    public IReadOnlyList<QualityFlag> TypedQualityFlags => QualityFlagCatalog.ParseMany(QualityFlags);
+
+    public ClassifierAction Action => Status switch
+    {
+        ClassifierStatus.Failed => ClassifierAction.Block,
+        ClassifierStatus.Warning => ClassifierAction.MarkPartial,
+        _ => ClassifierAction.Accept
+    };
+
     public static ClassifierResult Create(
         string classifierName,
         ClassifierStatus status,

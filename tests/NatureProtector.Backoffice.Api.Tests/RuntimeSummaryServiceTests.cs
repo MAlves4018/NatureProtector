@@ -63,6 +63,12 @@ public sealed class RuntimeSummaryServiceTests
         Assert.Equal(0.88, summary.Risk.MaxScore);
         Assert.Equal("VeryHigh", summary.AreaOperationalState!.AggregateRiskLevel);
         Assert.Equal("Alarm", summary.AreaOperationalState.AlertState);
+        Assert.Equal("Partial", summary.AreaOperationalState.CoverageStatus);
+        Assert.Equal("Stale", summary.AreaOperationalState.FreshnessStatus);
+        Assert.Equal("CarriedForward", summary.AreaOperationalState.CarryForwardStatus);
+        Assert.Equal(summary.AreaOperationalState.SnapshotTimestamp, summary.AreaOperationalState.LastAssessmentTimestamp);
+        Assert.Equal(summary.AreaOperationalState.UpdatedAt, summary.AreaOperationalState.LastProjectionUpdatedAt);
+        Assert.Equal("coverage=Partial; freshness=Stale; carryForward=CarriedForward", summary.AreaOperationalState.OperationalStatusReason);
         Assert.Single(summary.ActiveAlerts);
         Assert.Equal("Alarm", summary.ActiveAlerts[0].AlertState);
         Assert.Empty(summary.Warnings);
@@ -107,6 +113,11 @@ public sealed class RuntimeSummaryServiceTests
         Assert.Contains(audit.EligibilitySummary, item => item.Status == "PartialButUsable" && item.Count == 1);
         Assert.NotNull(audit.AreaSnapshot);
         Assert.Equal(2, audit.AreaSnapshot!.AssessmentCount);
+        Assert.NotNull(audit.ScoreComponents);
+        Assert.Equal(0.88, audit.ScoreComponents!.NpScore);
+        Assert.NotNull(audit.IndexComparison);
+        Assert.Equal("Complete", audit.IndexComparison!.FireWeatherCalculationStatus);
+        Assert.Equal("Complete", audit.IndexComparison.KbdiCalculationStatus);
         Assert.Contains(audit.Limitations, item => item.Code == "diagnostics_do_not_recalculate_risk");
     }
 
@@ -355,10 +366,52 @@ public sealed class RuntimeSummaryServiceTests
                     SourceEventId = delayedEventId,
                     Timestamp = now.AddMinutes(-7),
                     RiskScore = 0.88,
-                    RiskLevel = "VeryHigh",
+                    BaseRisk = 0.76,
+                    AdjustedScore = 0.72,
+                    Score100 = 72,
+                    MeteorologyComponent = 0.8,
+                    DroughtComponent = 0.5,
+                    TerritoryComponent = 0.7,
+                    HazardComponent = 0.7,
+                    FuelComponent = 0.6,
+                    GeomorphologyComponent = 0.8,
+                    ConfidenceFactor = 0.95,
+                    IntegrityFactor = 1,
+                    DominantDriver = "Meteorology",
+                    ParameterSetVersion = "Candidate Parameter Set V1.0",
+                    CalculationStatus = "Complete",
+                    RiskLevel = "High",
                     ExplanationSummary = "InputStatus=PartialButUsable; synthetic",
                     CreatedAt = now.AddMinutes(-7)
                 });
+
+            dbContext.DailyCellStates.Add(new DailyCellStateRecord
+            {
+                Id = Guid.NewGuid(),
+                AreaId = areaId,
+                GridCellId = cellId,
+                SimulationRunId = runId,
+                ConfigurationVersionId = configurationVersionId,
+                LogicalDate = now.Date,
+                DailyPrecipitationMillimeters = 0.4,
+                MaxTemperatureCelsius = 36.1,
+                LatestHumidityPercent = 24,
+                LatestWindSpeedMetersPerSecond = 8.2,
+                AntecedentState = "CandidateDefault",
+                DroughtContext = "KBDI candidate",
+                FireWeatherIndex = 18.5,
+                NormalizedFireWeatherIndex = 0.62,
+                FireWeatherCalculationStatus = "Complete",
+                KeetchByramDroughtIndex = 420,
+                NormalizedKeetchByramDroughtIndex = 0.525,
+                KbdiCalculationStatus = "Complete",
+                FireIndexProvenance = "calculated_candidate",
+                CandidateParameterSetVersion = "Candidate Parameter Set V1.0",
+                Provenance = "test",
+                LastUpdatedAt = now.AddMinutes(-7),
+                CreatedAt = now.AddMinutes(-7),
+                UpdatedAt = now.AddMinutes(-7)
+            });
 
             dbContext.AreaRiskSnapshotLogs.Add(new AreaRiskSnapshotLogRecord
             {
@@ -383,6 +436,9 @@ public sealed class RuntimeSummaryServiceTests
                 AggregateRiskScore = 0.88,
                 AggregateRiskLevel = "VeryHigh",
                 Severity = "Critical",
+                CoverageStatus = "Partial",
+                FreshnessStatus = "Stale",
+                CarryForwardStatus = "CarriedForward",
                 Summary = "Synthetic state",
                 AssessmentCount = 2,
                 UpdatedAt = now.AddMinutes(-6)
@@ -398,6 +454,9 @@ public sealed class RuntimeSummaryServiceTests
                 RiskScore = 0.88,
                 RiskLevel = "VeryHigh",
                 Severity = "Critical",
+                CoverageStatus = "Partial",
+                FreshnessStatus = "Stale",
+                CarryForwardStatus = "CarriedForward",
                 UpdatedAt = now.AddMinutes(-6)
             });
 

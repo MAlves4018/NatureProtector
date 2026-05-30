@@ -150,6 +150,7 @@ public sealed class InboxRetryWorkerTests
             string errorMessage,
             string quarantineCode,
             string quarantineReason,
+            string? errorMetadataJson,
             CancellationToken cancellationToken)
         {
             throw new NotSupportedException();

@@ -52,6 +52,36 @@ public sealed class RiskAssessment
     public double RiskScore { get; }
 
     /// <summary>
+    /// Compatibility projection of <see cref="AdjustedScore"/> on a 0..100
+    /// integer scale for reporting and evidence packs.
+    /// </summary>
+    public int Score100 => (int)Math.Round(AdjustedScore * 100.0, MidpointRounding.AwayFromZero);
+
+    public double MeteorologyComponent { get; }
+
+    public double DroughtComponent { get; }
+
+    public double TerritoryComponent { get; }
+
+    public double HazardComponent { get; }
+
+    public double FuelComponent { get; }
+
+    public double GeomorphologyComponent { get; }
+
+    public double ConfidenceFactor { get; }
+
+    public double IntegrityFactor { get; }
+
+    public string DominantDriver { get; }
+
+    public string ParameterSetVersion { get; }
+
+    public string CalculationStatus { get; }
+
+    public string? Limitations { get; }
+
+    /// <summary>
     /// Qualitative risk level derived from the numeric score.
     /// </summary>
     public RiskLevel RiskLevel { get; }
@@ -104,6 +134,18 @@ public sealed class RiskAssessment
         BaseRisk = riskScore;
         AdjustedScore = riskScore;
         RiskScore = riskScore;
+        MeteorologyComponent = 0.0;
+        DroughtComponent = 0.0;
+        TerritoryComponent = 0.0;
+        HazardComponent = 0.0;
+        FuelComponent = 0.0;
+        GeomorphologyComponent = 0.0;
+        ConfidenceFactor = 1.0;
+        IntegrityFactor = 1.0;
+        DominantDriver = "LegacyCompatibility";
+        ParameterSetVersion = "LegacyCompatibility";
+        CalculationStatus = "LegacyCompatibility";
+        Limitations = null;
         RiskLevel = CalculateLevel();
         ExplanationSummary = string.IsNullOrWhiteSpace(explanationSummary)
             ? null
@@ -134,7 +176,19 @@ public sealed class RiskAssessment
         DateTimeOffset timestamp,
         double baseRisk,
         double adjustedScore,
-        string? explanationSummary = null)
+        string? explanationSummary = null,
+        double meteorologyComponent = 0.0,
+        double droughtComponent = 0.0,
+        double territoryComponent = 0.0,
+        double hazardComponent = 0.0,
+        double fuelComponent = 0.0,
+        double geomorphologyComponent = 0.0,
+        double confidenceFactor = 1.0,
+        double integrityFactor = 1.0,
+        string? dominantDriver = null,
+        string? parameterSetVersion = null,
+        string? calculationStatus = null,
+        string? limitations = null)
     {
         if (id == Guid.Empty)
         {
@@ -152,12 +206,32 @@ public sealed class RiskAssessment
 
         ValidateNormalizedScore(baseRisk, nameof(baseRisk));
         ValidateNormalizedScore(adjustedScore, nameof(adjustedScore));
+        ValidateNormalizedScore(meteorologyComponent, nameof(meteorologyComponent));
+        ValidateNormalizedScore(droughtComponent, nameof(droughtComponent));
+        ValidateNormalizedScore(territoryComponent, nameof(territoryComponent));
+        ValidateNormalizedScore(hazardComponent, nameof(hazardComponent));
+        ValidateNormalizedScore(fuelComponent, nameof(fuelComponent));
+        ValidateNormalizedScore(geomorphologyComponent, nameof(geomorphologyComponent));
+        ValidateNormalizedScore(confidenceFactor, nameof(confidenceFactor));
+        ValidateNormalizedScore(integrityFactor, nameof(integrityFactor));
 
         Id = id;
         Timestamp = timestamp;
         BaseRisk = baseRisk;
         AdjustedScore = adjustedScore;
         RiskScore = adjustedScore;
+        MeteorologyComponent = meteorologyComponent;
+        DroughtComponent = droughtComponent;
+        TerritoryComponent = territoryComponent;
+        HazardComponent = hazardComponent;
+        FuelComponent = fuelComponent;
+        GeomorphologyComponent = geomorphologyComponent;
+        ConfidenceFactor = confidenceFactor;
+        IntegrityFactor = integrityFactor;
+        DominantDriver = string.IsNullOrWhiteSpace(dominantDriver) ? "Mixed" : dominantDriver.Trim();
+        ParameterSetVersion = string.IsNullOrWhiteSpace(parameterSetVersion) ? "Unknown" : parameterSetVersion.Trim();
+        CalculationStatus = string.IsNullOrWhiteSpace(calculationStatus) ? "CandidateFallback" : calculationStatus.Trim();
+        Limitations = string.IsNullOrWhiteSpace(limitations) ? null : limitations.Trim();
         RiskLevel = CalculateLevel();
         ExplanationSummary = string.IsNullOrWhiteSpace(explanationSummary)
             ? null

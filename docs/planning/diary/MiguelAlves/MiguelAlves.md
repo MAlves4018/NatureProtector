@@ -991,7 +991,11 @@ A frente mais recente mostrou progresso real no alinhamento com a `PesquisaII`, 
 
 ## Objetivo desta entrada
 
-Registar o trabalho realizado na reorganização e melhoria do website do NatureProtector, na preparação dos diagramas e da apresentação, e na estabilização da infraestrutura local necessária para a demonstração. O foco foi tornar o sistema mais claro para apresentação, mais alinhado com o fluxo real da V1 e mais reprodutível para desenvolvimento, validação, onboarding e demonstração.
+Registar o trabalho realizado na reorganização e melhoria do website do NatureProtector, na preparação dos diagramas e da apresentação, na estabilização da infraestrutura local necessária para a demonstração, e na consolidação técnica da V1 enquanto pipeline operacional de risco.
+
+O foco foi tornar o sistema mais claro para apresentação, mais alinhado com o fluxo real da V1, mais reprodutível para desenvolvimento, validação, onboarding e demonstração, e mais consistente com a pesquisa realizada sobre cálculo de risco, componentes meteorológicas, secura, território, qualidade operacional e comparação com índices externos.
+
+Nesta quinzena foi também iniciada uma evolução metodológica natural após a base funcional da V1: a integração e exposição dos índices FWI e KBDI, a criação de classes qualitativas para esses índices, a introdução de um proxy contextual português candidato, e a correção de problemas de persistência e interpretação encontrados durante a validação runtime.
 
 ## Resumo Estruturado
 
@@ -1119,6 +1123,89 @@ Registar o trabalho realizado na reorganização e melhoria do website do Nature
 
 58. Foram executadas validações de parse dos scripts, validação de pré-requisitos, validação do instalador em modo `WhatIf`, setup guiado sem runtime, baseline de infraestrutura e build/testes do projeto.
 
+59. Foi consolidada a fórmula operacional da V1 para deixar explícito que o NatureProtector não calcula risco diretamente a partir de raw messages, mas a partir de uma cadeia com validação, normalização, elegibilidade, `RiskInput`, scoring, `RiskAssessment` e projeções.
+
+60. A fórmula NatureProtector passou a ser exposta de forma mais clara na UI, incluindo `BaseRisk`, `AdjustedScore`, componentes `M/D/T`, subcomponentes territoriais `H/F/G`, confiança/integridade `C/I`, driver dominante, estado de cálculo e limitações.
+
+61. Foi reforçada a designação `Candidate Parameter Set V1.0`, para deixar claro que pesos, thresholds, normalizações, classes internas e penalizações são candidatos operacionais, não calibração científica final.
+
+62. A UI foi ajustada para distinguir melhor `Current Area Score` e `Latest NP Assessment`, evitando a confusão entre score agregado de área/projeção e última avaliação persistida em `risk_assessment_log`.
+
+63. Foi analisada a diferença entre `Assessment Count`, `Recent Risk Rows`, score agregado e última avaliação, ficando claro que estes valores podem divergir por agregação, janela temporal, carry-forward ou estado operacional.
+
+64. Foram estabilizados conceitos de `freshness`, `coverage` e `carry-forward`, incluindo o caso em que cenários históricos aparecem como `Expired` por comparação com o relógio real da runtime.
+
+65. Foi integrada a exposição dos índices FWI e KBDI na UI como camada de comparação e proveniência, considerada uma evolução metodológica natural após a V1 funcional.
+
+66. Foi identificado que FWI e KBDI apareciam inicialmente como `n/a` ou incompletos porque o `daily_reference`, em particular a precipitação diária, não estava a ser materializado corretamente no estado diário usado pelo scoring.
+
+67. Foi corrigida a interpretação de precipitação diária igual a `0.0`, garantindo que ausência de chuva é tratada como valor meteorológico válido e não como campo em falta.
+
+68. O FWI passou a aparecer na UI com valor calculado, normalização, classe qualitativa e estado de cálculo, permitindo comparar o score NatureProtector com um índice meteorológico reconhecido.
+
+69. Foi acrescentada interpretação qualitativa para FWI, incluindo a noção de que um valor como cerca de `16.95` pode ser `Moderado` mas próximo da classe seguinte.
+
+70. Foi clarificado que o FWI não é, por si só, o risco final de incêndio rural, sendo antes uma componente meteorológica que deve ser contextualizada com território e outros fatores.
+
+71. O KBDI passou a aparecer na UI com valor, normalização, classe de secura e limitações, deixando de ser apenas um campo ausente ou não interpretável.
+
+72. Foi identificado que o KBDI, por ser acumulativo, não pode ser interpretado corretamente se for calculado apenas a partir de um estado antecedente default ou de histórico demasiado curto.
+
+73. Foi reforçada a regra de que o KBDI deve evoluir por dia lógico e não por leitura/evento, evitando simular vários dias dentro da mesma run.
+
+74. Foi introduzida ou clarificada a limitação `LimitedAntecedentHistory`, para indicar que o valor de KBDI existe mas não deve ser lido como seca acumulada plenamente validada sem histórico suficiente.
+
+75. Foi definida a necessidade de separar valores calculados internamente de valores de referência importados, tanto para FWI como para KBDI.
+
+76. Foi criado ou exposto um `Portuguese Context Proxy`, isto é, um proxy candidato inspirado na ideia de combinar meteorologia e território, mas explicitamente não equivalente ao RCM/PIR/IPMA oficial.
+
+77. O proxy contextual português passou a mostrar interpretações como `FWI Moderado × Territory High -> Elevado`, permitindo explicar porque o contexto local pode aumentar a leitura qualitativa apesar de FWI ou KBDI isolados não serem extremos.
+
+78. Foi clarificado que o `Portuguese Context Proxy` não deve ser apresentado como metodologia oficial, porque não usa a perigosidade rural oficial nem a matriz oficial institucional.
+
+79. Foi acrescentada a indicação de que o percentil local de FWI ainda não está disponível quando não existe distribuição histórica local materializada, evitando inventar anomalias ou percentis sem base de dados.
+
+80. Foi melhorada a leitura do `scenario_c`, incluindo perfis de degradação como `missing-readings`, `noise`, `lag/delay`, `outlier` e `stuck-value`, com maior atenção à diferença entre perfil pedido, resolvido, aplicado e observado.
+
+81. Foi identificado que a tabela de efeitos de degradação deve distinguir variação natural de efeito injetado, para não apresentar `noise` ou `lag/delay` como aplicados quando o perfil está inativo ou abaixo de threshold.
+
+82. Durante a validação runtime foi encontrada uma regressão em que o `scenario_b` publicava e aceitava eventos, mas produzia `0` risk assessments e colocava todos os eventos em quarentena com `db_data_exception`.
+
+83. A causa da regressão foi diagnosticada como erro de persistência em `projection.daily_cell_state`, causado por campos textuais limitados a `varchar(100)` que passaram a receber strings compostas de proveniência, estado antecedente e limitações.
+
+84. Foi corrigida a persistência de campos compostos em `daily_cell_state`, passando campos como `AntecedentState`, `DroughtContext`, `Provenance`, `FireIndexProvenance`, `FireWeatherLimitations` e `KbdiLimitations` para `text`, em vez de truncar informação.
+
+85. Foi mantida a limitação de tamanho apenas para campos de vocabulário controlado, como status e versão do candidate parameter set, preservando a distinção entre estados simples e listas/contextos extensíveis.
+
+86. Após a correção, a runtime voltou a conseguir produzir risk assessments, mostrar score NP, FWI, KBDI e proxy contextual português na UI.
+
+87. Ficou identificado um pequeno ponto de estabilização ainda pendente: a UI mostrou `20` attempts, `19` sucessos, `0` falhas e `0` quarentenas, o que indica a necessidade de expor explicitamente `Other`, `Pending` ou `Unknown attempts` para explicar a tentativa restante.
+
+88. Foi analisado o estado inicial do relatório e identificado que a estrutura existente ainda estava parcialmente herdada de versões anteriores, com conteúdo genérico, referências antigas, apêndices pouco úteis e capítulos desalinhados com a implementação real da V1.
+
+89. Foi definida uma nova estrutura de relatório centrada na baseline V1, com capítulos dedicados a introdução, estado da arte, requisitos e âmbito, arquitetura, estratégia de implementação, implementação, validação técnica e conclusões.
+
+90. O relatório foi reenquadrado como documento técnico da V1, e não como relatório final do projeto completo nem como prova de validação científica do modelo de risco.
+
+91. Foram reescritos e compactados os capítulos principais para reduzir o número de páginas e aproximar o documento do limite recomendado.
+
+92. Foram removidas páginas em branco, secções redundantes, apêndices vazios, listas automáticas pouco úteis e sínteses finais que repetiam conteúdo.
+
+93. Foi reforçada em vários capítulos a distinção entre validação técnica e validação científica, evitando apresentar os scores, limiares e pesos da V1 como valores cientificamente calibrados.
+
+94. Foi criado e consolidado o Capítulo 6 como descrição da implementação V1, incluindo contratos, RabbitMQ, pipeline durável, validação, elegibilidade, `RiskInput`, `RiskAssessment`, projeções, API, alertas e observabilidade.
+
+95. Foi criado e consolidado o Capítulo 7 como descrição da validação técnica e evidência runtime, incluindo evidência C7, queries PostgreSQL, API vs DB, eventos rejeitados, eventos em quarentena, erro histórico `EmptyProjectionMember`, testes de alert policy e veredito `OK com limitações`.
+
+96. Foi feita uma passagem de citações nos capítulos para ligar afirmações externas a referências sobre FWI, KBDI, IPMA, EFFIS, ICNF, dados territoriais, RabbitMQ, acknowledgements, idempotência e transactional outbox.
+
+97. Foi substituída a lista automática de acrónimos por uma tabela manual compacta, devido a problemas de paginação, geração vazia com `glossaries` e duplicação de definições.
+
+98. Foram corrigidos problemas de geração LaTeX relacionados com `minitoc`, contador `mtc`, ficheiros auxiliares, bibliografia, acrónimos, referências e espaçamento excessivo antes da secção de referências.
+
+99. Ficou claro que o relatório atual ainda é provisório: serve para documentar a V1 e ter uma base apresentável, mas não é ainda o relatório final ideal do projeto.
+
+100. Foram identificadas limitações atuais do relatório, nomeadamente falta de imagens e diagramas, explicação ainda insuficiente do âmbito global do projeto e desalinhamento face ao repositório, que já se encontra orientado para a V2.
 ---
 
 ## Resultado principal da quinzena
@@ -1144,6 +1231,18 @@ Também foi feito trabalho importante na preparação da apresentação. Os diag
 Por fim, foi resolvido um problema relevante de reprodutibilidade da infraestrutura local. Confirmou-se que, depois de remover volumes Docker, o InfluxDB não aceitava automaticamente o token do `.env` e a database `np_telemetry` não ficava garantida. Foram criados scripts para preparar o token admin local, garantir a database temporal e validar a baseline. O teste final confirmou que a infraestrutura consegue ser recriada a partir de volumes limpos e voltar a ficar funcional.
 
 Na continuação deste trabalho, o processo de setup foi tornado mais explícito e seguro. A equipa separou diagnóstico de dependências, instalação opt-in, arranque da infraestrutura, arranque do runtime e validação final. Esta separação evita que um comando como `up.ps1` passe a fazer instalações ou alterações perigosas sem o utilizador perceber, mas ainda assim dá um caminho mais simples para alguém novo conseguir preparar a máquina e correr o projeto.
+
+Para além da reorganização da UI, da preparação da apresentação e da estabilização da infraestrutura, a quinzena passou também a incluir uma frente importante de consolidação da V1 enquanto pipeline operacional de risco.
+
+A fórmula NatureProtector deixou de ser tratada apenas como um score final e passou a ser exposta como uma decomposição auditável: `BaseRisk`, `AdjustedScore`, componentes `M/D/T`, subcomponentes `H/F/G`, confiança/integridade `C/I`, driver dominante, estado de cálculo e limitações. Esta decomposição torna a V1 mais explicável e mais alinhada com a pesquisa, porque permite demonstrar como meteorologia, secura, território e qualidade operacional contribuem para o resultado.
+
+Também foi iniciada uma camada de evolução metodológica que pode ser entendida como o passo natural seguinte após a V1 funcional. Esta camada inclui a integração de FWI e KBDI como índices de comparação, proveniência e contexto. O objetivo não é substituir o score NatureProtector nem afirmar validação científica final, mas permitir comparar o score interno com índices conhecidos, mostrando quando convergem, quando divergem e porquê.
+
+O FWI passou a ser mostrado com valor, normalização, classe qualitativa e proximidade à classe seguinte. O KBDI passou a ser mostrado como indicador de secura acumulada, com classe qualitativa e limitação explícita quando falta histórico antecedente suficiente. Esta distinção é importante porque o FWI é uma componente meteorológica diária, enquanto o KBDI é acumulativo e depende de estado anterior.
+
+Foi também criado um `Portuguese Context Proxy`, que combina FWI e território interno para aproximar a interpretação ao contexto português. Este proxy foi tratado como candidato e não oficial, evitando afirmar equivalência ao RCM/PIR/IPMA. A sua utilidade é explicar casos em que FWI moderado, quando combinado com território elevado, pode justificar uma leitura contextual portuguesa mais alta.
+
+Durante esta frente foi encontrada e corrigida uma regressão real de runtime. Depois das alterações aos índices e à proveniência, o sistema passou a tentar persistir strings compostas em campos de `daily_cell_state` demasiado curtos. Isto causava `Npgsql.PostgresException 22001`, quarentena de todos os eventos e ausência de risk assessments. A correção consistiu em alterar campos de contexto, proveniência e limitações para `text`, mantendo limites apenas em campos de status controlado. Esta correção reforçou a robustez da pipeline e mostrou a importância de tratar limitações e proveniência como dados persistidos relevantes.
 
 ---
 
@@ -1271,6 +1370,69 @@ A estrutura desejada é aproximar cada conceito ao seu estado, evidência e impl
 
 ---
 
+
+## 6A. Consolidação da fórmula V1 e integração FWI/KBDI
+
+Durante esta quinzena foi feita uma frente de consolidação da fórmula operacional do NatureProtector, com o objetivo de alinhar melhor a implementação com a pesquisa da V1 e tornar o cálculo de risco mais explicável na UI.
+
+A principal decisão foi manter a V1 como uma pipeline técnica e metodológica candidata, e não como modelo científico final calibrado. O sistema passou a expor mais claramente que o score NatureProtector é calculado a partir de uma cadeia de dados e decisões, e não diretamente a partir de mensagens raw.
+
+A cadeia conceptual estabilizada foi:
+
+```text
+leitura/evento -> validação -> normalização -> elegibilidade -> RiskInput -> scoring -> RiskAssessment -> projeções -> UI
+```
+
+Esta distinção é importante porque evita que uma mensagem recebida seja tratada automaticamente como risco. Antes de chegar ao scoring, os dados precisam de passar por validação, normalização, qualidade, elegibilidade e construção de input apropriado para risco.
+
+A fórmula NatureProtector passou a ser apresentada com maior decomposição:
+
+```text
+BaseRisk / AdjustedScore
+M / D / T
+H / F / G
+C / I
+dominant driver
+calculation status
+limitations
+```
+
+Esta decomposição permite explicar melhor a origem de cada resultado. A componente `M` representa meteorologia dinâmica, `D` representa secura persistente e `T` representa território. Dentro de `T`, os subcomponentes `H`, `F` e `G` ajudam a explicar hazard estrutural, combustível/cobertura e geomorfologia ou contexto físico simplificado. As componentes `C` e `I` representam confiança observacional e integridade operacional.
+
+Também foi reforçada a distinção entre `BaseRisk` e `AdjustedScore`. O `BaseRisk` representa o risco antes de modificadores de confiança/integridade; o `AdjustedScore` representa o score final depois de considerar qualidade operacional, parcialidade ou limitações. Esta separação evita confundir risco físico/territorial com confiança nos dados observados.
+
+Na UI, foi ajustada a distinção entre `Current Area Score` e `Latest NP Assessment`. O primeiro representa a projeção agregada da área e pode incluir carry-forward. O segundo representa a última avaliação persistida no `risk_assessment_log`. Esta alteração reduz a ambiguidade quando os valores divergem ou quando a área mantém estado projetado a partir de informação anterior.
+
+Para além da consolidação da V1, foi iniciada a integração de FWI e KBDI como camada de comparação e proveniência. Esta camada pode ser entendida como uma evolução natural para uma V2 metodológica, porque só faz sentido comparar com índices externos depois de a pipeline interna já estar funcional.
+
+O FWI foi integrado como índice meteorológico de referência. Inicialmente aparecia como `n/a` ou parcial porque a precipitação diária não estava a chegar corretamente ao cálculo. Foi confirmado que `0.0 mm` de precipitação é um valor válido e não deve ser tratado como ausência de dado. Após correção da materialização do `daily_reference`, o FWI passou a aparecer na UI com valor, normalização, classe qualitativa e limitações.
+
+O KBDI foi integrado como indicador de secura acumulada. A principal preocupação metodológica foi garantir que o KBDI não fosse interpretado como índice instantâneo. O KBDI depende de histórico e estado antecedente, pelo que um valor baixo num cenário de risco pode significar que existe pouco histórico antecedente ou que o cálculo parte de default candidato. Por isso, passou a ser importante expor estados como `LimitedAntecedentHistory` e explicar que o valor existe, mas tem limitação interpretativa.
+
+Foi também introduzido um `Portuguese Context Proxy`. Este proxy combina uma leitura meteorológica baseada em FWI com uma leitura territorial interna, permitindo aproximar a interpretação à lógica portuguesa de combinar meteorologia e perigosidade territorial. No entanto, ficou explicitamente definido que este proxy não é RCM oficial, não é PIR oficial e não reproduz metodologia IPMA/ICNF. É apenas uma aproximação candidata útil para demonstração e análise metodológica.
+
+A UI passou a conseguir mostrar simultaneamente:
+
+* score NatureProtector;
+* classe do score;
+* `BaseRisk` e `AdjustedScore`;
+* componentes `M/D/T`;
+* subcomponentes `H/F/G`;
+* confiança e integridade `C/I`;
+* FWI calculado e respetiva classe;
+* KBDI e respetiva classe de secura;
+* precipitação diária;
+* proxy contextual português;
+* limitações e proveniência.
+
+Durante a validação desta frente surgiu uma regressão importante. O `scenario_b` completava a run, publicava e aceitava eventos, mas não produzia risk assessments. Todos os eventos entravam em quarentena com `db_data_exception`. A análise mostrou que a falha não era causada por migrations pendentes nem por modelo EF desalinhado. A causa real estava no PostgreSQL: `value too long for type character varying(100)` ao inserir em `projection.daily_cell_state`.
+
+O problema surgiu porque campos como `AntecedentState`, `DroughtContext`, `FireIndexProvenance`, `Provenance`, `FireWeatherLimitations` e `KbdiLimitations` passaram a receber valores compostos com várias limitações e informações de proveniência. Estes campos não devem ser tratados como strings curtas. A correção foi alterar estes campos para `text`, preservando a rastreabilidade em vez de truncar informação. Campos de status controlado, como `FireWeatherCalculationStatus` e `KbdiCalculationStatus`, mantiveram limites curtos.
+
+Depois da correção, a runtime voltou a produzir risk assessments e a UI passou a apresentar novamente o score NP, FWI, KBDI e Portuguese Context Proxy. Ficou apenas identificado um detalhe adicional: em algumas runs a soma de attempts por estado não fechava exatamente o total, por exemplo `20` attempts, `19` successful, `0` failed e `0` quarantined. Isto deve ser tratado futuramente expondo `Other`, `Pending` ou `Unknown attempts`, para explicar a tentativa restante.
+
+---
+
 ## 7. Diagramas e preparação da apresentação
 
 Durante esta quinzena foi feita uma revisão dos diagramas existentes e da forma como estes deviam ser usados na apresentação.
@@ -1386,7 +1548,7 @@ Esta frente melhora a capacidade de onboarding do projeto. Em vez de depender de
 .\scripts\setup\Test-LocalPrerequisites.ps1
 .\scripts\setup\Install-LocalPrerequisites.ps1 -WhatIf
 .\scripts\setup\Setup-LocalEnvironment.ps1
-````
+```
 
 Para o uso normal, depois de a máquina estar preparada, o fluxo continua curto:
 
@@ -1419,6 +1581,19 @@ O sétimo problema foi a compatibilidade com Windows PowerShell 5.1. Alguns deta
 
 Quando Docker está apenas a correr PostgreSQL, RabbitMQ, InfluxDB ou Grafana, não é necessário mandar Docker abaixo para atualizar a UI ou a API. No entanto, quando se quer testar reprodutibilidade total, o reset destrutivo deve ser feito apenas através do script próprio e com confirmação explícita.
 
+
+Outro problema relevante surgiu durante a validação da integração da fórmula V1 com FWI, KBDI e Portuguese Context Proxy. Após uma run do `scenario_b`, a UI mostrava que a run tinha completado e que os eventos tinham sido aceites, mas não existiam risk assessments e todos os processing attempts tinham terminado em quarentena com `db_data_exception`.
+
+A análise mostrou que o problema não estava no simulador, no RabbitMQ, no inbox ou nas migrations pendentes. A run publicava eventos, o Prevention Host consumia-os e as leituras eram aceites. A falha acontecia dentro da `reading_risk_pipeline`, no momento de persistir estado em `projection.daily_cell_state`.
+
+O erro real era `Npgsql.PostgresException 22001`, indicando que um valor era demasiado longo para uma coluna `character varying(100)`. A causa foi a introdução de strings mais longas de contexto, proveniência e limitações associadas a FWI, KBDI, histórico antecedente e candidate defaults.
+
+A correção foi alterar campos compostos de `daily_cell_state` para `text`, nomeadamente `AntecedentState`, `DroughtContext`, `Provenance`, `FireIndexProvenance`, `FireWeatherLimitations` e `KbdiLimitations`. Não foi feito truncamento silencioso, porque isso destruiria precisamente a informação necessária para auditoria. Os campos de status simples mantiveram limites controlados.
+
+Este problema mostrou que, à medida que a V1 se torna mais explicável, a persistência também precisa de suportar melhor proveniência e limitações. Não basta guardar apenas o score; é necessário guardar também as razões, defaults, estados parciais e limitações que justificam esse score.
+
+Ficou ainda identificado que a UI deve melhorar a agregação de processing attempts. Quando o total de attempts não coincide com a soma de sucessos, falhas e quarentenas, deve ser mostrado um estado adicional, como `Other`, `Pending` ou `Unknown`, em vez de deixar a diferença implícita.
+
 ---
 
 ## 11. Validação realizada
@@ -1449,9 +1624,59 @@ Também foi validado o novo fluxo de setup local. Foram corridos os scripts de d
 
 Por fim, foram executados build e testes do projeto, que passaram. O warning `NU1902` associado ao pacote `OpenTelemetry.Exporter.OpenTelemetryProtocol` permaneceu como aviso conhecido, não introduzido por esta frente.
 
+
+Também foi validada a frente de consolidação da fórmula V1 e integração de FWI/KBDI.
+
+Foi confirmado que a UI passou a expor os componentes principais do score NatureProtector, incluindo `BaseRisk`, `AdjustedScore`, `M/D/T`, `H/F/G`, `C/I`, driver dominante, estado de cálculo e limitações. Isto permitiu validar que o frontend não está apenas a mostrar um score opaco, mas sim uma decomposição útil para análise e apresentação.
+
+Foi validado que o FWI passou a aparecer com valor e classe qualitativa, deixando de estar bloqueado por ausência indevida de precipitação quando o valor real era `0.0`. Também foi validado que o KBDI passou a aparecer com valor, normalização e classe de secura, acompanhado de limitação quando o histórico antecedente é insuficiente.
+
+Foi validada a existência do `Portuguese Context Proxy`, com indicação da combinação entre FWI e território. Ficou confirmado que este campo é útil para explicação, mas deve continuar a ser apresentado como proxy candidato e não oficial.
+
+Foi diagnosticada uma regressão runtime em `projection.daily_cell_state`, provocada por limites de tamanho em campos textuais. A causa foi isolada através de logs e queries à base de dados, chegando ao erro `value too long for type character varying(100)`. Depois da alteração dos campos compostos para `text`, a runtime voltou a conseguir produzir risk assessments e a UI voltou a apresentar os índices e componentes esperados.
+
+Foram executados build e testes após as alterações principais. A validação runtime mostrou que o sistema ficou novamente capaz de apresentar score NP, FWI, KBDI e proxy contextual português, embora permaneça como próximo ponto de estabilização a explicação de attempts que não entram diretamente nas categorias `successful`, `failed` ou `quarantined`.
+
+---
+## 12. Reestruturação e consolidação provisória do relatório V1
+
+Nesta quinzena foi também realizado trabalho significativo sobre o relatório do projeto. O objetivo não foi ainda produzir a versão final ideal do relatório, mas sim transformar uma base inicial desatualizada num documento coerente, apresentável e alinhado com aquilo que foi efetivamente implementado até à V1 do NatureProtector.
+
+A versão inicial do relatório ainda mantinha uma estrutura herdada de fases anteriores do projeto. Existiam partes genéricas, conteúdo desalinhado com o estado real da implementação, apêndices e referências pouco úteis, páginas em branco e capítulos que ainda não descreviam adequadamente a arquitetura, a pipeline, a evidência runtime e a validação técnica da V1. Também havia um problema de dimensão: o documento estava muito acima do limite recomendado.
+
+Foi então feita uma reestruturação global do relatório para o organizar em torno da baseline V1. A estrutura consolidada passou a conter os seguintes capítulos:
+
+1. Introdução;
+2. Estado da Arte;
+3. Requisitos e Âmbito;
+4. Arquitetura e Suporte de Desenvolvimento;
+5. Estratégia de Implementação e Evolução do Âmbito;
+6. Implementação do NatureProtector V1;
+7. Validação Técnica e Evidência em Tempo de Execução;
+8. Conclusões e Trabalho Futuro.
+
+Esta nova estrutura permitiu separar melhor o problema, o enquadramento técnico, o âmbito fechado da V1, a arquitetura, a implementação, a validação técnica, a evidência runtime e as limitações. O foco passou a estar explicitamente na V1 enquanto base técnica e metodológica do módulo de prevenção, e não numa tentativa de apresentar o NatureProtector como sistema final ou cientificamente calibrado de previsão de incêndios.
+
+Foi reforçada ao longo do relatório a distinção entre validação técnica e validação científica. A V1 é apresentada como uma pipeline operacional rastreável, capaz de receber eventos simulados, persistir dados, processar leituras, produzir avaliações candidatas de risco, atualizar projeções operacionais, expor estado através da API e recolher evidência. Não é apresentada como índice oficial, modelo calibrado ou substituto de sistemas como FWI, IPMA, EFFIS, RCM ou PIR.
+
+O relatório foi também reduzido de forma agressiva para se aproximar do limite indicado. Foram removidas páginas em branco, apêndices vazios, referências desatualizadas, listas automáticas pouco úteis e secções de síntese redundantes. O índice foi reduzido para mostrar apenas capítulos. Vários capítulos foram reescritos em rondas sucessivas para ficarem mais curtos, mantendo apenas o essencial.
+
+Os capítulos mais trabalhados foram o 3, 5, 6, 7 e 8. O Capítulo 3 foi reduzido para clarificar o âmbito, o fora de âmbito, os requisitos e a distinção entre validação técnica e científica. O Capítulo 5 passou a explicar a evolução da visão inicial para uma baseline V1 fechada. O Capítulo 6 foi consolidado como capítulo de implementação, cobrindo contratos, eventos, pipeline durável, validação, elegibilidade, risco, projeções, API, alertas e observabilidade. O Capítulo 7 passou a documentar a evidência C7, incluindo pipeline, projeções, API, alert policy, testes e classificação de erros históricos. O Capítulo 8 foi reduzido para uma conclusão curta com contributos, limitações e trabalho futuro.
+
+Foi feita ainda uma passagem para acrescentar citações. As referências foram concentradas sobretudo no Capítulo 2, onde existe maior necessidade de enquadramento externo sobre incêndios, fatores meteorológicos, combustível, secura persistente, FWI, KBDI, IPMA, EFFIS, dados territoriais e monitorização. Também foram acrescentadas citações mínimas nos capítulos técnicos quando havia claims externos sobre mensageria, acknowledgements, idempotência, transactional outbox, sistemas oficiais e validação científica futura.
+
+Foram tratados vários problemas de LaTeX e paginação. Entre eles: páginas em branco entre capítulos, excesso de espaço antes das referências, problemas com `minitoc`, erro no contador `mtc`, lista de acrónimos vazia, duplicação de acrónimos por uso simultâneo de `glossaries` e `\input`, erros de tabela por caracteres especiais, bibliografia sem ciclo completo BibTeX e necessidade de reduzir a página de referências. Para controlar melhor a paginação, a lista automática de acrónimos foi substituída por uma tabela manual compacta.
+
+O relatório atual deve ser entendido como uma versão provisória, mas coerente, da documentação da V1. Serve para ter uma base apresentável e alinhada com o que foi implementado até à baseline V1. Não deve ser tratado como relatório final definitivo do projeto.
+
+Permanecem limitações importantes no relatório. A principal é a falta de imagens e diagramas. O documento ainda é demasiado textual e beneficiaria de diagramas sobre a arquitetura geral, a pipeline de processamento, os schemas PostgreSQL, a política de alertas e a validação técnica. Também ainda não explica com todo o detalhe desejável o âmbito global do NatureProtector, ou seja, a diferença entre o projeto completo, o módulo de prevenção, a V1, a V2 e fases futuras.
+
+Outra limitação importante é o desalinhamento temporal face ao repositório. O relatório documenta a V1, mas o projeto já avançou para trabalho próximo da V2, nomeadamente com integração e exposição de FWI, KBDI, Portuguese Context Proxy, melhoria da fórmula NatureProtector, componentes de secura, histórico diário, comparação com índices e reforço da proveniência. Assim, o relatório atual é útil como fecho da V1, mas já não representa tudo o que existe ou está a ser estabilizado no repositório.
+
+A formulação correta para esta fase é, portanto, que o relatório atual é uma base provisória da V1: suficientemente coerente para documentar a baseline técnica, mas ainda incompleta como relatório final do projeto NatureProtector.
 ---
 
-## 12. Próximos passos
+## 13. Próximos passos
 
 1. Validar manualmente a versão atual do website depois de reiniciar os processos locais da aplicação.
 2. Confirmar que a tab `Run Timings` consome corretamente o endpoint de timings.
@@ -1474,3 +1699,31 @@ Por fim, foram executados build e testes do projeto, que passaram. O warning `NU
 19. Validar `Setup-LocalEnvironment.ps1 -StartRuntime -OpenBrowser` num ambiente limpo, sem processos antigos nas portas `5254` e `5173`.
 20. Decidir se `Install-LocalPrerequisites.ps1` deve permanecer apenas como guia/WhatIf ou se deve suportar instalação real com `-InstallMissing -Yes`.
 21. Garantir que a documentação de setup distingue claramente primeira utilização, uso diário, validação e reset destrutivo.
+
+22. Validar uma run limpa do `scenario_b` depois da correção de `daily_cell_state`, garantindo `Quarantined = 0` e existência de risk assessments.
+23. Validar uma run limpa do `scenario_c` com perfis de degradação, garantindo que `missing-readings`, `noise`, `lag/delay`, `outlier` e `stuck-value` são apresentados com distinção entre pedido, resolvido, aplicado e observado.
+24. Corrigir ou explicar a diferença entre `Attempt count`, `Successful attempts`, `Failed attempts` e `Quarantined attempts`, acrescentando uma categoria `Other`, `Pending` ou `Unknown` quando a soma não fecha.
+25. Confirmar se os campos `FWI calculated / reference` e `KBDI calculated / reference` estão semanticamente corretos e não invertidos na UI.
+26. Garantir que a UI apresenta sempre o `Portuguese Context Proxy` como proxy candidato e não como metodologia oficial IPMA/RCM/PIR.
+27. Melhorar a documentação da fórmula NatureProtector, incluindo `BaseRisk`, `AdjustedScore`, `M/D/T`, `H/F/G`, `C/I`, dominant driver, calculation status e limitations.
+28. Atualizar a matriz entre pesquisa e implementação, incluindo o estado atual de FWI, KBDI, Portuguese Context Proxy, percentil local de FWI, KBDI com histórico antecedente e degradações.
+29. Preparar uma explicação curta para a apresentação sobre a diferença entre `Current Area Score` e `Latest NP Assessment`.
+30. Preparar uma explicação curta para a apresentação sobre a diferença entre FWI, KBDI, score NatureProtector e Portuguese Context Proxy.
+31. Manter explícito que FWI e KBDI são índices de comparação e proveniência, não validação científica final do NatureProtector.
+32. Melhorar o suporte a histórico diário para KBDI, permitindo que o índice seja calculado com estado antecedente mais defensável.
+33. Preparar, se existirem dados suficientes, uma futura distribuição histórica local para calcular percentil/anomalia de FWI por área ou época do ano.
+34. Rever as limitações persistidas em `daily_cell_state`, garantindo que continuam úteis para auditoria e não apenas como texto acumulado sem estrutura.
+35. Melhorar a metadata de quarentena para incluir `SqlState`, `MessageText`, tabela, coluna e constraint quando a falha vier de PostgreSQL.
+36. Fazer nova recolha de screenshots para apresentação depois de confirmar uma run limpa com score NP, FWI, KBDI e Portuguese Context Proxy visíveis.
+37. Garantir que o relatório compila de forma estável com acrónimos, referências e bibliografia ativas.
+38. Confirmar que o relatório final permanece abaixo do limite de páginas definido, idealmente até 40 páginas.
+39. Rever visualmente a tabela de acrónimos e símbolos, garantindo que não ocupa espaço excessivo nem aparece duplicada.
+40. Confirmar que todas as citações usadas nos capítulos têm chave válida no ficheiro `References.bib`.
+41. Remover entradas bibliográficas antigas, genéricas ou desalinhadas com o NatureProtector.
+42. Acrescentar imagens e diagramas essenciais ao relatório, especialmente arquitetura geral, pipeline de processamento, schemas PostgreSQL, política de alertas e evidência runtime.
+43. Rever o Capítulo 3 para explicar melhor o âmbito global do NatureProtector, distinguindo projeto completo, módulo de prevenção, V1, V2 e trabalho futuro.
+44. Acrescentar uma nota clara de que o relatório atual documenta a V1, embora o repositório já tenha trabalho posterior associado à V2.
+45. Fazer uma revisão final de terminologia, garantindo consistência entre `âmbito`, `em tempo de execução`, `pipeline`, `baseline`, `validação técnica`, `validação científica`, `parâmetros candidatos` e `projeções operacionais`.
+46. Verificar se o relatório ainda contém vestígios de conteúdo antigo ou desalinhado com o projeto atual.
+47. Avaliar se o relatório deve incluir uma pequena secção ou nota sobre a evolução V1 → V2, sem tentar documentar toda a V2 em detalhe.
+48. Fazer uma última compilação limpa do PDF e arquivar a versão gerada como evidência documental da baseline V1.

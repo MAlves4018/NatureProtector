@@ -6,7 +6,8 @@ namespace NatureProtector.Prevention.Persistence;
 public sealed record DailyCellStateLookupResult(
     DailyCellState? State,
     Guid? GridCellId,
-    Guid? ConfigurationVersionId);
+    Guid? ConfigurationVersionId,
+    TerritorialRiskContext? TerritorialContext = null);
 
 public interface IDailyCellStateRepository
 {

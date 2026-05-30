@@ -72,16 +72,16 @@ public static class ReadingTemporalClassifier
 
     public static TimeSpan ResolveLatenessThreshold(TimeSpan interval)
     {
-        return TimeSpan.FromSeconds(Math.Max(2 * interval.TotalSeconds, 120));
+        return CandidateParameterSetV1.ResolveLatenessThreshold(interval);
     }
 
     public static TimeSpan ResolveReorderWindow(TimeSpan interval)
     {
-        return TimeSpan.FromSeconds(Math.Max(3 * interval.TotalSeconds, 180));
+        return CandidateParameterSetV1.ResolveReorderWindow(interval);
     }
 
     public static TimeSpan ResolveStaleThreshold(TimeSpan interval)
     {
-        return TimeSpan.FromSeconds(Math.Max(5 * interval.TotalSeconds, 300));
+        return CandidateParameterSetV1.ResolveStaleThreshold(interval);
     }
 }

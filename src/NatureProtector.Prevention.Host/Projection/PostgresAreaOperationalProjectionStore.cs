@@ -6,6 +6,7 @@ using NatureProtector.Core.Risk;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Projection;
 using NatureProtector.Prevention.Host.Persistence;
+using NatureProtector.Prevention.Risk;
 using NatureProtector.Shared.Observability;
 
 namespace NatureProtector.Prevention.Host.Projection;
@@ -72,6 +73,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
 
             var now = DateTimeOffset.UtcNow;
             var severity = SeverityExtensions.FromRiskLevel(assessment.RiskLevel);
+            var freshness = OperationalProjectionStatus.ResolveFreshness(assessment.Timestamp, now);
 
             if (existingState is null)
             {
@@ -91,6 +93,9 @@ public sealed class PostgresAreaOperationalProjectionStore(
             existingState.RiskScore = assessment.RiskScore;
             existingState.RiskLevel = assessment.RiskLevel.ToString();
             existingState.Severity = severity.ToString();
+            existingState.CoverageStatus = OperationalProjectionStatus.ResolveCoverage(assessment);
+            existingState.FreshnessStatus = freshness;
+            existingState.CarryForwardStatus = OperationalProjectionStatus.ResolveCarryForward(freshness);
             existingState.Summary = Truncate(assessment.ExplanationSummary, 2000);
             existingState.UpdatedAt = now;
 
@@ -144,6 +149,8 @@ public sealed class PostgresAreaOperationalProjectionStore(
 
             var now = DateTimeOffset.UtcNow;
             var severity = SeverityExtensions.FromRiskLevel(snapshot.AggregateRiskLevel);
+            var freshness = OperationalProjectionStatus.ResolveFreshness(snapshot.Timestamp, now);
+            var coverage = OperationalProjectionStatus.ResolveCoverage(assessmentCount);
 
             if (existingState is null)
             {
@@ -162,6 +169,9 @@ public sealed class PostgresAreaOperationalProjectionStore(
             existingState.AggregateRiskScore = snapshot.AggregateRiskScore;
             existingState.AggregateRiskLevel = snapshot.AggregateRiskLevel.ToString();
             existingState.Severity = severity.ToString();
+            existingState.CoverageStatus = coverage;
+            existingState.FreshnessStatus = freshness;
+            existingState.CarryForwardStatus = OperationalProjectionStatus.ResolveCarryForward(freshness);
             existingState.Summary = Truncate(snapshot.Summary, 2000);
             existingState.AssessmentCount = assessmentCount;
             existingState.UpdatedAt = now;
@@ -259,7 +269,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
     /// Constrói a mensagem curta do alerta operacional agregado.
     /// </summary>
     private static string BuildAlertMessage(AreaRiskSnapshot snapshot, V1AlertState state)
-        => $"AlertState={state}; Area risk is {snapshot.AggregateRiskLevel} with adjusted score {snapshot.AggregateRiskScore:F2}. Candidate Parameter Set V1.0 (non-official).";
+        => $"AlertState={state}; Area risk is {snapshot.AggregateRiskLevel} with adjusted score {snapshot.AggregateRiskScore:F2}. {CandidateParameterSetV1.Version} (non-official).";
 
     /// <summary>
     /// Limita texto livre aos comprimentos suportados pelo esquema relacional.

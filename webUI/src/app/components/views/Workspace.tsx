@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ArrowRight,
   BarChart3,
+  CloudRain,
   Clipboard,
   Clock,
   Code2,
@@ -65,6 +66,19 @@ const SCENARIO_TABS = ["Run Orchestrator", "Scenario Definition", "Latest Run", 
 const EVIDENCE_TABS = ["Latest Run Audit", "Compare B vs C", "Run Timings", "Diagnostics", "Export Evidence"] as const;
 const FLOW_TABS = ["Runtime Chain", "Processing Pipeline", "Retry & Quarantine", "Persistence Views", "Deployment & Services", "Nominal Flow"] as const;
 const MODEL_TABS = ["Domain Model", "Data Chain", "Data Provenance", "Territorial & Weather Context", "Code Mapping"] as const;
+const DEGRADATION_PROFILE_OPTIONS = [
+  "none",
+  "missing-readings",
+  "noise",
+  "bias",
+  "drift",
+  "stuck-value",
+  "outlier",
+  "clipping/range",
+  "lag/delay",
+  "duplicate",
+  "out-of-order",
+];
 
 const MODEL_ARTIFACTS = [
   { concept: "ScenarioDefinition", status: "Implemented", persistence: "Persisted", uiEvidence: "Scenario Definition / Run Orchestrator", code: "ScenarioDefinition" },
@@ -125,6 +139,7 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
     intervalSeconds: 5,
     seed: 12345,
     degradationProfile: "none",
+    degradationProfiles: ["none"],
     collectEvidence: false,
     waitForCompletion: false,
     timeoutSeconds: 180,
@@ -344,7 +359,7 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
           <Tabs values={MODEL_TABS} selected={modelTab} onSelect={setModelTab} colors={colors} compact />
           {modelTab === "Domain Model" && <DomainModel colors={colors} />}
           {modelTab === "Data Chain" && <DataChain colors={colors} />}
-          {modelTab === "Data Provenance" && <DataProvenance colors={colors} />}
+          {modelTab === "Data Provenance" && <DataProvenance colors={colors} summary={summary} />}
           {modelTab === "Territorial & Weather Context" && <TerritorialContext colors={colors} cells={cells} sensors={sensorNodes} summary={summary} />}
           {modelTab === "Code Mapping" && <CodeMapping colors={colors} />}
         </WorkspacePanel>
@@ -396,7 +411,9 @@ function MonitoringOverview({ colors, summary, run, audit, geoJSON, cells, senso
       <MetricGrid>
         <Metric colors={colors} title="Current Area Risk" value={formatScore(summary?.areaOperationalState?.aggregateRiskScore)} detail={summary?.areaOperationalState?.aggregateRiskLevel ?? "No projection"} icon={<Activity size={18} />} tone="#be123c" />
         <Metric colors={colors} title="Active Alert" value={summary?.activeAlerts.length ?? 0} detail={summary?.areaOperationalState?.alertState ?? "No active alert state"} icon={<AlertTriangle size={18} />} tone="#b45309" />
-        <Metric colors={colors} title="Freshness" value={summary?.freshness ? `${summary.freshness.freshCount}/${summary.freshness.staleCount}/${summary.freshness.expiredCount}` : "Not available"} detail="fresh / stale / expired" icon={<Clock size={18} />} tone="#475569" />
+        <Metric colors={colors} title="Freshness" value={summary?.areaOperationalState?.freshnessStatus ?? "Not available"} detail={summary?.freshness ? `${summary.freshness.freshCount}/${summary.freshness.staleCount}/${summary.freshness.expiredCount} cells fresh/stale/expired` : "projection freshness"} icon={<Clock size={18} />} tone="#475569" />
+        <Metric colors={colors} title="Coverage" value={summary?.areaOperationalState?.coverageStatus ?? "Not available"} detail={summary?.areaOperationalState?.operationalStatusReason ?? "projection coverage"} icon={<ShieldCheck size={18} />} tone="#2563eb" />
+        <Metric colors={colors} title="Carry-forward" value={summary?.areaOperationalState?.carryForwardStatus ?? "Not available"} detail={formatDate(summary?.areaOperationalState?.lastAssessmentTimestamp)} icon={<RefreshCw size={18} />} tone="#7c3aed" />
         <Metric colors={colors} title="Latest Run" value={run?.status ?? "No run"} detail={run?.scenarioCode ?? "Not available"} icon={<Play size={18} />} tone="#2563eb" />
         <Metric colors={colors} title="Sensors" value={cells.reduce((sum, cell) => sum + cell.sensorNodeCount, 0)} detail={`${cells.length} cells exposed`} icon={<MapIcon size={18} />} tone="#059669" />
         <Metric colors={colors} title="Last Update" value={summary?.generatedAtUtc ? shortTime(summary.generatedAtUtc) : "No data"} detail="runtime summary generatedAtUtc" icon={<RefreshCw size={18} />} tone="#7c3aed" />
@@ -467,11 +484,35 @@ function AreaRiskView({ colors, areaId, summary, dashboardLink }: { colors: Colo
   return (
     <ViewStack>
       <MetricGrid>
-        <Metric colors={colors} title="Current Score" value={formatScore(summary?.areaOperationalState?.aggregateRiskScore)} detail="projection.area_operational_state" icon={<Activity size={18} />} tone="#be123c" />
+        <Metric colors={colors} title="Current Area Score" value={formatScore(summary?.areaOperationalState?.aggregateRiskScore)} detail="aggregate projection / carry-forward" icon={<Activity size={18} />} tone="#be123c" />
+        <Metric colors={colors} title="Latest NP Assessment" value={formatScore(summary?.scoreComponents?.npScore)} detail={`${summary?.scoreComponents?.npRiskClassLabel ?? summary?.scoreComponents?.npRiskClass ?? "class n/a"}; ${summary?.scoreComponents?.parameterSetVersion ?? "parameter set not exposed"}`} icon={<Activity size={18} />} tone="#be123c" />
         <Metric colors={colors} title="Risk Level" value={summary?.areaOperationalState?.aggregateRiskLevel ?? "No data"} detail={summary?.areaOperationalState?.severity ?? "Not available"} icon={<ShieldCheck size={18} />} tone="#b45309" />
         <Metric colors={colors} title="Assessment Count" value={summary?.areaOperationalState?.assessmentCount ?? "Not available"} detail="persisted projection count" icon={<BarChart3 size={18} />} tone="#2563eb" />
+        <Metric colors={colors} title="Freshness" value={summary?.areaOperationalState?.freshnessStatus ?? "Not available"} detail={summary?.areaOperationalState?.carryForwardStatus ?? "carry-forward not exposed"} icon={<Clock size={18} />} tone="#475569" />
+        <Metric colors={colors} title="Coverage" value={summary?.areaOperationalState?.coverageStatus ?? "Not available"} detail={summary?.areaOperationalState?.operationalStatusReason ?? "coverage status"} icon={<ShieldCheck size={18} />} tone="#059669" />
+        <Metric colors={colors} title="FWI" value={formatMaybeScore(summary?.indexComparison?.fireWeatherIndex)} detail={`${summary?.indexComparison?.fireWeatherIpmaClassLabel ?? "IPMA class n/a"}; near ${summary?.indexComparison?.fireWeatherNextIpmaClass ?? "n/a"} (${formatMaybeScore(summary?.indexComparison?.fireWeatherThresholdDistanceToNextClass)})`} icon={<BarChart3 size={18} />} tone="#7c3aed" />
+        <Metric colors={colors} title="KBDI" value={formatMaybeScore(summary?.indexComparison?.keetchByramDroughtIndex)} detail={`${summary?.indexComparison?.kbdiDrynessClassLabel ?? "dryness class n/a"}; ${summary?.indexComparison?.kbdiAntecedentHistoryQuality ?? summary?.indexComparison?.kbdiCalculationStatus ?? "status n/a"}`} icon={<BarChart3 size={18} />} tone="#6d28d9" />
+        <Metric colors={colors} title="Portuguese Context Proxy" value={summary?.indexComparison?.portugueseContextRiskProxyLabel ?? summary?.indexComparison?.portugueseContextRiskProxyClass ?? "Not available"} detail={`FWI ${summary?.indexComparison?.fireWeatherIpmaClassLabel ?? "n/a"} x Territory ${summary?.indexComparison?.territorialHazardProxyClass ?? "n/a"}`} icon={<ShieldCheck size={18} />} tone="#0f766e" />
+        <Metric colors={colors} title="Precipitation 24h" value={formatMaybeScore(summary?.indexComparison?.dailyPrecipitationMillimeters)} detail={summary?.indexComparison?.provenance ?? "daily reference not exposed"} icon={<CloudRain size={18} />} tone="#0369a1" />
         <Metric colors={colors} title="Recent Risk Rows" value={summary?.risk.recentCount ?? 0} detail={formatRiskRange(summary?.risk.minScore, summary?.risk.maxScore)} icon={<Clock size={18} />} tone="#0891b2" />
       </MetricGrid>
+      <Panel colors={colors}>
+        <SectionHeader title="Score Components" subtitle="Read from persisted risk_assessment_log; frontend does not score." />
+        <KeyValues colors={colors} rows={[
+          ["BaseRisk / Adjusted", `${formatMaybeScore(summary?.scoreComponents?.baseRisk)} / ${formatMaybeScore(summary?.scoreComponents?.adjustedScore)}`],
+          ["M / D / T", `${formatMaybeScore(summary?.scoreComponents?.meteorologyComponent)} / ${formatMaybeScore(summary?.scoreComponents?.droughtComponent)} / ${formatMaybeScore(summary?.scoreComponents?.territoryComponent)}`],
+          ["H / F / G", `${formatMaybeScore(summary?.scoreComponents?.hazardComponent)} / ${formatMaybeScore(summary?.scoreComponents?.fuelComponent)} / ${formatMaybeScore(summary?.scoreComponents?.geomorphologyComponent)}`],
+          ["C / I", `${formatMaybeScore(summary?.scoreComponents?.confidenceFactor)} / ${formatMaybeScore(summary?.scoreComponents?.integrityFactor)}`],
+          ["Dominant driver", summary?.scoreComponents?.dominantDriver ?? "Not available"],
+          ["Calculation", summary?.scoreComponents?.calculationStatus ?? "Not available"],
+          ["Current Area vs Latest NP", "Area score is an aggregate projection. Latest NP assessment is the latest persisted risk_assessment_log row."],
+          ["Precipitation 24h / provenance", `${formatMaybeScore(summary?.indexComparison?.dailyPrecipitationMillimeters)} / ${summary?.indexComparison?.provenance ?? "Not available"}`],
+          ["FWI calculated / reference", `${formatMaybeScore(summary?.indexComparison?.calculatedFireWeatherIndex)} / ${formatMaybeScore(summary?.indexComparison?.referenceFireWeatherIndex)}`],
+          ["KBDI calculated / reference", `${formatMaybeScore(summary?.indexComparison?.calculatedKeetchByramDroughtIndex)} / ${formatMaybeScore(summary?.indexComparison?.referenceKeetchByramDroughtIndex)}`],
+          ["Local FWI percentile", `${summary?.indexComparison?.localFwiPercentileStatus ?? "Not available"}${summary?.indexComparison?.localFwiPercentileReason ? `: ${summary.indexComparison.localFwiPercentileReason}` : ""}`],
+          ["Limitations", summary?.scoreComponents?.limitations ?? summary?.indexComparison?.limitations ?? "None exposed"],
+        ]} />
+      </Panel>
       <Panel colors={colors}>
         <SectionHeader title="Recent Risk Scores" subtitle="Read from persisted risk_assessment_log values; frontend does not score." />
         <RiskLineChart colors={colors} summary={summary} />
@@ -514,23 +555,56 @@ function RunOrchestrator(props: {
   setScenarioTab: Dispatch<SetStateAction<(typeof SCENARIO_TABS)[number]>>;
 }) {
   const { colors, scenarios, activeSensorCount, sensorCountTooHigh, runForm, setRunForm, startRun, submittingRun, runResult, runMessage, areaCode, setMainTab, setScenarioTab } = props;
+  const activeProfiles = normalizeProfiles(runForm.degradationProfiles, runForm.degradationProfile);
+  const scenarioCWithoutDegradation = runForm.scenarioCode === "scenario_c" && activeProfiles.every(profile => profile === "none");
+  const setDegradationProfile = (profile: string, checked: boolean) => {
+    setRunForm(current => {
+      const currentProfiles = normalizeProfiles(current.degradationProfiles, current.degradationProfile);
+      let next = currentProfiles;
+      if (profile === "none") {
+        next = checked ? ["none"] : [];
+      } else {
+        next = checked
+          ? [...currentProfiles.filter(value => value !== "none"), profile]
+          : currentProfiles.filter(value => value !== profile);
+      }
+      if (next.length === 0) {
+        next = ["none"];
+      }
+      return { ...current, degradationProfiles: next, degradationProfile: toLegacyProfile(next) };
+    });
+  };
   return (
     <Panel colors={colors}>
       <SectionHeader title="Run Orchestrator" subtitle="Starts Simulator.Host through the existing development control endpoint." />
       <FormGrid>
-        <LabeledSelect colors={colors} label="scenario code" value={runForm.scenarioCode} options={scenarios.map(scenario => ({ value: scenario.code, label: `${scenario.code} - ${scenario.name}` }))} onChange={value => setRunForm(current => ({ ...current, scenarioCode: value, degradationProfile: value === "scenario_c" ? "missing-readings" : current.degradationProfile, runLabel: `${value}-from-ui` }))} />
+        <LabeledSelect colors={colors} label="scenario code" value={runForm.scenarioCode} options={scenarios.map(scenario => ({ value: scenario.code, label: `${scenario.code} - ${scenario.name}` }))} onChange={value => setRunForm(current => {
+          const currentProfiles = normalizeProfiles(current.degradationProfiles, current.degradationProfile);
+          const nextProfiles = value === "scenario_c" && currentProfiles.every(profile => profile === "none")
+            ? ["missing-readings"]
+            : currentProfiles;
+          return { ...current, scenarioCode: value, degradationProfile: toLegacyProfile(nextProfiles), degradationProfiles: nextProfiles, runLabel: `${value}-from-ui` };
+        })} />
         <LabeledNumber colors={colors} label="sensor count" value={runForm.sensorCount} max={activeSensorCount || undefined} onChange={value => setRunForm(current => ({ ...current, sensorCount: value }))} />
         <LabeledNumber colors={colors} label="number of cycles" value={runForm.numberOfCycles} onChange={value => setRunForm(current => ({ ...current, numberOfCycles: value }))} />
         <LabeledNumber colors={colors} label="interval seconds" value={runForm.intervalSeconds} onChange={value => setRunForm(current => ({ ...current, intervalSeconds: value }))} />
         <LabeledNumber colors={colors} label="seed" value={runForm.seed} onChange={value => setRunForm(current => ({ ...current, seed: value }))} />
-        <LabeledSelect colors={colors} label="degradation profile" value={runForm.degradationProfile ?? "none"} options={[{ value: "none", label: "none" }, { value: "missing-readings", label: "missing-readings" }]} onChange={value => setRunForm(current => ({ ...current, degradationProfile: value || null }))} />
         <LabeledNumber colors={colors} label="timeout seconds" value={runForm.timeoutSeconds} onChange={value => setRunForm(current => ({ ...current, timeoutSeconds: value ?? 180 }))} />
         <LabeledInput colors={colors} label="run label" value={runForm.runLabel ?? ""} onChange={value => setRunForm(current => ({ ...current, runLabel: value || null }))} />
       </FormGrid>
+      <div style={{ marginTop: "10px" }}>
+        <label style={labelStyle(colors)}>degradation profiles</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+          {DEGRADATION_PROFILE_OPTIONS.map(profile => (
+            <CheckRow key={profile} colors={colors} label={profile} checked={activeProfiles.includes(profile)} onChange={checked => setDegradationProfile(profile, checked)} />
+          ))}
+        </div>
+      </div>
       <div style={{ color: colors.textSecond, fontSize: "13px", marginTop: "10px" }}>
-        Active sensors available: {activeSensorCount || "Unknown"}; selected sensors requested: {runForm.sensorCount ?? "all"}
+        Active sensors available: {activeSensorCount || "Unknown"}; selected sensors requested: {runForm.sensorCount ?? "all"}; active profiles: {activeProfiles.join(", ")}
       </div>
       {sensorCountTooHigh && <Banner colors={colors} tone="#dc2626">sensorCount exceeds active sensors for this area.</Banner>}
+      {scenarioCWithoutDegradation && <Banner colors={colors} tone="#b45309">scenario_c is intended for degraded/operational comparison. Select at least one degradation profile for a meaningful C run.</Banner>}
       <CheckRow colors={colors} label="collect evidence" checked={runForm.collectEvidence} onChange={value => setRunForm(current => ({ ...current, collectEvidence: value }))} />
       <CheckRow colors={colors} label="wait for completion" checked={runForm.waitForCompletion} onChange={value => setRunForm(current => ({ ...current, waitForCompletion: value }))} />
       <CheckRow colors={colors} label="allow parallel run" checked={runForm.allowParallelRun} onChange={value => setRunForm(current => ({ ...current, allowParallelRun: value }))} />
@@ -606,6 +680,23 @@ function LatestRunAuditView({ colors, audit }: { colors: Colors; audit: RuntimeR
         <Panel colors={colors}><SectionHeader title="Quality Summary" /><StatusCounts colors={colors} rows={audit.qualityFlagsSummary} /></Panel>
         <Panel colors={colors}><SectionHeader title="Eligibility Summary" /><StatusCounts colors={colors} rows={audit.eligibilitySummary} /></Panel>
       </div>
+      <Panel colors={colors}>
+        <SectionHeader title="NP vs FWI vs KBDI" subtitle="Values are read from persisted backend projections and diagnostics; the UI does not calculate indexes." />
+        <KeyValues colors={colors} rows={[
+          ["NP score / base / adjusted", `${formatMaybeScore(audit.scoreComponents?.npScore)} / ${formatMaybeScore(audit.scoreComponents?.baseRisk)} / ${formatMaybeScore(audit.scoreComponents?.adjustedScore)}`],
+          ["M / D / T", `${formatMaybeScore(audit.scoreComponents?.meteorologyComponent)} / ${formatMaybeScore(audit.scoreComponents?.droughtComponent)} / ${formatMaybeScore(audit.scoreComponents?.territoryComponent)}`],
+          ["H / F / G", `${formatMaybeScore(audit.scoreComponents?.hazardComponent)} / ${formatMaybeScore(audit.scoreComponents?.fuelComponent)} / ${formatMaybeScore(audit.scoreComponents?.geomorphologyComponent)}`],
+          ["C / I", `${formatMaybeScore(audit.scoreComponents?.confidenceFactor)} / ${formatMaybeScore(audit.scoreComponents?.integrityFactor)}`],
+          ["FWI raw / normalized / status", `${formatMaybeScore(audit.indexComparison?.fireWeatherIndex)} / ${formatMaybeScore(audit.indexComparison?.normalizedFireWeatherIndex)} / ${audit.indexComparison?.fireWeatherCalculationStatus ?? "Not available"}`],
+          ["FWI IPMA / EFFIS", `${audit.indexComparison?.fireWeatherIpmaClassLabel ?? audit.indexComparison?.fireWeatherIpmaClass ?? "Not available"} / ${audit.indexComparison?.fireWeatherEffisClass ?? "Not available"}`],
+          ["KBDI raw / normalized / status", `${formatMaybeScore(audit.indexComparison?.keetchByramDroughtIndex)} / ${formatMaybeScore(audit.indexComparison?.normalizedKeetchByramDroughtIndex)} / ${audit.indexComparison?.kbdiCalculationStatus ?? "Not available"}`],
+          ["KBDI dryness / antecedent", `${audit.indexComparison?.kbdiDrynessClassLabel ?? audit.indexComparison?.kbdiDrynessClass ?? "Not available"} / ${audit.indexComparison?.kbdiAntecedentHistoryQuality ?? "Not available"}`],
+          ["Portuguese Context Proxy", `${audit.indexComparison?.portugueseContextRiskProxyLabel ?? audit.indexComparison?.portugueseContextRiskProxyClass ?? "Not available"}; territory ${audit.indexComparison?.territorialHazardProxyClass ?? "n/a"}`],
+          ["Dominant driver", audit.scoreComponents?.dominantDriver ?? "Not available"],
+          ["Parameter set", audit.scoreComponents?.parameterSetVersion ?? "Not available"],
+          ["Limitations", audit.scoreComponents?.limitations ?? audit.indexComparison?.limitations ?? "None exposed"],
+        ]} />
+      </Panel>
       <Panel colors={colors}>
         <SectionHeader title="Audit Notes" />
         <ul style={{ margin: 0, paddingLeft: "18px", color: colors.textSecond, lineHeight: 1.7 }}>
@@ -881,7 +972,7 @@ function DataChain({ colors }: { colors: Colors }) {
   );
 }
 
-function DataProvenance({ colors }: { colors: Colors }) {
+function DataProvenance({ colors, summary }: { colors: Colors; summary: RuntimeSummaryResponse | null }) {
   const cards = [
     ["Simulated data", "Runtime evidence is generated by controlled scenarios. It is not presented as field validation of real wildfire prediction."],
     ["Scenario parameters", "Scenario code, cycles, seed, sensor count and degradation profile define the operational experiment."],
@@ -894,6 +985,21 @@ function DataProvenance({ colors }: { colors: Colors }) {
   return (
     <ViewStack>
       <div style={cardGrid()}>{cards.map(([title, detail]) => <InfoCard key={title} colors={colors} title={title} status="Provenance" detail={detail} />)}</div>
+      <Panel colors={colors} accent="#0891b2">
+        <SectionHeader title="NP vs FWI/KBDI" subtitle="Persisted comparison/provenance values; no frontend scoring or scientific validation claim." />
+        <KeyValues colors={colors} rows={[
+          ["Parameter set", summary?.scoreComponents?.parameterSetVersion ?? "Not available"],
+          ["NP adjusted score", formatMaybeScore(summary?.scoreComponents?.adjustedScore)],
+          ["FWI / normalized", `${formatMaybeScore(summary?.indexComparison?.fireWeatherIndex)} / ${formatMaybeScore(summary?.indexComparison?.normalizedFireWeatherIndex)}`],
+          ["FWI IPMA class", `${summary?.indexComparison?.fireWeatherIpmaClassLabel ?? "Not available"}; next ${summary?.indexComparison?.fireWeatherNextIpmaClass ?? "n/a"}`],
+          ["KBDI / normalized", `${formatMaybeScore(summary?.indexComparison?.keetchByramDroughtIndex)} / ${formatMaybeScore(summary?.indexComparison?.normalizedKeetchByramDroughtIndex)}`],
+          ["KBDI dryness", `${summary?.indexComparison?.kbdiDrynessClassLabel ?? "Not available"}; ${summary?.indexComparison?.kbdiAntecedentHistoryQuality ?? "antecedent n/a"}`],
+          ["Portuguese Context Proxy", summary?.indexComparison?.portugueseContextRiskProxyLabel ?? summary?.indexComparison?.portugueseContextRiskProxyClass ?? "Not available"],
+          ["Local FWI percentile", summary?.indexComparison?.localFwiPercentileStatus ?? "Not available"],
+          ["FWI/KBDI status", `${summary?.indexComparison?.fireWeatherCalculationStatus ?? "FWI n/a"}; ${summary?.indexComparison?.kbdiCalculationStatus ?? "KBDI n/a"}`],
+          ["Limitations", summary?.scoreComponents?.limitations ?? summary?.indexComparison?.limitations ?? "None exposed"],
+        ]} />
+      </Panel>
       <Panel colors={colors} accent="#7c3aed">
         <SectionHeader title="RBAC readiness note" subtitle="Conceptual role-based visibility plan; not security enforcement." />
         <SimpleTable colors={colors} columns={["Role", "Future UI access"]} rows={[
@@ -1050,6 +1156,7 @@ function RunRequestResult({ colors, result, request, message, areaCode }: { colo
         ["intervalSeconds", requested?.intervalSeconds ?? request.intervalSeconds ?? "Not available"],
         ["seed", requested?.seed ?? request.seed ?? "Not available"],
         ["degradationProfile", requested?.degradationProfile ?? request.degradationProfile ?? "Not available"],
+        ["degradationProfiles", (requested?.degradationProfiles ?? request.degradationProfiles ?? []).join(", ") || "Not available"],
         ["simulationRunId", run?.id ?? "waiting_for_persistence"],
         ["selectedSensors", run?.runOverrides?.selectedSensorNames.join(", ") || "Not available"],
         ["evidenceDirectory", result?.evidenceDirectory ?? result?.logDirectory ?? "Not available"],
@@ -1371,6 +1478,10 @@ function formatScore(value: number | null | undefined) {
   return value == null ? "No data" : value.toFixed(2);
 }
 
+function formatMaybeScore(value: number | null | undefined) {
+  return value == null ? "n/a" : value.toFixed(2);
+}
+
 function formatRiskRange(min: number | null | undefined, max: number | null | undefined) {
   if (min == null || max == null) {
     return "No recent scores";
@@ -1378,17 +1489,27 @@ function formatRiskRange(min: number | null | undefined, max: number | null | un
   return `min ${min.toFixed(2)} / max ${max.toFixed(2)}`;
 }
 
+function normalizeProfiles(values: string[] | null | undefined, legacy: string | null | undefined) {
+  const profiles = values && values.length > 0 ? values : legacy ? legacy.split(/[,+;|]/) : ["none"];
+  const normalized = Array.from(new Set(profiles.map(value => value.trim()).filter(Boolean)));
+  return normalized.length === 0 ? ["none"] : normalized.length > 1 ? normalized.filter(value => value !== "none") : normalized;
+}
+
+function toLegacyProfile(values: string[]) {
+  return values.length === 1 ? values[0] : values.join("+");
+}
+
 function formatOverrides(values: RuntimeRunSummaryResponse["runOverrides"] extends infer T ? T extends { requested: infer R } ? R : never : never) {
   if (!values) {
     return "Not available";
   }
-  const typed = values as { sensorCount?: number | null; numberOfCycles?: number | null; intervalSeconds?: number | null; seed?: number | null; degradationProfile?: string | null };
+  const typed = values as { sensorCount?: number | null; numberOfCycles?: number | null; intervalSeconds?: number | null; seed?: number | null; degradationProfile?: string | null; degradationProfiles?: string[] | null };
   const parts = [
     typed.sensorCount == null ? null : `sensors ${typed.sensorCount}`,
     typed.numberOfCycles == null ? null : `cycles ${typed.numberOfCycles}`,
     typed.intervalSeconds == null ? null : `interval ${typed.intervalSeconds}s`,
     typed.seed == null ? null : `seed ${typed.seed}`,
-    typed.degradationProfile ?? null,
+    typed.degradationProfiles && typed.degradationProfiles.length > 0 ? typed.degradationProfiles.join("+") : typed.degradationProfile ?? null,
   ].filter(Boolean);
   return parts.length ? parts.join(" / ") : "Not available";
 }
@@ -1590,10 +1711,11 @@ function compareDelta(b: string, c: string) {
 }
 
 function groupDiagnostics(diagnostics: RuntimeDiagnosticDefinitionResponse[]) {
-  const groups: Record<string, RuntimeDiagnosticDefinitionResponse[]> = { Runs: [], Pipeline: [], Risk: [], Alerts: [], Scenario: [], "Raw Data": [] };
+  const groups: Record<string, RuntimeDiagnosticDefinitionResponse[]> = { Runs: [], Pipeline: [], Risk: [], Alerts: [], Scenario: [], "Model Evidence": [], "Raw Data": [] };
   for (const item of diagnostics) {
     const id = item.id.toLowerCase();
-    if (id.includes("run")) groups.Runs.push(item);
+    if (id.includes("np-vs-fwi") || id.includes("component") || id.includes("cell-context") || id.includes("fwi") || id.includes("kbdi") || id.includes("quality") || id.includes("coverage")) groups["Model Evidence"].push(item);
+    else if (id.includes("run")) groups.Runs.push(item);
     else if (id.includes("pipeline") || id.includes("attempt") || id.includes("inbox") || id.includes("rejected") || id.includes("quarantined")) groups.Pipeline.push(item);
     else if (id.includes("risk")) groups.Risk.push(item);
     else if (id.includes("alert")) groups.Alerts.push(item);
@@ -1604,6 +1726,8 @@ function groupDiagnostics(diagnostics: RuntimeDiagnosticDefinitionResponse[]) {
 }
 
 function buildEvidenceMarkdown(audit: RuntimeRunAuditResponse | null, compare: RuntimeDiagnosticResultResponse | null, summary: RuntimeSummaryResponse | null) {
+  const score = summary?.scoreComponents ?? audit?.scoreComponents ?? null;
+  const index = summary?.indexComparison ?? audit?.indexComparison ?? null;
   return [
     "# Nature Protector Evidence Summary",
     "",
@@ -1613,6 +1737,17 @@ function buildEvidenceMarkdown(audit: RuntimeRunAuditResponse | null, compare: R
     `Accepted readings: ${audit?.acceptedReadings ?? "Not available"}`,
     `Missing events: ${audit?.missingEvents ?? "Not available"}`,
     `Risk assessments: ${audit?.riskAssessments ?? "Not available"}`,
+    `Parameter set: ${score?.parameterSetVersion ?? "Not available"}`,
+    `NP score/base/adjusted: ${formatMaybeScore(score?.npScore)} / ${formatMaybeScore(score?.baseRisk)} / ${formatMaybeScore(score?.adjustedScore)}`,
+    `M/D/T: ${formatMaybeScore(score?.meteorologyComponent)} / ${formatMaybeScore(score?.droughtComponent)} / ${formatMaybeScore(score?.territoryComponent)}`,
+    `H/F/G: ${formatMaybeScore(score?.hazardComponent)} / ${formatMaybeScore(score?.fuelComponent)} / ${formatMaybeScore(score?.geomorphologyComponent)}`,
+    `C/I: ${formatMaybeScore(score?.confidenceFactor)} / ${formatMaybeScore(score?.integrityFactor)}`,
+    `FWI raw/normalized/status: ${formatMaybeScore(index?.fireWeatherIndex)} / ${formatMaybeScore(index?.normalizedFireWeatherIndex)} / ${index?.fireWeatherCalculationStatus ?? "Not available"}`,
+    `KBDI raw/normalized/status: ${formatMaybeScore(index?.keetchByramDroughtIndex)} / ${formatMaybeScore(index?.normalizedKeetchByramDroughtIndex)} / ${index?.kbdiCalculationStatus ?? "Not available"}`,
+    `Precipitation 24h/provenance: ${formatMaybeScore(index?.dailyPrecipitationMillimeters)} / ${index?.provenance ?? "Not available"}`,
+    `Index limitations: ${index?.limitations ?? score?.limitations ?? "None exposed"}`,
+    `Degradation profiles: ${summary?.latestRun?.runOverrides?.resolved?.degradationProfiles?.join(", ") ?? summary?.latestRun?.runOverrides?.resolved?.degradationProfile ?? "Not available"}`,
+    `Coverage/freshness/carry-forward: ${summary?.areaOperationalState?.coverageStatus ?? "n/a"} / ${summary?.areaOperationalState?.freshnessStatus ?? "n/a"} / ${summary?.areaOperationalState?.carryForwardStatus ?? "n/a"}`,
     "",
     "## Compare B vs C",
     ...(buildCompareRows(compare).map(row => `- ${row[0]}: B=${row[1]}, C=${row[2]}, delta=${row[3]}`)),

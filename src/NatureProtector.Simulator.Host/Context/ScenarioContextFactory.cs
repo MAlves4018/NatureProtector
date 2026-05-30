@@ -77,9 +77,15 @@ public sealed class ScenarioContextFactory : ISimulationContextSource
         var startTimestamp = _options.StartTimestamp ?? DateTimeOffset.UtcNow;
         var interval = TimeSpan.FromSeconds(_options.IntervalSeconds);
         var requestedOverrides = _options.RunOverrides ?? new SimulatorRunOverridesOptions();
-        var effectiveDegradationProfile = ResolveDegradationProfile(
+        var requestedProfiles = SimulationDegradationProfiles.Normalize(
+            requestedOverrides.DegradationProfiles,
+            requestedOverrides.DegradationProfile);
+        var effectiveDegradationProfiles = SimulationDegradationProfiles.Resolve(
+            requestedOverrides.DegradationProfiles,
             requestedOverrides.DegradationProfile,
+            _options.DegradationProfiles,
             _options.DegradationProfile);
+        var effectiveDegradationProfile = SimulationDegradationProfiles.ToLegacyProfile(effectiveDegradationProfiles);
         var runOverrides = effectiveDegradationProfile is null && requestedOverrides.DegradationProfile is null
             ? null
             : new SimulationRunOverridesSnapshot(
@@ -89,7 +95,10 @@ public sealed class ScenarioContextFactory : ISimulationContextSource
                     IntervalSeconds: requestedOverrides.IntervalSeconds,
                     Seed: requestedOverrides.Seed,
                     DegradationProfile: requestedOverrides.DegradationProfile,
-                    OrchestratorCorrelationId: requestedOverrides.OrchestratorCorrelationId),
+                    OrchestratorCorrelationId: requestedOverrides.OrchestratorCorrelationId)
+                {
+                    DegradationProfiles = requestedProfiles
+                },
                 Resolved: new SimulationRunOverridesResolved(
                     SensorCount: sensors.Count,
                     NumberOfCycles: _options.NumberOfCycles,
@@ -97,7 +106,10 @@ public sealed class ScenarioContextFactory : ISimulationContextSource
                     PreferredSeed: _options.Seed,
                     DegradationProfile: effectiveDegradationProfile,
                     OrchestratorCorrelationId: requestedOverrides.OrchestratorCorrelationId,
-                    SelectedSensorNames: sensors.Select(sensor => sensor.Name).ToArray()));
+                    SelectedSensorNames: sensors.Select(sensor => sensor.Name).ToArray())
+                {
+                    DegradationProfiles = effectiveDegradationProfiles
+                });
 
         var context = new SimulationContext(
             areaId: _options.AreaId,
@@ -210,16 +222,6 @@ public sealed class ScenarioContextFactory : ISimulationContextSource
     private static string NormalizeRequiredString(string? value, string fallback)
     {
         return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-    }
-
-    private static string? ResolveDegradationProfile(string? overrideProfile, string? scenarioProfile)
-    {
-        if (!string.IsNullOrWhiteSpace(overrideProfile))
-        {
-            return overrideProfile.Trim();
-        }
-
-        return string.IsNullOrWhiteSpace(scenarioProfile) ? null : scenarioProfile.Trim();
     }
 
     /// <summary>

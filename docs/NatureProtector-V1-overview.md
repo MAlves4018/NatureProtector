@@ -23,8 +23,55 @@ Isto significa que a V1 demonstra rastreabilidade, robustez de pipeline, separa�
 | Alertas | Implementado como política interna V1 | `V1AlertPolicy` usa `None`, `Warning`, `Alarm` e histerese sobre score ajustado. |
 | API | Implementado/parcial | Expõe estado persistido/projetado; não recalcula risco. |
 | Orquestração de runs | Implementado localmente | `run-spec.json` e `run-scenario.ps1` controlam execuções e evidência. |
-| Coverage | Validado tecnicamente | Estado consolidado recente: `97.6%` line, `90.1%` branch, `97.1%` method. |
+| Coverage | Validado tecnicamente | Estado consolidado recente em `coveragereport_core/Summary.txt`: `87.6%` line, `76.8%` branch, `91.9%` method. A queda face a iteracoes anteriores vem sobretudo de API/diagnostics/glue runtime novos. |
 | Ciência/modelo oficial | Fora de âmbito da validação atual | FWI/KBDI/PIR/RCM são referências e evolução metodológica, não equivalência implementada e validada. |
+
+### Atualizacao tecnica V1.0 candidata
+
+A implementacao atual passou a expor explicitamente:
+
+- `CandidateParameterSetV1` com pesos candidatos M/D/T, H/F/G, thresholds e janelas operacionais;
+- `TruthSnapshot` e `LocalObservation` no simulador, preservando o contrato externo RabbitMQ;
+- `DailyCellState` por area/celula/dia/run com contexto FWI/KBDI candidato e provenance;
+- `RiskAssessment` persistido com `BaseRisk`, `AdjustedScore`, `RiskScore`, `Score100`, M/D/T, H/F/G, C/I, dominant driver, status e limitations;
+- `degradationProfiles` multiplos com compatibilidade `degradationProfile` legacy;
+- coverage, freshness e carry-forward nas projeccoes operacionais;
+- diagnostics/runtime summary para NP vs FWI/KBDI, componentes do score, qualidade/elegibilidade, contexto diario e B vs C.
+
+FWI/KBDI continuam a ser comparacao/proveniencia tecnica, nao validacao cientifica final. Estados como `Complete`, `CompleteWithCandidateDefaults`, `Partial` e `Missing` devem ser preservados na API/UI. O frontend apenas apresenta dados persistidos pela API e nao recalcula risco.
+
+### Daily reference, FWI e KBDI
+
+Os cenarios `scenario_b` e `scenario_c` incluem `daily_reference` no control plane. Esse contexto diario deve ser tratado como fonte de contexto do cenario, nao como leitura de sensor. A pipeline materializa estes campos em `DailyCellState` por area/celula/dia/run quando existem:
+
+- `temperature_min_c`, `temperature_mean_c`, `temperature_max_c`;
+- `relative_humidity_min_pct`;
+- `precipitation_total_mm`;
+- `wind_speed_max_ms`;
+- `fwi_reference`, `kbdi_reference` e `fire_index_reference_kind`.
+
+`precipitation_total_mm = 0.0` e valor valido. So deve ser marcado como missing quando a propriedade nao existe, e nula ou invalida. A proveniencia `scenario_daily_reference` indica que o dado veio do contexto diario do cenario.
+
+FWI e KBDI podem aparecer de duas formas:
+
+- calculados pela pipeline candidata (`candidate_fwi_calculator`, `candidate_kbdi_calculator`) quando ha inputs suficientes;
+- como referencia/importacao do cenario quando apenas existe valor de referencia. O estado atual usa o `daily_reference` para contexto e calculo candidato, mas nao afirma equivalencia oficial.
+
+Uma run tecnica recente B/C validou que `DailyPrecipitationMillimeters=0`, FWI e KBDI ficam preenchidos quando o contexto diario existe, e a limitation `precipitation_24h_missing` deixa de aparecer nesses assessments.
+
+### Classes qualitativas, KBDI diario e contexto portugues candidato
+
+A API/UI expoe classes interpretativas para facilitar a leitura sem alterar a matematica dos indices:
+
+- FWI: classe IPMA interpretativa (`Baixo/Reduzido`, `Moderado`, `Elevado`, `Muito Elevado`, `Maximo`, `Extremo`, `Excecional`), classe EFFIS auxiliar e distancia ao proximo limiar. Exemplo: `FWI=17.07` fica `Moderado`, perto de `Elevado`.
+- KBDI: classe de secura candidata (`VeryLowDryness` ate `ExtremeDryness`). KBDI classifica deficit hidrico/secura, nao perigo final de incendio.
+- NP Score: classe candidata sobre a escala 0..1 do `Candidate Parameter Set V1.0`.
+
+KBDI e tratado como indice diario acumulativo. Para o mesmo `SimulationRunId` + `GridCellId` + `LogicalDate`, o repositório nao deve evoluir KBDI por leitura/evento como se cada leitura fosse um novo dia. Quando so existe um dia de `daily_reference`, o status fica `LimitedAntecedentHistory` e a limitation `limited_antecedent_history` deve ser preservada.
+
+Foi acrescentado `PortugueseContextRiskProxy`, um proxy candidato inspirado no contexto portugues em que a classe FWI e combinada com perigo territorial. Nao e RCM/PIR/IPMA oficial, nao usa a matriz oficial IPMA e nao usa perigosidade rural oficial ICNF. A matriz e candidata V1.0 e serve apenas para interpretacao tecnica local.
+
+O percentil/anomalia local de FWI so deve ser calculado quando houver distribuicao historica local materializada. No estado atual a API/UI expoe `localFwiPercentileStatus = NotAvailable` com `historical_local_fwi_distribution_not_materialized`.
 
 Fontes principais para aprofundar:
 
@@ -48,7 +95,7 @@ A V1 valida sobretudo engenharia de software, arquitetura, integração e execu�
 | A API lê projeções e alertas persistidos | Validado tecnicamente | `PostgresControlPlaneService` e testes da API. |
 | A V1 usa parâmetros candidatos | Implementado como baseline | Explicações e mensagens marcam `Candidate Parameter Set V1.0`. |
 | O score representa risco oficial de incêndio | Não validado | Fora de âmbito atual. |
-| FWI/KBDI estão implementados como cálculo final | Não implementado como modelo final | Podem existir artefactos e contexto preparatório, mas não validação final. |
+| FWI/KBDI estão implementados como cálculo final | Implementado como contexto candidato/proveniência, não como modelo final validado | Existem cálculos/estado quando há dados suficientes, mas continuam sem equivalência oficial ou calibração científica. |
 | O sistema está calibrado para outras áreas | Não validado | A área piloto é `proenca-a-nova`. |
 
 O documento deve, por isso, manter sempre a separação entre:
@@ -218,7 +265,7 @@ Não deve conter:
 
 O serviço atual de scoring é uma baseline candidata. Aplica thresholds simples por métrica e fatores candidatos para confiança observacional, integridade operacional e elegibilidade. A explicação inclui `Candidate Parameter Set V1.0 (non-calibrated)`, o que deve ser preservado na leitura metodológica: há modelo técnico executável, não calibração oficial.
 
-`DailyCellState` existe como artefacto de contexto diário. A sua função é guardar contexto e memória diária por célula, incluindo informação útil para evolução metodológica futura. Ele não é score final e não deve ser apresentado como cálculo completo de FWI/KBDI. Pode apoiar essa evolução, mas a V1 atual não deve afirmar que implementa ou valida esses índices como produto científico.
+`DailyCellState` existe como artefacto de contexto diário. A sua função é guardar contexto e memória diária por célula/run, incluindo precipitação, meteorologia agregada, FWI/KBDI candidatos, provenance e limitations. Ele não é score final e não deve ser apresentado como validação oficial de FWI/KBDI; quando valores faltam, o estado deve ser Missing/Partial/CandidateDefault em vez de assumir risco real silencioso.
 
 ## 8. Alertas, projeções e API
 
@@ -248,6 +295,7 @@ O alerta é materializado nas projeções. A mensagem persistida inclui `AlertSt
 | Estado operacional da área | Lê projeção persistida e `alertState`. | Não recalcula risco. |
 | Estado operacional por célula | Lê projeção por célula. | Base para UI/backoffice. |
 | Alertas ativos | Lista alertas abertos e `alertState`. | Lê `projection.alert_state`. |
+| Runtime summary/diagnostics | Expõe NP score, FWI/KBDI, M/D/T, H/F/G, C/I, freshness, coverage e carry-forward quando persistidos. | Evidência técnica; não recalcula risco nem valida cientificamente o score. Diagnostics principais: `latest-run-np-vs-fwi-kbdi`, `latest-run-components`, `latest-run-fwi-input-completeness`, `latest-run-kbdi-input-completeness`, `latest-run-coverage-freshness`. |
 
 Documentos e código de detalhe:
 
@@ -283,6 +331,7 @@ O `run-spec.json` é o contrato operacional local da orquestração. O exemplo a
 | `intervalSeconds` | Intervalo lógico entre ciclos. |
 | `seed` | Seed de reprodutibilidade. |
 | `degradationProfile` | Perfil operacional pedido. |
+| `degradationProfiles` | Lista de perfis operacionais pedidos; preferida em novos fluxos, mantendo o campo singular como compatibilidade. |
 | `collectEvidence` | Controla recolha de evidência. |
 | `waitForCompletion` | Espera pela conclusão da run. |
 | `timeoutSeconds` | Timeout operacional. |
@@ -297,6 +346,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\scenarios\run-scenario.ps1 `
 ```
 
 A documentação [architecture/scenario-run-orchestrator.md](architecture/scenario-run-orchestrator.md) descreve a evolução O1/O1.2: O1.1 criou o contrato local de execução e o script; O1.2 adicionou suporte real no `Simulator.Host` para `RunOverrides`, persistência de metadata requested/resolved e correlação por `orchestratorCorrelationId`.
+
+Para prova técnica reprodutível, `scripts/evidence/run-v1-bc-smoke.ps1`
+executa ou valida em dry-run a comparação B/C, recolhendo audit, diagnostics,
+componentes NP vs FWI/KBDI, coverage/freshness/carry-forward e comparação
+`scenario_b` vs `scenario_c`. A execução real depende de API, PostgreSQL,
+RabbitMQ e runtime local disponíveis; o modo `-DryRun` apenas valida a
+especificação e os artefactos esperados.
 
 ## 10. Persistência e observabilidade
 
@@ -324,10 +380,10 @@ A V1 tem validação automática relevante. A cobertura consolidada recente é:
 
 | Métrica | Valor |
 | --- | --- |
-| Line coverage | `97.6%` |
-| Branch coverage | `90.1%` |
-| Method coverage | `97.1%` |
-| Full method coverage | `92.9%` |
+| Line coverage | `87.6%` |
+| Branch coverage | `76.8%` |
+| Method coverage | `91.9%` |
+| Full method coverage | `86.1%` |
 
 Esta cobertura deve ser interpretada como validação técnica. Ela protege domínio, contratos, pipeline, API, Influx configurável, simulador, orquestração e casos críticos. Não transforma o modelo de risco em modelo cientificamente calibrado.
 
@@ -440,7 +496,7 @@ As limitações abaixo são intencionais e devem ser comunicadas sem ambiguidade
 | Tema | Limitação |
 | --- | --- |
 | Validação científica | Não há calibração oficial nem validação externa do modelo de risco. |
-| FWI/KBDI | Podem orientar contexto e evolução, mas não são cálculo final validado nesta V1. |
+| FWI/KBDI | São calculáveis como referência/proveniência candidata, mas não são cálculo final validado cientificamente nesta V1. |
 | Área piloto | A validação está centrada em `proenca-a-nova`; não há generalização multiárea validada. |
 | Eventos derivados | A família externa de eventos `accepted/rejected/normalized/warning/alarm` não está totalmente publicada end-to-end. |
 | Dashboards | Grafana é apoio de observabilidade, não cockpit final. |
@@ -461,7 +517,7 @@ O roadmap técnico deve partir do que já está implementado, sem reabrir decis�
 6. amadurecer dashboards operacionais;
 7. evoluir a orquestração de PowerShell para serviço/API reutilizável;
 8. separar melhor o simulador em verdade física, observação local e falha de transporte;
-9. tratar FWI/KBDI e validação científica como frentes futuras separadas;
+9. tratar FWI/KBDI como comparação/proveniência candidata e validação científica como frente futura separada;
 10. preparar validação multiárea apenas quando existirem dados, parâmetros e critérios adequados.
 
 Documentos históricos como [planning/project-completion-roadmap.md](planning/project-completion-roadmap.md) e [planning/pipeline-gap-and-dependency-map.md](planning/pipeline-gap-and-dependency-map.md) devem ser usados como contexto histórico, não como fotografia atual quando contradizem código, testes ou evidência recente.
@@ -500,6 +556,6 @@ Este overview deve ser atualizado quando houver mudança relevante em qualquer u
 - coverage consolidado;
 - evidência runtime de referência;
 - maturidade de dashboards ou deployment;
-- implementação real de FWI/KBDI ou validação científica.
+- equivalência oficial/calibração científica de FWI/KBDI e score NP.
 
 Regra de manutenção: quando houver conflito entre este overview e o código/testes/evidência recente, o overview deve ser corrigido. Documentação histórica deve ser preservada como histórico, mas não deve prevalecer sobre o comportamento observado.

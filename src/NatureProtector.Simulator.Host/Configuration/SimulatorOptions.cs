@@ -136,6 +136,12 @@ public sealed class SimulatorOptions
     public string? DegradationProfile { get; set; }
 
     /// <summary>
+    /// Optional degradation profiles defined by the selected scenario baseline.
+    /// This complements DegradationProfile while preserving the legacy single-value contract.
+    /// </summary>
+    public List<string> DegradationProfiles { get; set; } = [];
+
+    /// <summary>
     /// Time acceleration factor for the scenario.
     /// </summary>
     public double TimeAcceleration { get; set; } = 1.0;
@@ -161,6 +167,7 @@ public sealed class SimulatorRunOverridesOptions
     public int? IntervalSeconds { get; set; }
     public int? Seed { get; set; }
     public string? DegradationProfile { get; set; }
+    public List<string> DegradationProfiles { get; set; } = [];
     public string? OrchestratorCorrelationId { get; set; }
 }
 

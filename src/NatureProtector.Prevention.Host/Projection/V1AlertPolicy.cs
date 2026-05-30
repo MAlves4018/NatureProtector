@@ -1,3 +1,5 @@
+using NatureProtector.Prevention.Risk;
+
 namespace NatureProtector.Prevention.Host.Projection;
 
 internal enum V1AlertState
@@ -9,11 +11,11 @@ internal enum V1AlertState
 
 internal static class V1AlertPolicy
 {
-    public const double WarningOpenThreshold = 0.60;
-    public const double WarningCloseThreshold = 0.50;
-    public const double AlarmOpenThreshold = 0.80;
-    public const double AlarmCloseThreshold = 0.70;
-    public const int PersistenceCycles = 2;
+    public const double WarningOpenThreshold = CandidateParameterSetV1.WarningOpenThreshold;
+    public const double WarningCloseThreshold = CandidateParameterSetV1.WarningCloseThreshold;
+    public const double AlarmOpenThreshold = CandidateParameterSetV1.AlarmOpenThreshold;
+    public const double AlarmCloseThreshold = CandidateParameterSetV1.AlarmCloseThreshold;
+    public const int PersistenceCycles = CandidateParameterSetV1.AlertPersistenceCycles;
 
     public static V1AlertState InferCurrentState(
         bool hasOpenAlert,
@@ -107,7 +109,7 @@ internal static class V1AlertPolicy
 
     public static TimeSpan ResolveCooldown(TimeSpan interval)
     {
-        return TimeSpan.FromSeconds(Math.Max(3 * interval.TotalSeconds, 180));
+        return CandidateParameterSetV1.ResolveAlertCooldown(interval);
     }
 
     private static void ValidateScore(double score, string paramName)

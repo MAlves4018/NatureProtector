@@ -428,6 +428,58 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
                     120,
                     300,
                     "Fake freshness summary."),
+                new RuntimeScoreComponentSummaryResponse(
+                    0.91,
+                    0.88,
+                    0.91,
+                    91,
+                    0.8,
+                    0.6,
+                    0.7,
+                    0.7,
+                    0.6,
+                    0.8,
+                    1,
+                    1,
+                    "Meteorology",
+                    "Candidate Parameter Set V1.0",
+                    "Complete",
+                    null,
+                    new DateTimeOffset(2026, 4, 7, 20, 14, 0, TimeSpan.Zero),
+                    "VeryHigh",
+                    "Muito elevado"),
+                new RuntimeIndexComparisonSummaryResponse(
+                    17.07,
+                    0.213,
+                    "CompleteWithCandidateDefaults",
+                    16.56,
+                    0.0207,
+                    "LimitedAntecedentHistory",
+                    "candidate_calculated",
+                    "antecedent defaults are explicit in fake service",
+                    0.0,
+                    new DateTimeOffset(2020, 9, 13, 0, 0, 0, TimeSpan.Zero),
+                    CalculatedFireWeatherIndex: 17.07,
+                    ReferenceFireWeatherIndex: null,
+                    FireWeatherIndexValueSource: "calculated_candidate",
+                    FireWeatherIpmaClass: "Moderate",
+                    FireWeatherIpmaClassLabel: "Moderado",
+                    FireWeatherEffisClass: "Moderate",
+                    FireWeatherThresholdDistanceToNextClass: 0.13,
+                    FireWeatherNextIpmaClass: "High",
+                    CalculatedKeetchByramDroughtIndex: 16.56,
+                    ReferenceKeetchByramDroughtIndex: null,
+                    KbdiValueSource: "calculated_candidate",
+                    KbdiDrynessClass: "VeryLowDryness",
+                    KbdiDrynessClassLabel: "Secura muito baixa",
+                    KbdiAntecedentHistoryQuality: "LimitedAntecedentHistory",
+                    KbdiAntecedentDays: 0,
+                    PortugueseContextRiskProxyClass: "High",
+                    PortugueseContextRiskProxyLabel: "Elevado",
+                    TerritorialHazardProxyClass: "High",
+                    LocalFwiPercentileStatus: "NotAvailable",
+                    LocalFwiPercentile: null,
+                    LocalFwiPercentileReason: "historical_local_fwi_distribution_not_materialized"),
                 RuntimeLimitations.Default,
                 []));
         }
@@ -518,7 +570,14 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
 
         public Task<AreaGeoJSONResponse?> GetAreaGeoJSONAsync(string areaCode, int? configurationVersion, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            if (!string.Equals(areaCode, "proenca-a-nova", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<AreaGeoJSONResponse?>(null);
+            }
+
+            return Task.FromResult<AreaGeoJSONResponse?>(new AreaGeoJSONResponse(
+                Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                _activeArea.GeometryGeoJson));
         }
 
         public Task<RuntimeDiagnosticCatalogResponse> ListRuntimeDiagnosticsAsync(CancellationToken cancellationToken)

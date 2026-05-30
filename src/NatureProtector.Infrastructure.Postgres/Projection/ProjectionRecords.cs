@@ -38,6 +38,21 @@ public sealed class RiskAssessmentLogRecord
     public Guid SourceEventId { get; set; }
     public DateTimeOffset Timestamp { get; set; }
     public double RiskScore { get; set; }
+    public double BaseRisk { get; set; }
+    public double AdjustedScore { get; set; }
+    public int Score100 { get; set; }
+    public double MeteorologyComponent { get; set; }
+    public double DroughtComponent { get; set; }
+    public double TerritoryComponent { get; set; }
+    public double HazardComponent { get; set; }
+    public double FuelComponent { get; set; }
+    public double GeomorphologyComponent { get; set; }
+    public double ConfidenceFactor { get; set; }
+    public double IntegrityFactor { get; set; }
+    public string DominantDriver { get; set; } = string.Empty;
+    public string ParameterSetVersion { get; set; } = string.Empty;
+    public string CalculationStatus { get; set; } = string.Empty;
+    public string? Limitations { get; set; }
     public string RiskLevel { get; set; } = string.Empty;
     public string? ExplanationSummary { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
@@ -81,7 +96,19 @@ public sealed class DailyCellStateRecord
     public string DroughtContext { get; set; } = string.Empty;
     public double? FireWeatherIndex { get; set; }
     public double? KeetchByramDroughtIndex { get; set; }
+    public double? PreviousKeetchByramDroughtIndex { get; set; }
+    public double? NormalizedKeetchByramDroughtIndex { get; set; }
+    public string KbdiCalculationStatus { get; set; } = string.Empty;
+    public string? KbdiLimitations { get; set; }
     public string FireIndexProvenance { get; set; } = string.Empty;
+    public double? FineFuelMoistureCode { get; set; }
+    public double? DuffMoistureCode { get; set; }
+    public double? DroughtCode { get; set; }
+    public double? InitialSpreadIndex { get; set; }
+    public double? BuildupIndex { get; set; }
+    public double? NormalizedFireWeatherIndex { get; set; }
+    public string FireWeatherCalculationStatus { get; set; } = string.Empty;
+    public string? FireWeatherLimitations { get; set; }
     public string CandidateParameterSetVersion { get; set; } = string.Empty;
     public string Provenance { get; set; } = string.Empty;
     public Guid? LastSourceEventId { get; set; }
@@ -107,6 +134,9 @@ public sealed class CellOperationalStateRecord
     public double RiskScore { get; set; }
     public string RiskLevel { get; set; } = string.Empty;
     public string Severity { get; set; } = string.Empty;
+    public string CoverageStatus { get; set; } = string.Empty;
+    public string FreshnessStatus { get; set; } = string.Empty;
+    public string CarryForwardStatus { get; set; } = string.Empty;
     public string? Summary { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
@@ -125,6 +155,9 @@ public sealed class AreaOperationalStateRecord
     public double AggregateRiskScore { get; set; }
     public string AggregateRiskLevel { get; set; } = string.Empty;
     public string Severity { get; set; } = string.Empty;
+    public string CoverageStatus { get; set; } = string.Empty;
+    public string FreshnessStatus { get; set; } = string.Empty;
+    public string CarryForwardStatus { get; set; } = string.Empty;
     public string? Summary { get; set; }
     public int AssessmentCount { get; set; }
     public string PendingAlertState { get; set; } = string.Empty;

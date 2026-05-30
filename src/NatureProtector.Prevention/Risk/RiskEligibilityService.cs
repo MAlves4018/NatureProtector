@@ -71,6 +71,18 @@ public sealed class RiskEligibilityService : IRiskEligibilityService
                 temporalClassifiers));
         }
 
+        var rangeClassifiers = ReadingRangeClassifier.Classify(reading);
+        var classifiers = temporalClassifiers.Concat(rangeClassifiers).ToArray();
+        if (rangeClassifiers.Any(result => result.Status == ClassifierStatus.Failed))
+        {
+            var summary = ClassifierResult.AggregateForEligibility(classifiers);
+            return Task.FromResult(RiskEligibilityResult.Blocked(
+                RiskEligibilityReason.MissingRequiredValue,
+                "Reading value is outside the candidate physical range for risk processing.",
+                summary.DistinctQualityFlags,
+                classifiers));
+        }
+
         if (reading.OperationalState is SensorOperationalState.Delayed or SensorOperationalState.Retransmitted)
         {
             var isDelayed = reading.OperationalState == SensorOperationalState.Delayed;
@@ -82,18 +94,18 @@ public sealed class RiskEligibilityService : IRiskEligibilityService
             return Task.FromResult(RiskEligibilityResult.PartialButUsable(
                 reasonCode,
                 "Reading is degraded but still usable for risk assessment.",
-                MergeFlags(temporalClassifiers, qualityFlag),
-                temporalClassifiers));
+                MergeFlags(classifiers, qualityFlag),
+                classifiers));
         }
 
-        if (temporalClassifiers.Count > 0)
+        if (classifiers.Length > 0)
         {
-            var summary = ClassifierResult.AggregateForEligibility(temporalClassifiers);
+            var summary = ClassifierResult.AggregateForEligibility(classifiers);
             return Task.FromResult(RiskEligibilityResult.PartialButUsable(
                 RiskEligibilityReason.DelayedReading,
                 "Reading temporal quality is degraded but still usable for risk assessment.",
                 summary.DistinctQualityFlags,
-                temporalClassifiers));
+                classifiers));
         }
 
         return Task.FromResult(RiskEligibilityResult.CompleteEligible());

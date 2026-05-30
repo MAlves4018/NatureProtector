@@ -418,6 +418,7 @@ public sealed class PostgresReadingEventInboxTests
             "Payload did not satisfy domain requirements.",
             "permanent_failure",
             "Further processing would not succeed.",
+            null,
             CancellationToken.None);
 
         await using var dbContext = scope.CreateDbContext();
@@ -432,6 +433,35 @@ public sealed class PostgresReadingEventInboxTests
         var quarantine = Assert.Single(dbContext.QuarantinedEvents);
         Assert.Equal("permanent_failure", quarantine.QuarantineCode);
         Assert.Equal(1, quarantine.FinalAttemptNumber);
+    }
+
+    [Fact]
+    public async Task QuarantineProcessingAsync_PersistsProviderSpecificMetadata()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var inbox = CreateInbox(scope);
+        var envelope = EnvelopeFactory.Create();
+        var stored = await inbox.StoreIncomingAsync(
+            envelope,
+            JsonEventSerializer.SerializeToUtf8Bytes(envelope),
+            "reading_risk_pipeline",
+            CancellationToken.None);
+
+        await inbox.QuarantineProcessingAsync(
+            stored.Lease!,
+            "db_data_exception",
+            "SqlState=22001 | MessageText=value too long for type character varying(100)",
+            "permanent_failure",
+            "Further processing would not succeed.",
+            "{\"sqlState\":\"22001\",\"messageText\":\"value too long for type character varying(100)\",\"tableName\":\"daily_cell_state\",\"columnName\":\"DroughtContext\"}",
+            CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var quarantine = Assert.Single(dbContext.QuarantinedEvents);
+        Assert.Contains("\"stage\":\"reading_risk_pipeline\"", quarantine.MetadataJson);
+        Assert.Contains("\"sqlState\":\"22001\"", quarantine.MetadataJson);
+        Assert.Contains("\"tableName\":\"daily_cell_state\"", quarantine.MetadataJson);
+        Assert.Contains("\"columnName\":\"DroughtContext\"", quarantine.MetadataJson);
     }
 
     [Fact]

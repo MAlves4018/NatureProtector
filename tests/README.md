@@ -23,6 +23,13 @@ Esta pasta contém os projetos de teste da solução. O objetivo da suite atual 
 
 ## Como executar
 
+Para compilar a solution antes da suite:
+
+```powershell
+.\scripts\dotnet\Use-RepoDotnetEnvironment.ps1
+dotnet build .\NatureProtector.sln --nologo -v minimal --configfile NuGet.Config
+```
+
 Para correr todos os testes disponíveis:
 
 ```powershell
@@ -36,6 +43,47 @@ Para focar apenas a `Prevention.Host`:
 .\scripts\dotnet\Use-RepoDotnetEnvironment.ps1
 dotnet test .\tests\NatureProtector.Prevention.Host.Tests\NatureProtector.Prevention.Host.Tests.csproj --nologo -v minimal
 ```
+
+## Smoke B/C runtime
+
+O smoke B/C executa a prova operacional reprodutivel da V1 quando a API e a infraestrutura local estao disponiveis. Ele nao substitui os testes unitarios nem recalcula risco; apenas orquestra runs e recolhe evidencia persistida.
+
+Validacao sem executar HTTP/runtime:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\run-v1-bc-smoke.ps1 -DryRun
+```
+
+Execucao real, com `Backoffice.Api` em Development e PostgreSQL/RabbitMQ/Prevention/Simulator acessiveis:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\run-v1-bc-smoke.ps1 `
+  -ApiBaseUrl http://localhost:5254 `
+  -AreaCode proenca-a-nova
+```
+
+O script gera uma pasta `docs/evidence/runs/v1-bc-smoke-<timestamp>/` com:
+
+* `summary.md`;
+* `run-spec.resolved.json`;
+* `run-b.json` e `run-c.json`;
+* `audit-b.json` e `audit-c.json`;
+* `runtime-summary.json`;
+* `np-vs-fwi-kbdi.json`;
+* `portuguese-context-proxy.json`;
+* `kbdi-series-context.json`;
+* `components.json`;
+* `daily-cell-state.json`;
+* `degradation-effects.json`;
+* `b-vs-c.json`;
+* `compare-b-vs-c.json`;
+* diagnostics de qualidade, contexto diario, classes NP/FWI/KBDI, proxy portugues candidato e coverage/freshness.
+
+O smoke valida que FWI/KBDI aparecem como calculados ou como Missing/Partial com limitation explicita. O `PortugueseContextRiskProxy` e candidato e nao deve ser apresentado como RCM/PIR/IPMA oficial. O KBDI e diario/acumulativo; quando falta historico antecedente, espera-se status/limitation de historico limitado em vez de leitura como calibrada.
+
+Por defeito, a smoke recolhe evidencia via API e nao ativa `collectEvidence` no endpoint de arranque do `Simulator.Host`. Isto evita bloqueios em stdout/stderr de processos long-running. Se for necessario recolher tambem logs/evidencia do processo filho, usar `-CollectRuntimeProcessEvidence`.
+
+Se a API ou Docker/PostgreSQL/RabbitMQ nao estiverem disponiveis, o script escreve `limitations.md` com uma mensagem objetiva. A execucao real continua a ser opcional/manual para nao tornar a suite `dotnet test` dependente de broker, base de dados ou processos long-running.
 
 ## Coverage
 
@@ -60,7 +108,9 @@ A execução atual pode apresentar o warning `NU1902` associado ao pacote `OpenT
 
 ## Resultados atuais
 
-Na medição consolidada mais recente, gerada em `16/05/2026`, o projeto ficou com:
+Atualizacao de `28/05/2026`: a medicao consolidada mais recente em `coveragereport_core/Summary.txt` reporta `87.6%` de line coverage, `76.8%` de branch coverage, `91.9%` de method coverage e `86.1%` de full method coverage. A queda face a medicoes anteriores e conhecida e vem sobretudo de DTOs, diagnostics, glue runtime/API, migrations e scripts de evidencia adicionados na frente V1. A prioridade imediata e estabilidade funcional dos indices NP/FWI/KBDI; testes adicionais devem focar `ControlRuntimeController`, diagnostics vazios/preenchidos, projection status e smoke B/C, sem criar testes artificiais apenas para inflar coverage.
+
+Medição histórica de `16/05/2026`, antes da frente V1 de diagnostics/API:
 
 * `97.6%` de line coverage (`6677/6837`);
 * `90.1%` de branch coverage (`1549/1719`);
@@ -69,7 +119,7 @@ Na medição consolidada mais recente, gerada em `16/05/2026`, o projeto ficou c
 
 O relatório agregado cobre `7` assemblies, `116` classes e `89` ficheiros relevantes para a lógica aplicacional. O detalhe navegável fica em `coveragereport_core/index.html` e o resumo textual em `coveragereport_core/Summary.txt`.
 
-Por assembly, o estado atual é:
+Por assembly, nessa medição histórica:
 
 * `NatureProtector.Backoffice.Api`: `99.0%`
 * `NatureProtector.Core`: `99.2%`

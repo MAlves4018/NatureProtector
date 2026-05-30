@@ -37,7 +37,13 @@ O `Simulator.Host` suporta os seguintes overrides:
 | `IntervalSeconds` | `Simulator:RunOverrides:IntervalSeconds` | Intervalo lógico entre ciclos. |
 | `Seed` | `Simulator:RunOverrides:Seed` | Seed para seleção determinística e reprodutibilidade. |
 | `DegradationProfile` | `Simulator:RunOverrides:DegradationProfile` | Perfil operacional pedido para a run. |
+| `DegradationProfiles` | `Simulator:RunOverrides:DegradationProfiles` | Lista de perfis operacionais pedidos; substitui o valor singular quando fornecida. |
 | `OrchestratorCorrelationId` | `Simulator:RunOverrides:OrchestratorCorrelationId` | Correlação entre orquestrador, run e evidência. |
+
+`DegradationProfile` continua suportado por compatibilidade com run specs e UI
+anteriores. O fluxo V1.0 candidato deve preferir `DegradationProfiles`, com
+`scenario_b` resolvido para `none` e `scenario_c` resolvido para
+`missing-readings` quando nenhum perfil explicito for fornecido.
 
 ## Precedência
 
@@ -90,6 +96,41 @@ powershell -ExecutionPolicy Bypass -File .\scripts\scenarios\run-scenario.ps1 `
 - `docs/evidence/runs/<timestamp>-<scenarioCode>-<runLabel>/run-spec.resolved.json`
 - `docs/evidence/runs/<timestamp>-<scenarioCode>-<runLabel>/summary.md`
 - `docs/evidence/runs/<timestamp>-<scenarioCode>-<runLabel>/v1-runtime-evidence-*.md` quando `collectEvidence=true`
+
+## Smoke B/C e evidencia V1.0 candidata
+
+O script `scripts/evidence/run-v1-bc-smoke.ps1` automatiza a prova local B/C:
+
+- reset opcional do runtime;
+- execucao de `scenario_b` com `degradationProfiles=["none"]`;
+- execucao de `scenario_c` com `degradationProfiles=["missing-readings"]`;
+- recolha de audit, diagnostics, comparacao B vs C, componentes NP vs FWI/KBDI e
+  estados de coverage/freshness/carry-forward;
+- recolha de classes FWI/KBDI/NP, proxy portugues candidato, contexto de serie KBDI e efeitos de degradacao;
+- exportacao para `docs/evidence/runs/v1-bc-smoke-<timestamp>/`.
+
+O script tem modo `-DryRun` para validar a resolucao da especificacao sem
+depender de Docker, PostgreSQL, RabbitMQ ou API local. A execucao real continua
+dependente da infraestrutura local estar disponivel.
+
+Artefactos pequenos esperados por execucao:
+
+- `summary.md`;
+- `run-b.json` / `run-c.json`;
+- `audit-b.json` / `audit-c.json`;
+- `runtime-summary.json`;
+- `np-vs-fwi-kbdi.json`;
+- `components.json`;
+- `daily-cell-state.json`;
+- `degradation-effects.json`;
+- `b-vs-c.json`;
+- `compare-b-vs-c.json`;
+- diagnostics de input completeness FWI/KBDI, quality, coverage/freshness e cell context;
+- `portuguese-context-proxy.json` e `kbdi-series-context.json` quando os diagnostics estiverem disponiveis.
+
+Por defeito, o smoke recolhe evidencia via API e deixa `collectEvidence=false` no request de arranque do `Simulator.Host`. Isto evita bloquear a smoke em stdout/stderr do processo filho. Se for necessario recolher tambem evidencia do processo de runtime, usar `-CollectRuntimeProcessEvidence`.
+
+O timeout default da smoke e curto (`60s`) porque os cenarios de 6 sensores x 5 ciclos terminam em cerca de 20s, mas o processo `Simulator.Host` pode manter-se vivo ate ao timeout do endpoint. O script valida o estado persistido da run, nao a saida do processo.
 
 ## Run validada de referência
 

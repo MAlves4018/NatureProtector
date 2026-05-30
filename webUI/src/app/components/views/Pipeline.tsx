@@ -536,7 +536,9 @@ function formatOverrides(values: RuntimeRunOverrideValuesResponse | null | undef
     values.numberOfCycles == null ? null : `cycles ${values.numberOfCycles}`,
     values.intervalSeconds == null ? null : `interval ${values.intervalSeconds}s`,
     values.seed == null ? null : `seed ${values.seed}`,
-    values.degradationProfile == null ? null : values.degradationProfile,
+    values.degradationProfiles && values.degradationProfiles.length > 0
+      ? values.degradationProfiles.join("+")
+      : values.degradationProfile == null ? null : values.degradationProfile,
   ].filter(Boolean);
 
   return parts.length === 0 ? "not in metadata" : parts.join(" · ");

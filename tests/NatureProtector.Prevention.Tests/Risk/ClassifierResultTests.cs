@@ -18,6 +18,7 @@ public sealed class ClassifierResultTests
 
         Assert.Equal("quality_classifier", result.ClassifierName);
         Assert.Equal(ClassifierStatus.Warning, result.Status);
+        Assert.Equal(ClassifierAction.MarkPartial, result.Action);
         Assert.Equal(ClassifierSeverity.Medium, result.Severity);
         Assert.Equal(["Stale", "OutOfOrder"], result.QualityFlags);
         Assert.Equal(["timestamp_gap", "late_arrival"], result.Reasons);
@@ -81,6 +82,24 @@ public sealed class ClassifierResultTests
         Assert.Empty(result.QualityFlags);
         Assert.Empty(result.Reasons);
         Assert.Equal(evaluatedAt, result.EvaluatedAt);
+    }
+
+    [Fact]
+    public void TypedQualityFlags_ParsesWireNamesAndDeduplicates()
+    {
+        var result = ClassifierResult.Create(
+            classifierName: "quality",
+            status: ClassifierStatus.Failed,
+            severity: ClassifierSeverity.High,
+            qualityFlags: ["range_clipping", "RangeClipping", "stuck-flatline", "daily_cell_state_missing"],
+            reasons: [],
+            evaluatedAt: DateTimeOffset.UtcNow,
+            ruleSetVersion: "v1");
+
+        Assert.Equal(ClassifierAction.Block, result.Action);
+        Assert.Contains(QualityFlag.RangeClipping, result.TypedQualityFlags);
+        Assert.Contains(QualityFlag.StuckFlatline, result.TypedQualityFlags);
+        Assert.Contains(QualityFlag.DailyCellStateMissing, result.TypedQualityFlags);
     }
 
     [Fact]

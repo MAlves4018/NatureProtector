@@ -107,6 +107,8 @@ public sealed class UnavailableControlPlaneService : IControlPlaneService
             0,
             [],
             null,
+            null,
+            null,
             RuntimeLimitations.Default,
             [AvailabilityMessage]));
 
@@ -134,7 +136,8 @@ public sealed class UnavailableControlPlaneService : IControlPlaneService
                 request.IntervalSeconds,
                 request.Seed,
                 request.DegradationProfile,
-                null),
+                null,
+                request.DegradationProfiles),
             null,
             [AvailabilityMessage],
             null,

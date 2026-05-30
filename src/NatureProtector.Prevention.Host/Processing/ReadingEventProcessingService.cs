@@ -5,6 +5,7 @@ using NatureProtector.Prevention.Host.Configuration;
 using NatureProtector.Shared.Observability;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
+using Npgsql;
 
 namespace NatureProtector.Prevention.Host.Processing;
 
@@ -70,6 +71,7 @@ public sealed class ReadingEventProcessingService(
                     errorMessage,
                     errorCode,
                     errorMessage,
+                    null,
                     cancellationToken);
                 PreventionHostTelemetry.QuarantinedEvents.Add(1, new TagList
                 {
@@ -169,9 +171,10 @@ public sealed class ReadingEventProcessingService(
             await readingEventInbox.QuarantineProcessingAsync(
                 lease,
                 classification.ErrorCode,
-                ex.Message,
+                BuildFailureMessage(ex),
                 quarantineCode,
                 quarantineReason,
+                BuildFailureMetadataJson(ex),
                 cancellationToken);
             PreventionHostTelemetry.QuarantinedEvents.Add(1, new TagList
             {
@@ -190,6 +193,72 @@ public sealed class ReadingEventProcessingService(
                 lease.AttemptNumber,
                 classification.Kind);
         }
+    }
+
+    private static string BuildFailureMessage(Exception exception)
+    {
+        if (FindPostgresException(exception) is not { } postgresException)
+        {
+            return exception.Message;
+        }
+
+        return string.Join(" | ", new[]
+        {
+            exception.Message,
+            $"SqlState={postgresException.SqlState}",
+            $"MessageText={postgresException.MessageText}",
+            string.IsNullOrWhiteSpace(postgresException.TableName) ? null : $"TableName={postgresException.TableName}",
+            string.IsNullOrWhiteSpace(postgresException.ColumnName) ? null : $"ColumnName={postgresException.ColumnName}",
+            string.IsNullOrWhiteSpace(postgresException.ConstraintName) ? null : $"ConstraintName={postgresException.ConstraintName}"
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private static string? BuildFailureMetadataJson(Exception exception)
+    {
+        if (FindPostgresException(exception) is not { } postgresException)
+        {
+            return null;
+        }
+
+        static string Escape(string value) => value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal);
+
+        var properties = new List<string>
+        {
+            $"\"sqlState\":\"{Escape(postgresException.SqlState)}\"",
+            $"\"messageText\":\"{Escape(postgresException.MessageText)}\""
+        };
+
+        if (!string.IsNullOrWhiteSpace(postgresException.TableName))
+        {
+            properties.Add($"\"tableName\":\"{Escape(postgresException.TableName)}\"");
+        }
+
+        if (!string.IsNullOrWhiteSpace(postgresException.ColumnName))
+        {
+            properties.Add($"\"columnName\":\"{Escape(postgresException.ColumnName)}\"");
+        }
+
+        if (!string.IsNullOrWhiteSpace(postgresException.ConstraintName))
+        {
+            properties.Add($"\"constraintName\":\"{Escape(postgresException.ConstraintName)}\"");
+        }
+
+        return "{" + string.Join(",", properties) + "}";
+    }
+
+    private static PostgresException? FindPostgresException(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException postgresException)
+            {
+                return postgresException;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

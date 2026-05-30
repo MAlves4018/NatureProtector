@@ -16,6 +16,19 @@ import {
 import { getColors } from "../../utils/utils";
 
 const DEFAULT_AREA = "proenca-a-nova";
+const DEGRADATION_PROFILE_OPTIONS = [
+  "none",
+  "missing-readings",
+  "noise",
+  "bias",
+  "drift",
+  "stuck-value",
+  "outlier",
+  "clipping/range",
+  "lag/delay",
+  "duplicate",
+  "out-of-order",
+];
 
 export function DeveloperRuntimeControl({ isDark }: { isDark: boolean }) {
   const c = getColors(isDark);
@@ -43,6 +56,7 @@ export function DeveloperRuntimeControl({ isDark }: { isDark: boolean }) {
     intervalSeconds: 5,
     seed: 12345,
     degradationProfile: "none",
+    degradationProfiles: ["none"],
     collectEvidence: false,
     waitForCompletion: false,
     timeoutSeconds: 180,
@@ -56,8 +70,27 @@ export function DeveloperRuntimeControl({ isDark }: { isDark: boolean }) {
   const activeSensorCount = useMemo(
     () => sensorNodes.filter(sensor => sensor.isActive).length,
     [sensorNodes]);
-  const scenarioCWithoutDegradation = runForm.scenarioCode === "scenario_c" && (!runForm.degradationProfile || runForm.degradationProfile === "none");
+  const activeDegradationProfiles = normalizeProfiles(runForm.degradationProfiles, runForm.degradationProfile);
+  const scenarioCWithoutDegradation = runForm.scenarioCode === "scenario_c" && activeDegradationProfiles.every(profile => profile === "none");
   const sensorCountTooHigh = runForm.sensorCount != null && activeSensorCount > 0 && runForm.sensorCount > activeSensorCount;
+
+  const setDegradationProfile = (profile: string, checked: boolean) => {
+    setRunForm(current => {
+      const currentProfiles = normalizeProfiles(current.degradationProfiles, current.degradationProfile);
+      let next = currentProfiles;
+      if (profile === "none") {
+        next = checked ? ["none"] : [];
+      } else {
+        next = checked
+          ? [...currentProfiles.filter(value => value !== "none"), profile]
+          : currentProfiles.filter(value => value !== profile);
+      }
+      if (next.length === 0) {
+        next = ["none"];
+      }
+      return { ...current, degradationProfiles: next, degradationProfile: toLegacyProfile(next) };
+    });
+  };
 
   const loadBase = async () => {
     setLoading(true);
@@ -230,6 +263,7 @@ export function DeveloperRuntimeControl({ isDark }: { isDark: boolean }) {
                 ...runForm,
                 scenarioCode: value,
                 degradationProfile: value === "scenario_c" && runForm.degradationProfile === "none" ? "missing-readings" : runForm.degradationProfile,
+                degradationProfiles: value === "scenario_c" && activeDegradationProfiles.every(profile => profile === "none") ? ["missing-readings"] : activeDegradationProfiles,
                 runLabel: value === "scenario_c" ? "scenario-c-from-ui" : runForm.runLabel,
               })}
             />
@@ -237,21 +271,28 @@ export function DeveloperRuntimeControl({ isDark }: { isDark: boolean }) {
             <LabeledNumber colors={c} label="numberOfCycles" value={runForm.numberOfCycles} onChange={value => setRunForm({ ...runForm, numberOfCycles: value })} />
             <LabeledNumber colors={c} label="intervalSeconds" value={runForm.intervalSeconds} onChange={value => setRunForm({ ...runForm, intervalSeconds: value })} />
             <LabeledNumber colors={c} label="seed" value={runForm.seed} onChange={value => setRunForm({ ...runForm, seed: value })} />
-            <LabeledSelect
-              colors={c}
-              label="degradationProfile"
-              value={runForm.degradationProfile ?? "none"}
-              options={[
-                { value: "none", label: "none" },
-                { value: "missing-readings", label: "missing-readings" },
-              ]}
-              onChange={value => setRunForm({ ...runForm, degradationProfile: value || null })}
-            />
             <LabeledNumber colors={c} label="timeoutSeconds" value={runForm.timeoutSeconds} onChange={value => setRunForm({ ...runForm, timeoutSeconds: value ?? 180 })} />
             <LabeledInput colors={c} label="runLabel" value={runForm.runLabel ?? ""} onChange={value => setRunForm({ ...runForm, runLabel: value || null })} />
           </FormGrid>
           <div style={{ color: c.textSecond, fontSize: "13px", marginTop: "10px" }}>
             Active sensors available: {activeSensorCount || "unknown"} · Selected sensors requested: {runForm.sensorCount ?? "all"}
+          </div>
+          <div style={{ marginTop: "10px" }}>
+            <label style={label(c)}>degradation profiles</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {DEGRADATION_PROFILE_OPTIONS.map(profile => (
+                <CheckRow
+                  key={profile}
+                  colors={c}
+                  label={profile}
+                  checked={activeDegradationProfiles.includes(profile)}
+                  onChange={checked => setDegradationProfile(profile, checked)}
+                />
+              ))}
+            </div>
+            <div style={{ color: c.textSecond, fontSize: "13px", marginTop: "6px" }}>
+              Active profiles: {activeDegradationProfiles.join(", ")}
+            </div>
           </div>
           {sensorCountTooHigh && <InlineWarning colors={c}>sensorCount {runForm.sensorCount} exceeds {activeSensorCount} active sensor(s). Lower the value before submitting.</InlineWarning>}
           {scenarioCWithoutDegradation && <InlineWarning colors={c}>scenario_c is intended for degraded/operational comparison. With degradationProfile=none it may behave like a clean scenario.</InlineWarning>}
@@ -422,6 +463,7 @@ function RunRequestResult({ result, request, message, areaCode, colors }: { resu
     intervalSeconds: request.intervalSeconds,
     seed: request.seed,
     degradationProfile: request.degradationProfile,
+    degradationProfiles: request.degradationProfiles,
     orchestratorCorrelationId: result?.orchestratorCorrelationId ?? null,
   };
 
@@ -438,6 +480,7 @@ function RunRequestResult({ result, request, message, areaCode, colors }: { resu
     ["intervalSeconds", requested.intervalSeconds ?? ""],
     ["seed", requested.seed ?? ""],
     ["degradationProfile", requested.degradationProfile ?? ""],
+    ["degradationProfiles", (requested.degradationProfiles ?? request.degradationProfiles ?? []).join(", ")],
     ["collectEvidence", String(request.collectEvidence)],
     ["waitForCompletion", String(request.waitForCompletion)],
     ["simulationRunId", run?.id ?? "waiting_for_persistence"],
@@ -466,6 +509,16 @@ function RunRequestResult({ result, request, message, areaCode, colors }: { resu
       {result && <JsonBlock colors={colors} value={result} />}
     </div>
   );
+}
+
+function normalizeProfiles(values: string[] | null | undefined, legacy: string | null | undefined) {
+  const profiles = values && values.length > 0 ? values : legacy ? legacy.split(/[,+;|]/) : ["none"];
+  const normalized = Array.from(new Set(profiles.map(value => value.trim()).filter(Boolean)));
+  return normalized.length === 0 ? ["none"] : normalized.length > 1 ? normalized.filter(value => value !== "none") : normalized;
+}
+
+function toLegacyProfile(values: string[]) {
+  return values.length === 1 ? values[0] : values.join("+");
 }
 
 function formatError(err: unknown) {

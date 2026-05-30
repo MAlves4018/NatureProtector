@@ -1,18 +1,154 @@
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{Lista de Acrónimos e Símbolos}
 
+{\Large\bfseries Lista de Acrónimos e Símbolos\par}
+\vspace{0.8em}
 
+\begingroup
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{0.92}
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
 
-%%/////////////////////////////////////////////////
-% Acronym definitions
-% <key> <acronym> <description>
-
-%\newacronym{crud}{CRUD}{Create, Read, Update and Delete}
-
-
-%%/////////////////////////////////////////////////
-
-
-
-
-
-
-
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.20\textwidth}>{\raggedright\arraybackslash}p{0.76\textwidth}@{}}
+\hline
+\textbf{Símbolo/Acrónimo} & \textbf{Significado} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Símbolo/Acrónimo} & \textbf{Significado} \\
+\hline
+\endhead
+\hline
+\endfoot
+\multicolumn{2}{l}{\textbf{Instituições, plataformas e datasets}} \\
+IPMA & Instituto Português do Mar e da Atmosfera \\
+ICNF & Instituto da Conservação da Natureza e das Florestas \\
+CEMS & Copernicus Emergency Management Service \\
+EFFIS & European Forest Fire Information System \\
+ECMWF & European Centre for Medium-Range Weather Forecasts \\
+ERA5 & Fifth generation ECMWF atmospheric reanalysis \\
+ERA5-Land & Land component of ERA5 reanalysis \\
+FIRMS & Fire Information for Resource Management System \\
+PT-FireSprd & Portuguese Large Wildfire Spread Database \\
+DGT & Direção-Geral do Território \\
+COS & Carta de Uso e Ocupação do Solo \\
+CAOP & Carta Administrativa Oficial de Portugal \\
+CORINE/CLC & Coordination of Information on the Environment / CORINE Land Cover \\
+CLMS & Copernicus Land Monitoring Service \\
+TCD & Tree Cover Density \\
+DEM & Digital Elevation Model \\
+MDT & Modelo Digital de Terreno \\
+WMO & World Meteorological Organization \\
+\multicolumn{2}{l}{} \\[-0.7em]
+\multicolumn{2}{l}{\textbf{Índices, métricas e comportamento do fogo}} \\
+FWI & Fire Weather Index \\
+CFFWIS & Canadian Forest Fire Weather Index System \\
+CFFDRS & Canadian Forest Fire Danger Rating System \\
+FFMC & Fine Fuel Moisture Code \\
+DMC & Duff Moisture Code \\
+DC & Drought Code \\
+ISI & Initial Spread Index \\
+BUI & Build-Up Index \\
+KBDI & Keetch-Byram Drought Index \\
+PIR & Perigo de Incêndio Rural \\
+RCM & Índice Conjuntural e Meteorológico \\
+NFDRS & National Fire Danger Rating System \\
+ERC & Energy Release Component \\
+SC & Spread Component \\
+BI & Burning Index \\
+IC & Ignition Component \\
+DSR & Daily Severity Rating \\
+Haines & Haines Index \\
+ROS & Rate of Spread \\
+FGR & Fire Growth Rate \\
+FRE & Fire Radiative Energy \\
+\multicolumn{2}{l}{} \\[-0.7em]
+\multicolumn{2}{l}{\textbf{Sensores, observação e comunicação}} \\
+AWS & Automatic Weather Station \\
+RH & Relative Humidity, humidade relativa \\
+T/RH & Temperatura / humidade relativa \\
+QA/QC & Quality Assurance / Quality Control \\
+MQTT & Message Queuing Telemetry Transport \\
+LoRa & Long Range \\
+LPWAN & Low Power Wide Area Network \\
+RAOB & Radiosonde Observation \\
+WMS & Web Map Service \\
+WFS & Web Feature Service \\
+\multicolumn{2}{l}{} \\[-0.7em]
+\multicolumn{2}{l}{\textbf{Dados, formatos e interface}} \\
+JSON & JavaScript Object Notation \\
+GeoJSON & Formato geoespacial baseado em JSON \\
+CSV & Comma-Separated Values \\
+Parquet & Formato colunar para dados analíticos \\
+DTO & Data Transfer Object \\
+API & Application Programming Interface \\
+UI & User Interface \\
+URI & Uniform Resource Identifier \\
+URL & Uniform Resource Locator \\
+MVP & Minimum Viable Product \\
+\multicolumn{2}{l}{} \\[-0.7em]
+\multicolumn{2}{l}{\textbf{Arquitetura, pipeline e implementação}} \\
+PostgreSQL & Base de dados relacional usada como fonte de verdade operacional/configuracional \\
+InfluxDB & Base de dados temporal usada para telemetria e observabilidade \\
+RabbitMQ & Broker de mensagens usado na pipeline \\
+DLQ & Dead Letter Queue \\
+TTL & Time To Live \\
+ADR & Architecture Decision Record \\
+RBAC & Role-Based Access Control \\
+SLO & Service Level Objective \\
+p95 & Percentil 95 \\
+EventTime/event\_time & Tempo lógico do fenómeno observado \\
+IngestTime/ingest\_time & Tempo em que o sistema recebe ou persiste a mensagem \\
+ProcessingTime & Tempo efetivo de processamento \\
+event\_id & Identificador único do evento \\
+correlation\_id & Identificador de correlação entre eventos do mesmo fluxo \\
+schema\_version & Versão do contrato/schema do evento \\
+payload & Conteúdo principal transportado no evento \\
+ack/nack & Acknowledgement / negative acknowledgement \\
+redelivery & Reentrega de uma mensagem \\
+retry & Nova tentativa após erro transitório \\
+backoff & Atraso progressivo entre tentativas \\
+backlog/lag & Volume ou atraso acumulado na pipeline \\
+\multicolumn{2}{l}{} \\[-0.7em]
+\multicolumn{2}{l}{\textbf{Artefactos e símbolos internos NatureProtector}} \\
+NP & NatureProtector \\
+V1 & Primeira versão metodológica/técnica do módulo \\
+CEF-R & Conceito, Evidência, Função na V1, Restrição \\
+M & Componente meteorológica dinâmica do \texttt{base\_risk} \\
+D & Componente de secura persistente do \texttt{base\_risk} \\
+T & Componente territorial do \texttt{base\_risk} \\
+H/F/G & Hazard estrutural, FuelRisk/coberto, Geomorfologia \\
+C & Confiança observacional \\
+I & Integridade operacional \\
+C/I & Fatores internos de confiança observacional e integridade operacional \\
+C\_metric\_min & Limiar mínimo interno de confiança por métrica crítica \\
+TruthSnapshot & Estado físico simulado antes de erro observacional ou transporte \\
+LocalObservation & Observação local produzida por sensor lógico \\
+OperationalEvent & Evento transportado pela infraestrutura \\
+NormalizedReading & Leitura normalizada antes da elegibilidade \\
+ClassifierResult & Resultado auditável de um classificador \\
+QualityFlags & Flags de qualidade aplicadas a leituras/eventos \\
+RiskInput & Entrada canónica do motor de risco \\
+DailyCellState & Estado diário persistente por célula \\
+CellContext & Contexto territorial e espacial da célula \\
+RiskAssessment & Resultado do cálculo de risco \\
+AlertState & Estado de alerta \\
+OperationalProjection & Projeção consultável do estado operacional \\
+CompleteEligible & Estado em que o input está completo e elegível \\
+PartialButUsable & Estado degradado mas ainda utilizável \\
+Blocked & Estado sem condições para novo cálculo online \\
+base\_risk & Score decimal 0–1 antes de C/I \\
+adjusted\_score & Score 0–100 após aplicação de C/I \\
+risk\_level & Classe de risco derivada do score \\
+input\_status & Estado do \texttt{RiskInput} \\
+projection\_status & Estado da projeção consultável \\
+parameter\_set\_version & Versão do conjunto de parâmetros \\
+rule\_set\_version & Versão do conjunto de regras \\
+blocked\_reason & Razão auditável para bloqueio \\
+source\_readings & Leituras usadas ou avaliadas na construção do \texttt{RiskInput} \\
+area\_aggregated\_score & Score agregado da área \\
+\end{longtable}
+\endgroup

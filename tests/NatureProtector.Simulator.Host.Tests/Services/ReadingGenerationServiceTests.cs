@@ -136,6 +136,92 @@ public sealed class ReadingGenerationServiceTests
     }
 
     [Fact]
+    public void GenerateReading_MultipleDegradationProfilesPreserveLegacyContract()
+    {
+        var sensor = CreateSensor(SensorType.Temperature, "Sensor-01");
+        var context = CreateContext(
+            sensors: [sensor],
+            failureRate: 1.0,
+            degradationProfiles: [SimulationDegradationProfiles.MissingReadings, SimulationDegradationProfiles.Noise]);
+
+        var envelope = _service.GenerateReading(
+            context,
+            simulationRunId: Guid.NewGuid(),
+            sensor: sensor,
+            cycleIndex: 0,
+            eventTime: context.StartTimestamp,
+            random: new Random(10));
+
+        Assert.Equal(EventTypes.SensorReadingProduced, envelope.EventType);
+        Assert.NotEqual(0.0, envelope.Payload.Value);
+        Assert.Equal(SensorOperationalState.Nominal, envelope.Payload.OperationalState);
+        Assert.Equal(SimulationDegradationProfiles.MissingReadings + "+" + SimulationDegradationProfiles.Noise, context.RunOverrides!.Resolved.DegradationProfile);
+        Assert.Equal(
+            new[] { SimulationDegradationProfiles.MissingReadings, SimulationDegradationProfiles.Noise },
+            context.RunOverrides.Resolved.DegradationProfiles);
+    }
+
+    [Theory]
+    [InlineData(SimulationDegradationProfiles.Noise)]
+    [InlineData(SimulationDegradationProfiles.Bias)]
+    [InlineData(SimulationDegradationProfiles.Drift)]
+    public void GenerateObservation_ObservationProfilesAlterObservedValueButNotTruth(string degradationProfile)
+    {
+        var sensor = CreateSensor(SensorType.Temperature, "Sensor-01");
+        var baseline = CreateContext(sensors: [sensor], failureRate: 0.0, degradationProfile: "none");
+        var degraded = CreateContext(sensors: [sensor], failureRate: 0.0, degradationProfile: degradationProfile);
+
+        var baselineObservation = _service.GenerateObservation(
+            baseline,
+            simulationRunId: Guid.NewGuid(),
+            sensor: sensor,
+            cycleIndex: 3,
+            eventTime: baseline.StartTimestamp,
+            random: new Random(111));
+        var degradedObservation = _service.GenerateObservation(
+            degraded,
+            simulationRunId: baselineObservation.TruthSnapshot.SimulationRunId,
+            sensor: sensor,
+            cycleIndex: 3,
+            eventTime: degraded.StartTimestamp,
+            random: new Random(111));
+
+        Assert.Equal(baselineObservation.TruthSnapshot.PhysicalValue, degradedObservation.TruthSnapshot.PhysicalValue);
+        Assert.NotEqual(baselineObservation.ObservedValue, degradedObservation.ObservedValue);
+        Assert.False(degradedObservation.IsMissing);
+    }
+
+    [Fact]
+    public void GenerateObservation_TransportProfilesDoNotChangePhysicalReading()
+    {
+        var sensor = CreateSensor(SensorType.Wind, "Sensor-W");
+        var baseline = CreateContext(sensors: [sensor], failureRate: 0.0, degradationProfile: "none");
+        var transport = CreateContext(
+            sensors: [sensor],
+            failureRate: 0.0,
+            degradationProfiles: [SimulationDegradationProfiles.Duplicate, SimulationDegradationProfiles.OutOfOrder]);
+
+        var baselineObservation = _service.GenerateObservation(
+            baseline,
+            simulationRunId: Guid.NewGuid(),
+            sensor: sensor,
+            cycleIndex: 2,
+            eventTime: baseline.StartTimestamp,
+            random: new Random(222));
+        var transportObservation = _service.GenerateObservation(
+            transport,
+            simulationRunId: baselineObservation.TruthSnapshot.SimulationRunId,
+            sensor: sensor,
+            cycleIndex: 2,
+            eventTime: transport.StartTimestamp,
+            random: new Random(222));
+
+        Assert.Equal(baselineObservation.TruthSnapshot.PhysicalValue, transportObservation.TruthSnapshot.PhysicalValue);
+        Assert.Equal(baselineObservation.ObservedValue, transportObservation.ObservedValue);
+        Assert.False(transportObservation.IsMissing);
+    }
+
+    [Fact]
     public void GenerateObservation_CreatesTruthSnapshotBeforeLocalObservation()
     {
         var sensor = CreateSensor(SensorType.Temperature, "Sensor-01");
@@ -457,7 +543,8 @@ public sealed class ReadingGenerationServiceTests
         double? baseWindSpeed = 7.5,
         double failureRate = 0.05,
         double noiseLevel = 0.10,
-        string? degradationProfile = null)
+        string? degradationProfile = null,
+        IReadOnlyList<string>? degradationProfiles = null)
     {
         var scenario = new Scenario(
             id: Guid.NewGuid(),
@@ -478,7 +565,7 @@ public sealed class ReadingGenerationServiceTests
             startTimestamp: new DateTimeOffset(2026, 4, 6, 12, 0, 0, TimeSpan.Zero),
             interval: TimeSpan.FromSeconds(1),
             numberOfCycles: 3,
-            runOverrides: degradationProfile is null
+            runOverrides: degradationProfile is null && degradationProfiles is null
                 ? null
                 : new SimulationRunOverridesSnapshot(
                     Requested: new SimulationRunOverridesRequested(
@@ -487,15 +574,22 @@ public sealed class ReadingGenerationServiceTests
                         IntervalSeconds: 1,
                         Seed: null,
                         DegradationProfile: degradationProfile,
-                        OrchestratorCorrelationId: "tests"),
+                        OrchestratorCorrelationId: "tests")
+                    {
+                        DegradationProfiles = SimulationDegradationProfiles.Normalize(degradationProfiles, degradationProfile)
+                    },
                     Resolved: new SimulationRunOverridesResolved(
                         SensorCount: sensors.Count,
                         NumberOfCycles: 3,
                         IntervalSeconds: 1,
                         PreferredSeed: null,
-                        DegradationProfile: degradationProfile,
+                        DegradationProfile: SimulationDegradationProfiles.ToLegacyProfile(
+                            SimulationDegradationProfiles.Normalize(degradationProfiles, degradationProfile)),
                         OrchestratorCorrelationId: "tests",
-                        SelectedSensorNames: sensors.Select(sensor => sensor.Name).ToArray())));
+                        SelectedSensorNames: sensors.Select(sensor => sensor.Name).ToArray())
+                    {
+                        DegradationProfiles = SimulationDegradationProfiles.Normalize(degradationProfiles, degradationProfile)
+                    }));
     }
 
     private static Sensor CreateSensor(SensorType sensorType, string name, bool isActive = true)

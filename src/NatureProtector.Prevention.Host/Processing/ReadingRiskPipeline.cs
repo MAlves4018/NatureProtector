@@ -120,9 +120,47 @@ public sealed class ReadingRiskPipeline(
             dailyStateLookup.State,
             operationalEvent.SimulationRunId,
             dailyStateLookup.GridCellId,
-            dailyStateLookup.ConfigurationVersionId);
-        var assessment = riskScoringService.CreateAssessment(riskInput);
+            dailyStateLookup.ConfigurationVersionId,
+            dailyStateLookup.TerritorialContext);
         await dailyCellStateRepository.UpsertAsync(riskInput, cancellationToken);
+        dailyStateLookup = await dailyCellStateRepository.GetForReadingAsync(
+            normalizedReading,
+            operationalEvent.SimulationRunId,
+            cancellationToken);
+        riskInput = RiskInput.FromNormalizedReading(
+            normalizedReading,
+            eligibility,
+            dailyStateLookup.State,
+            operationalEvent.SimulationRunId,
+            dailyStateLookup.GridCellId,
+            dailyStateLookup.ConfigurationVersionId,
+            dailyStateLookup.TerritorialContext);
+        if (riskInput.InputStatus == RiskInputStatus.Blocked)
+        {
+            var blockedInfluxWriteStopwatch = Stopwatch.StartNew();
+            await influxWriteService.WriteBatchAsync(influxBatch, cancellationToken);
+            blockedInfluxWriteStopwatch.Stop();
+            pipelineStopwatch.Stop();
+
+            logger.LogInformation(
+                "pipeline_total_ms={PipelineTotalMs} | accepted_reading_persist_ms={AcceptedReadingPersistMs} | influx_batch_write_ms={InfluxBatchWriteMs} | influx_batch_points={InfluxBatchPoints} | influx_batch_accepted_readings={InfluxBatchAcceptedReadings} | influx_batch_risk_assessments={InfluxBatchRiskAssessments} | influx_batch_area_risk_snapshots={InfluxBatchAreaRiskSnapshots} | EventId={EventId} | CorrelationId={CorrelationId} | AreaId={AreaId} | SensorId={SensorId} | Outcome=blocked_without_risk | RiskInputStatus={RiskInputStatus} | CoverageFlag={CoverageFlag}",
+                pipelineStopwatch.ElapsedMilliseconds,
+                acceptedReadingPersistStopwatch.ElapsedMilliseconds,
+                blockedInfluxWriteStopwatch.ElapsedMilliseconds,
+                influxBatch.PointCount,
+                influxBatch.AcceptedReadingCount,
+                influxBatch.RiskAssessmentCount,
+                influxBatch.AreaRiskSnapshotCount,
+                normalizedReading.EventId,
+                normalizedReading.CorrelationId,
+                normalizedReading.AreaId,
+                normalizedReading.SensorId,
+                riskInput.InputStatus,
+                riskInput.QualityFlags.Contains("low_coverage", StringComparer.OrdinalIgnoreCase) ? "low_coverage" : "n/a");
+            return;
+        }
+
+        var assessment = riskScoringService.CreateAssessment(riskInput);
 
         var riskAssessmentPersistStopwatch = Stopwatch.StartNew();
         await riskAssessmentRepository.AddAsync(

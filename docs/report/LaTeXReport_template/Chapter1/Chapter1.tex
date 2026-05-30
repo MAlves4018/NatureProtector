@@ -1,17 +1,59 @@
+\chapter{Introdução}
 
-\chapter{Introduction} 
-\label{ch:Chapter1}
-\vfill \minitoc \newpage
+\section{Contexto e Motivação}
 
-Este documento consolida o fecho do escopo do módulo atual do Nature Protector, as
-decisões arquiteturais relevantes, a decomposição funcional do módulo, o modelo es-
-trutural mínimo e os respetivos critérios de aceitação. A sua finalidade é servir de base
-intermédia entre a proposta de projeto e o relatório final, permitindo alinhar implementa-
-ção, integração, demonstração e validação sem reabrir decisões estruturais que já devem
-ficar estabilizadas no final da Fase 0.
+Os incêndios rurais e florestais constituem um problema ambiental, social e operacional recorrente, com impacto direto nos ecossistemas, nas populações, nas infraestruturas, nos serviços de emergência e no ordenamento do território. A prevenção, a monitorização e a capacidade de interpretar sinais de risco são componentes essenciais para reduzir vulnerabilidades e apoiar a tomada de decisão~\citep{icnf_incendios_rurais,copernicus_effis}.
 
-O documento não substitui o relatório final. Funciona, antes, como especificação
-técnica de referência do módulo de prevenção, com foco naquilo que é necessário para
-construir, integrar, demonstrar e avaliar o sistema. Por esse motivo, privilegia clareza
-arquitetural, controlo de âmbito, rastreabilidade, coerência entre decisões e utilidade
-prática para o desenvolvimento.
+O risco de incêndio resulta da interação entre múltiplos fatores, incluindo condições meteorológicas, disponibilidade e estado do combustível vegetal, secura persistente, características do terreno, uso do solo e contexto local. No entanto, transformar estes fatores em informação operacional utilizável não é trivial. Um sistema de apoio à prevenção deve ser capaz de recolher observações, avaliar a sua qualidade, interpretar o seu significado e expor o estado resultante de forma rastreável~\citep{nrcan_fwi_system,keetch_byram_1968,clms_corine_land_cover}.
+
+O projeto NatureProtector aborda este problema a partir de uma perspetiva de engenharia de software e de estruturação metodológica. A versão atual não pretende produzir um modelo científico final de previsão de incêndios, nem substituir sistemas oficiais de avaliação de perigo ou risco. O foco está na construção de uma base técnica capaz de receber observações ambientais, processá-las através de uma pipeline rastreável, produzir avaliações candidatas de risco operacional e expor o estado resultante através de projeções, API e ferramentas de observabilidade.
+
+\section{Problema e Objetivo}
+
+O problema central tratado neste trabalho é a construção de uma pipeline técnica e rastreável para apoio à prevenção de incêndios.
+
+Um sistema útil de apoio à prevenção não deve limitar-se a calcular um valor numérico de risco. Deve também permitir compreender que observações foram recebidas, quais foram aceites, rejeitadas ou colocadas em quarentena, que leituras deram origem a avaliações de risco, como foram atualizados os estados operacionais e se a API reflete corretamente as projeções persistidas.
+
+Sem esta rastreabilidade, um score de risco torna-se difícil de auditar. Um valor baixo pode representar risco efetivamente baixo, mas também pode resultar de dados em falta, leituras inválidas, falhas de processamento ou critérios de elegibilidade mal definidos. Estes casos devem ser distinguidos. Em particular, uma leitura inválida ou bloqueada não deve ser interpretada como evidência de risco baixo.
+
+O objetivo principal deste trabalho é implementar e validar tecnicamente uma base do módulo de prevenção do NatureProtector. Esta base deve demonstrar a execução local de uma pipeline orientada a eventos, desde a produção simulada de leituras até à geração de avaliações candidatas de risco, projeções operacionais, exposição por API e recolha de evidência em tempo de execução.
+
+\section{NatureProtector V1}
+
+O NatureProtector V1 corresponde à primeira base técnica fechada do módulo de prevenção. A sua arquitetura local combina simulação, transporte de eventos, processamento durável, persistência, projeções operacionais, API e observabilidade.
+
+O fluxo principal pode ser resumido da seguinte forma:
+
+\begin{center}
+\texttt{Simulator.Host} $\rightarrow$ \texttt{RabbitMQ} $\rightarrow$ \texttt{Prevention.Host} $\rightarrow$ \texttt{PostgreSQL} $\rightarrow$ \texttt{Backoffice.Api / Grafana}
+\end{center}
+
+O simulador produz eventos controlados de leitura de sensores. O RabbitMQ transporta esses eventos para o \texttt{Prevention.Host}. O \texttt{Prevention.Host} persiste os eventos numa inbox durável, processa-os através de regras de validação e elegibilidade, produz avaliações candidatas de risco e atualiza projeções operacionais. O PostgreSQL armazena dados de configuração, estado da pipeline e projeções. A Backoffice API expõe o estado resultante. O InfluxDB e o Grafana apoiam a observabilidade e a demonstração do sistema.
+
+A V1 inclui decisões de desenho relevantes: separação entre contratos de transporte e conceitos internos de domínio; persistência dos eventos antes do processamento de risco; registo de tentativas de processamento; tratamento explícito de eventos rejeitados e em quarentena; separação entre qualidade observacional e risco físico; projeção das avaliações de risco em estados operacionais; política interna de alertas com histerese; e exposição do estado através de API como leitura de projeções persistidas. A utilização de transporte assíncrono e processamento durável aproxima a arquitetura de práticas comuns em sistemas orientados a mensagens, onde é importante distinguir entrega, consumo, confirmação e processamento efetivo~\citep{rabbitmq_amqp_model,rabbitmq_consumer_acknowledgements,richardson_idempotent_consumer}.
+
+Estas decisões tornam a implementação adequada para validação técnica. No entanto, não constituem, por si só, validação científica. Os scores, pesos, limiares e classes utilizados na V1 devem ser entendidos como parâmetros candidatos de uma base operacional, não como valores cientificamente calibrados.
+
+\section{Âmbito e Contributos}
+
+Estão incluídos no âmbito da V1 a infraestrutura local de execução, a produção simulada de eventos, o transporte por RabbitMQ, o processamento durável da pipeline, a persistência em PostgreSQL, a avaliação candidata de risco, as projeções operacionais, a política interna de alertas, a Backoffice API, a observabilidade com InfluxDB e Grafana, os testes automatizados e a recolha de evidência técnica.
+
+Ficam fora do âmbito a calibração científica final do modelo de risco, a validação contra ocorrências reais de incêndio, a equivalência com sistemas ou índices oficiais de perigo de incêndio, a integração com sensores físicos reais, a implantação em produção, workflows operacionais completos de alerta e resposta, e a construção de uma interface operacional final para utilização em campo. Esta delimitação é importante porque sistemas e índices oficiais, como o FWI, produtos do IPMA e plataformas europeias de monitorização, possuem metodologias, dados e enquadramentos institucionais próprios que não são reproduzidos pela V1~\citep{ipma_fwi,ipma_pir_rcm,ec_jrc_effis}.
+
+Os principais contributos deste trabalho são a definição de uma arquitetura local orientada a eventos, a implementação de uma pipeline durável para o módulo de prevenção, a separação entre qualidade observacional e avaliação de risco, a geração de avaliações candidatas de risco, a produção de projeções operacionais, a exposição do estado através da Backoffice API e a recolha de evidência técnica para auditoria.
+
+O contributo mais relevante não é uma fórmula isolada nem um painel específico. É a integração de uma cadeia em tempo de execução auditável, na qual eventos, decisões de processamento, avaliações de risco, projeções e resultados de validação podem ser inspecionados.
+
+\section{Validação e Estrutura do Relatório}
+
+A validação realizada neste trabalho é técnica e orientada à execução. Combina verificação da infraestrutura local, inspeção de dados em PostgreSQL, evidência da pipeline, classificação de eventos rejeitados e em quarentena, evidência de avaliações de risco e projeções, comparação entre API e base de dados, testes da política de alertas e execução da suite de testes automatizados.
+
+O veredito técnico final é:
+
+\begin{quote}
+\textbf{OK com limitações.}
+\end{quote}
+
+Isto significa que a base V1 se encontra operacional do ponto de vista técnico e é suportada por evidência em tempo de execução e testes automatizados. Contudo, permanece limitada por dados simulados, parâmetros candidatos e ausência de calibração científica externa. Este veredito não deve ser interpretado como prova de validade preditiva no mundo real.
+
+O relatório encontra-se organizado da seguinte forma. O Capítulo~2 apresenta o estado da arte e o enquadramento conceptual. O Capítulo~3 define os requisitos e o âmbito da entrega V1. O Capítulo~4 apresenta a arquitetura e o suporte de desenvolvimento. O Capítulo~5 explica a estratégia de implementação e a evolução do âmbito. O Capítulo~6 descreve a implementação do NatureProtector V1. O Capítulo~7 apresenta a validação técnica e a evidência em tempo de execução. O Capítulo~8 conclui o relatório e apresenta o trabalho futuro.

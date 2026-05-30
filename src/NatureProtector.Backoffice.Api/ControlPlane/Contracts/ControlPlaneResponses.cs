@@ -117,7 +117,13 @@ public sealed record AreaOperationalStateResponse(
     string? Summary,
     int AssessmentCount,
     DateTimeOffset UpdatedAt,
-    string? AlertState = null);
+    string? AlertState = null,
+    string? CoverageStatus = null,
+    string? FreshnessStatus = null,
+    string? CarryForwardStatus = null,
+    DateTimeOffset? LastAssessmentTimestamp = null,
+    DateTimeOffset? LastProjectionUpdatedAt = null,
+    string? OperationalStatusReason = null);
 
 public sealed record CellOperationalStateResponse(
     string AreaCode,
@@ -130,7 +136,13 @@ public sealed record CellOperationalStateResponse(
     string? Summary,
     Guid? SensorId,
     string? SensorName,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    string? CoverageStatus = null,
+    string? FreshnessStatus = null,
+    string? CarryForwardStatus = null,
+    DateTimeOffset? LastAcceptedReadingTimestamp = null,
+    DateTimeOffset? LastRiskAssessmentTimestamp = null,
+    string? OperationalStatusReason = null);
 
 public sealed record AlertStateResponse(
     Guid Id,
@@ -157,8 +169,64 @@ public sealed record RuntimeSummaryResponse(
     int CellOperationalStateCount,
     IReadOnlyList<RuntimeAlertSummaryResponse> ActiveAlerts,
     RuntimeFreshnessSummaryResponse? Freshness,
+    RuntimeScoreComponentSummaryResponse? ScoreComponents,
+    RuntimeIndexComparisonSummaryResponse? IndexComparison,
     IReadOnlyList<RuntimeLimitationResponse> Limitations,
     IReadOnlyList<string> Warnings);
+
+public sealed record RuntimeScoreComponentSummaryResponse(
+    double? NpScore,
+    double? BaseRisk,
+    double? AdjustedScore,
+    int? Score100,
+    double? MeteorologyComponent,
+    double? DroughtComponent,
+    double? TerritoryComponent,
+    double? HazardComponent,
+    double? FuelComponent,
+    double? GeomorphologyComponent,
+    double? ConfidenceFactor,
+    double? IntegrityFactor,
+    string? DominantDriver,
+    string? ParameterSetVersion,
+    string? CalculationStatus,
+    string? Limitations,
+    DateTimeOffset? LatestAssessmentTimestamp,
+    string? NpRiskClass = null,
+    string? NpRiskClassLabel = null);
+
+public sealed record RuntimeIndexComparisonSummaryResponse(
+    double? FireWeatherIndex,
+    double? NormalizedFireWeatherIndex,
+    string? FireWeatherCalculationStatus,
+    double? KeetchByramDroughtIndex,
+    double? NormalizedKeetchByramDroughtIndex,
+    string? KbdiCalculationStatus,
+    string? Provenance,
+    string? Limitations,
+    double? DailyPrecipitationMillimeters,
+    DateTimeOffset? LogicalDate,
+    double? CalculatedFireWeatherIndex = null,
+    double? ReferenceFireWeatherIndex = null,
+    string? FireWeatherIndexValueSource = null,
+    string? FireWeatherIpmaClass = null,
+    string? FireWeatherIpmaClassLabel = null,
+    string? FireWeatherEffisClass = null,
+    double? FireWeatherThresholdDistanceToNextClass = null,
+    string? FireWeatherNextIpmaClass = null,
+    double? CalculatedKeetchByramDroughtIndex = null,
+    double? ReferenceKeetchByramDroughtIndex = null,
+    string? KbdiValueSource = null,
+    string? KbdiDrynessClass = null,
+    string? KbdiDrynessClassLabel = null,
+    string? KbdiAntecedentHistoryQuality = null,
+    int? KbdiAntecedentDays = null,
+    string? PortugueseContextRiskProxyClass = null,
+    string? PortugueseContextRiskProxyLabel = null,
+    string? TerritorialHazardProxyClass = null,
+    string? LocalFwiPercentileStatus = null,
+    double? LocalFwiPercentile = null,
+    string? LocalFwiPercentileReason = null);
 
 public sealed record RuntimeRunSummaryResponse(
     Guid Id,
@@ -192,7 +260,9 @@ public sealed record RuntimeRunAuditResponse(
     IReadOnlyList<RuntimeStatusCountResponse> QualityFlagsSummary,
     IReadOnlyList<RuntimeStatusCountResponse> EligibilitySummary,
     RuntimeAreaSnapshotAuditResponse? AreaSnapshot,
-    IReadOnlyList<RuntimeLimitationResponse> Limitations);
+    IReadOnlyList<RuntimeLimitationResponse> Limitations,
+    RuntimeScoreComponentSummaryResponse? ScoreComponents = null,
+    RuntimeIndexComparisonSummaryResponse? IndexComparison = null);
 
 public sealed record RuntimeAreaSnapshotAuditResponse(
     DateTimeOffset SnapshotTimestamp,
@@ -212,7 +282,8 @@ public sealed record RuntimeRunOverrideValuesResponse(
     int? IntervalSeconds,
     int? Seed,
     string? DegradationProfile,
-    string? OrchestratorCorrelationId);
+    string? OrchestratorCorrelationId,
+    IReadOnlyList<string>? DegradationProfiles = null);
 
 public sealed record RuntimePipelineSummaryResponse(
     int InboxTotal,
@@ -293,7 +364,13 @@ public sealed record RuntimeAreaOperationalSummaryResponse(
     string? Summary,
     int AssessmentCount,
     DateTimeOffset UpdatedAt,
-    string? AlertState);
+    string? AlertState,
+    string? CoverageStatus = null,
+    string? FreshnessStatus = null,
+    string? CarryForwardStatus = null,
+    DateTimeOffset? LastAssessmentTimestamp = null,
+    DateTimeOffset? LastProjectionUpdatedAt = null,
+    string? OperationalStatusReason = null);
 
 public sealed record RuntimeAlertSummaryResponse(
     Guid Id,

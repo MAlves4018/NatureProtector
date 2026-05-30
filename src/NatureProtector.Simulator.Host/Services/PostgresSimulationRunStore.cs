@@ -83,6 +83,7 @@ public sealed class PostgresSimulationRunStore(
                         interval_seconds = context.RunOverrides.Requested.IntervalSeconds,
                         seed = context.RunOverrides.Requested.Seed,
                         degradation_profile = context.RunOverrides.Requested.DegradationProfile,
+                        degradation_profiles = context.RunOverrides.Requested.DegradationProfiles,
                         orchestrator_correlation_id = context.RunOverrides.Requested.OrchestratorCorrelationId
                     },
                     resolved = new
@@ -92,6 +93,7 @@ public sealed class PostgresSimulationRunStore(
                         interval_seconds = context.RunOverrides.Resolved.IntervalSeconds,
                         seed = run.ExecutionSeed,
                         degradation_profile = context.RunOverrides.Resolved.DegradationProfile,
+                        degradation_profiles = context.RunOverrides.Resolved.DegradationProfiles,
                         orchestrator_correlation_id = context.RunOverrides.Resolved.OrchestratorCorrelationId,
                         selected_sensor_names = context.RunOverrides.Resolved.SelectedSensorNames
                     }

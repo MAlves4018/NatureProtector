@@ -396,6 +396,7 @@ public sealed class PostgresReadingEventInbox(
         string errorMessage,
         string quarantineCode,
         string quarantineReason,
+        string? errorMetadataJson,
         CancellationToken cancellationToken)
     {
         using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.inbox.quarantine");
@@ -433,10 +434,33 @@ public sealed class PostgresReadingEventInbox(
             QuarantineCode = Truncate(quarantineCode, 100),
             QuarantineReason = Truncate(quarantineReason, 2000),
             QuarantinedAt = now,
-            MetadataJson = $"{{\"stage\":\"{lease.Stage}\"}}"
+            MetadataJson = MergeQuarantineMetadata(lease.Stage, errorMetadataJson)
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static string MergeQuarantineMetadata(string stage, string? errorMetadataJson)
+    {
+        static string Escape(string value) => value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal);
+
+        if (string.IsNullOrWhiteSpace(errorMetadataJson) || errorMetadataJson.Trim() == "{}")
+        {
+            return $"{{\"stage\":\"{Escape(stage)}\"}}";
+        }
+
+        var trimmed = errorMetadataJson.Trim();
+        if (trimmed.StartsWith('{') && trimmed.EndsWith('}'))
+        {
+            var inner = trimmed[1..^1].Trim();
+            return string.IsNullOrWhiteSpace(inner)
+                ? $"{{\"stage\":\"{Escape(stage)}\"}}"
+                : $"{{\"stage\":\"{Escape(stage)}\",{inner}}}";
+        }
+
+        return $"{{\"stage\":\"{Escape(stage)}\",\"errorMetadata\":\"{Escape(errorMetadataJson)}\"}}";
     }
 
     /// <summary>

@@ -108,6 +108,35 @@ public sealed class SimulationRunnerTests
     }
 
     [Fact]
+    public async Task ScenarioC_WithMultipleProfiles_StillUsesMissingReadingsForAcceptedCount()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 5;
+        options.IntervalSeconds = 1;
+        var context = CreateContextWithDegradation(
+            options,
+            [SimulationDegradationProfiles.MissingReadings, SimulationDegradationProfiles.Noise]);
+        var publisher = new CollectingReadingPublisher();
+        var runner = new SimulationRunner(
+            logger: NullLogger<SimulationRunner>.Instance,
+            simulatorOptions: Options.Create(options),
+            seedProvider: new SeedProvider(),
+            simulationContextSource: new StaticSimulationContextSource(context),
+            readingGenerationService: new ReadingGenerationService(),
+            simulationRunStore: new NoOpSimulationRunStore(),
+            readingPublisher: publisher);
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        var expectedWithoutDegradation = context.NumberOfCycles * context.Sensors.Count;
+        Assert.InRange(publisher.Published.Count, 1, expectedWithoutDegradation - 1);
+        Assert.Equal(
+            new[] { SimulationDegradationProfiles.MissingReadings, SimulationDegradationProfiles.Noise },
+            context.RunOverrides!.Resolved.DegradationProfiles);
+    }
+
+
+    [Fact]
     public async Task ExecuteAsync_RunStartLogIncludesEffectiveScenarioAndDegradationContext()
     {
         var options = SimulatorOptionsMother.CreateValid();
@@ -328,8 +357,16 @@ public sealed class SimulationRunnerTests
     private static SimulationContext CreateContextWithDegradation(
         NatureProtector.Simulator.Host.Configuration.SimulatorOptions options,
         string degradationProfile)
+        => CreateContextWithDegradation(
+            options,
+            SimulationDegradationProfiles.Normalize(null, degradationProfile));
+
+    private static SimulationContext CreateContextWithDegradation(
+        NatureProtector.Simulator.Host.Configuration.SimulatorOptions options,
+        IReadOnlyList<string> degradationProfiles)
     {
         var context = CreateContextWithPreferredSeed(options.Seed ?? 12345);
+        var degradationProfile = SimulationDegradationProfiles.ToLegacyProfile(degradationProfiles);
         return new SimulationContext(
             areaId: context.AreaId,
             scenario: context.Scenario,
@@ -339,8 +376,14 @@ public sealed class SimulationRunnerTests
             numberOfCycles: options.NumberOfCycles,
             preferredSeed: options.Seed,
             runOverrides: new SimulationRunOverridesSnapshot(
-                new SimulationRunOverridesRequested(null, options.NumberOfCycles, options.IntervalSeconds, options.Seed, degradationProfile, "tests"),
-                new SimulationRunOverridesResolved(context.Sensors.Count, options.NumberOfCycles, options.IntervalSeconds, options.Seed, degradationProfile, "tests", context.Sensors.Select(sensor => sensor.Name).ToArray())));
+                new SimulationRunOverridesRequested(null, options.NumberOfCycles, options.IntervalSeconds, options.Seed, degradationProfile, "tests")
+                {
+                    DegradationProfiles = degradationProfiles
+                },
+                new SimulationRunOverridesResolved(context.Sensors.Count, options.NumberOfCycles, options.IntervalSeconds, options.Seed, degradationProfile, "tests", context.Sensors.Select(sensor => sensor.Name).ToArray())
+                {
+                    DegradationProfiles = degradationProfiles
+                }));
     }
 
     private sealed class RecordingSimulationRunStore : ISimulationRunStore

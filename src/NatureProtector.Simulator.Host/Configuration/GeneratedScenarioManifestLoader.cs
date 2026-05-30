@@ -104,6 +104,7 @@ internal static class GeneratedScenarioManifestLoader
         options.FailureRate = ReadDouble(simulatorOptions, "FailureRate", options.FailureRate);
         options.NoiseLevel = ReadDouble(simulatorOptions, "NoiseLevel", options.NoiseLevel);
         options.DegradationProfile = ReadString(simulatorOptions, "DegradationProfile") ?? options.DegradationProfile;
+        options.DegradationProfiles = ReadStringArray(simulatorOptions, "DegradationProfiles", options.DegradationProfiles);
         options.TimeAcceleration = ReadDouble(simulatorOptions, "TimeAcceleration", options.TimeAcceleration);
         options.NumberOfCycles = ReadInt(simulatorOptions, "NumberOfCycles", options.NumberOfCycles);
         options.IntervalSeconds = ReadInt(simulatorOptions, "IntervalSeconds", options.IntervalSeconds);
@@ -117,6 +118,22 @@ internal static class GeneratedScenarioManifestLoader
         }
 
         return property.GetString();
+    }
+
+    private static List<string> ReadStringArray(JsonElement element, string propertyName, List<string> fallback)
+    {
+        if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
+        {
+            return fallback;
+        }
+
+        return property
+            .EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .ToList();
     }
 
     private static Guid ReadGuid(JsonElement element, string propertyName, Guid fallback)

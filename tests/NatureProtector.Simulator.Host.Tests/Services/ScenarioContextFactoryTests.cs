@@ -58,6 +58,7 @@ public sealed class ScenarioContextFactoryTests
         Assert.NotNull(context.RunOverrides);
         Assert.Null(context.RunOverrides!.Requested.DegradationProfile);
         Assert.Equal("missing-readings", context.RunOverrides.Resolved.DegradationProfile);
+        Assert.Equal(new[] { "missing-readings" }, context.RunOverrides.Resolved.DegradationProfiles);
     }
 
     [Fact]
@@ -73,6 +74,22 @@ public sealed class ScenarioContextFactoryTests
         Assert.NotNull(context.RunOverrides);
         Assert.Equal("none", context.RunOverrides!.Requested.DegradationProfile);
         Assert.Equal("none", context.RunOverrides.Resolved.DegradationProfile);
+        Assert.Equal(new[] { "none" }, context.RunOverrides.Resolved.DegradationProfiles);
+    }
+
+    [Fact]
+    public void Create_RunOverrideDegradationProfilesOverrideScenarioProfile()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.DegradationProfile = "missing-readings";
+        options.RunOverrides.DegradationProfiles = ["noise", "bias"];
+        var factory = new ScenarioContextFactory(Options.Create(options));
+
+        var context = factory.Create();
+
+        Assert.NotNull(context.RunOverrides);
+        Assert.Equal("noise+bias", context.RunOverrides!.Resolved.DegradationProfile);
+        Assert.Equal(new[] { "noise", "bias" }, context.RunOverrides.Resolved.DegradationProfiles);
     }
 
     [Fact]

@@ -31,6 +31,9 @@ public sealed class PostgresAreaOperationalProjectionStoreTests
         Assert.Equal(assessment.Id, row.LatestAssessmentId);
         Assert.Equal("VeryHigh", row.RiskLevel);
         Assert.Equal("Critical", row.Severity);
+        Assert.Equal("Complete", row.CoverageStatus);
+        Assert.Equal("Expired", row.FreshnessStatus);
+        Assert.Equal("ExpiredCarryForward", row.CarryForwardStatus);
     }
 
     [Fact]
@@ -162,12 +165,36 @@ public sealed class PostgresAreaOperationalProjectionStoreTests
         Assert.Equal(seed.ConfigurationVersionId, areaState.ConfigurationVersionId);
         Assert.Equal("VeryHigh", areaState.AggregateRiskLevel);
         Assert.Equal(6, areaState.AssessmentCount);
+        Assert.Equal("Complete", areaState.CoverageStatus);
+        Assert.Equal("Expired", areaState.FreshnessStatus);
+        Assert.Equal("ExpiredCarryForward", areaState.CarryForwardStatus);
 
         var alert = Assert.Single(dbContext.AlertStates);
         Assert.Equal("area-risk-high", alert.AlertCode);
         Assert.Equal(OperationalAlertStatus.Open.ToString(), alert.Status);
         Assert.Equal("Critical", alert.Severity);
     }
+
+    [Fact]
+    public async Task SaveAsync_SingleAssessment_MarksLowCoverage()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var store = CreateStore(scope);
+        var snapshot = new AreaRiskSnapshot(
+            Guid.Parse("20500000-0000-0000-0000-000000000001"),
+            DateTimeOffset.UtcNow,
+            0.45,
+            "Single source assessment.");
+
+        await store.SaveAsync(seed.AreaId, snapshot, 1, CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var areaState = Assert.Single(dbContext.AreaOperationalStates);
+        Assert.Equal("LowCoverage", areaState.CoverageStatus);
+        Assert.Equal("Fresh", areaState.FreshnessStatus);
+    }
+
 
     [Fact]
     public async Task SaveAsync_WarningThreshold_CreatesOpenWarningAlert()

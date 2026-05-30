@@ -1,5 +1,116 @@
-\chapter{Development support} 
-\label{ch:Chapter4}
-\vfill \minitoc \newpage
+\chapter{Arquitetura e Suporte de Desenvolvimento}
 
-%indicar os serviços pre-existentes utilizados para suportar o desenvolvimento do projeto
+\section{Objetivo do Capítulo}
+
+Este capítulo apresenta a arquitetura e o suporte de desenvolvimento utilizados no NatureProtector V1. O objetivo é descrever a estrutura técnica que permite executar o sistema localmente, produzir eventos simulados, processá-los no módulo de prevenção, persistir estado, expor projeções operacionais e apoiar a observabilidade.
+
+A arquitetura da V1 deve ser entendida como uma base técnica local, não como arquitetura final de produção. A sua função é fornecer uma implementação executável, demonstrável e auditável para o módulo de prevenção.
+
+A solução pode ser resumida em três blocos:
+
+\begin{enumerate}
+    \item simulação e produção de eventos;
+    \item pipeline de prevenção e processamento durável;
+    \item projeções, API e observabilidade.
+\end{enumerate}
+
+\section{Arquitetura Geral}
+
+A arquitetura em tempo de execução segue uma abordagem orientada a eventos. O \texttt{Simulator.Host} produz leituras simuladas de sensores e publica eventos. O RabbitMQ transporta esses eventos para o \texttt{Prevention.Host}. O \texttt{Prevention.Host} consome os eventos, persiste-os numa inbox durável, executa a pipeline de validação, elegibilidade e avaliação de risco, e atualiza projeções operacionais. O PostgreSQL armazena dados de controlo, estado da pipeline e modelos de leitura operacional. A Backoffice API expõe o estado persistido. O InfluxDB e o Grafana apoiam observabilidade.
+
+O fluxo principal pode ser representado da seguinte forma:
+
+\begin{center}
+\texttt{Simulator.Host} $\rightarrow$ \texttt{RabbitMQ} $\rightarrow$ \texttt{Prevention.Host} $\rightarrow$ \texttt{PostgreSQL} $\rightarrow$ \texttt{Backoffice.Api}
+\end{center}
+
+\begin{center}
+\texttt{PostgreSQL / InfluxDB} $\rightarrow$ \texttt{Grafana}
+\end{center}
+
+A decisão arquitetural mais importante é que o sistema não processa eventos apenas em memória. Os eventos são materializados numa inbox durável, as tentativas de processamento são registadas, eventos inválidos podem ser rejeitados, eventos com falhas não recuperadas podem ser colocados em quarentena, e os resultados aceites são projetados em tabelas operacionais. Esta estrutura fornece evidência durável para validação técnica.
+
+\section{Blocos e Componentes Principais}
+
+A Tabela~\ref{tab:architecture-components} resume a arquitetura da V1 por blocos e componentes.
+
+\begin{table}[h]
+\centering
+\caption{Blocos e componentes principais da arquitetura V1.}
+\label{tab:architecture-components}
+\begin{tabular}{p{0.24\textwidth} p{0.31\textwidth} p{0.33\textwidth}}
+\hline
+\textbf{Bloco} & \textbf{Componentes} & \textbf{Responsabilidade} \\
+\hline
+Simulação & \texttt{Simulator.Host}, \texttt{SensorReadingProduced} & Produzir leituras simuladas e publicá-las como eventos. \\
+Transporte & RabbitMQ, \texttt{EventEnvelope<TPayload>} & Transportar eventos entre simulador e prevenção. \\
+Prevenção & \texttt{Prevention.Host}, \texttt{Prevention}, \texttt{Core} & Consumir, persistir, validar, classificar e avaliar leituras. \\
+Persistência & PostgreSQL, \texttt{Infrastructure.Postgres} & Guardar plano de controlo, estado da pipeline e projeções. \\
+Leitura e observabilidade & Backoffice API, InfluxDB, Grafana & Expor e visualizar estado operacional. \\
+\hline
+\end{tabular}
+\end{table}
+
+Esta separação reduz o acoplamento entre produção de eventos, processamento de risco e exposição de resultados. O simulador não precisa de conhecer os detalhes internos da prevenção. A API não recalcula risco; lê projeções persistidas. O Grafana apoia observabilidade, mas não substitui a evidência durável da base de dados.
+
+\section{Infraestrutura Local}
+
+O ambiente local utiliza quatro serviços principais: RabbitMQ, PostgreSQL, InfluxDB e Grafana.
+
+O RabbitMQ fornece transporte assíncrono entre o simulador e o \texttt{Prevention.Host}. O PostgreSQL é a principal fonte durável para dados de controlo, estado da pipeline e projeções. O InfluxDB apoia dados temporais e medições de observabilidade. O Grafana fornece painéis para inspeção visual, demonstração e apoio ao diagnóstico.
+
+\begin{table}[h]
+\centering
+\caption{Serviços de infraestrutura local.}
+\label{tab:local-infrastructure}
+\begin{tabular}{p{0.22\textwidth} p{0.64\textwidth}}
+\hline
+\textbf{Serviço} & \textbf{Função} \\
+\hline
+RabbitMQ & Transporte assíncrono de eventos. \\
+PostgreSQL & Persistência durável para configuração, pipeline e projeções. \\
+InfluxDB & Suporte de observabilidade temporal. \\
+Grafana & Painéis de inspeção e demonstração. \\
+\hline
+\end{tabular}
+\end{table}
+
+O PostgreSQL é a principal fonte de evidência técnica. O InfluxDB e o Grafana são úteis para observabilidade, mas não validam cientificamente o modelo nem substituem testes automatizados.
+
+\section{Persistência e Projeções}
+
+A persistência em PostgreSQL está organizada em três schemas: \texttt{control}, \texttt{pipeline} e \texttt{projection}.
+
+\begin{table}[h]
+\centering
+\caption{Organização dos schemas PostgreSQL.}
+\label{tab:postgres-architecture}
+\begin{tabular}{p{0.22\textwidth} p{0.66\textwidth}}
+\hline
+\textbf{Schema} & \textbf{Responsabilidade principal} \\
+\hline
+\texttt{control} & Configuração, áreas, células, sensores, cenários e execuções de simulação. \\
+\texttt{pipeline} & Inbox de eventos, tentativas de processamento, eventos rejeitados e eventos em quarentena. \\
+\texttt{projection} & Leituras aceites, avaliações de risco, snapshots, estado operacional e estado de alertas. \\
+\hline
+\end{tabular}
+\end{table}
+
+Esta organização é central para a auditabilidade da V1. O schema \texttt{control} define o contexto da execução. O schema \texttt{pipeline} regista o ciclo de vida dos eventos recebidos. O schema \texttt{projection} contém os modelos de leitura usados pela API e pelos painéis de observabilidade.
+
+A separação entre pipeline e projeções também evita confundir processamento interno com estado operacional exposto. A pipeline trata eventos e decisões de processamento; as projeções representam o estado resultante, adequado para leitura por API ou visualização.
+
+\section{API, Observabilidade e Suporte de Execução}
+
+A Backoffice API expõe informação operacional derivada dos schemas de controlo e projeção, incluindo áreas configuradas, execuções, score agregado, severidade, resumos, estado operacional e alertas ativos. A API deve ser entendida como consumidora de projeções persistidas, não como camada autónoma de cálculo de risco.
+
+A observabilidade é apoiada por InfluxDB e Grafana. Exemplos de painéis úteis incluem saúde da pipeline, eventos rejeitados e em quarentena, distribuição de scores, estado operacional por área e estado de alertas. Estes painéis apoiam inspeção e demonstração em tempo de execução, mas não constituem prova de validade científica.
+
+A execução local é apoiada por scripts e comandos que permitem iniciar dependências, confirmar dados do plano de controlo, executar o simulador, executar o \texttt{Prevention.Host}, consultar evidência, chamar a API e recolher resultados de testes. Este suporte é relevante porque a V1 deve ser demonstrável e reprodutível, não apenas descrita em código.
+
+\section{Qualidades e Limitações Arquiteturais}
+
+A arquitetura implementada suporta rastreabilidade, separação de responsabilidades, reprodutibilidade, observabilidade e extensibilidade. Eventos, tentativas, rejeições, quarentenas, avaliações e projeções deixam evidência inspecionável. A separação entre simulação, transporte, pipeline, persistência, API e observabilidade facilita manutenção e validação.
+
+As limitações também devem ser assumidas. A arquitetura continua a ser uma base V1 local. Não corresponde a uma solução produtiva completa. Autenticação, autorização, segurança, integração com sensores reais, validação científica, operação multiárea, implantação em produção e robustecimento operacional permanecem trabalho futuro.
+Esta arquitetura fornece a base necessária para a implementação e validação técnica descritas nos capítulos seguintes.

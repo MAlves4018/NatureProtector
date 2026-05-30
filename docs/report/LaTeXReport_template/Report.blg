@@ -4,8 +4,6 @@ The top-level auxiliary file: Report.aux
 Reallocating 'name_of_file' (item size: 1) to 35 items.
 A level-1 auxiliary file: FrontCover/provisoryFrontCover.aux
 Reallocating 'name_of_file' (item size: 1) to 22 items.
-A level-1 auxiliary file: Abstract/Abstract.aux
-Reallocating 'name_of_file' (item size: 1) to 22 items.
 A level-1 auxiliary file: Chapter1/Chapter1.aux
 Reallocating 'name_of_file' (item size: 1) to 22 items.
 A level-1 auxiliary file: Chapter2/Chapter2.aux
@@ -16,55 +14,63 @@ A level-1 auxiliary file: Chapter4/Chapter4.aux
 Reallocating 'name_of_file' (item size: 1) to 22 items.
 A level-1 auxiliary file: Chapter5/Chapter5.aux
 Reallocating 'name_of_file' (item size: 1) to 22 items.
-A level-1 auxiliary file: Chapter8/Chapter8.aux
-Reallocating 'name_of_file' (item size: 1) to 24 items.
-A level-1 auxiliary file: AppendixA/AppendixA.aux
-Reallocating 'name_of_file' (item size: 1) to 13 items.
-The style file: model5-names.bst
+A level-1 auxiliary file: Chapter6/Chapter6.aux
 Reallocating 'name_of_file' (item size: 1) to 22 items.
-I found no \citation commands---while reading file Report.aux
-Database file #1: References/References.bib
+A level-1 auxiliary file: Chapter7/Chapter7.aux
+Reallocating 'name_of_file' (item size: 1) to 8 items.
+The style file: apacite.bst
+Reallocating 'name_of_file' (item size: 1) to 22 items.
+Reallocating 'glb_str_end' (item size: 4) to 20 items.
+Reallocating 'glb_str_ptr' (item size: 4) to 20 items.
+Reallocating 'global_strs' (item size: 1) to 4000000 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
 Reallocating 'wiz_functions' (item size: 4) to 6000 items.
 Reallocating 'singl_function' (item size: 4) to 100 items.
-You've used 0 entries,
-            3390 wiz_defined-function locations,
-            693 strings with 5532 characters,
-and the built_in function-call counts, 49 in all, are:
-= -- 0
-> -- 0
-< -- 0
-+ -- 0
-- -- 0
-* -- 2
-:= -- 12
-add.period$ -- 0
-call.type$ -- 0
-change.case$ -- 0
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'wiz_functions' (item size: 4) to 9000 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Database file #1: References/References.bib
+apacite.bst [2013/07/21 v6.03 APA bibliography style]
+Warning--No address in keetch_byram_1968
+You've used 16 entries,
+            6951 wiz_defined-function locations,
+            1340 strings with 12764 characters,
+and the built_in function-call counts, 22282 in all, are:
+= -- 2773
+> -- 197
+< -- 857
++ -- 701
+- -- 59
+* -- 1250
+:= -- 3706
+add.period$ -- 65
+call.type$ -- 16
+change.case$ -- 198
 chr.to.int$ -- 0
-cite$ -- 0
-duplicate$ -- 0
-empty$ -- 1
-format.name$ -- 0
-if$ -- 1
-int.to.chr$ -- 1
-int.to.str$ -- 1
+cite$ -- 33
+duplicate$ -- 532
+empty$ -- 1134
+format.name$ -- 234
+if$ -- 4698
+int.to.chr$ -- 0
+int.to.str$ -- 60
 missing$ -- 0
-newline$ -- 15
-num.names$ -- 0
-pop$ -- 0
+newline$ -- 382
+num.names$ -- 128
+pop$ -- 1117
 preamble$ -- 1
-purify$ -- 0
+purify$ -- 50
 quote$ -- 0
-skip$ -- 1
+skip$ -- 1116
 stack$ -- 0
-substring$ -- 0
-swap$ -- 0
-text.length$ -- 0
+substring$ -- 862
+swap$ -- 282
+text.length$ -- 62
 text.prefix$ -- 0
-top$ -- 0
-type$ -- 0
-warning$ -- 0
-while$ -- 0
+top$ -- 1
+type$ -- 1280
+warning$ -- 1
+while$ -- 70
 width$ -- 0
-write$ -- 14
-(There was 1 error message)
+write$ -- 417
+(There was 1 warning)

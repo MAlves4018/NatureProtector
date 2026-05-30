@@ -93,8 +93,66 @@ export interface RuntimeSummaryResponse {
     cellOperationalStateCount: number;
     activeAlerts: RuntimeAlertSummaryResponse[];
     freshness: RuntimeFreshnessSummaryResponse | null;
+    scoreComponents: RuntimeScoreComponentSummaryResponse | null;
+    indexComparison: RuntimeIndexComparisonSummaryResponse | null;
     limitations: RuntimeLimitationResponse[];
     warnings: string[];
+}
+
+export interface RuntimeScoreComponentSummaryResponse {
+    npScore: number | null;
+    baseRisk: number | null;
+    adjustedScore: number | null;
+    score100: number | null;
+    meteorologyComponent: number | null;
+    droughtComponent: number | null;
+    territoryComponent: number | null;
+    hazardComponent: number | null;
+    fuelComponent: number | null;
+    geomorphologyComponent: number | null;
+    confidenceFactor: number | null;
+    integrityFactor: number | null;
+    dominantDriver: string | null;
+    parameterSetVersion: string | null;
+    calculationStatus: string | null;
+    limitations: string | null;
+    latestAssessmentTimestamp: string | null;
+    npRiskClass: string | null;
+    npRiskClassLabel: string | null;
+}
+
+export interface RuntimeIndexComparisonSummaryResponse {
+    fireWeatherIndex: number | null;
+    normalizedFireWeatherIndex: number | null;
+    fireWeatherCalculationStatus: string | null;
+    keetchByramDroughtIndex: number | null;
+    normalizedKeetchByramDroughtIndex: number | null;
+    kbdiCalculationStatus: string | null;
+    provenance: string | null;
+    limitations: string | null;
+    dailyPrecipitationMillimeters: number | null;
+    logicalDate: string | null;
+    calculatedFireWeatherIndex: number | null;
+    referenceFireWeatherIndex: number | null;
+    fireWeatherIndexValueSource: string | null;
+    fireWeatherIpmaClass: string | null;
+    fireWeatherIpmaClassLabel: string | null;
+    fireWeatherEffisClass: string | null;
+    fireWeatherThresholdDistanceToNextClass: number | null;
+    fireWeatherNextIpmaClass: string | null;
+    calculatedKeetchByramDroughtIndex: number | null;
+    referenceKeetchByramDroughtIndex: number | null;
+    kbdiValueSource: string | null;
+    kbdiDrynessClass: string | null;
+    kbdiDrynessClassLabel: string | null;
+    kbdiAntecedentHistoryQuality: string | null;
+    kbdiAntecedentDays: number | null;
+    portugueseContextRiskProxyClass: string | null;
+    portugueseContextRiskProxyLabel: string | null;
+    territorialHazardProxyClass: string | null;
+    localFwiPercentileStatus: string | null;
+    localFwiPercentile: number | null;
+    localFwiPercentileReason: string | null;
 }
 
 export interface RuntimeRunSummaryResponse {
@@ -131,6 +189,8 @@ export interface RuntimeRunAuditResponse {
     eligibilitySummary: RuntimeStatusCountResponse[];
     areaSnapshot: RuntimeAreaSnapshotAuditResponse | null;
     limitations: RuntimeLimitationResponse[];
+    scoreComponents: RuntimeScoreComponentSummaryResponse | null;
+    indexComparison: RuntimeIndexComparisonSummaryResponse | null;
 }
 
 export interface RuntimeRunTimingSummaryResponse {
@@ -194,6 +254,7 @@ export interface RuntimeRunOverrideValuesResponse {
     intervalSeconds: number | null;
     seed: number | null;
     degradationProfile: string | null;
+    degradationProfiles: string[] | null;
     orchestratorCorrelationId: string | null;
 }
 
@@ -286,6 +347,12 @@ export interface RuntimeAreaOperationalSummaryResponse {
     assessmentCount: number;
     updatedAt: string;
     alertState: string | null;
+    coverageStatus: string | null;
+    freshnessStatus: string | null;
+    carryForwardStatus: string | null;
+    lastAssessmentTimestamp: string | null;
+    lastProjectionUpdatedAt: string | null;
+    operationalStatusReason: string | null;
 }
 
 export interface RuntimeAlertSummaryResponse {
@@ -356,6 +423,7 @@ export interface RuntimeRunStartRequest {
     timeoutSeconds: number;
     allowParallelRun: boolean;
     runLabel: string | null;
+    degradationProfiles: string[] | null;
 }
 
 export interface RuntimeRunStartResponse {

@@ -207,6 +207,101 @@ public sealed class RiskInputTests
     }
 
     [Fact]
+    public void FromWindow_AggregatesSourceReadingsAndCanonicalMetrics()
+    {
+        var areaId = Guid.NewGuid();
+        var sensorId = Guid.NewGuid();
+        var start = new DateTimeOffset(2026, 4, 30, 10, 45, 0, TimeSpan.Zero);
+        var readings = new[]
+        {
+            CreateReading(areaId, sensorId, SensorMetricType.Temperature, MeasurementUnit.Celsius, 32.0, start),
+            CreateReading(areaId, sensorId, SensorMetricType.Humidity, MeasurementUnit.Percent, 24.0, start.AddSeconds(10)),
+            CreateReading(areaId, sensorId, SensorMetricType.WindSpeed, MeasurementUnit.MetersPerSecond, 6.0, start.AddSeconds(20))
+        };
+
+        var input = RiskInput.FromWindow(
+            readings,
+            RiskEligibilityResult.Eligible,
+            dailyCellState: null,
+            simulationRunId: Guid.NewGuid(),
+            gridCellId: Guid.NewGuid(),
+            configurationVersionId: Guid.NewGuid());
+
+        Assert.Equal(RiskInputStatus.CompleteEligible, input.InputStatus);
+        Assert.Equal(32.0, input.Metrics.TemperatureCelsius);
+        Assert.Equal(24.0, input.Metrics.RelativeHumidityPercent);
+        Assert.Equal(6.0, input.Metrics.WindSpeedMetersPerSecond);
+        Assert.Equal(start, input.ValidFrom);
+        Assert.Equal(start.AddSeconds(20), input.ValidTo);
+        Assert.Equal(3, input.SourceReadings.Count);
+    }
+
+    [Fact]
+    public void FromWindow_MarksPartialWithLowCoverage_WhenOnlyOneMetricIsAvailable()
+    {
+        var input = RiskInput.FromWindow(
+            [CreateReading()],
+            RiskEligibilityResult.Eligible,
+            dailyCellState: null,
+            simulationRunId: null,
+            gridCellId: null,
+            configurationVersionId: null);
+
+        Assert.Equal(RiskInputStatus.PartialButUsable, input.InputStatus);
+        Assert.Equal(ObservationalConfidenceLevel.Low, input.ObservationalConfidence);
+        Assert.Equal(OperationalIntegrityLevel.Compromised, input.OperationalIntegrity);
+        Assert.Contains(RiskInput.MissingDailyCellStateFlag, input.QualityFlags);
+        Assert.Contains(RiskInput.LowCoverageFlag, input.QualityFlags);
+    }
+
+    [Fact]
+    public void FromWindow_MarksPartialAndPenalizesConfidence_WhenTwoMetricsAreAvailable()
+    {
+        var areaId = Guid.NewGuid();
+        var sensorId = Guid.NewGuid();
+        var start = new DateTimeOffset(2026, 4, 30, 10, 45, 0, TimeSpan.Zero);
+
+        var input = RiskInput.FromWindow(
+            [
+                CreateReading(areaId, sensorId, SensorMetricType.Temperature, MeasurementUnit.Celsius, 32.0, start),
+                CreateReading(areaId, sensorId, SensorMetricType.WindSpeed, MeasurementUnit.MetersPerSecond, 6.0, start.AddSeconds(20))
+            ],
+            RiskEligibilityResult.Eligible,
+            dailyCellState: null,
+            simulationRunId: null,
+            gridCellId: null,
+            configurationVersionId: null);
+
+        Assert.Equal(RiskInputStatus.PartialButUsable, input.InputStatus);
+        Assert.Equal(ObservationalConfidenceLevel.Medium, input.ObservationalConfidence);
+        Assert.Equal(OperationalIntegrityLevel.Degraded, input.OperationalIntegrity);
+        Assert.Contains(RiskInput.MissingDailyCellStateFlag, input.QualityFlags);
+        Assert.DoesNotContain(RiskInput.LowCoverageFlag, input.QualityFlags);
+    }
+
+    [Fact]
+    public void FromWindow_MarksBlockedWhenNoRiskMetricIsAvailable()
+    {
+        var reading = CreateReading(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            SensorMetricType.WindDirection,
+            MeasurementUnit.Degrees,
+            180.0,
+            DateTimeOffset.UtcNow);
+
+        var input = RiskInput.FromWindow(
+            [reading],
+            RiskEligibilityResult.Eligible,
+            dailyCellState: null,
+            simulationRunId: null,
+            gridCellId: null,
+            configurationVersionId: null);
+
+        Assert.Equal(RiskInputStatus.Blocked, input.InputStatus);
+    }
+
+    [Fact]
     public void FromNormalizedReading_NullFlagsAndClassifiers_ReturnsEmptyCollections()
     {
         var reading = CreateReading() with
@@ -263,6 +358,30 @@ public sealed class RiskInputTests
             Longitude: -7.90,
             OperationalState: SensorOperationalState.Nominal,
             EventTime: new DateTimeOffset(2026, 4, 30, 10, 45, 0, TimeSpan.Zero),
+            IngestTime: null);
+    }
+
+    private static NormalizedReading CreateReading(
+        Guid areaId,
+        Guid sensorId,
+        SensorMetricType metricType,
+        MeasurementUnit unit,
+        double value,
+        DateTimeOffset eventTime)
+    {
+        return new NormalizedReading(
+            EventId: Guid.NewGuid(),
+            CorrelationId: "corr-risk-input-window",
+            AreaId: areaId,
+            SensorId: sensorId,
+            SensorName: "Sensor-PT-Window",
+            MetricType: metricType,
+            Value: value,
+            Unit: unit,
+            Latitude: 39.70,
+            Longitude: -7.90,
+            OperationalState: SensorOperationalState.Nominal,
+            EventTime: eventTime,
             IngestTime: null);
     }
 }

@@ -86,7 +86,8 @@ public sealed record RuntimeRunStartRequest(
     bool WaitForCompletion = false,
     int TimeoutSeconds = 180,
     bool AllowParallelRun = false,
-    string? RunLabel = null);
+    string? RunLabel = null,
+    IReadOnlyList<string>? DegradationProfiles = null);
 
 public sealed record RuntimeRunStartResponse(
     Guid RequestId,

@@ -156,8 +156,9 @@ public sealed class ReadingGenerationService
         var failureRate = ResolveObservationFailureRate(context);
         var isAvailable = sensor.IsActive && random.NextDouble() >= failureRate;
         var observedValue = isAvailable
-            ? ApplyObservationNoise(truthSnapshot, sensor, random)
+            ? ApplyObservationEffects(context, truthSnapshot, sensor, random)
             : 0.0;
+        var activeProfiles = SimulationDegradationProfiles.GetResolvedProfiles(context);
 
         return new LocalObservation(
             Id: Guid.NewGuid(),
@@ -169,7 +170,7 @@ public sealed class ReadingGenerationService
             OperationalState: isAvailable
                 ? SensorOperationalState.Nominal
                 : SensorOperationalState.Invalid,
-            DegradationProfile: null,
+            DegradationProfile: SimulationDegradationProfiles.ToLegacyProfile(activeProfiles),
             IsMissing: false);
     }
 
@@ -241,11 +242,13 @@ public sealed class ReadingGenerationService
         };
     }
 
-    private static double ApplyObservationNoise(
+    private static double ApplyObservationEffects(
+        SimulationContext context,
         TruthSnapshot truthSnapshot,
         Sensor sensor,
         Random random)
     {
+        var profiles = SimulationDegradationProfiles.GetResolvedProfiles(context);
         var amplitude = sensor.Type switch
         {
             SensorType.Temperature => 2.0,
@@ -255,8 +258,64 @@ public sealed class ReadingGenerationService
                 $"Sensor type '{sensor.Type}' is not supported by the simulator.")
         };
 
+        var noiseLevel = sensor.Profile.NoiseLevel;
+        if (SimulationDegradationProfiles.Contains(profiles, SimulationDegradationProfiles.Noise))
+        {
+            noiseLevel = Math.Max(noiseLevel, 0.35);
+        }
+
         var value = truthSnapshot.PhysicalValue
-            + NextCenteredNoise(random, sensor.Profile.NoiseLevel, amplitude);
+            + NextCenteredNoise(random, noiseLevel, amplitude);
+
+        if (SimulationDegradationProfiles.Contains(profiles, SimulationDegradationProfiles.Bias))
+        {
+            value += sensor.Type switch
+            {
+                SensorType.Temperature => 1.5,
+                SensorType.Humidity => -4.0,
+                SensorType.Wind => 0.8,
+                _ => 0.0
+            };
+        }
+
+        if (SimulationDegradationProfiles.Contains(profiles, SimulationDegradationProfiles.Drift))
+        {
+            value += truthSnapshot.CycleIndex * (sensor.Type switch
+            {
+                SensorType.Temperature => 0.15,
+                SensorType.Humidity => -0.25,
+                SensorType.Wind => 0.08,
+                _ => 0.0
+            });
+        }
+
+        if (SimulationDegradationProfiles.Contains(profiles, SimulationDegradationProfiles.StuckValue))
+        {
+            value = ResolveStuckValue(context, truthSnapshot);
+        }
+
+        if (SimulationDegradationProfiles.Contains(profiles, SimulationDegradationProfiles.Outlier) &&
+            ShouldInjectOutlier(truthSnapshot.SensorId, truthSnapshot.CycleIndex))
+        {
+            value += sensor.Type switch
+            {
+                SensorType.Temperature => 12.0,
+                SensorType.Humidity => -30.0,
+                SensorType.Wind => 10.0,
+                _ => 0.0
+            };
+        }
+
+        if (SimulationDegradationProfiles.Contains(profiles, SimulationDegradationProfiles.ClippingRange))
+        {
+            value = truthSnapshot.MetricType switch
+            {
+                SensorMetricType.Temperature => Math.Min(value, 42.0),
+                SensorMetricType.Humidity => Math.Max(value, 8.0),
+                SensorMetricType.WindSpeed => Math.Min(value, 18.0),
+                _ => value
+            };
+        }
 
         return truthSnapshot.MetricType switch
         {
@@ -269,10 +328,8 @@ public sealed class ReadingGenerationService
 
     private static double ResolveObservationFailureRate(SimulationContext context)
     {
-        var degradationProfile = context.RunOverrides?.Resolved.DegradationProfile;
-        if (string.Equals(degradationProfile, "none", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(degradationProfile, "missing-readings", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(degradationProfile, "deterministic-missing-readings", StringComparison.OrdinalIgnoreCase))
+        var profiles = SimulationDegradationProfiles.GetResolvedProfiles(context);
+        if (profiles.Count > 0)
         {
             return 0.0;
         }
@@ -318,6 +375,30 @@ public sealed class ReadingGenerationService
     {
         var raw = (random.NextDouble() * 2.0) - 1.0;
         return raw * amplitude * noiseLevel;
+    }
+
+    private static double ResolveStuckValue(SimulationContext context, TruthSnapshot truthSnapshot)
+    {
+        var parameters = context.Scenario.Parameters;
+        return truthSnapshot.MetricType switch
+        {
+            SensorMetricType.Temperature => RequireValue(parameters.BaseTemperature, nameof(parameters.BaseTemperature)),
+            SensorMetricType.Humidity => RequireValue(parameters.BaseHumidity, nameof(parameters.BaseHumidity)),
+            SensorMetricType.WindSpeed => RequireValue(parameters.BaseWindSpeed, nameof(parameters.BaseWindSpeed)),
+            _ => truthSnapshot.PhysicalValue
+        };
+    }
+
+    private static bool ShouldInjectOutlier(Guid sensorId, int cycleIndex)
+    {
+        var bytes = sensorId.ToByteArray();
+        var accumulator = cycleIndex * 23;
+        for (var index = 0; index < bytes.Length; index++)
+        {
+            accumulator += bytes[index] * (index + 5);
+        }
+
+        return accumulator % 4 == 0;
     }
 
     private static double Clamp(double value, double min, double max)

@@ -22,8 +22,21 @@ public sealed class PostgresRiskAssessmentRepositoryTests
         var assessment = new RiskAssessment(
             Guid.Parse("30000000-0000-0000-0000-000000000001"),
             new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
-            0.74,
-            "High risk");
+            baseRisk: 0.80,
+            adjustedScore: 0.74,
+            explanationSummary: "High risk",
+            meteorologyComponent: 0.90,
+            droughtComponent: 0.70,
+            territoryComponent: 0.60,
+            hazardComponent: 0.50,
+            fuelComponent: 0.70,
+            geomorphologyComponent: 0.60,
+            confidenceFactor: 0.95,
+            integrityFactor: 0.97,
+            dominantDriver: "Meteorology",
+            parameterSetVersion: "Candidate Parameter Set V1.0",
+            calculationStatus: "Complete",
+            limitations: "test limitation");
 
         await repository.AddAsync(seed.AreaId, seed.SensorId, sourceEventId, assessment, CancellationToken.None);
 
@@ -34,6 +47,21 @@ public sealed class PostgresRiskAssessmentRepositoryTests
         Assert.Equal(seed.GridCellId, row.GridCellId);
         Assert.Equal(sourceEventId, row.SourceEventId);
         Assert.Equal("VeryHigh", row.RiskLevel);
+        Assert.Equal(0.80, row.BaseRisk);
+        Assert.Equal(0.74, row.AdjustedScore);
+        Assert.Equal(74, row.Score100);
+        Assert.Equal(0.90, row.MeteorologyComponent);
+        Assert.Equal(0.70, row.DroughtComponent);
+        Assert.Equal(0.60, row.TerritoryComponent);
+        Assert.Equal(0.50, row.HazardComponent);
+        Assert.Equal(0.70, row.FuelComponent);
+        Assert.Equal(0.60, row.GeomorphologyComponent);
+        Assert.Equal(0.95, row.ConfidenceFactor);
+        Assert.Equal(0.97, row.IntegrityFactor);
+        Assert.Equal("Meteorology", row.DominantDriver);
+        Assert.Equal("Candidate Parameter Set V1.0", row.ParameterSetVersion);
+        Assert.Equal("Complete", row.CalculationStatus);
+        Assert.Equal("test limitation", row.Limitations);
     }
 
     [Fact]

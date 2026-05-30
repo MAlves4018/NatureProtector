@@ -1,22 +1,52 @@
+\chapter{Estratégia de Implementação e Evolução do Âmbito}
 
-\chapter{Roadmap} 
-\label{ch:Chapter5}
-\vfill \minitoc \newpage
+\section{Da Visão Inicial à V1}
 
-%
-%\begin{figure}[!ht]
-%	\centering
-%	\includegraphics[width=0.75\textwidth]{./Chapter5/Figures/planning.png}
-%	\caption{Gantt diagram depicting the project plan.}
-%	\label{fig:GanttDiagram}
-%\end{figure}
-%/
+A visão inicial do NatureProtector era mais ampla do que a entrega final da V1. O projeto partiu da necessidade de apoiar a prevenção de incêndios através de observação ambiental, avaliação de risco, visualização operacional e mecanismos de apoio à decisão. Numa versão mais madura, o sistema poderia integrar sensores reais, dados territoriais mais completos, modelos calibrados, painéis operacionais, workflows de alerta e comparação com referências reconhecidas de perigo de incêndio, como o FWI, produtos nacionais de perigo de incêndio e plataformas europeias de monitorização~\citep{nrcan_fwi_system,ipma_fwi,ipma_pir_rcm,ec_jrc_effis}.
 
-%For now the roadmap the group planned has been successfully followed. Some key parts of the project are still missing but the development tasks are defined to still follow the roadmap and the project is structured so features are added to it.%
+Contudo, tentar entregar uma plataforma completa de prevenção de incêndios num primeiro ciclo tornaria o projeto demasiado extenso e difícil de validar. Uma solução operacional completa exigiria dados reais, calibração científica, validação com ocorrências históricas, implantação em produção, segurança, gestão de utilizadores e integração institucional. Estes elementos são relevantes, mas excedem aquilo que podia ser fechado com rigor na V1.
 
-%There is now a clearer vision of what the project will be, as the group is now completly sure of the technology that it's using, such as Xamarin Forms instead of Xamarin Native for the Client Application Development, OAuth2 for user authentication, or PostgreSQL as the database engine.%
+Por esse motivo, a estratégia de implementação foi delimitada para uma base técnica do módulo de prevenção. A V1 concentra-se na cadeia essencial que sustenta a visão futura: simulação de observações, transporte de eventos, processamento durável, avaliação candidata de risco, projeções operacionais, exposição por API, observabilidade e recolha de evidência. A utilização de transporte assíncrono e processamento durável é coerente com práticas comuns em sistemas orientados a mensagens, nos quais a entrega, o consumo, a confirmação e o processamento efetivo devem ser tratados como etapas distintas~\citep{rabbitmq_amqp_model,rabbitmq_consumer_acknowledgements,richardson_idempotent_consumer}.
 
-%However there was a decision to change some of the project structure as development goes, as the group has now a better, more precise view of what the project will end up like.%
+Esta delimitação torna a entrega mais defensável. A V1 não é apresentada como modelo científico final, índice oficial ou solução pronta para produção. É apresentada como uma fundação técnica executável, rastreável e auditável, sobre a qual podem ser construídas fases futuras de calibração, validação e integração operacional.
 
+\section{Âmbito Consolidado}
 
+A consolidação do âmbito foi uma das decisões centrais do projeto. A entrega final foi concentrada no módulo de prevenção e na baseline local necessária para o demonstrar.
 
+O âmbito consolidado inclui leituras simuladas de sensores, publicação e consumo de eventos por RabbitMQ, persistência durável em PostgreSQL, validação e elegibilidade das leituras, tratamento de rejeições e quarentenas, geração de avaliações candidatas de risco, projeções operacionais por área e por célula, política interna de alertas, exposição através da Backoffice API, observabilidade com InfluxDB e Grafana, testes automatizados e recolha de evidência em tempo de execução.
+
+Este âmbito permite demonstrar uma cadeia técnica de ponta a ponta, desde a produção de leituras simuladas até à exposição de estado operacional. Ao mesmo tempo, evita tratar como concluídos aspetos que exigem trabalho científico ou operacional adicional.
+
+O princípio orientador foi o seguinte:
+
+\begin{quote}
+A V1 deve fechar uma base técnica e metodológica antes de afirmar maturidade científica ou operacional.
+\end{quote}
+
+Consequentemente, ficaram fora da entrega atual a calibração científica, a validação contra ocorrências reais, a equivalência com sistemas oficiais, a integração com sensores físicos reais, a implantação em produção e workflows operacionais completos de alerta. Estes elementos não são falhas da V1; são limites deliberados do seu âmbito.
+
+\section{Fases de Implementação}
+
+A implementação evoluiu através de fases práticas que clarificaram a arquitetura, os contratos, a pipeline e a evidência. A Tabela~\ref{tab:implementation-phases} resume essa evolução.
+
+\begin{table}[h]
+\centering
+\caption{Fases principais de implementação da V1.}
+\label{tab:implementation-phases}
+\begin{tabular}{p{0.27\textwidth} p{0.56\textwidth}}
+\hline
+\textbf{Fase} & \textbf{Resultado principal} \\
+\hline
+Infraestrutura local & Integração de RabbitMQ, PostgreSQL, InfluxDB e Grafana. \\
+Simulação e controlo & Configuração da área piloto, sensores, grelha, cenários e execuções simuladas. \\
+Contratos e eventos & Definição da fronteira baseada em \texttt{EventEnvelope<TPayload>} e \texttt{SensorReadingProduced}. \\
+Pipeline durável & Persistência de eventos em inbox, registo de tentativas, rejeições e quarentenas. \\
+Elegibilidade e risco & Separação entre leitura normalizada, qualidade, elegibilidade, \texttt{RiskInput} e \texttt{RiskAssessment}. \\
+Projeções, API e alertas & Atualização de estados operacionais, exposição pela API e política interna com \texttt{None}, \texttt{Warning} e \texttt{Alarm}. \\
+Validação C7 & Recolha de evidência em tempo de execução, comparação API/base de dados e execução de testes automatizados. \\
+\hline
+\end{tabular}
+\end{table}
+
+Estas fases mostram que a implementação não se limitou à criação de uma fórmula de risco. O trabalho principal consistiu em criar uma cadeia técnica rastreável, com fronteiras claras entre transporte, validação, elegibilidade, avaliação, projeção, exposição e validação.

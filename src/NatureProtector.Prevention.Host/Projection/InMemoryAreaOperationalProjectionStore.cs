@@ -1,5 +1,6 @@
 using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Risk;
+using NatureProtector.Prevention.Risk;
 
 namespace NatureProtector.Prevention.Host.Projection;
 
@@ -26,6 +27,7 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         {
             var updatedAt = DateTimeOffset.UtcNow;
             var severity = SeverityExtensions.FromRiskLevel(assessment.RiskLevel);
+            var freshness = OperationalProjectionStatus.ResolveFreshness(assessment.Timestamp, updatedAt);
 
             _cellStates[sensorId] = new InMemoryCellOperationalState(
                 areaId,
@@ -34,6 +36,9 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
                 assessment.RiskScore,
                 assessment.RiskLevel.ToString(),
                 severity.ToString(),
+                OperationalProjectionStatus.ResolveCoverage(assessment),
+                freshness,
+                OperationalProjectionStatus.ResolveCarryForward(freshness),
                 assessment.ExplanationSummary,
                 updatedAt);
         }
@@ -56,6 +61,8 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         {
             var updatedAt = DateTimeOffset.UtcNow;
             var severity = SeverityExtensions.FromRiskLevel(snapshot.AggregateRiskLevel);
+            var freshness = OperationalProjectionStatus.ResolveFreshness(snapshot.Timestamp, updatedAt);
+            var coverage = OperationalProjectionStatus.ResolveCoverage(assessmentCount);
             var previousAdjustedScore = _states.TryGetValue(areaId, out var existingStateBeforeUpdate)
                 ? existingStateBeforeUpdate.AggregateRiskScore
                 : snapshot.AggregateRiskScore;
@@ -88,6 +95,9 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
                 snapshot.AggregateRiskScore,
                 snapshot.AggregateRiskLevel.ToString(),
                 severity.ToString(),
+                coverage,
+                freshness,
+                OperationalProjectionStatus.ResolveCarryForward(freshness),
                 snapshot.Summary,
                 assessmentCount,
                 decision.PendingState.ToString(),
@@ -125,7 +135,7 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
     }
 
     private static string BuildAlertMessage(AreaRiskSnapshot snapshot, V1AlertState state)
-        => $"AlertState={state}; Area risk is {snapshot.AggregateRiskLevel} with adjusted score {snapshot.AggregateRiskScore:F2}. Candidate Parameter Set V1.0 (non-official).";
+        => $"AlertState={state}; Area risk is {snapshot.AggregateRiskLevel} with adjusted score {snapshot.AggregateRiskScore:F2}. {CandidateParameterSetV1.Version} (non-official).";
 
     public sealed record InMemoryAreaOperationalState(
         Guid AreaId,
@@ -134,6 +144,9 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         double AggregateRiskScore,
         string AggregateRiskLevel,
         string Severity,
+        string CoverageStatus,
+        string FreshnessStatus,
+        string CarryForwardStatus,
         string? Summary,
         int AssessmentCount,
         string PendingAlertState,
@@ -148,6 +161,9 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         double RiskScore,
         string RiskLevel,
         string Severity,
+        string CoverageStatus,
+        string FreshnessStatus,
+        string CarryForwardStatus,
         string? Summary,
         DateTimeOffset UpdatedAt);
 

@@ -41,6 +41,7 @@ public interface IReadingEventInbox
         string errorMessage,
         string quarantineCode,
         string quarantineReason,
+        string? errorMetadataJson,
         CancellationToken cancellationToken);
 }
 

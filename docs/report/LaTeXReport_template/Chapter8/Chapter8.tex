@@ -1,15 +1,49 @@
-\chapter{Conclusions and Future Work} 
-\label{ch:Chapter8}
-\vfill \minitoc \newpage
+\chapter{Conclusões e Trabalho Futuro}
 
-\section{Conclusions}
+\section{Conclusões}
 
-\section{Future Developments}
+Este relatório apresentou o NatureProtector V1, uma base técnica e metodológica do módulo de prevenção do projeto NatureProtector. O trabalho centrou-se na construção de uma pipeline em tempo de execução rastreável, capaz de transformar observações ambientais simuladas em avaliações candidatas de risco, projeções operacionais, respostas de API e artefactos de observabilidade.
 
+O principal contributo da V1 não é a criação de um modelo cientificamente calibrado de previsão de incêndios. O contributo central é a implementação e validação técnica de uma base de software que permite sustentar esse desenvolvimento em fases futuras. A V1 demonstra que leituras simuladas de sensores podem ser produzidas, transportadas através de RabbitMQ, consumidas pelo \texttt{Prevention.Host}, persistidas numa pipeline durável, processadas por regras de validação e elegibilidade, transformadas em avaliações candidatas de risco, projetadas em estado operacional e expostas através da Backoffice API. A distinção entre esta base técnica e sistemas oficiais é relevante, uma vez que índices e plataformas como o FWI, produtos do IPMA e sistemas europeus de monitorização dependem de metodologias, dados e processos de validação próprios~\citep{nrcan_fwi_system,ipma_fwi,ipma_pir_rcm,ec_jrc_effis}.
 
+A implementação confirmou a importância da rastreabilidade. Os eventos recebidos são registados numa inbox, processados através de tentativas explícitas e classificados como aceites, rejeitados ou colocados em quarentena. Esta distinção permite separar rejeições esperadas por validação, como estados operacionais inválidos, de falhas históricas ou situações de retry esgotado. Esta abordagem é coerente com práticas de sistemas assíncronos em que entrega, confirmação, idempotência e efeitos persistidos devem ser tratados de forma explícita~\citep{rabbitmq_consumer_acknowledgements,richardson_idempotent_consumer}.
 
+A V1 também separa qualidade observacional de risco físico. Uma leitura bloqueada, inválida ou inutilizável não é interpretada como leitura de risco zero. Esta decisão evita que ausência ou invalidade de informação seja confundida com condições seguras, preservando a distinção entre limitações dos dados e avaliação operacional de risco.
 
+Com base na evidência recolhida, o veredito técnico adequado é:
 
+\begin{quote}
+\textbf{OK com limitações.}
+\end{quote}
 
+Este veredito significa que o sistema executa localmente, processa eventos, persiste evidência, produz projeções, expõe estado por API e passa testes automatizados. Não significa que o modelo de risco esteja cientificamente calibrado, validado contra dados reais ou pronto para operação produtiva.
 
+\section{Contributos e Limitações}
 
+Os principais contributos do NatureProtector V1 são: uma arquitetura local orientada a eventos; uma pipeline durável com registo de inbox, tentativas, rejeições e quarentenas; fronteiras internas entre evento bruto, leitura normalizada, qualidade, elegibilidade, \texttt{RiskInput} e \texttt{RiskAssessment}; projeções operacionais por área e por célula; exposição do estado através da Backoffice API; e recolha de evidência em tempo de execução, complementada por testes automatizados.
+
+O contributo mais relevante não é uma fórmula isolada nem um painel específico. É a integração de uma cadeia auditável, na qual eventos, decisões de processamento, avaliações de risco, projeções e resultados de validação podem ser inspecionados.
+
+A V1 deve, contudo, ser interpretada dentro de limites claros. Utiliza dados simulados; os scores, pesos, limiares e classes são parâmetros candidatos; o sistema não reproduz nem substitui índices ou sistemas oficiais, como FWI, produtos do IPMA, EFFIS, RCM ou PIR; e a implementação corresponde a uma base local, não a uma implantação pronta para produção~\citep{nrcan_fwi_system,ipma_fwi,ipma_pir_rcm,copernicus_effis}.
+
+Além disso, a integração com sensores reais, dados meteorológicos externos, satélite ou datasets territoriais permanece trabalho futuro. Alguns conceitos internos, como \texttt{BaseRisk} ou \texttt{AdjustedScore}, podem existir na lógica de domínio ou nos testes sem estarem totalmente expostos como colunas persistidas dedicadas. Os painéis Grafana apoiam visualização e diagnóstico, mas não validam cientificamente o modelo. A política de alertas V1 suporta transições técnicas e histerese, mas não equivale a um workflow operacional completo de notificação, confirmação, escalonamento ou resposta.
+
+\section{Trabalho Futuro}
+
+O trabalho futuro deve evoluir a partir da base técnica consolidada na V1. A prioridade principal é a calibração científica, com dados reais de ocorrências, observações meteorológicas, informação territorial e métricas estatísticas. Só essa fase permitirá avaliar se os scores, pesos e limiares têm validade preditiva. Esta etapa deverá distinguir claramente a validação técnica da pipeline da validação científica do modelo, uma vez que sistemas de perigo de incêndio reconhecidos dependem de séries temporais, variáveis meteorológicas, condições antecedentes e processos de calibração próprios~\citep{nrcan_fwi_system,keetch_byram_1968,ipma_fwi}.
+
+Outra direção relevante é a comparação controlada com referências oficiais, como FWI, produtos nacionais de perigo de incêndio e plataformas europeias de monitorização. Essa comparação deve procurar alinhamentos, divergências e oportunidades de calibração, sem presumir equivalência~\citep{ipma_fwi,ipma_pir_rcm,ec_jrc_effis}.
+
+A integração com dados reais será igualmente essencial. Versões futuras deverão considerar sensores físicos, APIs meteorológicas, dados de vegetação, uso do solo, topografia e histórico de incêndios. O modelo de risco poderá ainda ser melhorado com memória temporal mais robusta, melhor representação da secura persistente, variáveis territoriais mais ricas e maior observabilidade dos componentes internos~\citep{clms_corine_land_cover,dgt_cos,nasa_firms,wmo_no8}.
+
+Por fim, uma versão produtiva exigirá autenticação, autorização, gestão segura de segredos, backups, monitorização, testes de desempenho, testes de resiliência e documentação operacional. A recolha de evidência também deverá ser automatizada num comando repetível que agregue estado Git, containers, schemas, contagens, erros, respostas da API e resultados de testes.
+
+\section{Consideração Final}
+
+O NatureProtector V1 deve ser entendido como uma base técnica bem-sucedida, não como uma plataforma final de previsão de incêndios. Estabelece a estrutura necessária para ingestão orientada a eventos, processamento durável, avaliação candidata de risco, projeções operacionais, exposição por API, observabilidade e recolha de evidência.
+
+O resultado final pode ser resumido da seguinte forma:
+
+\begin{quote}
+O NatureProtector V1 entrega uma base técnica funcional, rastreável e auditável para apoio à prevenção de incêndios. Está preparado para futuras fases de calibração, validação e extensão operacional, mas ainda não deve ser interpretado como sistema cientificamente validado ou pronto para produção.
+\end{quote}
