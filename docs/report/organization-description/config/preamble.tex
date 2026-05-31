@@ -1,0 +1,54 @@
+% Preamble for the NatureProtector repository organization document.
+% Kept intentionally small: no glossaries, bibliography or appendices by default.
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+\usepackage{graphicx}
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{xurl}
+\usepackage{fancyhdr}
+\usepackage{verbatim}
+\usepackage{listings}
+\usepackage{float}
+
+\renewcommand{\rmdefault}{ptm}
+\renewcommand{\thesection}{\arabic{section}}
+\renewcommand{\thesubsection}{\arabic{section}.\arabic{subsection}}
+
+\definecolor{NPDark}{HTML}{1F2933}
+\definecolor{NPMuted}{HTML}{566573}
+\definecolor{NPLight}{HTML}{F3F6F4}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=NPDark,
+    urlcolor=blue,
+    citecolor=NPDark,
+    pdfauthor={NatureProtector},
+    pdftitle={NatureProtector - Descricao da Organizacao do Repositorio}
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{NatureProtector}
+\rhead{Descrição da Organização do Repositório}
+\cfoot{\thepage}
+\setlength{\headheight}{15pt}
+
+\setlist[itemize]{topsep=2pt,itemsep=1pt,parsep=0pt,leftmargin=*}
+\setlist[enumerate]{topsep=2pt,itemsep=1pt,parsep=0pt,leftmargin=*}
+
+\newcommand{\placeholder}[1]{\textcolor{red}{\textbf{[A preencher: #1]}}}
+\newcommand{\repoPath}[1]{\path{#1}}
+\newcommand{\repoCommand}[1]{\texttt{\detokenize{#1}}}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}

@@ -1,0 +1,40 @@
+\section{Acesso ao Repositório}
+
+\subsection{Localização}
+
+O repositório do projeto encontra-se disponível publicamente no GitHub:
+
+\begin{center}
+\url{https://github.com/MAlves4018/NatureProtector.git}
+\end{center}
+
+Por se tratar de um repositório público, a consulta do código fonte, documentação e artefactos versionados não requer permissões adicionais de leitura.
+
+\subsection{Clonagem do repositório}
+
+A obtenção local do repositório pode ser feita com:
+
+\begin{verbatim}
+git clone https://github.com/MAlves4018/NatureProtector.git
+cd NatureProtector
+\end{verbatim}
+
+Após a clonagem, recomenda-se confirmar a branch e o commit em uso:
+
+\begin{verbatim}
+git branch --show-current
+git log -1 --oneline
+git status --short
+\end{verbatim}
+
+Estas informações permitem associar qualquer evidência de execução, teste ou demonstração a uma versão concreta do repositório.
+
+\subsection{Setup local}
+
+O setup local não é duplicado neste documento. A referência de setup é:
+
+\begin{center}
+\repoPath{docs/local-baseline-setup.md}
+\end{center}
+
+Esse ficheiro deve ser lido antes de tentar executar a baseline local. Em termos gerais, o repositório depende de um ambiente com .NET SDK, Docker Desktop, PowerShell e Node.js/npm para executar a solução, a infraestrutura local e a interface web.

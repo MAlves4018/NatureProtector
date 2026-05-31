@@ -1,0 +1,95 @@
+\section{Execução, Validação e Evidência}
+
+Esta secção resume os pontos principais para validação do repositório. O procedimento completo de setup deve ser consultado em \repoPath{docs/local-baseline-setup.md}. Este documento não substitui esse guia.
+
+\subsection{Requisitos gerais}
+
+A execução local da baseline pode depender dos seguintes componentes:
+
+\begin{itemize}
+    \item .NET SDK compatível com a solução;
+    \item Docker Desktop para os serviços locais;
+    \item PowerShell para scripts de setup, runtime e evidência;
+    \item Node.js e npm para a interface web;
+    \item Git para clonagem e consulta da versão do repositório.
+\end{itemize}
+
+\subsection{Setup local}
+
+A instrução principal para preparar a baseline local é:
+
+\begin{center}
+\repoPath{docs/local-baseline-setup.md}
+\end{center}
+
+Antes de executar comandos isolados, deve ser lido esse documento, porque ele concentra a sequência esperada de preparação do ambiente.
+
+\subsection{Build e testes .NET}
+
+Para validar a solução .NET, os comandos base são:
+
+\begin{verbatim}
+dotnet restore
+dotnet build .\NatureProtector.sln --nologo -v minimal --configfile NuGet.Config
+dotnet test .\NatureProtector.sln --no-restore --nologo -v minimal -m:1
+\end{verbatim}
+
+O build valida a compilação dos projetos. Os testes validam o comportamento do domínio, pipeline, infraestrutura, API, simulador e componentes partilhados.
+
+\subsection{Interface web}
+
+A interface web encontra-se em \repoPath{webUI/}. Para validar a compilação da UI:
+
+\begin{verbatim}
+cd webUI
+npm install
+npm run build
+\end{verbatim}
+
+Durante desenvolvimento, a UI é normalmente servida pelo Vite e comunica com a Backoffice API através do proxy configurado em \repoPath{webUI/vite.config.ts}. O arranque integrado da runtime deve ser feito pelos scripts de desenvolvimento indicados no setup.
+
+\subsection{Infraestrutura local}
+
+Os serviços locais são definidos por \repoPath{docker-compose.yml} e apoiados por scripts em \repoPath{infra/scripts/}. Em uso normal, deve ser seguido o procedimento descrito em \repoPath{docs/local-baseline-setup.md}. Quando aplicável, a infraestrutura pode ser iniciada por script próprio, por exemplo:
+
+\begin{verbatim}
+.\infra\scripts\up.ps1
+\end{verbatim}
+
+Os serviços locais podem incluir PostgreSQL, RabbitMQ, InfluxDB e Grafana.
+
+\subsection{Runtime de desenvolvimento}
+
+O arranque integrado da API, Prevention Host e UI pode ser feito por script de desenvolvimento, quando disponível:
+
+\begin{verbatim}
+.\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+\end{verbatim}
+
+Este script pressupõe que as dependências Docker estão disponíveis e que as portas usadas pela API e pela UI estão livres. O script gera evidência e sumários em \repoPath{docs/evidence/dev-runtime/}, quando configurado para isso.
+
+\subsection{Execução de cenários e evidência}
+
+Os cenários e smoke tests são apoiados por scripts em \repoPath{scripts/scenarios/} e \repoPath{scripts/evidence/}. Um exemplo de validação B/C pode ser executado em modo de simulação do próprio script:
+
+\begin{verbatim}
+.\scripts\evidence\run-v1-bc-smoke.ps1 -DryRun
+\end{verbatim}
+
+Quando a runtime local estiver ativa, a execução real pode apontar para a API:
+
+\begin{verbatim}
+.\scripts\evidence\run-v1-bc-smoke.ps1 -ApiBaseUrl http://localhost:5254
+\end{verbatim}
+
+A evidência gerada deve ser consultada em \repoPath{docs/evidence/}, em especial nas subpastas de runs, diagnostics e dev-runtime.
+
+\subsection{Coverage}
+
+A cobertura de testes pode ser gerada pelo script próprio, quando disponível:
+
+\begin{verbatim}
+.\scripts\tests\generate-coverage-report.ps1
+\end{verbatim}
+
+O output típico é guardado em \repoPath{coveragereport_core/}. Esta pasta é um artefacto gerado e não deve ser confundida com código fonte.

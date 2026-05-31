@@ -1192,7 +1192,14 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                warnings.Add($"Simulator.Host did not exit within {timeout.TotalSeconds:0} seconds.");
+                await TryTerminateProcessTreeAsync(
+                    process,
+                    timeout,
+                    warning =>
+                    {
+                        warnings.Add(warning);
+                        return Task.CompletedTask;
+                    });
             }
         }
 
@@ -3086,7 +3093,23 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             }
             catch (OperationCanceledException)
             {
-                await WriteTextEvidenceAsync(logDirectory, "evidence-warning.txt", $"Simulator.Host did not exit within {timeout.TotalSeconds:0} seconds.");
+                var evidenceWarnings = new List<string>();
+                await TryTerminateProcessTreeAsync(
+                    process,
+                    timeout,
+                    warning =>
+                    {
+                        evidenceWarnings.Add(warning);
+                        return Task.CompletedTask;
+                    });
+
+                if (evidenceWarnings.Count > 0)
+                {
+                    await WriteTextEvidenceAsync(
+                        logDirectory,
+                        "evidence-warning.txt",
+                        string.Join(Environment.NewLine, evidenceWarnings));
+                }
             }
 
             if (stdoutTask is not null)
@@ -4426,5 +4449,29 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
         }
 
         return Math.Clamp(recentMinutes, MinRecentMinutes, MaxRecentMinutes);
+    }
+
+    private static async Task<bool> TryTerminateProcessTreeAsync(
+        Process process,
+        TimeSpan timeout,
+        Func<string, Task> writeWarningAsync)
+    {
+        if (process.HasExited)
+        {
+            return false;
+        }
+
+        try
+        {
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync(CancellationToken.None);
+            await writeWarningAsync($"Simulator.Host did not exit within {timeout.TotalSeconds:0} seconds and was terminated.");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            await writeWarningAsync($"Simulator.Host termination failed: {exception.Message}");
+            return false;
+        }
     }
 }

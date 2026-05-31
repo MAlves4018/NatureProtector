@@ -11,6 +11,7 @@ using NatureProtector.Simulator.Host.Services;
 using NatureProtector.Simulator.Host.Tests.Fakes;
 using NatureProtector.Simulator.Host.Tests.Helpers;
 using NatureProtector.Simulator.Host.Tests.TestData;
+using Microsoft.Extensions.Hosting;
 
 namespace NatureProtector.Simulator.Host.Tests.Services;
 
@@ -72,7 +73,8 @@ public sealed class SimulationRunnerTests
             simulationContextSource: new StaticSimulationContextSource(context),
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: new NoOpSimulationRunStore(),
-            readingPublisher: publisher);
+            readingPublisher: publisher,
+            applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
 
@@ -124,7 +126,8 @@ public sealed class SimulationRunnerTests
             simulationContextSource: new StaticSimulationContextSource(context),
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: new NoOpSimulationRunStore(),
-            readingPublisher: publisher);
+            readingPublisher: publisher,
+            applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
 
@@ -151,7 +154,8 @@ public sealed class SimulationRunnerTests
             simulationContextSource: new StaticSimulationContextSource(context),
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: new NoOpSimulationRunStore(),
-            readingPublisher: new CollectingReadingPublisher());
+            readingPublisher: new CollectingReadingPublisher(),
+            applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
 
@@ -295,11 +299,36 @@ public sealed class SimulationRunnerTests
             simulationContextSource: new StaticSimulationContextSource(context),
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: runStore,
-            readingPublisher: new CollectingReadingPublisher());
+            readingPublisher: new CollectingReadingPublisher(),
+            applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
 
         Assert.All(runStore.Upserts, upsert => Assert.Equal(222, upsert.ExecutionSeed));
+    }
+    
+    [Fact]
+    public async Task ExecuteAsync_WhenRunCompletes_StopsApplication()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 1;
+        options.IntervalSeconds = 1;
+
+        var applicationLifetime = new RecordingApplicationLifetime();
+
+        var runner = new SimulationRunner(
+            logger: NullLogger<SimulationRunner>.Instance,
+            simulatorOptions: Options.Create(options),
+            seedProvider: new SeedProvider(),
+            simulationContextSource: new ScenarioContextFactory(Options.Create(options)),
+            readingGenerationService: new ReadingGenerationService(),
+            simulationRunStore: new NoOpSimulationRunStore(),
+            readingPublisher: new CollectingReadingPublisher(),
+            applicationLifetime: applicationLifetime);
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        Assert.True(applicationLifetime.StopApplicationCalled);
     }
 
     private static SimulationRunner CreateRunner(
@@ -314,7 +343,8 @@ public sealed class SimulationRunnerTests
             simulationContextSource: new ScenarioContextFactory(Options.Create(options)),
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: simulationRunStore ?? new NoOpSimulationRunStore(),
-            readingPublisher: publisher);
+            readingPublisher: publisher,
+            applicationLifetime: new NoOpApplicationLifetime());
     }
 
     private static SimulationContext CreateContextWithPreferredSeed(int preferredSeed)
@@ -460,6 +490,35 @@ public sealed class SimulationRunnerTests
             public void Dispose()
             {
             }
+        }
+    }
+    
+    private sealed class NoOpApplicationLifetime : IHostApplicationLifetime
+    {
+        public CancellationToken ApplicationStarted => CancellationToken.None;
+
+        public CancellationToken ApplicationStopping => CancellationToken.None;
+
+        public CancellationToken ApplicationStopped => CancellationToken.None;
+
+        public void StopApplication()
+        {
+        }
+    }
+    
+    private sealed class RecordingApplicationLifetime : IHostApplicationLifetime
+    {
+        public bool StopApplicationCalled { get; private set; }
+
+        public CancellationToken ApplicationStarted => CancellationToken.None;
+
+        public CancellationToken ApplicationStopping => CancellationToken.None;
+
+        public CancellationToken ApplicationStopped => CancellationToken.None;
+
+        public void StopApplication()
+        {
+            StopApplicationCalled = true;
         }
     }
 }

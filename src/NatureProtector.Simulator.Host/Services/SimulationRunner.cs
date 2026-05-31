@@ -35,7 +35,8 @@ public sealed class SimulationRunner(
     ISimulationContextSource simulationContextSource,
     ReadingGenerationService readingGenerationService,
     ISimulationRunStore simulationRunStore,
-    IReadingPublisher readingPublisher) : BackgroundService
+    IReadingPublisher readingPublisher,
+    IHostApplicationLifetime applicationLifetime) : BackgroundService
 {
     private readonly SimulatorOptions _options = simulatorOptions.Value;
 
@@ -47,6 +48,21 @@ public sealed class SimulationRunner(
     /// Token de cancelamento disparado durante o encerramento do host.
     /// </param>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            await ExecuteSimulationAsync(stoppingToken);
+        }
+        finally
+        {
+            logger.LogInformation(
+                "Simulation runner finished. Stopping Simulator.Host process.");
+
+            applicationLifetime.StopApplication();
+        }
+    }
+
+    private async Task ExecuteSimulationAsync(CancellationToken stoppingToken)
     {
         using var runActivity = SimulatorHostTelemetry.ActivitySource.StartActivity("natureprotector.simulator.run");
         var runStopwatch = Stopwatch.StartNew();

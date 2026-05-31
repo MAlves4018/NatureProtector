@@ -1,0 +1,196 @@
+\section{Estrutura de Pastas}
+
+Esta secção descreve as principais pastas do repositório e a responsabilidade de cada uma. A listagem completa do repositório é extensa; por isso, apresenta-se uma descrição resumida e orientada à navegação.
+
+\subsection{Raiz do repositório}
+
+A raiz reúne os ficheiros de entrada do projeto e as principais pastas de trabalho.
+
+\begin{longtable}{L{0.30\textwidth} L{0.60\textwidth}}
+\toprule
+\textbf{Elemento} & \textbf{Responsabilidade} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Elemento} & \textbf{Responsabilidade} \\
+\midrule
+\endhead
+\repoPath{README.md} & Entrada principal de leitura do repositório. \\
+\repoPath{NatureProtector.sln} & Solução .NET principal. \\
+\repoPath{Directory.Build.props} & Configuração comum de build para os projetos .NET. \\
+\repoPath{NuGet.Config} & Configuração de fontes NuGet usadas pela solução. \\
+\repoPath{coverage.runsettings} & Configuração de recolha de cobertura. \\
+\repoPath{docker-compose.yml} & Definição dos serviços locais de infraestrutura. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Código fonte em src/}
+
+A pasta \repoPath{src/} contém os projetos .NET da solução. A organização segue uma separação por responsabilidades: domínio, prevenção, simulador, API, persistência, infraestrutura e contratos partilhados.
+
+\begin{longtable}{L{0.38\textwidth} L{0.52\textwidth}}
+\toprule
+\textbf{Projeto} & \textbf{Responsabilidade} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Projeto} & \textbf{Responsabilidade} \\
+\midrule
+\endhead
+\repoPath{src/NatureProtector.Core} & Conceitos base do domínio, incluindo áreas, sensores, leituras, cenários, risco e objetos de valor partilhados. \\
+\repoPath{src/NatureProtector.Prevention} & Domínio de prevenção, incluindo normalização, elegibilidade, componentes de risco, FWI, KBDI, contexto territorial e scoring. \\
+\repoPath{src/NatureProtector.Prevention.Host} & Serviço de runtime que consome eventos, processa leituras, regista tentativas, atualiza estados diários, risk assessments e projeções. \\
+\repoPath{src/NatureProtector.Simulator.Host} & Geração de cenários, truth snapshots, observações locais, perfis de degradação e publicação de leituras simuladas. \\
+\repoPath{src/NatureProtector.Shared} & Contratos partilhados, envelope de eventos, payloads, configuração, RabbitMQ topology e observabilidade comum. \\
+\repoPath{src/NatureProtector.Infrastructure.Postgres} & DbContext, migrations, bootstrap, entidades de persistência e schemas de controlo, pipeline e projeção. \\
+\repoPath{src/NatureProtector.Infrastructure.Influx} & Serviços e opções para escrita opcional de telemetria temporal em InfluxDB. \\
+\repoPath{src/NatureProtector.Backoffice.Api} & API de leitura e controlo para a UI, incluindo endpoints de áreas, runtime summary, diagnostics, runs e reset. \\
+\repoPath{src/NatureProtector.Postgres.Bootstrap} & Aplicação de inicialização e carregamento do plano de controlo em PostgreSQL. \\
+\repoPath{src/NatureProtector.AppHost} & Orquestração local/experimental, quando aplicável ao ambiente de desenvolvimento. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Projetos de teste em tests/}
+
+A pasta \repoPath{tests/} espelha os principais módulos de \repoPath{src/}. A intenção é validar o domínio, a pipeline, a infraestrutura, os contratos, a API e os cenários de integração.
+
+\begin{longtable}{L{0.40\textwidth} L{0.50\textwidth}}
+\toprule
+\textbf{Projeto de testes} & \textbf{O que valida} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Projeto de testes} & \textbf{O que valida} \\
+\midrule
+\endhead
+\repoPath{tests/NatureProtector.Core.Tests} & Entidades e conceitos base do domínio. \\
+\repoPath{tests/NatureProtector.Prevention.Tests} & Normalização, elegibilidade, scoring, FWI, KBDI, classes de risco, contexto territorial e regras da prevenção. \\
+\repoPath{tests/NatureProtector.Prevention.Host.Tests} & Pipeline de processamento, inbox, tentativas, persistência, projeções e políticas operacionais. \\
+\repoPath{tests/NatureProtector.Simulator.Host.Tests} & Geração de leituras, cenários, perfis de degradação e comportamento do simulador. \\
+\repoPath{tests/NatureProtector.Backoffice.Api.Tests} & Controllers, serviços de API, contratos de resposta, runtime diagnostics e endpoints de controlo. \\
+\repoPath{tests/NatureProtector.Shared.Tests} & Contratos partilhados, serialização, envelope de eventos e configuração comum. \\
+\repoPath{tests/NatureProtector.Infrastructure.Influx.Tests} & Escrita Influx, opções, serviços safe/no-op e configuração de observabilidade temporal. \\
+\repoPath{tests/NatureProtector.IntegrationTests} & Fluxos integrados e cenários que atravessam mais do que um módulo. \\
+\bottomrule
+\end{longtable}
+
+Pastas como \repoPath{TestResults/}, \repoPath{bin/}, \repoPath{obj/} ou \repoPath{.testbin/} são geradas durante a execução dos testes e não devem ser tratadas como código fonte.
+
+\subsection{Interface web em webUI/}
+
+A pasta \repoPath{webUI/} contém a interface web, usada para observar o estado operacional, executar cenários, consultar diagnósticos, visualizar mapas, comparar runs e exportar evidência.
+
+\begin{longtable}{L{0.34\textwidth} L{0.56\textwidth}}
+\toprule
+\textbf{Pasta/Ficheiro} & \textbf{Função} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Pasta/Ficheiro} & \textbf{Função} \\
+\midrule
+\endhead
+\repoPath{webUI/src/app/components/} & Componentes e páginas principais da interface. \\
+\repoPath{webUI/src/app/services/} & Cliente HTTP e serviços de comunicação com a Backoffice API. \\
+\repoPath{webUI/src/app/types/} & Tipos usados pela UI para representar respostas da API. \\
+\repoPath{webUI/src/app/utils/} & Funções auxiliares de formatação e suporte à interface. \\
+\repoPath{webUI/public/} & Recursos públicos, imagens, links de dashboards e ficheiros estáticos. \\
+\repoPath{webUI/package.json} & Dependências e scripts npm da UI. \\
+\repoPath{webUI/vite.config.ts} & Configuração Vite, incluindo proxy para a API local. \\
+\bottomrule
+\end{longtable}
+
+A UI não deve recalcular risco no frontend. Os scores, diagnósticos e estados operacionais são obtidos através da Backoffice API.
+
+\subsection{Documentação em docs/}
+
+A pasta \repoPath{docs/} reúne documentação técnica, arquitetura, contratos, evidência e materiais de entrega. É uma das áreas mais importantes do repositório, porque liga o comportamento executável à explicação técnica do projeto.
+
+\begin{longtable}{L{0.36\textwidth} L{0.54\textwidth}}
+\toprule
+\textbf{Pasta/Ficheiro} & \textbf{Conteúdo} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Pasta/Ficheiro} & \textbf{Conteúdo} \\
+\midrule
+\endhead
+\repoPath{docs/NatureProtector-V1-overview.md} & Síntese da V1, estado técnico e enquadramento operacional. \\
+\repoPath{docs/architecture/} & Arquitetura, diagramas, guias de runtime, Grafana, PostgreSQL e orquestrador de cenários. \\
+\repoPath{docs/contracts/} & Vocabulário, catálogo de eventos e contratos conceptuais. \\
+\repoPath{docs/evidence/} & Evidência de execução, logs, runs, outputs de validação, SQL e resultados de testes. \\
+\repoPath{docs/implementation/} & Planeamento de implementação, tarefas, fases e mapas entre proposta e implementação. \\
+\repoPath{docs/planning/} & Planeamento complementar e matrizes de alinhamento entre pesquisa e implementação. \\
+\repoPath{docs/setup/} & Documentação auxiliar de setup, quando aplicável. \\
+\repoPath{docs/report/} & Relatório LaTeX, poster e documentos de entrega relacionados. \\
+\repoPath{docs/structurizr/}, \repoPath{docs/doxygen/}, \repoPath{docs/docfx/} & Documentação e modelos técnicos gerados ou preparados por ferramentas. \\
+\bottomrule
+\end{longtable}
+
+A referência de setup indicada para a baseline local é \repoPath{docs/local-baseline-setup.md}.
+
+\subsection{Infraestrutura em infra/}
+
+A pasta \repoPath{infra/} contém configuração para serviços locais e recursos de suporte à demonstração.
+
+\begin{longtable}{L{0.30\textwidth} L{0.60\textwidth}}
+\toprule
+\textbf{Pasta} & \textbf{Conteúdo} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Pasta} & \textbf{Conteúdo} \\
+\midrule
+\endhead
+\repoPath{infra/grafana/} & Dashboards, provisioning, datasources e configuração de visualização. \\
+\repoPath{infra/postgres/} & Scripts de inicialização e configuração PostgreSQL. \\
+\repoPath{infra/scripts/} & Scripts auxiliares de infraestrutura, incluindo arranque de serviços locais. \\
+\bottomrule
+\end{longtable}
+
+A infraestrutura local inclui serviços como PostgreSQL, RabbitMQ, InfluxDB e Grafana, definidos ou apoiados por \repoPath{docker-compose.yml} e scripts associados.
+
+\subsection{Scripts em scripts/}
+
+A pasta \repoPath{scripts/} contém automação para setup, desenvolvimento, cenários, documentação, evidência, testes e apoio à infraestrutura.
+
+\begin{longtable}{L{0.32\textwidth} L{0.58\textwidth}}
+\toprule
+\textbf{Pasta} & \textbf{Função} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Pasta} & \textbf{Função} \\
+\midrule
+\endhead
+\repoPath{scripts/setup/} & Scripts de verificação e preparação do ambiente local. \\
+\repoPath{scripts/dev/} & Scripts para arranque da runtime de desenvolvimento. \\
+\repoPath{scripts/scenarios/} & Exemplos e scripts para execução de cenários. \\
+\repoPath{scripts/evidence/} & Scripts para recolha de evidência, smoke tests e comparação de runs. \\
+\repoPath{scripts/tests/} & Scripts de apoio à execução de testes e coverage. \\
+\repoPath{scripts/data/} & Scripts de preparação, geração ou curadoria de dados e manifestos. \\
+\repoPath{scripts/docs/} & Scripts de apoio à documentação. \\
+\repoPath{scripts/postgres/}, \repoPath{scripts/influx/} & Scripts específicos de suporte a serviços de persistência e observabilidade. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Dados e manifestos em data/}
+
+A pasta \repoPath{data/} contém dados de suporte à baseline e manifestos usados por scripts e cenários.
+
+\begin{longtable}{L{0.34\textwidth} L{0.56\textwidth}}
+\toprule
+\textbf{Pasta/Ficheiro} & \textbf{Conteúdo} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Pasta/Ficheiro} & \textbf{Conteúdo} \\
+\midrule
+\endhead
+\repoPath{data/baseline/areas/proenca-a-nova/} & Dados de referência da área, incluindo geometria, células, atributos, histórico, observações e referências meteorológicas. \\
+\repoPath{data/manifests/datasets/} & Manifestos de datasets, incluindo o plano de dados de Proença-a-Nova. \\
+\repoPath{data/manifests/scenarios/} & Manifestos de cenários, incluindo cenários base, high-risk e degraded-pipeline. \\
+\repoPath{data/runtime/} & Dados criados durante execução local, como artefactos runtime de serviços. \\
+\bottomrule
+\end{longtable}
+
+Os dados em \repoPath{data/runtime/} dependem da execução local e não devem ser interpretados como configuração estável do projeto.

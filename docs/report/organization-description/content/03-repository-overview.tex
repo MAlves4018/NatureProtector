@@ -1,0 +1,71 @@
+\section{Visão Geral da Organização}
+
+\subsection{Estrutura de alto nível}
+
+O repositório está organizado por responsabilidades técnicas. A raiz contém a solução .NET, a configuração global, a infraestrutura local, a interface web, os dados de suporte, os scripts, os testes e a documentação.
+
+Uma vista simplificada da raiz é a seguinte:
+
+\begin{verbatim}
+NatureProtector/
+|-- data/
+|-- docs/
+|-- infra/
+|-- scripts/
+|-- src/
+|-- tests/
+|-- webUI/
+|-- docker-compose.yml
+|-- NatureProtector.sln
+|-- NuGet.Config
+|-- coverage.runsettings
+`-- README.md
+\end{verbatim}
+
+Esta organização separa o código executável dos testes, dos dados, dos scripts de automação, da documentação e dos artefactos de infraestrutura.
+
+\subsection{Principais blocos do repositório}
+
+\begin{longtable}{L{0.28\textwidth} L{0.62\textwidth}}
+\toprule
+\textbf{Pasta/Ficheiro} & \textbf{Função principal} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Pasta/Ficheiro} & \textbf{Função principal} \\
+\midrule
+\endhead
+\repoPath{src/} & Código fonte dos projetos .NET, incluindo domínio, hosts, API, persistência e infraestrutura. \\
+\repoPath{tests/} & Testes unitários, testes de integração e testes por módulo. \\
+\repoPath{webUI/} & Interface web usada para monitorização, execução de cenários, diagnósticos e evidência. \\
+\repoPath{docs/} & Documentação técnica, arquitetura, contratos, evidência, relatório, poster e materiais auxiliares. \\
+\repoPath{infra/} & Configuração da infraestrutura local, incluindo PostgreSQL, Grafana e scripts de infraestrutura. \\
+\repoPath{scripts/} & Scripts de setup, execução, cenários, evidência, documentação, testes e apoio ao desenvolvimento. \\
+\repoPath{data/} & Dados de suporte, baseline, manifestos de datasets e manifestos de cenários. \\
+\repoPath{docker-compose.yml} & Definição dos serviços locais usados pela baseline. \\
+\repoPath{NatureProtector.sln} & Solução .NET principal. \\
+\repoPath{coverage.runsettings} & Configuração usada para recolha de cobertura de testes. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Separação entre código, documentação e evidência}
+
+O repositório não contém apenas código fonte. Contém também documentos de arquitetura, mapas de implementação, contratos, dados, scripts de execução e evidência runtime. Esta separação permite consultar não só a implementação, mas também a forma como a implementação foi validada.
+
+A documentação encontra-se sobretudo em \repoPath{docs/}. A evidência de execução e validação é guardada em \repoPath{docs/evidence/}, enquanto scripts reprodutíveis de apoio se encontram em \repoPath{scripts/}. Esta organização facilita a auditoria do projeto e reduz a dependência de explicações orais.
+
+\subsection{Artefactos gerados}
+
+Algumas pastas podem existir localmente por serem geradas durante build, testes, coverage, execução da UI ou execução de scripts. Exemplos comuns são:
+
+\begin{itemize}
+    \item \repoPath{bin/} e \repoPath{obj/};
+    \item \repoPath{.testbin/};
+    \item \repoPath{TestResults/};
+    \item \repoPath{coveragereport_core/};
+    \item \repoPath{node_modules/};
+    \item \repoPath{__pycache__/};
+    \item ficheiros auxiliares gerados por LaTeX, como \repoPath{.aux}, \repoPath{.log}, \repoPath{.fls} ou \repoPath{.toc}.
+\end{itemize}
+
+Estes artefactos não devem ser confundidos com a estrutura fonte do repositório e devem estar cobertos por \repoPath{.gitignore}, salvo quando a equipa decidir versionar explicitamente algum output final.

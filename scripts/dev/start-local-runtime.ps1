@@ -301,7 +301,7 @@ if (-not $SkipBootstrap) {
 
 $apiUrl = "http://127.0.0.1:$ApiPort"
 $webUrl = "http://127.0.0.1:$WebPort"
-$developerUrl = "$webUrl/dev/runtime"
+$developerUrl = "$webUrl"
 
 $commonEnvironment = @{
     ASPNETCORE_ENVIRONMENT  = 'Development'
