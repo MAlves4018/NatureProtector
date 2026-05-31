@@ -440,16 +440,16 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
             <LoggedOutBlock isDark={isDark} message="Please sign in to access this section." />
           ) : (
             <>
-                <Tabs values={MODEL_TABS} selected={modelTab} onSelect={setModelTab} colors={colors} compact />
-                {modelTab === "Domain Model" && <DomainModel colors={colors} />}
-                {modelTab === "Data Chain" && <DataChain colors={colors} />}
-                {modelTab === "Data Provenance" && <DataProvenance colors={colors} summary={summary} />}
-                {modelTab === "Territorial & Weather Context" && <TerritorialContext colors={colors} cells={cells} sensors={sensorNodes} summary={summary} />}
-                {modelTab === "Code Mapping" && <CodeMapping colors={colors} />}
+              <Tabs values={MODEL_TABS} selected={modelTab} onSelect={setModelTab} colors={colors} compact />
+              {modelTab === "Domain Model" && <DomainModel colors={colors} />}
+              {modelTab === "Data Chain" && <DataChain colors={colors} />}
+              {modelTab === "Data Provenance" && <DataProvenance colors={colors} summary={summary} />}
+              {modelTab === "Territorial & Weather Context" && <TerritorialContext colors={colors} cells={cells} sensors={sensorNodes} summary={summary} />}
+              {modelTab === "Code Mapping" && <CodeMapping colors={colors} />}
             </>
           )}
-        </WorkspacePanel>
-         </main>
+        </WorkspacePanel>)};
+    </main>
   );
 }
 
