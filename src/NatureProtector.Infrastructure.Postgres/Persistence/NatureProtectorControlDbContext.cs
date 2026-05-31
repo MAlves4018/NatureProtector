@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NatureProtector.Infrastructure.Postgres.Control;
 using NatureProtector.Infrastructure.Postgres.Pipeline;
 using NatureProtector.Infrastructure.Postgres.Projection;
 using NatureProtector.Infrastructure.Postgres.Schemas;
+using NatureProtector.Infrastructure.Postgres.Users;
 
 namespace NatureProtector.Infrastructure.Postgres.Persistence;
 
@@ -35,6 +37,11 @@ public sealed class NatureProtectorControlDbContext : DbContext
     }
 
     public DbSet<ConfigurationVersionRecord> ConfigurationVersions => Set<ConfigurationVersionRecord>();
+
+    public DbSet<UserRecord> Users => Set<UserRecord>();
+
+    public DbSet<RoleRecord> Roles => Set<RoleRecord>();
+    public DbSet<UserRoleRecord> UserRoles => Set<UserRoleRecord>();
     public DbSet<AreaRecord> Areas => Set<AreaRecord>();
     public DbSet<AreaContextRecord> AreaContexts => Set<AreaContextRecord>();
     public DbSet<GridCellRecord> GridCells => Set<GridCellRecord>();
@@ -76,6 +83,9 @@ public sealed class NatureProtectorControlDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ConfigureConfigurationVersions(modelBuilder);
+        ConfigureUsers(modelBuilder);
+        ConfigureRoles(modelBuilder);
+        ConfigureUserRoles(modelBuilder);
         ConfigureAreas(modelBuilder);
         ConfigureAreaContexts(modelBuilder);
         ConfigureGridCells(modelBuilder);
@@ -111,6 +121,43 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.Property(entity => entity.Description).HasMaxLength(500);
         builder.Property(entity => entity.CreatedBy).HasMaxLength(200);
         builder.HasIndex(entity => entity.VersionNumber).IsUnique();
+    }
+
+    private static void ConfigureUsers(ModelBuilder modelBuilder)
+    {
+        var builder = modelBuilder.Entity<UserRecord>();
+
+        builder.ToTable("users", PostgresSchemaNames.UserBase);
+        builder.HasKey(entity => entity.Id);
+        builder.Property(entity => entity.Username).HasMaxLength(100).IsRequired();
+        builder.Property(entity => entity.Email).HasMaxLength(200).IsRequired();
+        builder.Property(entity => entity.PasswordHash).HasMaxLength(500).IsRequired();
+        builder.HasIndex(entity => entity.Email).IsUnique();
+    }
+
+    private static void ConfigureRoles(ModelBuilder modelBuilder)
+    {
+        var builder = modelBuilder.Entity<RoleRecord>();
+
+        builder.ToTable("roles", PostgresSchemaNames.UserBase);
+        builder.HasKey(entity => entity.Id);
+        builder.Property(entity => entity.Name).HasMaxLength(100).IsRequired();
+        builder.HasIndex(entity => entity.Name).IsUnique();
+        builder.HasData(
+            new RoleRecord { Id = RoleRecord.AdminId, Name = RoleRecord.Admin },
+            new RoleRecord { Id = RoleRecord.SimId, Name = RoleRecord.Sim },
+            new RoleRecord { Id = RoleRecord.PipelineId, Name = RoleRecord.Pipeline }
+        );
+    }
+
+    private static void ConfigureUserRoles(ModelBuilder modelBuilder)
+    {
+        var builder = modelBuilder.Entity<UserRoleRecord>();
+
+        builder.ToTable("user_roles", PostgresSchemaNames.UserBase);
+        builder.HasKey(entity => new { entity.UserId, entity.RoleId });
+        builder.HasOne<UserRecord>().WithMany().HasForeignKey(entity => entity.UserId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<RoleRecord>().WithMany().HasForeignKey(entity => entity.RoleId).OnDelete(DeleteBehavior.Cascade);
     }
 
     private static void ConfigureAreas(ModelBuilder modelBuilder)

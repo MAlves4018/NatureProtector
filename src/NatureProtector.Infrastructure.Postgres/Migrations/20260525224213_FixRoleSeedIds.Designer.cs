@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace NatureProtector.Infrastructure.Postgres.Migrations
 {
     [DbContext(typeof(NatureProtectorControlDbContext))]
-    partial class NatureProtectorControlDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260525224213_FixRoleSeedIds")]
+    partial class FixRoleSeedIds
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1299,12 +1302,17 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<short>("RoleId")
                         .HasColumnType("smallint");
 
-                    b.Property<Guid?>("UserId1")
+                    b.Property<short>("RolesId")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("UserId1")
                         .HasColumnType("uuid");
 
                     b.HasKey("UserId", "RoleId");
 
                     b.HasIndex("RoleId");
+
+                    b.HasIndex("RolesId");
 
                     b.HasIndex("UserId1");
 
@@ -1728,6 +1736,12 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("NatureProtector.Infrastructure.Postgres.Users.RoleRecord", "Roles")
+                        .WithMany()
+                        .HasForeignKey("RolesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("NatureProtector.Infrastructure.Postgres.Users.UserRecord", null)
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -1736,7 +1750,11 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.HasOne("NatureProtector.Infrastructure.Postgres.Users.UserRecord", "User")
                         .WithMany("UserRoles")
-                        .HasForeignKey("UserId1");
+                        .HasForeignKey("UserId1")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Roles");
 
                     b.Navigation("User");
                 });

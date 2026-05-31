@@ -1,8 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 
 namespace NatureProtector.Backoffice.Api.Controllers;
 
+
+[Authorize]
 [Route("api/control/areas")]
 public sealed class ControlAreasController : ControlPlaneControllerBase
 {
@@ -12,6 +15,7 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult> ListAreas(
         [FromQuery] int? configurationVersion,
         CancellationToken cancellationToken)
@@ -27,6 +31,7 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
     }
 
     [HttpGet("{areaCode}")]
+    [AllowAnonymous]
     public async Task<ActionResult> GetArea(
         string areaCode,
         [FromQuery] int? configurationVersion,
@@ -43,6 +48,7 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
     }
 
     [HttpGet("{areaCode}/GeoJSON")]
+    [AllowAnonymous]
     public async Task<ActionResult> GetAreaGeoJSON(
         string areaCode,
         [FromQuery] int? configurationVersion,
@@ -59,6 +65,7 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
     }
 
     [HttpGet("{areaCode}/grid-cells")]
+    [AllowAnonymous]
     public async Task<ActionResult> ListGridCells(
         string areaCode,
         [FromQuery] int? configurationVersion,
@@ -77,6 +84,7 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
     }
 
     [HttpGet("{areaCode}/sensor-nodes")]
+    [AllowAnonymous]
     public async Task<ActionResult> ListSensorNodes(
         string areaCode,
         [FromQuery] int? configurationVersion,
@@ -95,6 +103,7 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
     }
 
     [HttpGet("{areaCode}/scenarios")]
+    [Authorize(Roles = "Sim,Pipeline,Admin")]
     public async Task<ActionResult> ListScenarios(
         string areaCode,
         [FromQuery] int? configurationVersion,
@@ -106,11 +115,14 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
             return unavailable;
         }
 
+        
+
         var scenarios = await ControlPlane.ListScenariosAsync(areaCode, configurationVersion, cancellationToken);
         return Ok(scenarios);
     }
 
     [HttpGet("{areaCode}/operational-state")]
+    [Authorize(Roles = "Sim,Pipeline,Admin")]
     public async Task<ActionResult> GetOperationalState(
         string areaCode,
         [FromQuery] int? configurationVersion,
@@ -127,6 +139,7 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
     }
 
     [HttpGet("{areaCode}/cells/operational-state")]
+    [Authorize(Roles = "Sim,Pipeline,Admin")]
     public async Task<ActionResult> ListCellOperationalStates(
         string areaCode,
         [FromQuery] int? configurationVersion,
@@ -151,6 +164,7 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
     }
 
     [HttpGet("{areaCode}/alerts/active")]
+    [AllowAnonymous]
     public async Task<ActionResult> ListActiveAlerts(
         string areaCode,
         [FromQuery] int? configurationVersion,

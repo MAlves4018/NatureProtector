@@ -8,11 +8,8 @@ import {
   BarChart3,
   Clipboard,
   Clock,
-  Code2,
   Database,
   Download,
-  GitBranch,
-  Layers,
   Map as MapIcon,
   Moon,
   Play,
@@ -54,6 +51,8 @@ import {
   SensorNodeResponse,
 } from "../../types";
 import { getColors } from "../../utils/utils";
+import { useToken } from "../../context/TokenContext";
+import { LoggedOutBlock } from "../components/LoggedOutBlock";
 
 type Colors = ReturnType<typeof getColors>;
 
@@ -81,6 +80,7 @@ const MODEL_ARTIFACTS = [
 ];
 
 export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: Dispatch<SetStateAction<boolean>> }) {
+  const { token, user } = useToken();
   const colors = getColors(isDark);
   const navigate = useNavigate();
   const { areaCode: areaCodeParam } = useParams<{ areaCode: string }>();
@@ -117,6 +117,8 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
   const [submittingRun, setSubmittingRun] = useState(false);
   const [resetResult, setResetResult] = useState<RuntimeResetResponse | null>(null);
   const [confirm, setConfirm] = useState("");
+  const canAccessScenarioLab = Boolean(user && (user.roles.includes("Sim") || user.roles.includes("Admin")));
+  const visibleMainTabs = canAccessScenarioLab ? MAIN_TABS : MAIN_TABS.filter(tab => tab !== "Scenario Lab");
   const [runForm, setRunForm] = useState<RuntimeRunStartRequest>({
     areaCode,
     scenarioCode: "scenario_b",
@@ -154,34 +156,73 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
       .catch(() => setAreaRiskDashboardLink(null));
   }, []);
 
-  const loadWorkspace = useCallback(async () => {
+
+  const loadPublicWorkspace = useCallback(async () => {
     setLoading(true);
     try {
-      const [areaList, summaryResult, diagnosticCatalog, areaScenarios, sensors, geo, cellRows] = await Promise.all([
+      const [areaList, sensors, geo, cellRows] = await Promise.all([
         api.getAreas(),
-        api.getRuntimeSummary(areaCode, recentMinutes),
-        api.getRuntimeDiagnostics(),
-        api.getAreaScenarios(areaCode),
         api.getAreaSensorNodes(areaCode),
         api.getAreaGeoJSON(areaCode),
         api.getAreaCells(areaCode),
       ]);
 
+      //console.log("geojson", geo.geometryGeoJson);
+      //console.log("cells", cellRows);
+      //console.log("sensors", sensors);
+
       setAreas(areaList);
-      setSummary(summaryResult);
-      setDiagnostics(diagnosticCatalog.diagnostics);
-      setScenarios(areaScenarios);
       setSensorNodes(sensors);
       setAreaId(geo.id);
       setGeoJSON(parseJson(geo.geometryGeoJson));
       setCells(cellRows);
+      setMessage(null);
+
+    } catch (error) {
+      setMessage(formatError(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [areaCode]);
+
+
+  const loadWorkspacePipeline = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [summaryResult, diagnosticCatalog, areaScenarios] = await Promise.all([
+        api.getRuntimeSummary(areaCode, recentMinutes),
+        api.getRuntimeDiagnostics(),
+        api.getAreaScenarios(areaCode),
+      ]);
+
+      setSummary(summaryResult);
+      setDiagnostics(diagnosticCatalog.diagnostics);
+      setScenarios(areaScenarios);
+      setLastUpdated(new Date());
+      setMessage(null);
+    } catch (error) {
+      setMessage(formatError(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [areaCode, recentMinutes, diagnosticResult]);
+
+  const loadWorkspaceSim = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      const [diagnosticCatalog] = await Promise.all([
+        api.getRuntimeDiagnostics(),
+      ]);
+
+      setDiagnostics(diagnosticCatalog.diagnostics);
       setLastUpdated(new Date());
       setMessage(null);
 
-      if (summaryResult.latestRun?.id) {
-        setRunAudit(await api.getRuntimeRunAudit(summaryResult.latestRun.id));
+      if (summary?.latestRun?.id) {
+        setRunAudit(await api.getRuntimeRunAudit(summary.latestRun.id));
         try {
-          setRunTimings(await api.getRuntimeRunTimings(summaryResult.latestRun.id));
+          setRunTimings(await api.getRuntimeRunTimings(summary.latestRun.id));
           setRunTimingsMessage(null);
         } catch (error) {
           setRunTimings(null);
@@ -208,8 +249,17 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
   }, [areaCode, recentMinutes, diagnosticResult]);
 
   useEffect(() => {
-    loadWorkspace();
-  }, [loadWorkspace]);
+    if (user) {
+      if (user.roles.includes("Sim") || user.roles.includes("Admin")) {
+        loadWorkspaceSim();
+        loadWorkspacePipeline();
+      }
+      else if (user.roles.includes("Pipeline")) {
+        loadWorkspacePipeline();
+      }
+    }
+    loadPublicWorkspace();
+  }, [loadWorkspacePipeline, loadWorkspaceSim, loadPublicWorkspace, user]);
 
   const displayRun = summary?.currentRun ?? summary?.latestRun ?? null;
   const activeSensorCount = sensorNodes.filter(sensor => sensor.isActive).length;
@@ -221,6 +271,7 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
   };
 
   const executeDiagnostic = async (id = selectedDiagnostic) => {
+    if (!id) return;
     setLoading(true);
     try {
       const result = await api.executeRuntimeDiagnostic(id, { areaCode, recentMinutes, scenarioCode: runForm.scenarioCode });
@@ -246,7 +297,7 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
       const result = await api.startRuntimeRun({ ...runForm, areaCode });
       setRunResult(result);
       setRunMessage(result.message);
-      await loadWorkspace();
+      await loadWorkspaceSim();
     } catch (error) {
       setRunMessage(formatError(error));
     } finally {
@@ -260,7 +311,7 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
       const result = await api.resetRuntimeState({ scope: "runtime-only", confirm, dryRun });
       setResetResult(result);
       setMessage(result.message);
-      await loadWorkspace();
+      await loadWorkspaceSim();
     } catch (error) {
       setMessage(formatError(error));
     } finally {
@@ -282,12 +333,23 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
         lastUpdated={lastUpdated}
         loading={loading}
         onAreaChange={changeArea}
-        onRefresh={loadWorkspace}
+        onRefresh={
+          () => {
+            if (user?.roles.includes("Sim") || user?.roles.includes("Admin")) {
+              loadWorkspaceSim();
+              loadWorkspacePipeline();
+            }
+            else if (user?.roles.includes("Pipeline")) {
+              loadWorkspacePipeline();
+            }
+            loadPublicWorkspace();
+          }
+        }
       />
 
       {message && <Banner colors={colors} tone="#b45309">{message}</Banner>}
 
-      <Tabs values={MAIN_TABS} selected={mainTab} onSelect={setMainTab} colors={colors} />
+      <Tabs values={visibleMainTabs} selected={mainTab} onSelect={setMainTab} colors={colors} />
 
       {mainTab === "Monitoring" && (
         <WorkspacePanel colors={colors}>
@@ -302,51 +364,75 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
 
       {mainTab === "Scenario Lab" && (
         <WorkspacePanel colors={colors}>
-          <Tabs values={SCENARIO_TABS} selected={scenarioTab} onSelect={setScenarioTab} colors={colors} compact />
-          {scenarioTab === "Run Orchestrator" && <RunOrchestrator colors={colors} scenarios={scenarios} sensorCountTooHigh={sensorCountTooHigh} activeSensorCount={activeSensorCount} runForm={runForm} setRunForm={setRunForm} startRun={startRun} submittingRun={submittingRun} runResult={runResult} runMessage={runMessage} areaCode={areaCode} setMainTab={setMainTab} setScenarioTab={setScenarioTab} />}
-          {scenarioTab === "Scenario Definition" && <ScenarioDefinition colors={colors} scenarios={scenarios} />}
-          {scenarioTab === "Latest Run" && <LatestRunView colors={colors} run={displayRun} />}
-          {scenarioTab === "Runtime State Control" && <RuntimeStateControl colors={colors} confirm={confirm} setConfirm={setConfirm} resetRuntime={resetRuntime} loading={loading} resetResult={resetResult} />}
+          {!token ? (
+            <LoggedOutBlock isDark={isDark} message="Please sign in to access this section." />
+          ) : (
+            <>
+              <Tabs values={SCENARIO_TABS} selected={scenarioTab} onSelect={setScenarioTab} colors={colors} compact />
+              {scenarioTab === "Run Orchestrator" && <RunOrchestrator colors={colors} scenarios={scenarios} sensorCountTooHigh={sensorCountTooHigh} activeSensorCount={activeSensorCount} runForm={runForm} setRunForm={setRunForm} startRun={startRun} submittingRun={submittingRun} runResult={runResult} runMessage={runMessage} areaCode={areaCode} setMainTab={setMainTab} setScenarioTab={setScenarioTab} />}
+              {scenarioTab === "Scenario Definition" && <ScenarioDefinition colors={colors} scenarios={scenarios} />}
+              {scenarioTab === "Latest Run" && <LatestRunView colors={colors} run={displayRun} />}
+              {scenarioTab === "Runtime State Control" && <RuntimeStateControl colors={colors} confirm={confirm} setConfirm={setConfirm} resetRuntime={resetRuntime} loading={loading} resetResult={resetResult} />}
+            </>
+          )}
         </WorkspacePanel>
       )}
 
       {mainTab === "Evidence & Comparison" && (
         <WorkspacePanel colors={colors}>
-          <Tabs values={EVIDENCE_TABS} selected={evidenceTab} onSelect={setEvidenceTab} colors={colors} compact />
-          {evidenceTab === "Latest Run Audit" && <LatestRunAuditView colors={colors} audit={runAudit} />}
-          {evidenceTab === "Compare B vs C" && <CompareBvsC colors={colors} compare={compareResult} />}
-          {evidenceTab === "Run Timings" && <RunTimings colors={colors} run={displayRun} summary={summary} audit={runAudit} timings={runTimings} timingsMessage={runTimingsMessage} />}
-          {evidenceTab === "Diagnostics" && <DiagnosticsView colors={colors} diagnostics={diagnostics} selectedDiagnostic={selectedDiagnostic} diagnosticResult={diagnosticResult} executeDiagnostic={executeDiagnostic} loading={loading} />}
-          {evidenceTab === "Export Evidence" && <ExportEvidence colors={colors} audit={runAudit} compare={compareResult} summary={summary} />}
+          {!token ? (
+            <LoggedOutBlock isDark={isDark} message="Please sign in to access this section." />
+          ) : (
+            <>
+              <Tabs values={EVIDENCE_TABS} selected={evidenceTab} onSelect={setEvidenceTab} colors={colors} compact />
+              {evidenceTab === "Latest Run Audit" && <LatestRunAuditView colors={colors} audit={runAudit} />}
+              {evidenceTab === "Compare B vs C" && <CompareBvsC colors={colors} compare={compareResult} />}
+              {evidenceTab === "Run Timings" && <RunTimings colors={colors} run={displayRun} summary={summary} audit={runAudit} timings={runTimings} timingsMessage={runTimingsMessage} />}
+              {evidenceTab === "Diagnostics" && <DiagnosticsView colors={colors} diagnostics={diagnostics} selectedDiagnostic={selectedDiagnostic} diagnosticResult={diagnosticResult} executeDiagnostic={executeDiagnostic} loading={loading} />}
+              {evidenceTab === "Export Evidence" && <ExportEvidence colors={colors} audit={runAudit} compare={compareResult} summary={summary} />}
+            </>
+          )}
         </WorkspacePanel>
       )}
 
       {mainTab === "Flow Explorer" && (
         <WorkspacePanel colors={colors}>
-          <Tabs values={FLOW_TABS} selected={flowTab} onSelect={setFlowTab} colors={colors} compact />
-          {flowTab === "Runtime Chain" && <RuntimeChainView colors={colors} summary={summary} onNavigate={(target) => {
-            if (target === "retry") setFlowTab("Retry & Quarantine");
-            if (target === "state") setFlowTab("Persistence Views");
-            if (target === "services") setFlowTab("Deployment & Services");
-            if (target === "risk") { setMainTab("Monitoring"); setMonitoringTab("Area Risk"); }
-            if (target === "alerts") { setMainTab("Monitoring"); setMonitoringTab("Alerts"); }
-          }} />}
-          {flowTab === "Processing Pipeline" && <ProcessingPipeline colors={colors} summary={summary} />}
-          {flowTab === "Retry & Quarantine" && <RetryQuarantine colors={colors} summary={summary} />}
-          {flowTab === "Persistence Views" && <PersistenceViews colors={colors} tableCounts={tableCounts} />}
-          {flowTab === "Deployment & Services" && <DeploymentServices colors={colors} summary={summary} />}
-          {flowTab === "Nominal Flow" && <NominalFlow colors={colors} summary={summary} audit={runAudit} runResult={runResult} />}
+          {!token ? (
+            <LoggedOutBlock isDark={isDark} message="Please sign in to access this section." />
+          ) : (
+            <>
+              <Tabs values={FLOW_TABS} selected={flowTab} onSelect={setFlowTab} colors={colors} compact />
+              {flowTab === "Runtime Chain" && <RuntimeChainView colors={colors} summary={summary} onNavigate={(target) => {
+                if (target === "retry") setFlowTab("Retry & Quarantine");
+                if (target === "state") setFlowTab("Persistence Views");
+                if (target === "services") setFlowTab("Deployment & Services");
+                if (target === "risk") { setMainTab("Monitoring"); setMonitoringTab("Area Risk"); }
+                if (target === "alerts") { setMainTab("Monitoring"); setMonitoringTab("Alerts"); }
+              }} />}
+              {flowTab === "Processing Pipeline" && <ProcessingPipeline colors={colors} summary={summary} />}
+              {flowTab === "Retry & Quarantine" && <RetryQuarantine colors={colors} summary={summary} />}
+              {flowTab === "Persistence Views" && <PersistenceViews colors={colors} tableCounts={tableCounts} />}
+              {flowTab === "Deployment & Services" && <DeploymentServices colors={colors} summary={summary} />}
+              {flowTab === "Nominal Flow" && <NominalFlow colors={colors} summary={summary} audit={runAudit} runResult={runResult} />}
+            </>
+          )}
         </WorkspacePanel>
       )}
 
       {mainTab === "Model & Provenance" && (
         <WorkspacePanel colors={colors}>
-          <Tabs values={MODEL_TABS} selected={modelTab} onSelect={setModelTab} colors={colors} compact />
-          {modelTab === "Domain Model" && <DomainModel colors={colors} />}
-          {modelTab === "Data Chain" && <DataChain colors={colors} />}
-          {modelTab === "Data Provenance" && <DataProvenance colors={colors} />}
-          {modelTab === "Territorial & Weather Context" && <TerritorialContext colors={colors} cells={cells} sensors={sensorNodes} summary={summary} />}
-          {modelTab === "Code Mapping" && <CodeMapping colors={colors} />}
+          {!token ? (
+            <LoggedOutBlock isDark={isDark} message="Please sign in to access this section." />
+          ) : (
+            <>
+              <Tabs values={MODEL_TABS} selected={modelTab} onSelect={setModelTab} colors={colors} compact />
+              {modelTab === "Domain Model" && <DomainModel colors={colors} />}
+              {modelTab === "Data Chain" && <DataChain colors={colors} />}
+              {modelTab === "Data Provenance" && <DataProvenance colors={colors} />}
+              {modelTab === "Territorial & Weather Context" && <TerritorialContext colors={colors} cells={cells} sensors={sensorNodes} summary={summary} />}
+              {modelTab === "Code Mapping" && <CodeMapping colors={colors} />}
+            </>
+          )}
         </WorkspacePanel>
       )}
     </main>
@@ -371,7 +457,6 @@ function WorkspaceTopBar(props: {
   return (
     <section style={{ ...panel(colors), marginBottom: "12px", display: "grid", gridTemplateColumns: "minmax(180px, 1fr) auto", gap: "12px", alignItems: "center", position: "sticky", top: 0, zIndex: 10 }}>
       <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-        <strong style={{ fontSize: "17px" }}>Nature Protector</strong>
         <select style={{ ...input(colors), width: "190px" }} value={areaCode} onChange={event => onAreaChange(event.target.value)} aria-label="Area">
           {areas.length === 0 && <option value={areaCode}>{areaCode}</option>}
           {areas.map(area => <option key={area.code} value={area.code}>{area.code}</option>)}
@@ -383,7 +468,6 @@ function WorkspaceTopBar(props: {
       </div>
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
         <SegmentedButtons values={WINDOW_OPTIONS} selected={recentMinutes} onSelect={setRecentMinutes} format={value => value === 1440 ? "24h" : `${value}m`} colors={colors} />
-        <button style={button(colors)} onClick={() => setIsDark(value => !value)}>{isDark ? <Sun size={16} /> : <Moon size={16} />} Theme</button>
         <button style={button(colors)} onClick={onRefresh} disabled={loading}><RefreshCw size={16} /> Refresh</button>
       </div>
     </section>
@@ -479,7 +563,12 @@ function AreaRiskView({ colors, areaId, summary, dashboardLink }: { colors: Colo
       <Panel colors={colors}>
         <SectionHeader title="Grafana Area Risk" subtitle="External dashboard link is shown only when configured as a valid Grafana URL." />
         {grafanaUrl ? (
-          <a style={button(colors)} href={grafanaUrl} target="_blank" rel="noreferrer">Open Grafana area risk dashboard</a>
+          <>
+            <a style={button(colors)} href={grafanaUrl} target="_blank" rel="noreferrer">Open Grafana area risk dashboard</a>
+            <div style={{ height: "560px", border: `1px solid ${colors.panelBorder}`, borderRadius: "8px", overflow: "hidden" }}>
+              <iframe src={grafanaUrl} width="100%" height="100%" style={{ border: 0, display: "block" }} title={`area dashboard`} loading="lazy" />
+            </div>
+          </>
         ) : (
           <EmptyState colors={colors} text="Grafana area risk dashboard not configured." />
         )}
@@ -1430,6 +1519,7 @@ function buildSafeGrafanaAreaUrl(link: string | null, areaId: string) {
     url.searchParams.set("kiosk", "");
   }
 
+  console.log("Built Grafana URL:", url.toString());
   return url.toString();
 }
 

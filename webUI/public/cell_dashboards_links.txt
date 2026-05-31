@@ -1,3 +1,3 @@
-http://localhost:3000/d-solo/adxq5gr/areas?orgId=1&panelId=17&from=now-30m&to=now&timezone=browser&var-area_id=?1?&var-sensor_id=?t?&theme=light
-http://localhost:3000/d-solo/adxq5gr/areas?orgId=1&panelId=18&from=now-30m&to=now&timezone=browser&var-area_id=?1?&var-sensor_id=?h?&theme=light
-http://localhost:3000/d-solo/adxq5gr/areas?orgId=1&panelId=19&from=now-30m&to=now&timezone=browser&var-area_id=?1?&var-sensor_id=?w?&theme=light
+http://localhost:3000/d-solo/adxq5gr/areas?orgId=1&panelId=17&from=now-30m&to=now&timezone=browser&var-area_id=?1?&var-sensor_id=?t?&theme=light&kiosk
+http://localhost:3000/d-solo/adxq5gr/areas?orgId=1&panelId=18&from=now-30m&to=now&timezone=browser&var-area_id=?1?&var-sensor_id=?h?&theme=light&kiosk
+http://localhost:3000/d-solo/adxq5gr/areas?orgId=1&panelId=19&from=now-30m&to=now&timezone=browser&var-area_id=?1?&var-sensor_id=?w?&theme=light&kiosk

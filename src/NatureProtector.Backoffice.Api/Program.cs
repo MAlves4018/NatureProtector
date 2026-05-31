@@ -1,8 +1,16 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using NatureProtector.Backoffice.Api.Configuration;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Backoffice.Api.UserPlane.Services;
 using NatureProtector.Infrastructure.Postgres.DependencyInjection;
+using NatureProtector.Infrastructure.Postgres.Persistence;
+using NatureProtector.Infrastructure.Postgres.Users;
 using NatureProtector.Shared.Observability;
 
 /*
@@ -29,6 +37,30 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.Configure<BackofficeApiOptions>(
     builder.Configuration.GetSection(BackofficeApiOptions.SectionName));
+builder.Services.Configure<JwtAuthenticationOptions>(
+    builder.Configuration.GetSection(JwtAuthenticationOptions.SectionName));
+
+var jwtOptions = builder.Configuration
+    .GetSection(JwtAuthenticationOptions.SectionName)
+    .Get<JwtAuthenticationOptions>() ?? new JwtAuthenticationOptions();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtOptions.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwtOptions.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(2)
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 var backofficeOptions = builder.Configuration
     .GetSection(BackofficeApiOptions.SectionName)
@@ -44,6 +76,8 @@ if (backofficeOptions.ControlPlaneEnabled)
             services.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<NatureProtector.Infrastructure.Postgres.Persistence.NatureProtectorControlDbContext>>(),
             builder.Environment.ContentRootPath,
             enableRuntimeProcessLaunch: true));
+    builder.Services.AddSingleton<IPasswordHasher<UserRecord>, PasswordHasher<UserRecord>>();
+    builder.Services.AddScoped<IUserRolePlaneService, PostgresUserRolePlaneService>();
 }
 else
 {
@@ -52,9 +86,63 @@ else
     builder.Services.AddSingleton<IControlPlaneService>(
         _ => new UnavailableControlPlaneService(
             "The control-plane API is disabled. Set BackofficeApi:ControlPlaneEnabled=true to enable PostgreSQL-backed endpoints."));
+    builder.Services.AddSingleton<IUserRolePlaneService>(
+        _ => new UnavailableUserRolePlaneService(
+            "The user plane API is disabled because the control plane is not enabled."));
 }
 
 var app = builder.Build();
+
+if (backofficeOptions.ControlPlaneEnabled)
+{
+    using var scope = app.Services.CreateScope();
+    var dbContextFactory = scope.ServiceProvider
+        .GetRequiredService<IDbContextFactory<NatureProtectorControlDbContext>>();
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<UserRecord>>();
+    var adminPassword = Environment.GetEnvironmentVariable("NP_BOOTSTRAP_ADMIN_PASSWORD");
+    if (string.IsNullOrWhiteSpace(adminPassword) && app.Environment.IsDevelopment())
+    {
+        adminPassword = "admin123";
+    }
+
+    if (!string.IsNullOrWhiteSpace(adminPassword))
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync();
+        var adminUser = await dbContext.Users
+            .SingleOrDefaultAsync(
+                entity => entity.Username == UserRecord.AdminUsername ||
+                          entity.Email == UserRecord.AdminEmail);
+
+        if (adminUser is null)
+        {
+            adminUser = new UserRecord
+            {
+                Id = Guid.Parse(UserRecord.AdminIdString),
+                Username = UserRecord.AdminUsername,
+                Email = UserRecord.AdminEmail,
+                Organization = UserRecord.AdminOrganization,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            dbContext.Users.Add(adminUser);
+        }
+
+        adminUser.PasswordHash = passwordHasher.HashPassword(adminUser, adminPassword);
+
+        var hasAdminRole = await dbContext.Set<UserRoleRecord>()
+            .AnyAsync(entity => entity.UserId == adminUser.Id && entity.RoleId == RoleRecord.AdminId);
+        if (!hasAdminRole)
+        {
+            dbContext.Set<UserRoleRecord>().Add(new UserRoleRecord
+            {
+                UserId = adminUser.Id,
+                RoleId = RoleRecord.AdminId
+            });
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -88,6 +176,7 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

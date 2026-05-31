@@ -21,7 +21,7 @@ export function DashBoards({ isDark }: { isDark: boolean }) {
 
   useEffect(() => {
     if (areaCodeParam) {
-      console.log('Fetching GeoJSON for area:', areaCodeParam);
+      //console.log('Fetching GeoJSON for area:', areaCodeParam);
       api.getAreaGeoJSON(areaCodeParam).then(response => {
         if (!response.id) {
           console.error('Failed to fetch id for area:', areaCodeParam);
@@ -32,7 +32,7 @@ export function DashBoards({ isDark }: { isDark: boolean }) {
       });
       api.getAreaCells(areaCodeParam).then(response => {
         setCells(response);
-        console.log('Cells set:', response);
+        //console.log('Cells set:', response);
       }).catch(error => {
         console.error('Failed to fetch cells for area:', areaCodeParam, error);
       });
