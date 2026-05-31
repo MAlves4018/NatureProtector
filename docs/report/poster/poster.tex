@@ -1,0 +1,29 @@
+\documentclass[12pt]{article}
+
+% A3 landscape poster. Layout fixed on a 420mm x 297mm canvas.
+% Compile with:
+% latexmk -C
+% latexmk -g -pdf poster.tex
+
+\usepackage[a3paper,landscape,margin=0mm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{enumitem}
+
+\input{config/poster-style}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+
+\begin{document}
+\sffamily
+\input{content/poster-content}
+\end{document}

@@ -1,0 +1,101 @@
+% NatureProtector poster style
+% Fixed-canvas TikZ version. Do not use minipage/tcolorbox for the global layout.
+
+\definecolor{ForestDark}{HTML}{103D2B}
+\definecolor{Forest}{HTML}{2E7D32}
+\definecolor{ForestSoft}{HTML}{EAF6EA}
+\definecolor{Leaf}{HTML}{63B34E}
+\definecolor{Fire}{HTML}{F2B544}
+\definecolor{FireDark}{HTML}{D9822B}
+\definecolor{Navy}{HTML}{173B5F}
+\definecolor{Sky}{HTML}{EEF4F6}
+\definecolor{Ink}{HTML}{1F2A33}
+\definecolor{Muted}{HTML}{5E6B74}
+\definecolor{Line}{HTML}{D8E0E6}
+\definecolor{White}{HTML}{FFFFFF}
+
+% Header
+\newcommand{\MainTitle}{\fontsize{68}{72}\selectfont\bfseries}
+\newcommand{\SubTitle}{\fontsize{31}{36}\selectfont\bfseries}
+\newcommand{\HeaderText}{\fontsize{18.5}{22}\selectfont}
+\newcommand{\HeaderSmall}{\fontsize{16.2}{19.2}\selectfont}
+
+% Body
+\newcommand{\PosterText}{\fontsize{14.5}{16.8}\selectfont}
+\newcommand{\SmallText}{\fontsize{12}{13.8}\selectfont}
+\newcommand{\TinyPosterText}{\fontsize{10.2}{11.6}\selectfont}
+\newcommand{\SectionText}{\fontsize{18}{20.5}\selectfont\bfseries}
+
+\setlist[itemize]{leftmargin=1.05em,itemsep=0.18em,topsep=0.15em}
+\renewcommand{\labelitemi}{\textcolor{Forest}{\large$\bullet$}}
+
+\newcommand{\Key}[1]{\textbf{\color{ForestDark}#1}}
+\newcommand{\OrangeKey}[1]{\textbf{\color{FireDark}#1}}
+
+% Safe image include
+\newcommand{\AssetImage}[3]{%
+  \IfFileExists{assets/#1}{%
+    \includegraphics[#2]{assets/#1}%
+  }{%
+    \fbox{\parbox[c][#3][c]{0.90\linewidth}{\centering\SmallText\texttt{assets/#1}}}%
+  }%
+}
+
+% Card primitives
+% #1 x, #2 y-top, #3 width, #4 height, #5 title, #6 body
+\newcommand{\CardAt}[6]{%
+  \draw[fill=white, draw=Line, line width=0.35mm, rounded corners=2.4mm]
+    (#1,#2) rectangle ++(#3,-#4);
+  \node[anchor=north west, inner sep=0pt]
+    at ($(#1,#2)+(3.2,-3.0)$)
+    {\parbox[t]{\dimexpr#3mm-6.4mm\relax}{%
+      {\SectionText\color{Navy}#5}\par\vspace{1.0mm}%
+      {\PosterText #6}%
+    }};
+}
+
+\newcommand{\GreenCardAt}[6]{%
+  \draw[fill=ForestSoft, draw=Leaf, line width=0.35mm, rounded corners=2.4mm]
+    (#1,#2) rectangle ++(#3,-#4);
+  \node[anchor=north west, inner sep=0pt]
+    at ($(#1,#2)+(3.2,-3.0)$)
+    {\parbox[t]{\dimexpr#3mm-6.4mm\relax}{%
+      {\SectionText\color{Navy}#5}\par\vspace{1.0mm}%
+      {\PosterText #6}%
+    }};
+}
+
+\newcommand{\FireCardAt}[6]{%
+  \draw[fill=white, draw=Fire, line width=0.35mm, rounded corners=2.4mm]
+    (#1,#2) rectangle ++(#3,-#4);
+  \node[anchor=north west, inner sep=0pt]
+    at ($(#1,#2)+(3.2,-3.0)$)
+    {\parbox[t]{\dimexpr#3mm-6.4mm\relax}{%
+      {\SectionText\color{Navy}#5}\par\vspace{1.0mm}%
+      {\PosterText #6}%
+    }};
+}
+
+% Technology tile
+% #1 x, #2 y, #3 asset, #4 label
+\newcommand{\TechAt}[4]{%
+  \node[anchor=north, align=center, inner sep=0pt] at (#1,#2)
+  {%
+    \AssetImage{#3}{height=15mm,keepaspectratio}{14mm}\\[0.4mm]
+    {\TinyPosterText\color{Muted}#4}%
+  };
+}
+
+% Flow chip
+% #1 x, #2 y, #3 color, #4 text
+\newcommand{\FlowChipAt}[4]{%
+  \node[
+    rounded corners=1.8mm,
+    fill=#3,
+    text=white,
+    inner xsep=2.1mm,
+    inner ysep=1.45mm
+  ]
+    at (#1,#2)
+    {\fontsize{9.4}{11}\selectfont\bfseries #4};
+}

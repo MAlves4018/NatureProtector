@@ -1,0 +1,124 @@
+\noindent
+\begin{tikzpicture}[remember picture,overlay,x=1mm,y=1mm]
+\begin{scope}[shift={(current page.south west)}]
+
+% Fixed A3 canvas
+\path[use as bounding box] (0,0) rectangle (420,297);
+
+% Background
+\fill[Sky] (0,0) rectangle (420,297);
+
+% Header bar
+\fill[ForestDark] (0,297) rectangle (420,202);
+
+% Left logo
+\node[anchor=west, inner sep=0pt] at (12,253)
+  {\AssetImage{natureprotector-logo.png}{height=66mm,keepaspectratio}{56mm}};
+
+% Right flag
+\node[anchor=east, inner sep=0pt] at (407,258)
+  {\AssetImage{flag-portugal.png}{width=38mm,keepaspectratio}{28mm}};
+
+% Header text block
+\node[anchor=north west, inner sep=0pt, align=left, text width=292mm] at (80,279)
+{%
+  {\MainTitle\color{Fire}NatureProtector}\\[4.2mm]
+  {\SubTitle\color{white}Pipeline técnica para apoio à prevenção de incêndios}\\[5.0mm]
+  {\HeaderText\color{white}\textbf{Projeto e Seminário} \;·\; LEIC \;·\; ISEL \;·\; 2025/2026}\\[3.0mm]
+  {\HeaderSmall\color{white}Autores: Miguel Alves e Gabriel Mano \hspace{6mm} | \hspace{6mm} Orientadores: Artur Ferreira e Nuno Leite}\\[3.0mm]
+  {\HeaderSmall\color{Fire}\textbf{A proteger florestas para gerações futuras} \hspace{3mm} · \hspace{3mm} Ideia reconhecida com o \textbf{3.º lugar} num concurso de startups}
+};
+
+% =========================================================
+% BODY LAYOUT
+% Menos espaço vazio no topo e no fundo
+% Imagens da esquerda maiores
+% Diagrama central descido para não tocar no título
+% =========================================================
+
+% Left column
+\CardAt{6}{198}{116}{50}{O problema}{%
+A prevenção de incêndios precisa de mais do que um valor de risco. É necessário perceber \Key{que dados chegaram}, \Key{quais foram aceites} e \Key{que evidência sustenta o estado apresentado}.%
+}
+
+% Burned area
+\draw[fill=white, draw=Line, line width=0.35mm, rounded corners=2.4mm]
+  (6,142) rectangle ++(116,-60);
+\node[anchor=center, inner sep=0pt] at (64,112)
+  {\AssetImage{burned-area.png}{width=110mm,height=54mm,keepaspectratio}{48mm}};
+
+% Imagem de risco
+\draw[fill=white, draw=Line, line width=0.35mm, rounded corners=2.4mm]
+  (6,76) rectangle ++(116,-69);
+\node[anchor=center, inner sep=0pt] at (64,41.5)
+  {\AssetImage{perigo-incendio.jpeg}{width=110mm,height=60mm,keepaspectratio}{54mm}};
+
+% Centre column
+\draw[fill=white, draw=Line, line width=0.35mm, rounded corners=2.4mm]
+  (126,198) rectangle ++(202,-120);
+
+% Título dentro da caixa
+\node[anchor=north west, inner sep=0pt] at (130,194)
+  {{\SectionText\color{Navy}Como funciona}};
+
+% Diagrama central mais baixo para não tapar o título
+\node[anchor=center, inner sep=0pt] at (227,139)
+  {\AssetImage{architecture-overview.png}{width=188mm,height=86mm,keepaspectratio}{78mm}};
+
+% Flow row compacta e contida dentro da caixa "Como funciona"
+\FlowChipAt{146}{91}{Forest}{sensores}
+\node[color=ForestDark] at (162,91) {\small$\rightarrow$};
+
+\FlowChipAt{178}{91}{Navy}{eventos}
+\node[color=ForestDark] at (194,91) {\small$\rightarrow$};
+
+\FlowChipAt{219}{91}{FireDark}{processamento}
+\node[color=ForestDark] at (246,91) {\small$\rightarrow$};
+
+\FlowChipAt{268}{91}{ForestDark}{projeções}
+\node[color=ForestDark] at (290,91) {\small$\rightarrow$};
+
+\FlowChipAt{310}{91}{Navy}{visualização}
+
+% Ideia central mais baixa e maior
+\FireCardAt{126}{72}{202}{65}{Ideia central}{%
+O sistema não tenta provar uma previsão científica final. Demonstra uma \OrangeKey{pipeline rastreável}: cada leitura deixa um percurso observável desde o evento até às projeções e alertas.%
+}
+
+% Right column
+\draw[fill=white, draw=Line, line width=0.35mm, rounded corners=2.4mm]
+  (332,198) rectangle ++(82,-121);
+
+% título dentro da caixa
+\node[anchor=north west, inner sep=0pt] at (336,194)
+  {{\SectionText\color{Navy}Tecnologias}};
+
+% grelha 2x4
+\TechAt{352}{178}{dotnet.png}{.NET}
+\TechAt{392}{178}{csharp.png}{C\#}
+
+\TechAt{352}{154}{rabbitmq.png}{RabbitMQ}
+\TechAt{392}{154}{postgreSQL.png}{PostgreSQL}
+
+\TechAt{352}{130}{influxdb.png}{InfluxDB}
+\TechAt{392}{130}{grafana.jpg}{Grafana}
+
+\TechAt{352}{106}{react-tsx.png}{React/TSX}
+\TechAt{392}{106}{docker.png}{Docker}
+
+% contributo
+\CardAt{332}{71}{82}{64}{Contributo}{%
+\begin{itemize}
+  \item eventos simulados;
+  \item processamento durável;
+  \item rejeições e quarentenas;
+  \item avaliações candidatas de risco;
+  \item API e observabilidade.
+\end{itemize}%
+}
+
+\end{scope}
+\end{tikzpicture}
+
+% exactly one output page
+\mbox{}
