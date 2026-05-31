@@ -8,6 +8,7 @@ using NatureProtector.Core.Scenarios;
 using NatureProtector.Core.Sensors;
 using NatureProtector.Infrastructure.Postgres.Control;
 using NatureProtector.Infrastructure.Postgres.Persistence;
+using NatureProtector.Infrastructure.Postgres.Users;
 using NatureProtector.Shared.Observability;
 
 namespace NatureProtector.Infrastructure.Postgres.Bootstrap;

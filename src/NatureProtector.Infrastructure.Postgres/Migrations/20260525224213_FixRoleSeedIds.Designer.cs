@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace NatureProtector.Infrastructure.Postgres.Migrations
 {
     [DbContext(typeof(NatureProtectorControlDbContext))]
-    partial class NatureProtectorControlDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260525224213_FixRoleSeedIds")]
+    partial class FixRoleSeedIds
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -925,29 +928,8 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<int>("AssessmentCount")
                         .HasColumnType("integer");
 
-                    b.Property<string>("CarryForwardStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Current");
-
                     b.Property<Guid>("ConfigurationVersionId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("CoverageStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Complete");
-
-                    b.Property<string>("FreshnessStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Fresh");
 
                     b.Property<int>("PendingAlertCycles")
                         .HasColumnType("integer");
@@ -1042,27 +1024,6 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<Guid>("AreaId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("CarryForwardStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Current");
-
-                    b.Property<string>("CoverageStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Complete");
-
-                    b.Property<string>("FreshnessStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Fresh");
-
                     b.Property<Guid>("GridCellId")
                         .HasColumnType("uuid");
 
@@ -1115,13 +1076,11 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.Property<string>("AntecedentState")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid>("AreaId")
                         .HasColumnType("uuid");
-
-                    b.Property<double?>("BuildupIndex")
-                        .HasColumnType("double precision");
 
                     b.Property<string>("CandidateParameterSetVersion")
                         .IsRequired()
@@ -1137,51 +1096,21 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<double?>("DailyPrecipitationMillimeters")
                         .HasColumnType("double precision");
 
-                    b.Property<double?>("DroughtCode")
-                        .HasColumnType("double precision");
-
                     b.Property<string>("DroughtContext")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<double?>("DuffMoistureCode")
-                        .HasColumnType("double precision");
-
-                    b.Property<double?>("FineFuelMoistureCode")
-                        .HasColumnType("double precision");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("FireIndexProvenance")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("FireWeatherCalculationStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Missing");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<double?>("FireWeatherIndex")
                         .HasColumnType("double precision");
 
-                    b.Property<string>("FireWeatherLimitations")
-                        .HasColumnType("text");
-
                     b.Property<Guid>("GridCellId")
                         .HasColumnType("uuid");
-
-                    b.Property<double?>("InitialSpreadIndex")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("KbdiCalculationStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Missing");
-
-                    b.Property<string>("KbdiLimitations")
-                        .HasColumnType("text");
 
                     b.Property<double?>("KeetchByramDroughtIndex")
                         .HasColumnType("double precision");
@@ -1204,18 +1133,10 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<double?>("MaxTemperatureCelsius")
                         .HasColumnType("double precision");
 
-                    b.Property<double?>("NormalizedFireWeatherIndex")
-                        .HasColumnType("double precision");
-
-                    b.Property<double?>("NormalizedKeetchByramDroughtIndex")
-                        .HasColumnType("double precision");
-
-                    b.Property<double?>("PreviousKeetchByramDroughtIndex")
-                        .HasColumnType("double precision");
-
                     b.Property<string>("Provenance")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<Guid?>("SensorId")
                         .HasColumnType("uuid");
@@ -1248,74 +1169,18 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<double>("AdjustedScore")
-                        .HasColumnType("double precision");
-
                     b.Property<Guid>("AreaId")
                         .HasColumnType("uuid");
 
-                    b.Property<double>("BaseRisk")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("CalculationStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("CandidateFallback");
-
-                    b.Property<double>("ConfidenceFactor")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("double precision")
-                        .HasDefaultValue(1.0);
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DominantDriver")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Mixed");
-
-                    b.Property<double>("DroughtComponent")
-                        .HasColumnType("double precision");
 
                     b.Property<string>("ExplanationSummary")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<double>("FuelComponent")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("GeomorphologyComponent")
-                        .HasColumnType("double precision");
-
                     b.Property<Guid?>("GridCellId")
                         .HasColumnType("uuid");
-
-                    b.Property<double>("HazardComponent")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("IntegrityFactor")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("double precision")
-                        .HasDefaultValue(1.0);
-
-                    b.Property<string>("Limitations")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<double>("MeteorologyComponent")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("ParameterSetVersion")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasDefaultValue("Unknown");
 
                     b.Property<string>("RiskLevel")
                         .IsRequired()
@@ -1325,9 +1190,6 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<double>("RiskScore")
                         .HasColumnType("double precision");
 
-                    b.Property<int>("Score100")
-                        .HasColumnType("integer");
-
                     b.Property<Guid>("SensorId")
                         .HasColumnType("uuid");
 
@@ -1336,9 +1198,6 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.Property<Guid>("SourceEventId")
                         .HasColumnType("uuid");
-
-                    b.Property<double>("TerritoryComponent")
-                        .HasColumnType("double precision");
 
                     b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnType("timestamp with time zone");
@@ -1443,12 +1302,17 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<short>("RoleId")
                         .HasColumnType("smallint");
 
-                    b.Property<Guid?>("UserId1")
+                    b.Property<short>("RolesId")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("UserId1")
                         .HasColumnType("uuid");
 
                     b.HasKey("UserId", "RoleId");
 
                     b.HasIndex("RoleId");
+
+                    b.HasIndex("RolesId");
 
                     b.HasIndex("UserId1");
 
@@ -1872,6 +1736,12 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("NatureProtector.Infrastructure.Postgres.Users.RoleRecord", "Roles")
+                        .WithMany()
+                        .HasForeignKey("RolesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("NatureProtector.Infrastructure.Postgres.Users.UserRecord", null)
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -1880,7 +1750,11 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.HasOne("NatureProtector.Infrastructure.Postgres.Users.UserRecord", "User")
                         .WithMany("UserRoles")
-                        .HasForeignKey("UserId1");
+                        .HasForeignKey("UserId1")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Roles");
 
                     b.Navigation("User");
                 });

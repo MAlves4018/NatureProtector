@@ -9,11 +9,6 @@ GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas
 Accept: application/json
 
 ###
-
-GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/scenarios
-Accept: application/json
-
-###
 # Pode devolver 404 antes de existir estado operacional persistido para a área.
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/operational-state
 Accept: application/json
@@ -35,11 +30,6 @@ Accept: application/json
 
 ###
 
-GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30
-Accept: application/json
-
-###
-
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/GeoJSON
 Accept: application/json
 
@@ -47,3 +37,153 @@ Accept: application/json
 
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/grid-cells
 Accept: application/json
+
+
+
+
+//login / create user testing
+###
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/login
+Content-Type: application/json
+
+{
+    "usernameOrEmail": "admin",
+    "password": "admin123"
+}
+
+###
+
+
+###
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhZG1pbiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFhYUBhYWEuYWFhIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQWRtaW4iLCJuYmYiOjE3ODAxMzI3MzIsImV4cCI6MTc4MDEzNjMzMiwiaXNzIjoiTmF0dXJlUHJvdGVjdG9yIiwiYXVkIjoiTmF0dXJlUHJvdGVjdG9yLkJhY2tvZmZpY2UifQ.Cn61fnCRo4eb0sQULBcNF9rTXEmsFTBkP_nhrJ-Z3Ec
+
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "username": "simUser2",
+    "password": "newuser123",
+    "fullname": "Sim User",
+    "email": "newuse22r@example.com",
+    "organization": "Nature Protector",
+    "roles": ["Sim"]
+}
+
+###
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhZG1pbiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFhYUBhYWEuYWFhIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQWRtaW4iLCJuYmYiOjE3ODAxMzI3MzIsImV4cCI6MTc4MDEzNjMzMiwiaXNzIjoiTmF0dXJlUHJvdGVjdG9yIiwiYXVkIjoiTmF0dXJlUHJvdGVjdG9yLkJhY2tvZmZpY2UifQ.Cn61fnCRo4eb0sQULBcNF9rTXEmsFTBkP_nhrJ-Z3Ec
+
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "username": "pipeUser",
+    "password": "pipeUser123",
+    "fullname": "pipeUser",
+    "email": "pipeuser@example.com",
+    "organization": "Nature Protector",
+    "roles": ["Pipeline"]
+}
+
+###
+@simId = 1c322301-5789-49a4-a604-5a84030f07b4
+@pipelineId = 52c566b1-d753-418f-90ad-9d248c602956
+@adminId = 00000000-0000-0000-0000-000000000001
+
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users/{{simId}}/roles/2
+Authorization: Bearer {{token}}
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users/{{simId}}/roles/2
+Authorization: Bearer {{token}}
+
+###
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users/{{adminId}}/roles/1
+Authorization: Bearer {{token}}
+
+### 
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users/{{adminId}}/roles/2
+Authorization: Bearer {{token}}
+
+###
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users/{{pipelineId}}/roles/3
+Authorization: Bearer {{token}}
+
+###
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/login
+Content-Type: application/json
+
+{
+    "usernameOrEmail": "pipeUser",
+    "password": "pipeUser123"
+}
+
+###
+
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/login
+Content-Type: application/json
+
+{
+    "usernameOrEmail": "simUser",
+    "password": "simUser123"
+}
+
+@simToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjUyYzU2NmIxLWQ3NTMtNDE4Zi05MGFkLTlkMjQ4YzYwMjk1NiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJwaXBlVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6InBpcGV1c2VyQGV4YW1wbGUuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiUGlwZWxpbmUiLCJuYmYiOjE3ODAxMzM0MTEsImV4cCI6MTc4MDEzNzAxMSwiaXNzIjoiTmF0dXJlUHJvdGVjdG9yIiwiYXVkIjoiTmF0dXJlUHJvdGVjdG9yLkJhY2tvZmZpY2UifQ.8x-nuuHebWpwZ0jxPcoqBV85hMUzKVy6Z4ST_tGjKqw 
+@pipeToken  = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjUyYzU2NmIxLWQ3NTMtNDE4Zi05MGFkLTlkMjQ4YzYwMjk1NiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJwaXBlVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6InBpcGV1c2VyQGV4YW1wbGUuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiUGlwZWxpbmUiLCJuYmYiOjE3ODAxMzM0NTQsImV4cCI6MTc4MDEzNzA1NCwiaXNzIjoiTmF0dXJlUHJvdGVjdG9yIiwiYXVkIjoiTmF0dXJlUHJvdGVjdG9yLkJhY2tvZmZpY2UifQ.j2GFSwNrfiBbpvRdUwldSKvON4mbTCz1uhKtb6JkTJk
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/scenarios
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/scenarios
+Accept: application/json
+Authorization: Bearer {{simToken}}
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/scenarios
+Accept: application/json
+Authorization: Bearer {{pipeToken}}
+
+
+
+###
+
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/runtime/runs
+Accept: application/json
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "AreaCode": "proenca-a-nova",
+    "ScenarioCode": "scenario_a"
+}
+
+###
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/runtime/runs
+Accept: application/json
+Authorization: Bearer {{simToken}}
+
+Content-Type: application/json
+
+{
+    "AreaCode": "proenca-a-nova",
+    "ScenarioCode": "scenario_a"
+}
+###
+
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/runtime/runs
+Accept: application/json
+Authorization: Bearer {{pipeToken}}
+Content-Type: application/json
+
+{
+    "AreaCode": "proenca-a-nova",
+    "ScenarioCode": "scenario_a"
+}

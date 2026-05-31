@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 
 namespace NatureProtector.Backoffice.Api.Controllers;
 
 [Route("api/control/configurations")]
+[Authorize (Roles = "Sim,Pipeline,Admin")]
 public sealed class ControlConfigurationsController : ControlPlaneControllerBase
 {
     public ControlConfigurationsController(IControlPlaneService controlPlane)
@@ -38,6 +40,7 @@ public sealed class ControlConfigurationsController : ControlPlaneControllerBase
     }
 
     [HttpPost("{versionNumber:int}/activate")]
+    [Authorize(Roles = "Sim,Admin")]
     public async Task<ActionResult> ActivateConfiguration(int versionNumber, CancellationToken cancellationToken)
     {
         var unavailable = EnsureControlPlaneAvailable();

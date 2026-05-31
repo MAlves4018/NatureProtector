@@ -10,17 +10,18 @@ import { getColors } from './utils/utils';
 import { Pipeline } from './components/views/Pipeline';
 import { DeveloperRuntimeControl } from './components/views/DeveloperRuntimeControl';
 import { Workspace } from './components/views/Workspace';
+import { LogInOut } from './components/views/LogInOut';
+import { TokenProvider } from './context/TokenContext';
 
 // ─── Chakra system ─────────────────────────────────────────────────────────────
 const system = createSystem(defaultConfig, defineConfig({ theme: {} }));
 
 function AppLayout({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {
   const location = useLocation();
-  const hideGlobalNav = location.pathname.startsWith("/workspace/") || /^\/dashboards\/[^/]+\/?$/.test(location.pathname);
-
+  
   return (
     <>
-      {!hideGlobalNav && <NavBar isDark={isDark} setIsDark={setIsDark} />}
+      <NavBar isDark={isDark} setIsDark={setIsDark} />
       <Outlet />
     </>
   );
@@ -49,6 +50,10 @@ export default function App() {
           element: <DeveloperRuntimeControl isDark={isDark} />,
         },
         {
+          path: "/login",
+          element: <LogInOut isDark={isDark} />,
+        },
+        {
           path: "/dashboards/:areaCode",
           children: [
             {
@@ -71,9 +76,11 @@ export default function App() {
 
   return (
     <ChakraProvider value={system}>
-      <Box bg={c.pageBg} minH="100vh" display="flex" flexDirection="column">
-        <RouterProvider router={routes} />
-      </Box>
+      <TokenProvider>
+        <Box bg={c.pageBg} minH="100vh" display="flex" flexDirection="column">
+          <RouterProvider router={routes} />
+        </Box>
+      </TokenProvider>
     </ChakraProvider>
   );
 }

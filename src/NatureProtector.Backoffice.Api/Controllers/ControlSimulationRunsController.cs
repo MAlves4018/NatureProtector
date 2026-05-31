@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 
 namespace NatureProtector.Backoffice.Api.Controllers;
 
 [Route("api/control/simulation-runs")]
+[Authorize (Roles = "Sim,Pipeline,Admin")]
 public sealed class ControlSimulationRunsController : ControlPlaneControllerBase
 {
     public ControlSimulationRunsController(IControlPlaneService controlPlane)

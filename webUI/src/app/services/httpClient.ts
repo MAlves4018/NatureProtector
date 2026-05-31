@@ -5,11 +5,17 @@ const API_BASE = '/api';
 
 class HttpClient {
     async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-        const headers = {
+        const headers: Record<string, string> = {
             'Content-Type': 'application/json',
             ...(options.headers as Record<string, string>),
         };
 
+        if (!headers.Authorization) {
+            const storedToken = localStorage.getItem('token');
+            if (storedToken) {
+                headers.Authorization = `Bearer ${storedToken}`;
+            }
+        }
 
         const response = await fetch(`${API_BASE}${path}`, {
             ...options,
@@ -20,8 +26,9 @@ class HttpClient {
         const text = await response.text();
         let data: any = {};
 
+        const hasBody = text && text.trim().length > 0;
         try {
-            if (text && text.trim().length > 0) {
+            if (hasBody) {
                 data = JSON.parse(text);
             }
         } catch (e) {
@@ -42,29 +49,35 @@ class HttpClient {
             throw HttpError.fromResponseBody(errorBody);
         }
 
+        if (!hasBody || response.status === 204) {
+            return null as T;
+        }
+
         return data as T;
     }
 
-    get<T>(path: string): Promise<T> {
-        return this.request<T>(path);
+    get<T>(path: string, options?: RequestInit): Promise<T> {
+        return this.request<T>(path, options);
     }
 
-    post<T>(path: string, body?: any): Promise<T> {
+    post<T>(path: string, body?: any, options?: RequestInit): Promise<T> {
         return this.request<T>(path, {
             method: 'POST',
             body: body ? JSON.stringify(body) : undefined,
+            ...options
         });
     }
 
-    put<T>(path: string, body?: any): Promise<T> {
+    put<T>(path: string, body?: any, options?: RequestInit): Promise<T> {
         return this.request<T>(path, {
             method: 'PUT',
             body: body ? JSON.stringify(body) : undefined,
+            ...options
         });
     }
 
-    delete<T>(path: string): Promise<T> {
-        return this.request<T>(path, { method: 'DELETE' });
+    delete<T>(path: string, options?: RequestInit): Promise<T> {
+        return this.request<T>(path, { method: 'DELETE', ...options });
     }
 }
 

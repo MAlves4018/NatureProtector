@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
@@ -5,6 +6,7 @@ using NatureProtector.Backoffice.Api.ControlPlane.Services;
 namespace NatureProtector.Backoffice.Api.Controllers;
 
 [Route("api/control/runtime")]
+[Authorize (Roles = "Sim,Pipeline,Admin")]
 public sealed class ControlRuntimeController : ControlPlaneControllerBase
 {
     private readonly IWebHostEnvironment _environment;
@@ -46,6 +48,7 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
     }
 
     [HttpPost("diagnostics/{diagnosticId}")]
+    [Authorize(Roles = "Sim,Admin")]
     public async Task<ActionResult> ExecuteDiagnostic(
         string diagnosticId,
         [FromBody] RuntimeDiagnosticRequest? request,
@@ -66,6 +69,7 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
     }
 
     [HttpPost("runs")]
+    [Authorize(Roles = "Sim,Admin")]
     public async Task<ActionResult> StartRun(
         [FromBody] RuntimeRunStartRequest request,
         CancellationToken cancellationToken = default)
@@ -117,6 +121,7 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
     }
 
     [HttpPost("reset")]
+    [Authorize(Roles = "Sim,Admin")]
     public async Task<ActionResult> ResetRuntimeState(
         [FromBody] RuntimeResetRequest request,
         CancellationToken cancellationToken = default)
