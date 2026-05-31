@@ -1,15 +1,22 @@
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Infrastructure.Postgres.Users;
 
 namespace NatureProtector.Backoffice.Api.Tests;
 
 public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private const string TestAuthScheme = "TestAuth";
     private readonly bool _controlPlaneAvailable;
     private readonly string _availabilityMessage;
 
@@ -36,7 +43,38 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
             services.RemoveAll<IControlPlaneService>();
             services.AddSingleton<IControlPlaneService>(_ =>
                 new FakeControlPlaneService(_controlPlaneAvailable, _availabilityMessage));
+
+            services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = TestAuthScheme;
+                    options.DefaultChallengeScheme = TestAuthScheme;
+                })
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
+                    TestAuthScheme,
+                    _ => { });
         });
+    }
+
+    private sealed class TestAuthHandler(
+        IOptionsMonitor<AuthenticationSchemeOptions> options,
+        ILoggerFactory logger,
+        UrlEncoder encoder)
+        : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+    {
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, UserRecord.AdminIdString),
+                new Claim(ClaimTypes.Name, UserRecord.AdminUsername),
+                new Claim(ClaimTypes.Role, RoleRecord.Admin)
+            };
+
+            var identity = new ClaimsIdentity(claims, TestAuthScheme);
+            var principal = new ClaimsPrincipal(identity);
+            var ticket = new AuthenticationTicket(principal, TestAuthScheme);
+            return Task.FromResult(AuthenticateResult.Success(ticket));
+        }
     }
 
     private sealed class FakeControlPlaneService(
