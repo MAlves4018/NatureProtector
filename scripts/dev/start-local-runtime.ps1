@@ -213,6 +213,65 @@ function Test-PostgresTarget {
     }
 }
 
+function Wait-TcpPort {
+    param(
+        [string]$HostName,
+        [int]$Port,
+        [int]$TimeoutSeconds = 60,
+        [string]$Name = "$HostName`:$Port"
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-NetConnection -ComputerName $HostName -Port $Port -InformationLevel Quiet -WarningAction SilentlyContinue) {
+            return
+        }
+
+        Start-Sleep -Seconds 1
+    }
+
+    throw "$Name did not become reachable on TCP port $Port within $TimeoutSeconds seconds."
+}
+
+function Wait-HttpReady {
+    param(
+        [string]$Url,
+        [int]$TimeoutSeconds = 60,
+        [string]$Name = $Url
+    )
+
+    $readyStatusCodes = @(200, 301, 302, 401, 404)
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastError = $null
+
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $response = Invoke-WebRequest -Uri $Url -Method Get -UseBasicParsing -TimeoutSec 5 -MaximumRedirection 0 -ErrorAction Stop
+            if ($readyStatusCodes -contains [int]$response.StatusCode) {
+                return
+            }
+
+            $lastError = "HTTP $($response.StatusCode)"
+        }
+        catch {
+            $statusCode = $null
+            if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+                $statusCode = [int]$_.Exception.Response.StatusCode
+            }
+
+            if ($statusCode -and $readyStatusCodes -contains $statusCode) {
+                return
+            }
+
+            $lastError = $_.Exception.Message
+        }
+
+        Start-Sleep -Seconds 1
+    }
+
+    throw "$Name did not become HTTP-ready at $Url within $TimeoutSeconds seconds. Last error: $lastError"
+}
+
 function Start-LoggedPowerShell {
     param(
         [string]$Name,
@@ -258,6 +317,11 @@ function Start-LoggedPowerShell {
 }
 
 $repositoryRoot = Resolve-RepositoryRoot
+$composeFile = Join-Path $repositoryRoot 'docker-compose.yml'
+if (-not (Test-Path $composeFile)) {
+    throw "Docker Compose file not found at $composeFile."
+}
+
 $dotEnv = Read-DotEnv -Path (Join-Path $repositoryRoot '.env')
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $evidenceRoot = Join-Path $repositoryRoot 'docs\evidence\dev-runtime'
@@ -281,7 +345,11 @@ if ($ForceRestart) {
 
 if (-not $SkipDocker) {
     Write-Host 'Starting Docker dependencies...'
-    & docker compose up -d
+    & docker compose --project-directory $repositoryRoot -f $composeFile up -d
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Docker Compose failed with exit code $LASTEXITCODE."
+    }
 }
 
 Test-PostgresTarget -HostName $postgresHost -Port $postgresPort
@@ -351,6 +419,20 @@ $processes += Start-LoggedPowerShell `
     -Port $WebPort `
     -Url $webUrl
 
+try {
+    Write-Host 'Waiting for Backoffice API readiness...'
+    Wait-TcpPort -HostName '127.0.0.1' -Port $ApiPort -TimeoutSeconds 60 -Name 'Backoffice API'
+    Wait-HttpReady -Url "$apiUrl/api/control/areas" -TimeoutSeconds 60 -Name 'Backoffice API'
+
+    Write-Host 'Waiting for webUI readiness...'
+    Wait-TcpPort -HostName '127.0.0.1' -Port $WebPort -TimeoutSeconds 60 -Name 'webUI'
+    Wait-HttpReady -Url $webUrl -TimeoutSeconds 60 -Name 'webUI'
+}
+catch {
+    $logSummary = ($processes | ForEach-Object { "$($_.Name): $($_.LogPath) / $($_.ErrorLogPath)" }) -join [Environment]::NewLine
+    throw "$($_.Exception.Message)$([Environment]::NewLine)Logs:$([Environment]::NewLine)$logSummary"
+}
+
 $summaryPath = Join-Path $runRoot 'launcher-summary.md'
 $processRows = $processes | ForEach-Object {
     "- $($_.Name): PID $($_.Id), Port $($_.Port), URL $($_.Url), Log $($_.LogPath), ErrorLog $($_.ErrorLogPath), Script $($_.ScriptPath)"
@@ -392,3 +474,6 @@ Write-Host "Developer Runtime View: $developerUrl"
 if ($OpenBrowser -and -not $NoBrowser) {
     Start-Process $developerUrl | Out-Null
 }
+
+Write-Host 'Launcher completed. Services continue in background.'
+Write-Host "Logs: $runRoot"

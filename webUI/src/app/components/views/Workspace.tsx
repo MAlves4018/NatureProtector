@@ -175,23 +175,36 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
   const loadPublicWorkspace = useCallback(async () => {
     setLoading(true);
     try {
-      const [areaList, sensors, geo, cellRows] = await Promise.all([
-        api.getAreas(),
+      const areaList = await api.getAreas();
+      setAreas(areaList);
+
+      const [sensorsResult, geoResult, cellsResult] = await Promise.allSettled([
         api.getAreaSensorNodes(areaCode),
         api.getAreaGeoJSON(areaCode),
         api.getAreaCells(areaCode),
       ]);
 
-      //console.log("geojson", geo.geometryGeoJson);
-      //console.log("cells", cellRows);
-      //console.log("sensors", sensors);
+      const errors: string[] = [];
+      if (sensorsResult.status === "fulfilled") {
+        setSensorNodes(sensorsResult.value);
+      } else {
+        errors.push(`Area sensors unavailable: ${formatError(sensorsResult.reason)}`);
+      }
 
-      setAreas(areaList);
-      setSensorNodes(sensors);
-      setAreaId(geo.id);
-      setGeoJSON(parseJson(geo.geometryGeoJson));
-      setCells(cellRows);
-      setMessage(null);
+      if (geoResult.status === "fulfilled") {
+        setAreaId(geoResult.value.id);
+        setGeoJSON(parseJson(geoResult.value.geometryGeoJson));
+      } else {
+        errors.push(`Area map unavailable: ${formatError(geoResult.reason)}`);
+      }
+
+      if (cellsResult.status === "fulfilled") {
+        setCells(cellsResult.value);
+      } else {
+        errors.push(`Area cells unavailable: ${formatError(cellsResult.reason)}`);
+      }
+
+      setMessage(errors.length > 0 ? errors.join(" ") : null);
 
     } catch (error) {
       setMessage(formatError(error));
@@ -215,14 +228,17 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
       setScenarios(areaScenarios);
       setLastUpdated(new Date());
       setMessage(null);
+
+      return summaryResult;
     } catch (error) {
       setMessage(formatError(error));
+      return null;
     } finally {
       setLoading(false);
     }
-  }, [areaCode, recentMinutes, diagnosticResult]);
+  }, [areaCode, recentMinutes]);
 
-  const loadWorkspaceSim = useCallback(async () => {
+  const loadWorkspaceSim = useCallback(async (latestRunId?: string | null) => {
     setLoading(true);
 
     try {
@@ -234,10 +250,10 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
       setLastUpdated(new Date());
       setMessage(null);
 
-      if (summary?.latestRun?.id) {
-        setRunAudit(await api.getRuntimeRunAudit(summary.latestRun.id));
+      if (latestRunId) {
+        setRunAudit(await api.getRuntimeRunAudit(latestRunId));
         try {
-          setRunTimings(await api.getRuntimeRunTimings(summary.latestRun.id));
+          setRunTimings(await api.getRuntimeRunTimings(latestRunId));
           setRunTimingsMessage(null);
         } catch (error) {
           setRunTimings(null);
@@ -253,27 +269,28 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
       setCompareResult(compare);
       const counts = await api.executeRuntimeDiagnostic("runtime-table-counts", { areaCode, recentMinutes });
       setTableCounts(counts);
-      if (!diagnosticResult) {
-        setDiagnosticResult(counts);
-      }
+      setDiagnosticResult(current => current ?? counts);
     } catch (error) {
       setMessage(formatError(error));
     } finally {
       setLoading(false);
     }
-  }, [areaCode, recentMinutes, diagnosticResult]);
+  }, [areaCode, recentMinutes]);
 
   useEffect(() => {
-    if (user) {
-      if (user.roles.includes("Sim") || user.roles.includes("Admin")) {
-        loadWorkspaceSim();
-        loadWorkspacePipeline();
-      }
-      else if (user.roles.includes("Pipeline")) {
-        loadWorkspacePipeline();
-      }
+    void loadPublicWorkspace();
+
+    if (!user) {
+      return;
     }
-    loadPublicWorkspace();
+
+    if (user.roles.includes("Sim") || user.roles.includes("Admin")) {
+      void loadWorkspacePipeline()
+        .then(summaryResult => loadWorkspaceSim(summaryResult?.latestRun?.id ?? null));
+    }
+    else if (user.roles.includes("Pipeline")) {
+      void loadWorkspacePipeline();
+    }
   }, [loadWorkspacePipeline, loadWorkspaceSim, loadPublicWorkspace, user]);
 
   const displayRun = summary?.currentRun ?? summary?.latestRun ?? null;

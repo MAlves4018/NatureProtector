@@ -58,7 +58,7 @@ Antes de arrancar o sistema, assume estas condições.
 Nota importante para o `Prevention.Host`:
 
 - o ficheiro [`../../src/NatureProtector.Prevention.Host/appsettings.json`](../../src/NatureProtector.Prevention.Host/appsettings.json) vem com `InfluxDb:Token` vazio;
-- por omissão, `InfluxDb:Enabled=false`, pelo que o host usa `NoOpInfluxWriteService` e consegue processar a pipeline operacional sem token de `InfluxDB`;
+- por omissão, `InfluxDb:Enabled=true`, pelo que caso `InfluxDb:Enabled=false` o host usa `NoOpInfluxWriteService` e consegue processar a pipeline operacional sem token de `InfluxDB`;
 - quando `InfluxDb:Enabled=true`, o host aplica fallback por variáveis de ambiente e por `.env` através de [`../../src/NatureProtector.Infrastructure.Influx/Configuration/InfluxDbSettingsLoader.cs`](../../src/NatureProtector.Infrastructure.Influx/Configuration/InfluxDbSettingsLoader.cs);
 - nesse modo ativo, se o token efetivo não existir, o writer real de `InfluxDB` falha cedo na configuração.
 
@@ -168,13 +168,13 @@ dotnet run --project .\src\NatureProtector.Prevention.Host
 
 Condição prática:
 
-- não é necessário token de `InfluxDB` para a baseline operacional por omissão, porque `InfluxDb:Enabled=false`;
-- se ativares `InfluxDb:Enabled=true`, confirma primeiro que existe token efetivo por `appsettings`, variável de ambiente ou `.env`.
+- não é necessário token de `InfluxDB` para a baseline operacional caso `InfluxDb:Enabled=false`;
+- Por default o estado é `InfluxDb:Enabled=true`, logo confirma primeiro que existe token efetivo por `appsettings`, variável de ambiente ou `.env`.
 
 Por omissão, [`../../src/NatureProtector.Prevention.Host/appsettings.json`](../../src/NatureProtector.Prevention.Host/appsettings.json) usa:
 
 - `PipelinePersistenceEnabled = true`
-- `InfluxDb:Enabled = false`
+- `InfluxDb:Enabled = true`
 - `MaxProcessingAttempts = 3`
 - `RetryDelaySeconds = [5, 30]`
 - `RetryPollingIntervalSeconds = 5`

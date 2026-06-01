@@ -277,7 +277,7 @@ $databases = @(
 if ($databases -contains $database) {
     Write-Host "InfluxDB database '$database' already exists."
     Write-Host "Summary: reachable=true token=accepted created=false database=$database"
-    exit 0
+    return
 }
 
 Write-Host "InfluxDB database '$database' is missing; creating it now."

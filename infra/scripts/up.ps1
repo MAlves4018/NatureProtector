@@ -30,7 +30,8 @@ function Invoke-CheckedExternalCommand {
     param(
         [string]$FileName,
         [string[]]$Arguments,
-        [string]$FailureMessage
+        [string]$FailureMessage,
+        [string]$WorkingDirectory = (Get-Location).Path
     )
 
     $command = Get-Command $FileName -ErrorAction Stop
@@ -39,6 +40,10 @@ function Invoke-CheckedExternalCommand {
     $startInfo.UseShellExecute = $false
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
+
+    if (-not [string]::IsNullOrWhiteSpace($WorkingDirectory)) {
+        $startInfo.WorkingDirectory = $WorkingDirectory
+    }
 
     if ($Arguments.Count -gt 0) {
         $quotedArguments = foreach ($argument in $Arguments) {
@@ -79,6 +84,13 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = (Resolve-Path (Join-Path $ScriptDir "..\..")).Path
 Set-Location $ProjectRoot
 
+$ComposeFile = Join-Path $ProjectRoot "docker-compose.yml"
+
+if (-not (Test-Path -LiteralPath $ComposeFile)) {
+    Write-Error "docker-compose.yml not found at $ComposeFile. ProjectRoot resolved to $ProjectRoot."
+    exit 1
+}
+
 Assert-CommandAvailable "docker" "Install Docker Desktop, open it, and re-run scripts\setup\Test-LocalPrerequisites.ps1."
 Invoke-CheckedExternalCommand "docker" @("info", "--format", "{{.ServerVersion}}") "Docker engine is not reachable. Start Docker Desktop before running up.ps1." | Out-Null
 Invoke-CheckedExternalCommand "docker" @("compose", "version") "Docker Compose v2 is not available. Install/update Docker Desktop before running up.ps1." | Out-Null
@@ -93,10 +105,13 @@ if (-not (Test-Path ".env")) {
 # depois de volumes novos. Não altera o `.env`.
 $InfluxAdminTokenScript = Join-Path $ProjectRoot "scripts\influx\Ensure-InfluxAdminTokenFile.ps1"
 if (Test-Path $InfluxAdminTokenScript) {
-    & $InfluxAdminTokenScript
+    $tokenOutput = Invoke-CheckedExternalCommand `
+        "powershell" `
+        @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $InfluxAdminTokenScript) `
+        "Influx admin token script failed."
 
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
+    if (-not [string]::IsNullOrWhiteSpace($tokenOutput)) {
+        Write-Host $tokenOutput
     }
 }
 else {
@@ -106,19 +121,29 @@ else {
 
 # Levanta a infraestrutura em background para que os restantes processos possam
 # ser arrancados em separado.
-docker compose up -d
+Write-Host "Starting Docker Compose infrastructure..."
 
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
+$composeOutput = Invoke-CheckedExternalCommand `
+    "docker" `
+    @("compose", "--project-directory", $ProjectRoot, "-f", $ComposeFile, "up", "-d") `
+    "Docker Compose up failed." `
+    $ProjectRoot
+
+if (-not [string]::IsNullOrWhiteSpace($composeOutput)) {
+    Write-Host $composeOutput
 }
 
 # Garante explicitamente a database temporal usada pela baseline local.
 $InfluxEnsureScript = Join-Path $ProjectRoot "scripts\influx\Ensure-InfluxDatabase.ps1"
 if (Test-Path $InfluxEnsureScript) {
-    & $InfluxEnsureScript
+    Write-Host "Ensuring local InfluxDB database..."
 
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
+    try {
+        & $InfluxEnsureScript
+    }
+    catch {
+        Write-Error "Influx database provisioning script failed. $($_.Exception.Message)"
+        exit 1
     }
 }
 else {

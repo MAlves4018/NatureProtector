@@ -1,123 +1,47 @@
 # Configuracao da baseline local
 
-Este documento descreve o setup local do NatureProtector para onboarding e
-reprodutibilidade. O objetivo e deixar claro o que pertence a dependencias, o
-que pertence a infraestrutura Docker, o que pertence ao runtime da aplicacao, e
-como validar cada camada sem apagar dados locais.
+Este documento descreve o caminho clone-to-run para correr a baseline local do
+NatureProtector em Development. O objetivo e permitir que uma pessoa clone o
+repositorio, suba a infraestrutura, arranque API/Prevention/webUI, faca login e
+execute uma run no Run Orchestrator.
 
-## 1. Objetivo da baseline local
-
-A baseline local suporta o fluxo:
+## 1. Fluxo suportado
 
 ```text
 Simulator.Host -> RabbitMQ -> Prevention.Host -> PostgreSQL/InfluxDB -> Backoffice.Api/Grafana -> webUI
 ```
 
-PostgreSQL e o estado operacional duravel. InfluxDB 3 e usado para
-observabilidade temporal e dashboards. RabbitMQ transporta eventos. Grafana,
-Backoffice.Api e webUI apoiam observabilidade, consulta e desenvolvimento.
+`infra/scripts/up.ps1` sobe a infraestrutura Docker. O launcher
+`scripts/dev/start-local-runtime.ps1` arranca Backoffice.Api, Prevention.Host e
+webUI em background. O `Simulator.Host` e lancado pelo Run Orchestrator e deve
+fechar no fim da run.
 
-## 2. Dependencias, infraestrutura e runtime
-
-Dependencias sao ferramentas instaladas na maquina:
+## 2. Pre-requisitos
 
 - PowerShell.
 - Git.
-- Docker CLI, Docker engine e Docker Compose v2.
-- .NET SDK esperado pelo repositorio.
+- Docker CLI/Engine e Docker Compose v2.
+- .NET SDK usado pela solucao.
 - Node.js e npm.
+- `dotnet-ef` disponivel para migrations.
 
-Infraestrutura e o conjunto Docker Compose:
-
-- `np-postgres`.
-- `np-rabbitmq`.
-- `np-influxdb`.
-- `np-grafana`.
-
-Runtime e a aplicacao local:
-
-- Backoffice.Api.
-- Prevention.Host.
-- webUI.
-- Simulator.Host quando corrido em fluxos de cenario.
-
-Esta separacao e intencional: `up.ps1` sobe infraestrutura, mas nao instala
-dependencias e nao arranca API/webUI.
-
-## 3. Pre-requisitos
-
-Validar a maquina:
+Validacao read-only:
 
 ```powershell
 .\scripts\setup\Test-LocalPrerequisites.ps1
 ```
 
-O script e read-only. Ele imprime `[OK]`, `[WARN]` ou `[FAIL]` e devolve exit
-code diferente de zero quando falta uma dependencia obrigatoria.
+## 3. Preparar `.env` e token local
 
-Valida:
-
-- PowerShell e versao.
-- Git.
-- Docker CLI.
-- Docker engine ativo.
-- Docker Compose v2.
-- .NET SDK compativel com o `TargetFramework` do repo.
-- Node.js.
-- npm.
-- `.env.example`.
-- `.env`, quando existe, e estado basico do `INFLUXDB_TOKEN`.
-- portas de PostgreSQL, RabbitMQ, InfluxDB, Grafana, Backoffice.Api e webUI.
-
-`.env` em falta e um aviso, nao uma falha de dependencia: o setup guiado e o
-`up.ps1` podem cria-lo a partir de `.env.example`.
-
-## 4. Instalar dependencias em falta
-
-Ver sugestoes sem instalar:
-
-```powershell
-.\scripts\setup\Install-LocalPrerequisites.ps1 -WhatIf
-```
-
-O instalador e opt-in. Ele nao mexe em `.env`, nao sobe Docker Compose, nao
-arranca runtime e nao apaga volumes.
-
-Para instalar dependencias suportadas em falta com `winget`:
-
-```powershell
-.\scripts\setup\Install-LocalPrerequisites.ps1 -InstallMissing
-```
-
-Tambem existem flags individuais:
-
-```powershell
-.\scripts\setup\Install-LocalPrerequisites.ps1 -InstallGit
-.\scripts\setup\Install-LocalPrerequisites.ps1 -InstallDotNet
-.\scripts\setup\Install-LocalPrerequisites.ps1 -InstallNode
-.\scripts\setup\Install-LocalPrerequisites.ps1 -InstallDocker
-```
-
-Sem `-Yes`, o script pede confirmacao antes de cada instalacao. Docker Desktop
-pode exigir privilegios, login, restart e abertura manual depois da instalacao.
-O script nao abre Docker Desktop automaticamente.
-
-Depois de instalar ferramentas, abrir uma nova shell e repetir:
-
-```powershell
-.\scripts\setup\Test-LocalPrerequisites.ps1
-```
-
-## 5. `.env` e configuracao local
-
-Criar `.env` manualmente:
+Depois de clonar:
 
 ```powershell
 Copy-Item .\.env.example .\.env
 ```
 
-Ou deixar `Setup-LocalEnvironment.ps1`/`up.ps1` criarem o ficheiro quando ele
-nao existe. Depois rever os valores locais.
+Editar `.env` e definir um `INFLUXDB_TOKEN` local que comece por `apiv3_`.
+Tokens reais nao devem ser versionados. `.env.example` deve manter apenas
+placeholders.
 
 Variaveis principais:
 
@@ -133,199 +57,209 @@ BACKOFFICE_API_PORT=5254
 WEBUI_PORT=5173
 ```
 
-`.env.example` usa um placeholder para `INFLUXDB_TOKEN`. Antes de subir a
-infraestrutura, substituir por um token local `apiv3_...`. O reposititorio nao
-deve versionar tokens reais.
-
-## 6. InfluxDB, token local e `np_telemetry`
-
-O Docker Compose monta:
-
-```text
-data/runtime/influx/admin-token.json -> /run/secrets/influx-admin-token.json
-```
-
-Esse ficheiro e derivado de `.env`, e e ignorado pelo Git:
-
-```text
-/data/runtime/influx/admin-token.json
-```
-
-Scripts envolvidos:
-
-- `scripts/influx/Ensure-InfluxAdminTokenFile.ps1` le `INFLUXDB_TOKEN` de `.env`
-  e gera `data/runtime/influx/admin-token.json`.
-- `scripts/influx/Ensure-InfluxDatabase.ps1` autentica no InfluxDB 3 e garante
-  que `np_telemetry` existe.
-- `infra/scripts/up.ps1` chama ambos na ordem correta.
-
-`np-influxdb-init` so prepara permissoes do volume. Ele nao cria databases.
-
-## 7. Setup guiado
-
-Fluxo recomendado para alguem novo:
-
-```powershell
-.\scripts\setup\Test-LocalPrerequisites.ps1
-.\scripts\setup\Install-LocalPrerequisites.ps1 -WhatIf
-.\scripts\setup\Setup-LocalEnvironment.ps1 -StartRuntime -OpenBrowser
-```
-
-`Install-LocalPrerequisites.ps1` so instala com flags explicitas, como
-`-InstallMissing` ou `-InstallNode`.
-
-Sem flags, o setup guiado prepara infraestrutura e valida baseline:
-
-```powershell
-.\scripts\setup\Setup-LocalEnvironment.ps1
-```
-
-Executa:
-
-```text
-Test-LocalPrerequisites
-copy .env.example -> .env, se faltar
-up.ps1
-Test-LocalBaseline -InfrastructureOnly
-```
-
-Com runtime:
-
-```powershell
-.\scripts\setup\Setup-LocalEnvironment.ps1 -StartRuntime -OpenBrowser
-```
-
-Executa tambem:
-
-```text
-start-local-runtime.ps1 -OpenBrowser -ForceRestart
-Test-LocalBaseline -Full
-```
-
-O setup guiado nao chama `reset-local-infra.ps1`.
-
-## 8. Arranque normal do dia a dia
-
-Para maquina ja preparada:
+## 4. Subir infraestrutura
 
 ```powershell
 .\infra\scripts\up.ps1
-.\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
 ```
 
-`up.ps1`:
+O script:
 
-- muda para a raiz do repo;
-- cria `.env` se faltar;
-- valida Docker CLI, engine e Compose v2 de forma minima;
+- usa a raiz do repositorio;
+- cria `.env` a partir de `.env.example` se faltar;
 - gera o token file local de InfluxDB;
-- executa `docker compose up -d`;
-- garante `np_telemetry`;
-- nao instala dependencias;
-- nao apaga volumes;
+- executa Docker Compose;
+- garante a database InfluxDB `np_telemetry`;
 - nao arranca API/webUI.
 
-## 9. Validacao da baseline
-
-Validar infraestrutura:
+Verificar containers e portas:
 
 ```powershell
+docker ps
 .\scripts\setup\Test-LocalBaseline.ps1 -InfrastructureOnly
 ```
 
-Valida:
+## 5. Aplicar migrations
 
-- Docker daemon.
-- Containers `np-postgres`, `np-rabbitmq`, `np-influxdb`, `np-grafana`.
-- RabbitMQ AMQP e Management.
-- PostgreSQL e schema `control`.
-- InfluxDB e database `np_telemetry`.
-- Grafana.
+```powershell
+dotnet-ef database update `
+  --project .\src\NatureProtector.Infrastructure.Postgres\NatureProtector.Infrastructure.Postgres.csproj `
+  --startup-project .\src\NatureProtector.Postgres.Bootstrap\NatureProtector.Postgres.Bootstrap.csproj `
+  --context NatureProtectorControlDbContext
+```
 
-Validar tudo:
+## 6. Arrancar runtime local
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+```
+
+O launcher:
+
+- usa `docker compose --project-directory <repo> -f <repo>\docker-compose.yml up -d`;
+- arranca Backoffice.Api, Prevention.Host e webUI em background;
+- espera API e webUI ficarem acessiveis antes de abrir o browser;
+- nao fica a seguir logs em foreground;
+- devolve o prompt;
+- escreve logs em `docs/evidence/dev-runtime/<timestamp>/`.
+
+Mensagem final esperada:
+
+```text
+Launcher completed. Services continue in background.
+Logs: <runRoot>
+```
+
+## 7. Login local em Development
+
+```text
+Development login:
+Username: admin
+Password: admin123
+```
+
+Estas credenciais sao apenas para baseline local/Development. Nao usar fora de
+desenvolvimento.
+
+Depois do login, abrir `Scenario Lab` -> `Run Orchestrator`.
+
+## 8. Correr `scenario_b` no Run Orchestrator
+
+Usar parametros de smoke local:
+
+```text
+Scenario: scenario_b
+Degradation profile: none
+Sensors: 6
+Cycles: 5
+Interval seconds: 5
+Seed: 12345
+Wait for completion: enabled quando disponivel
+```
+
+Com 6 sensores x 5 ciclos, o esperado e 30 eventos processados e 30 risk
+assessments, sem erro.
+
+## 9. Validar `scenario_b`
+
+Runs recentes:
+
+```powershell
+@'
+select "Id", "ScenarioCode", "StartedAt", "EndedAt", "Status"
+from control.simulation_runs
+order by "StartedAt" desc
+limit 5;
+'@ | docker exec -i np-postgres psql -U np -d natureprotector
+```
+
+Tentativas de processamento recentes:
+
+```powershell
+@'
+select "Outcome", "ErrorCode", count(*) as count
+from pipeline.processing_attempts
+where "StartedAt" > now() - interval '30 minutes'
+group by "Outcome", "ErrorCode"
+order by count desc;
+'@ | docker exec -i np-postgres psql -U np -d natureprotector
+```
+
+Risk assessments recentes:
+
+```powershell
+@'
+select count(*) as risk_assessments,
+       min("RiskScore") as min_score,
+       max("RiskScore") as max_score
+from projection.risk_assessment_log
+where "CreatedAt" > now() - interval '30 minutes';
+'@ | docker exec -i np-postgres psql -U np -d natureprotector
+```
+
+Confirmar que `Simulator.Host` fechou:
+
+```powershell
+Get-CimInstance Win32_Process |
+  Where-Object { $_.CommandLine -like "*NatureProtector.Simulator.Host*" } |
+  Select-Object ProcessId, ParentProcessId, CreationDate, CommandLine
+```
+
+Esperado para `scenario_b` com 6 sensores x 5 ciclos:
+
+- run com `EndedAt` preenchido;
+- `processing_attempts = 30`;
+- `risk_assessments = 30`;
+- `ErrorCode` vazio;
+- sem processo `NatureProtector.Simulator.Host` apos terminar.
+
+## 10. Validacao completa da baseline
 
 ```powershell
 .\scripts\setup\Test-LocalBaseline.ps1 -Full
 ```
 
-Valida tambem:
+## 11. Troubleshooting
 
-- Backoffice.Api.
-- webUI.
-- control plane com areas, celulas, sensores e cenarios.
-- endpoints opcionais apenas quando expostos nesta versao.
-
-## 10. Reset destrutivo
-
-Reset destrutivo, apenas com confirmacao textual:
-
-```powershell
-.\infra\scripts\reset-local-infra.ps1 -Confirm RESET_LOCAL_INFRA
-```
-
-Este comando apaga volumes locais da baseline. Nao e o comando normal. Usar
-apenas para reconstrucao total ou teste de reprodutibilidade.
-
-`down.ps1` e diferente:
-
-```powershell
-.\infra\scripts\down.ps1
-```
-
-Ele para containers com `docker compose down` e preserva volumes.
-
-## 11. Numero minimo de comandos
-
-Maquina ja preparada:
-
-```powershell
-.\infra\scripts\up.ps1
-.\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
-```
-
-Primeira vez com validacao:
-
-```powershell
-.\scripts\setup\Test-LocalPrerequisites.ps1
-.\scripts\setup\Setup-LocalEnvironment.ps1 -StartRuntime -OpenBrowser
-```
-
-## 12. Troubleshooting
-
-PowerShell bloqueia `.ps1`:
+### PowerShell bloqueia scripts
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup\Test-LocalPrerequisites.ps1
 ```
 
-Docker engine indisponivel:
+### Docker indisponivel
 
-- abrir Docker Desktop manualmente;
+- abrir Docker Desktop;
 - esperar o engine ficar pronto;
-- repetir `Test-LocalPrerequisites.ps1`.
-
-`INFLUXDB_TOKEN` ainda e placeholder:
-
-- editar `.env`;
-- definir um token local que comece por `apiv3_`;
 - repetir `.\infra\scripts\up.ps1`.
 
-`np_telemetry` nao existe:
+### `INFLUXDB_TOKEN` ainda e placeholder
 
-```powershell
-.\scripts\influx\Ensure-InfluxDatabase.ps1
-.\scripts\setup\Test-LocalBaseline.ps1 -InfrastructureOnly
+- editar `.env`;
+- definir token local `apiv3_...`;
+- repetir `.\infra\scripts\up.ps1`.
+
+### API/webUI nao ficam ready no launcher
+
+Ver logs indicados no fim do erro:
+
+```text
+docs/evidence/dev-runtime/<timestamp>/
 ```
 
-Control plane vazio:
+Ficheiros principais:
+
+- `backoffice-api.log`;
+- `backoffice-api.err.log`;
+- `prevention-host.log`;
+- `prevention-host.err.log`;
+- `webui.log`;
+- `webui.err.log`.
+
+### Porta ocupada
+
+Usar `-ForceRestart` apenas quando o processo for local do NatureProtector:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+```
+
+Se a porta pertencer a outro processo, parar manualmente ou alterar a porta em
+`.env`.
+
+### Control plane vazio
 
 ```powershell
 .\scripts\postgres\bootstrap-control-plane.ps1
 .\scripts\setup\Test-LocalBaseline.ps1 -Full
 ```
 
-Porta ocupada:
+### Reset destrutivo
 
-- rever `Test-LocalPrerequisites.ps1`;
-- alterar a porta correspondente em `.env`;
-- repetir `up.ps1`.
+Nao usar no fluxo normal. Apenas com confirmacao textual:
+
+```powershell
+.\infra\scripts\reset-local-infra.ps1 -Confirm RESET_LOCAL_INFRA
+```
+
+Este comando apaga volumes locais da baseline.
