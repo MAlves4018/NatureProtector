@@ -495,8 +495,8 @@ if ($checkInfrastructure) {
 if ($checkRuntime) {
     $backofficeUri = "http://localhost:$apiPort/api/control/configurations/active"
     $backofficeHttp = Invoke-HttpCheck $backofficeUri
-    if ($backofficeHttp.Success) {
-        Add-Result "OK" "Backoffice API" "$backofficeUri returned HTTP $($backofficeHttp.StatusCode)" $true
+    if ($backofficeHttp.Unauthorized) {
+        Add-Result "OK" "Backoffice API" "$backofficeUri requires authentication, which is expected" $true
     }
     else {
         Add-Result "FAIL" "Backoffice API" "not available or not ready at ${backofficeUri}: $($backofficeHttp.Error)" $true
