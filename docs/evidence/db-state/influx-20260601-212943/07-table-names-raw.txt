@@ -1,0 +1,22 @@
+﻿+-------------------------------------+
+| table_name                          |
++-------------------------------------+
+| accepted_readings                   |
+| area_risk_snapshots                 |
+| columns                             |
+| df_settings                         |
+| distinct_caches                     |
+| influxdb_schema                     |
+| last_caches                         |
+| parameters                          |
+| parquet_files                       |
+| processing_engine_logs              |
+| processing_engine_trigger_arguments |
+| processing_engine_triggers          |
+| queries                             |
+| risk_assessments                    |
+| routines                            |
+| schemata                            |
+| tables                              |
+| views                               |
++-------------------------------------+

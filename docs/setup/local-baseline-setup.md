@@ -89,6 +89,32 @@ docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 Depois de subir os containers, inicializar a base de dados no passo seguinte antes de executar a validação completa da baseline.
 
+### Nota sobre `dotnet test` e infraestrutura local
+
+Antes de executar a suite de testes completa, garantir que a infraestrutura Docker local está ativa:
+
+```powershell
+.\infra\scripts\up.ps1
+```
+
+Alguns testes, nomeadamente testes de API/integração, dependem dos serviços locais expostos pela baseline, como PostgreSQL, RabbitMQ e restantes dependências configuradas no ambiente local. Por isso, num clone novo ou após limpeza de containers, deve-se subir a infraestrutura antes de correr:
+
+```powershell
+dotnet test .\NatureProtector.sln --no-restore --nologo -v minimal -m:1
+```
+
+Fluxo recomendado para validação técnica:
+
+```powershell
+.\infra\scripts\up.ps1
+
+dotnet build .\NatureProtector.sln --nologo -v minimal --configfile NuGet.Config
+
+dotnet test .\NatureProtector.sln --no-restore --nologo -v minimal -m:1
+```
+
+Se o runtime local já estiver ativo, ver primeiro a secção de troubleshooting sobre ficheiros bloqueados durante o build.
+
 ---
 
 ## 5. Inicializar a base de dados local
@@ -418,6 +444,82 @@ dotnet ef database update `
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup\Test-LocalPrerequisites.ps1
 ```
+
+### Troubleshooting: `dotnet build` falha com DLLs bloqueadas
+
+Se `dotnet build` falhar com mensagens semelhantes a:
+
+```text
+The file is locked by: "NatureProtector.Backoffice.Api"
+The file is locked by: "NatureProtector.Prevention.Host"
+```
+
+significa que o runtime local ainda está ativo em background. Isto pode acontecer depois de correr:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+```
+
+O launcher arranca a Backoffice API, o Prevention Host e a webUI em processos separados e depois devolve o prompt. Esse comportamento é esperado para a demo, mas os processos .NET continuam a usar DLLs em `bin\Debug\net9.0`. Enquanto estiverem vivos, o Windows pode impedir que o `dotnet build` substitua esses ficheiros.
+
+### Confirmar processos ativos
+
+```powershell
+Get-CimInstance Win32_Process |
+  Where-Object {
+    $_.CommandLine -like "*NatureProtector.Backoffice.Api*" -or
+    $_.CommandLine -like "*NatureProtector.Prevention.Host*" -or
+    $_.CommandLine -like "*NatureProtector.Simulator.Host*" -or
+    $_.CommandLine -like "*NatureProtector\webUI*" -or
+    $_.CommandLine -like "*vite*"
+  } |
+  Select-Object ProcessId, ParentProcessId, CreationDate, CommandLine
+```
+
+### Parar os processos locais do projeto
+
+```powershell
+Get-CimInstance Win32_Process |
+  Where-Object {
+    $_.CommandLine -like "*NatureProtector.Backoffice.Api*" -or
+    $_.CommandLine -like "*NatureProtector.Prevention.Host*" -or
+    $_.CommandLine -like "*NatureProtector.Simulator.Host*" -or
+    $_.CommandLine -like "*NatureProtector\webUI*" -or
+    $_.CommandLine -like "*vite*"
+  } |
+  ForEach-Object {
+    Stop-Process -Id $_.ProcessId -Force
+  }
+```
+
+### Confirmar que pararam
+
+```powershell
+Get-CimInstance Win32_Process |
+  Where-Object {
+    $_.CommandLine -like "*NatureProtector.Backoffice.Api*" -or
+    $_.CommandLine -like "*NatureProtector.Prevention.Host*" -or
+    $_.CommandLine -like "*NatureProtector.Simulator.Host*" -or
+    $_.CommandLine -like "*NatureProtector\webUI*" -or
+    $_.CommandLine -like "*vite*"
+  } |
+  Select-Object ProcessId, CommandLine
+```
+
+O resultado esperado é não aparecer nenhum processo.
+
+Depois repetir:
+
+```powershell
+dotnet build .\NatureProtector.sln --nologo -v minimal --configfile NuGet.Config
+```
+
+### Regra prática
+
+* Para validar build/testes: runtime local parado.
+* Para validar demo/run no orquestrador: runtime local ativo.
+* Se o build falhar por ficheiros bloqueados, parar os processos locais e repetir o build.
+
 
 ### Docker indisponível
 

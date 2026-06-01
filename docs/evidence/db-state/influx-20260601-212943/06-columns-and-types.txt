@@ -1,0 +1,77 @@
+﻿+--------------+-------------------------------------+-----------------------+---------------------------------------------------------------------------------------------------------------------+
+| table_schema | table_name                          | column_name           | data_type                                                                                                           |
++--------------+-------------------------------------+-----------------------+---------------------------------------------------------------------------------------------------------------------+
+| iox          | accepted_readings                   | area_id               | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | accepted_readings                   | latitude              | Float64                                                                                                             |
+| iox          | accepted_readings                   | longitude             | Float64                                                                                                             |
+| iox          | accepted_readings                   | metric_type           | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | accepted_readings                   | operational_state     | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | accepted_readings                   | sensor_id             | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | accepted_readings                   | sensor_name           | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | accepted_readings                   | time                  | Timestamp(Nanosecond, None)                                                                                         |
+| iox          | accepted_readings                   | unit                  | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | accepted_readings                   | value                 | Float64                                                                                                             |
+| iox          | area_risk_snapshots                 | aggregate_risk_level  | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | area_risk_snapshots                 | aggregate_risk_score  | Float64                                                                                                             |
+| iox          | area_risk_snapshots                 | area_id               | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | area_risk_snapshots                 | assessment_count      | Int64                                                                                                               |
+| iox          | area_risk_snapshots                 | severity              | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | area_risk_snapshots                 | time                  | Timestamp(Nanosecond, None)                                                                                         |
+| iox          | risk_assessments                    | area_id               | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | risk_assessments                    | has_explanation       | Int64                                                                                                               |
+| iox          | risk_assessments                    | risk_level            | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | risk_assessments                    | risk_score            | Float64                                                                                                             |
+| iox          | risk_assessments                    | sensor_id             | Dictionary(Int32, Utf8)                                                                                             |
+| iox          | risk_assessments                    | time                  | Timestamp(Nanosecond, None)                                                                                         |
+| system       | distinct_caches                     | column_ids            | List(Field { name: "item", data_type: UInt16, nullable: true, dict_id: 0, dict_is_ordered: false, metadata: {} })   |
+| system       | distinct_caches                     | column_names          | List(Field { name: "item", data_type: Utf8View, nullable: true, dict_id: 0, dict_is_ordered: false, metadata: {} }) |
+| system       | distinct_caches                     | max_age_seconds       | UInt64                                                                                                              |
+| system       | distinct_caches                     | max_cardinality       | UInt64                                                                                                              |
+| system       | distinct_caches                     | name                  | Utf8View                                                                                                            |
+| system       | distinct_caches                     | table                 | Utf8View                                                                                                            |
+| system       | influxdb_schema                     | data_type             | Utf8View                                                                                                            |
+| system       | influxdb_schema                     | key                   | Utf8View                                                                                                            |
+| system       | influxdb_schema                     | measurement           | Utf8View                                                                                                            |
+| system       | last_caches                         | count                 | UInt64                                                                                                              |
+| system       | last_caches                         | key_column_ids        | List(Field { name: "item", data_type: UInt16, nullable: true, dict_id: 0, dict_is_ordered: false, metadata: {} })   |
+| system       | last_caches                         | key_column_names      | List(Field { name: "item", data_type: Utf8View, nullable: true, dict_id: 0, dict_is_ordered: false, metadata: {} }) |
+| system       | last_caches                         | name                  | Utf8View                                                                                                            |
+| system       | last_caches                         | table                 | Utf8View                                                                                                            |
+| system       | last_caches                         | ttl                   | UInt64                                                                                                              |
+| system       | last_caches                         | value_column_ids      | List(Field { name: "item", data_type: UInt16, nullable: true, dict_id: 0, dict_is_ordered: false, metadata: {} })   |
+| system       | last_caches                         | value_column_names    | List(Field { name: "item", data_type: Utf8View, nullable: true, dict_id: 0, dict_is_ordered: false, metadata: {} }) |
+| system       | parquet_files                       | max_time              | Int64                                                                                                               |
+| system       | parquet_files                       | min_time              | Int64                                                                                                               |
+| system       | parquet_files                       | path                  | Utf8                                                                                                                |
+| system       | parquet_files                       | row_count             | UInt64                                                                                                              |
+| system       | parquet_files                       | size_bytes            | UInt64                                                                                                              |
+| system       | parquet_files                       | table_name            | Utf8                                                                                                                |
+| system       | processing_engine_logs              | event_time            | Timestamp(Nanosecond, None)                                                                                         |
+| system       | processing_engine_logs              | log_level             | Utf8                                                                                                                |
+| system       | processing_engine_logs              | log_text              | Utf8                                                                                                                |
+| system       | processing_engine_logs              | trigger_name          | Utf8                                                                                                                |
+| system       | processing_engine_trigger_arguments | argument_key          | Utf8                                                                                                                |
+| system       | processing_engine_trigger_arguments | argument_value        | Utf8                                                                                                                |
+| system       | processing_engine_trigger_arguments | trigger_name          | Utf8                                                                                                                |
+| system       | processing_engine_triggers          | disabled              | Boolean                                                                                                             |
+| system       | processing_engine_triggers          | plugin_filename       | Utf8                                                                                                                |
+| system       | processing_engine_triggers          | trigger_name          | Utf8                                                                                                                |
+| system       | processing_engine_triggers          | trigger_specification | Utf8                                                                                                                |
+| system       | queries                             | cancelled             | Boolean                                                                                                             |
+| system       | queries                             | compute_duration      | Duration(Nanosecond)                                                                                                |
+| system       | queries                             | end2end_duration      | Duration(Nanosecond)                                                                                                |
+| system       | queries                             | execute_duration      | Duration(Nanosecond)                                                                                                |
+| system       | queries                             | id                    | Utf8                                                                                                                |
+| system       | queries                             | issue_time            | Timestamp(Nanosecond, None)                                                                                         |
+| system       | queries                             | max_memory            | Int64                                                                                                               |
+| system       | queries                             | parquet_files         | Int64                                                                                                               |
+| system       | queries                             | partitions            | Int64                                                                                                               |
+| system       | queries                             | permit_duration       | Duration(Nanosecond)                                                                                                |
+| system       | queries                             | phase                 | Utf8                                                                                                                |
+| system       | queries                             | plan_duration         | Duration(Nanosecond)                                                                                                |
+| system       | queries                             | query_text            | Utf8                                                                                                                |
+| system       | queries                             | query_type            | Utf8                                                                                                                |
+| system       | queries                             | running               | Boolean                                                                                                             |
+| system       | queries                             | success               | Boolean                                                                                                             |
+| system       | queries                             | trace_id              | Utf8                                                                                                                |
++--------------+-------------------------------------+-----------------------+---------------------------------------------------------------------------------------------------------------------+

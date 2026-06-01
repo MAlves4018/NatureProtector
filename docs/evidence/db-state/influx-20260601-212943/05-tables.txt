@@ -1,0 +1,22 @@
+﻿+--------------------+-------------------------------------+------------+
+| table_schema       | table_name                          | table_type |
++--------------------+-------------------------------------+------------+
+| information_schema | columns                             | VIEW       |
+| information_schema | df_settings                         | VIEW       |
+| information_schema | parameters                          | VIEW       |
+| information_schema | routines                            | VIEW       |
+| information_schema | schemata                            | VIEW       |
+| information_schema | tables                              | VIEW       |
+| information_schema | views                               | VIEW       |
+| iox                | accepted_readings                   | BASE TABLE |
+| iox                | area_risk_snapshots                 | BASE TABLE |
+| iox                | risk_assessments                    | BASE TABLE |
+| system             | distinct_caches                     | BASE TABLE |
+| system             | influxdb_schema                     | BASE TABLE |
+| system             | last_caches                         | BASE TABLE |
+| system             | parquet_files                       | BASE TABLE |
+| system             | processing_engine_logs              | BASE TABLE |
+| system             | processing_engine_trigger_arguments | BASE TABLE |
+| system             | processing_engine_triggers          | BASE TABLE |
+| system             | queries                             | BASE TABLE |
++--------------------+-------------------------------------+------------+
