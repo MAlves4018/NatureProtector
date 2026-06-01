@@ -1,63 +1,71 @@
-# Configuracao da baseline local
+# Configuração da baseline local
 
-Este documento descreve o caminho clone-to-run para correr a baseline local do
-NatureProtector em Development. O objetivo e permitir que uma pessoa clone o
-repositorio, suba a infraestrutura, arranque API/Prevention/webUI, faca login e
-execute uma run no Run Orchestrator.
+Este documento descreve o caminho **clone-to-run** para correr a baseline local do NatureProtector em ambiente `Development`.
+
+O objetivo é permitir que uma pessoa clone o repositório, crie a configuração local, suba a infraestrutura, inicialize a base de dados, instale a webUI, faça login e execute uma run no Run Orchestrator.
+
+> Fonte principal: este documento deve ser seguido antes de usar instruções antigas dispersas por outros ficheiros. O `Simulator.Host` não deve ser arrancado manualmente no fluxo normal; deve ser lançado pelo Run Orchestrator.
+
+---
 
 ## 1. Fluxo suportado
 
 ```text
-Simulator.Host -> RabbitMQ -> Prevention.Host -> PostgreSQL/InfluxDB -> Backoffice.Api/Grafana -> webUI
+Run Orchestrator
+  -> Simulator.Host
+  -> RabbitMQ
+  -> Prevention.Host
+  -> PostgreSQL / InfluxDB
+  -> Backoffice.Api / Grafana
+  -> webUI
 ```
 
-`infra/scripts/up.ps1` sobe a infraestrutura Docker. O launcher
-`scripts/dev/start-local-runtime.ps1` arranca Backoffice.Api, Prevention.Host e
-webUI em background. O `Simulator.Host` e lancado pelo Run Orchestrator e deve
-fechar no fim da run.
+Responsabilidades principais:
 
-## 2. Pre-requisitos
+- `infra/scripts/up.ps1` sobe a infraestrutura Docker: PostgreSQL, RabbitMQ, InfluxDB e Grafana.
+- `scripts/postgres/bootstrap-control-plane.ps1` inicializa/importa a baseline da base de dados local.
+- `scripts/dev/start-local-runtime.ps1` arranca `Backoffice.Api`, `Prevention.Host` e `webUI` em background.
+- `Simulator.Host` é lançado pelo Run Orchestrator quando uma run é pedida.
+- Depois da run terminar, `Simulator.Host` deve fechar.
+
+---
+
+## 2. Pré-requisitos
+
+Instalar antes de iniciar:
 
 - PowerShell.
 - Git.
-- Docker CLI/Engine e Docker Compose v2.
-- .NET SDK usado pela solucao.
+- Docker Desktop com Docker Engine ativo.
+- Docker Compose v2.
+- .NET SDK usado pela solução.
 - Node.js e npm.
-- `dotnet-ef` disponivel para migrations.
 
-Validacao read-only:
+Validação read-only:
 
 ```powershell
 .\scripts\setup\Test-LocalPrerequisites.ps1
 ```
 
-## 3. Preparar `.env` e token local
+`dotnet-ef` **não é obrigatório** para o fluxo normal clone-to-run. A baseline local é inicializada pelo script `scripts/postgres/bootstrap-control-plane.ps1`. `dotnet-ef` fica reservado para validação avançada/desenvolvimento.
 
-Depois de clonar:
+---
+
+## 3. Preparar `.env` 
+
+Depois de clonar o repositório:
 
 ```powershell
 Copy-Item .\.env.example .\.env
 ```
 
-Editar `.env` e definir um `INFLUXDB_TOKEN` local que comece por `apiv3_`.
-Tokens reais nao devem ser versionados. `.env.example` deve manter apenas
-placeholders.
+O `.env.example` já inclui um `INFLUXDB_TOKEN` local/dev de conveniência para a baseline académica. Não é preciso gerar um token manualmente no caminho normal clone-to-run. O ficheiro `.env` é local, contém credenciais de desenvolvimento e não deve ser versionado.
 
-Variaveis principais:
+---
 
-```text
-POSTGRES_PORT=5432
-RABBITMQ_AMQP_PORT=5672
-RABBITMQ_MANAGEMENT_PORT=15672
-INFLUXDB_PORT=8181
-INFLUXDB_DATABASE=np_telemetry
-INFLUXDB_BUCKET=np_telemetry
-GRAFANA_PORT=3000
-BACKOFFICE_API_PORT=5254
-WEBUI_PORT=5173
-```
+## 4. Subir infraestrutura Docker
 
-## 4. Subir infraestrutura
+Executar:
 
 ```powershell
 .\infra\scripts\up.ps1
@@ -65,30 +73,107 @@ WEBUI_PORT=5173
 
 O script:
 
-- usa a raiz do repositorio;
+- resolve a raiz do repositório;
+- valida o ficheiro `docker-compose.yml`;
 - cria `.env` a partir de `.env.example` se faltar;
-- gera o token file local de InfluxDB;
+- cria/atualiza o ficheiro local de token admin do InfluxDB;
 - executa Docker Compose;
 - garante a database InfluxDB `np_telemetry`;
-- nao arranca API/webUI.
+- não arranca API, Prevention Host nem webUI.
 
-Verificar containers e portas:
+Verificar containers:
 
 ```powershell
-docker ps
+docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+```
+
+Depois de subir os containers, inicializar a base de dados no passo seguinte antes de executar a validação completa da baseline.
+
+---
+
+## 5. Inicializar a base de dados local
+
+Num clone novo ou depois de limpar volumes Docker, executar:
+
+```powershell
+.\scripts\postgres\bootstrap-control-plane.ps1
+```
+
+Este script prepara a baseline local no PostgreSQL e importa:
+
+- área `proenca-a-nova`;
+- grelha;
+- sensores;
+- cenários;
+- bindings de cenários;
+- configuração base necessária ao control plane.
+
+Validar novamente:
+
+```powershell
 .\scripts\setup\Test-LocalBaseline.ps1 -InfrastructureOnly
 ```
 
-## 5. Aplicar migrations
+Resultado esperado depois da inicialização completa:
 
-```powershell
-dotnet-ef database update `
-  --project .\src\NatureProtector.Infrastructure.Postgres\NatureProtector.Infrastructure.Postgres.csproj `
-  --startup-project .\src\NatureProtector.Postgres.Bootstrap\NatureProtector.Postgres.Bootstrap.csproj `
-  --context NatureProtectorControlDbContext
+```text
+[OK] PostgreSQL container - np-postgres is running
+[OK] RabbitMQ container - np-rabbitmq is running
+[OK] InfluxDB container - np-influxdb is running
+[OK] Grafana container - np-grafana is running
+[OK] PostgreSQL control schema - 12 table(s) found
+[OK] InfluxDB database - np_telemetry exists
+[OK] Grafana - http://localhost:3000/api/health returned HTTP 200
+
+Summary: 0 required failure(s), 0 total failure(s), 0 warning(s).
 ```
 
-## 6. Arrancar runtime local
+Verificação SQL opcional:
+
+```powershell
+@'
+select table_schema, table_name
+from information_schema.tables
+where table_schema in ('control', 'pipeline', 'projection')
+order by table_schema, table_name;
+'@ | docker exec -i np-postgres psql -U np -d natureprotector
+```
+
+Resultado esperado no estado atual: tabelas nos schemas `control`, `pipeline` e `projection`.
+
+---
+
+## 6. Instalar dependências da webUI
+
+Num clone novo, `webUI/node_modules` ainda não existe. Instalar as dependências frontend antes de arrancar o runtime local.
+
+Como o projeto tem `package-lock.json`, usar:
+
+```powershell
+cd .\webUI
+npm ci
+cd ..
+```
+
+Se `package-lock.json` não existir num checkout futuro, usar `npm install`.
+
+Se este passo for ignorado, o launcher pode falhar com erro semelhante a:
+
+```text
+'vite' is not recognized as an internal or external command
+```
+
+ou:
+
+```text
+webUI did not become reachable on TCP port 5173 within 60 seconds
+```
+
+---
+
+## 7. Arrancar runtime local
+
+Executar:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
@@ -97,9 +182,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -
 O launcher:
 
 - usa `docker compose --project-directory <repo> -f <repo>\docker-compose.yml up -d`;
-- arranca Backoffice.Api, Prevention.Host e webUI em background;
-- espera API e webUI ficarem acessiveis antes de abrir o browser;
-- nao fica a seguir logs em foreground;
+- arranca `Backoffice.Api`, `Prevention.Host` e `webUI` em background;
+- espera API e webUI ficarem acessíveis antes de abrir o browser;
+- não segue logs em foreground;
 - devolve o prompt;
 - escreve logs em `docs/evidence/dev-runtime/<timestamp>/`.
 
@@ -110,22 +195,51 @@ Launcher completed. Services continue in background.
 Logs: <runRoot>
 ```
 
-## 7. Login local em Development
+Se falhar, consultar os logs indicados no erro:
 
 ```text
-Development login:
+docs/evidence/dev-runtime/<timestamp>/
+```
+
+Ficheiros principais:
+
+- `backoffice-api.log`;
+- `backoffice-api.err.log`;
+- `prevention-host.log`;
+- `prevention-host.err.log`;
+- `webui.log`;
+- `webui.err.log`.
+
+---
+
+## 8. Login local em Development
+
+Abrir:
+
+```text
+http://localhost:5173
+```
+
+Credenciais locais de Development:
+
+```text
 Username: admin
 Password: admin123
 ```
 
-Estas credenciais sao apenas para baseline local/Development. Nao usar fora de
-desenvolvimento.
+Estas credenciais são apenas para baseline local/Development. Não usar fora de desenvolvimento.
 
-Depois do login, abrir `Scenario Lab` -> `Run Orchestrator`.
+Depois do login:
 
-## 8. Correr `scenario_b` no Run Orchestrator
+```text
+Scenario Lab -> Run Orchestrator
+```
 
-Usar parametros de smoke local:
+---
+
+## 9. Correr `scenario_b` no Run Orchestrator
+
+Usar parâmetros de smoke local:
 
 ```text
 Scenario: scenario_b
@@ -134,13 +248,22 @@ Sensors: 6
 Cycles: 5
 Interval seconds: 5
 Seed: 12345
-Wait for completion: enabled quando disponivel
 ```
 
-Com 6 sensores x 5 ciclos, o esperado e 30 eventos processados e 30 risk
-assessments, sem erro.
+Com 6 sensores × 5 ciclos, o esperado é:
 
-## 9. Validar `scenario_b`
+```text
+30 eventos processados
+30 processing attempts bem sucedidas
+30 risk assessments
+sem db_data_exception
+sem quarentena inesperada
+Simulator.Host fechado após a run
+```
+
+---
+
+## 10. Validar `scenario_b`
 
 Runs recentes:
 
@@ -185,21 +308,110 @@ Get-CimInstance Win32_Process |
   Select-Object ProcessId, ParentProcessId, CreationDate, CommandLine
 ```
 
-Esperado para `scenario_b` com 6 sensores x 5 ciclos:
+Exemplo de evidência obtida em validação local:
 
-- run com `EndedAt` preenchido;
-- `processing_attempts = 30`;
-- `risk_assessments = 30`;
-- `ErrorCode` vazio;
-- sem processo `NatureProtector.Simulator.Host` apos terminar.
+```text
+ScenarioCode: scenario_b
+RunId: 90251536-3009-44e3-9e11-778609c7a370
+StartedAt: 2026-06-01 14:46:55.80722+00
+EndedAt: 2026-06-01 14:47:16.081746+00
+Status: 3
+processing_attempts: 30
+ErrorCode: vazio
+risk_assessments: 30
+min_score: 0.41778972000000003
+max_score: 0.4482019516
+Simulator.Host: sem processo após a run
+```
 
-## 10. Validacao completa da baseline
+---
+
+## 11. Correr e validar `scenario_c`
+
+Depois de validar `scenario_b`, correr `scenario_c` pelo Run Orchestrator.
+
+Usar, no mínimo:
+
+```text
+Scenario: scenario_c
+Degradation profile: missing-readings
+Sensors: 6
+Cycles: 5
+Interval seconds: 5
+Seed: 12345
+```
+
+Validar:
+
+- a run termina;
+- o perfil de degradação fica registado nos overrides/metadata;
+- existem eventos em falta quando esperado;
+- continuam a existir risk assessments;
+- não há quarentena inesperada;
+- `Simulator.Host` fecha após a run.
+
+Usar as mesmas queries do `scenario_b` e, quando aplicável, a vista de comparação/evidência da UI.
+
+---
+
+## 12. Validação completa da baseline
+
+A validação completa pode ser executada com:
 
 ```powershell
 .\scripts\setup\Test-LocalBaseline.ps1 -Full
 ```
 
-## 11. Troubleshooting
+No estado atual, este comando pode assinalar falha no endpoint:
+
+```text
+Backoffice API - not available or not ready at http://localhost:5254/api/control/configurations/active: (401) Não autorizado
+```
+
+Isto indica que o endpoint exige autenticação. A API e a webUI podem estar funcionais apesar desse `401`.
+
+Para validação operacional do setup, usar:
+
+- `Test-LocalBaseline.ps1 -InfrastructureOnly`;
+- login na UI com `admin` / `admin123`;
+- run real no Run Orchestrator;
+- queries SQL de validação.
+
+O `-Full` deve ser tratado como validação adicional até o script suportar autenticação ou usar endpoint público apropriado.
+
+---
+
+## 13. Validação avançada de migrations
+
+Este passo é opcional e destinado a desenvolvimento/auditoria. Não é necessário para executar a baseline local se o bootstrap tiver concluído com sucesso.
+
+Instalar `dotnet-ef`, se necessário:
+
+```powershell
+dotnet tool install --global dotnet-ef --version 9.*
+```
+
+Depois:
+
+```powershell
+dotnet ef migrations has-pending-model-changes `
+  --project .\src\NatureProtector.Infrastructure.Postgres\NatureProtector.Infrastructure.Postgres.csproj `
+  --startup-project .\src\NatureProtector.Postgres.Bootstrap\NatureProtector.Postgres.Bootstrap.csproj `
+  --context NatureProtectorControlDbContext
+```
+
+E, se for necessário aplicar migrations manualmente:
+
+```powershell
+dotnet ef database update `
+  --project .\src\NatureProtector.Infrastructure.Postgres\NatureProtector.Infrastructure.Postgres.csproj `
+  --startup-project .\src\NatureProtector.Postgres.Bootstrap\NatureProtector.Postgres.Bootstrap.csproj `
+  --context NatureProtectorControlDbContext
+```
+
+---
+
+## 14. Troubleshooting
 
 ### PowerShell bloqueia scripts
 
@@ -207,59 +419,213 @@ Esperado para `scenario_b` com 6 sensores x 5 ciclos:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup\Test-LocalPrerequisites.ps1
 ```
 
-### Docker indisponivel
+### Docker indisponível
 
 - abrir Docker Desktop;
 - esperar o engine ficar pronto;
-- repetir `.\infra\scripts\up.ps1`.
+- repetir:
 
-### `INFLUXDB_TOKEN` ainda e placeholder
-
-- editar `.env`;
-- definir token local `apiv3_...`;
-- repetir `.\infra\scripts\up.ps1`.
-
-### API/webUI nao ficam ready no launcher
-
-Ver logs indicados no fim do erro:
-
-```text
-docs/evidence/dev-runtime/<timestamp>/
+```powershell
+.\infra\scripts\up.ps1
 ```
 
-Ficheiros principais:
+### `INFLUXDB_TOKEN` inválido
 
-- `backoffice-api.log`;
-- `backoffice-api.err.log`;
-- `prevention-host.log`;
-- `prevention-host.err.log`;
-- `webui.log`;
-- `webui.err.log`.
+O `.env.example` atual já inclui um token local/dev para a baseline académica. Se o token no `.env` tiver sido removido, truncado ou substituído por um valor inválido, recriar `.env` a partir de `.env.example` é o caminho preferido:
 
-### Porta ocupada
+```powershell
+Copy-Item .\.env.example .\.env -Force
+.\infra\scripts\up.ps1
+```
 
-Usar `-ForceRestart` apenas quando o processo for local do NatureProtector:
+Gerar um token manualmente só deve ser necessário para investigação avançada:
+
+```powershell
+$bytes = New-Object byte[] 48
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+$token = "apiv3_" + ([Convert]::ToBase64String($bytes).Replace("+","-").Replace("/","_").TrimEnd("="))
+(Get-Content .env) -replace '^INFLUXDB_TOKEN=.*$', "INFLUXDB_TOKEN=$token" | Set-Content .env -Encoding UTF8
+```
+
+Depois repetir:
+
+```powershell
+.\infra\scripts\up.ps1
+```
+
+### `vite` não é reconhecido
+
+Causa provável: dependências frontend não instaladas.
+
+```powershell
+cd .\webUI
+npm ci
+cd ..
+```
+
+Depois:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
 ```
 
-Se a porta pertencer a outro processo, parar manualmente ou alterar a porta em
-`.env`.
+### API/webUI não ficam ready no launcher
+
+Ver logs indicados no erro:
+
+```text
+docs/evidence/dev-runtime/<timestamp>/
+```
+
+### Porta ocupada
+
+Usar `-ForceRestart` apenas para processos locais do NatureProtector:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+```
+
+Se a porta pertencer a outro processo, parar manualmente o processo ou alterar a porta em `.env`.
 
 ### Control plane vazio
 
+Em base de dados nova ou depois de `docker compose down -v`:
+
 ```powershell
 .\scripts\postgres\bootstrap-control-plane.ps1
-.\scripts\setup\Test-LocalBaseline.ps1 -Full
+.\scripts\setup\Test-LocalBaseline.ps1 -InfrastructureOnly
 ```
+
+### `Test-LocalBaseline.ps1 -Full` falha com `401`
+
+O endpoint testado exige autenticação. Confirmar a baseline por:
+
+```powershell
+.\scripts\setup\Test-LocalBaseline.ps1 -InfrastructureOnly
+```
+
+e depois validar login/run pela UI.
 
 ### Reset destrutivo
 
-Nao usar no fluxo normal. Apenas com confirmacao textual:
+Não usar no fluxo normal. Apenas com confirmação explícita:
 
 ```powershell
 .\infra\scripts\reset-local-infra.ps1 -Confirm RESET_LOCAL_INFRA
 ```
 
 Este comando apaga volumes locais da baseline.
+
+---
+
+## 15. Repor o ambiente para simular um clone novo
+
+Este capítulo é para testar o setup desde um estado equivalente a alguém que acabou de clonar o repositório.
+
+> Atenção: os comandos abaixo apagam containers, volumes e ficheiros locais ignorados. Não usar se houver evidência local que ainda precise de ser guardada.
+
+### 15.1 Parar processos locais do NatureProtector
+
+Listar processos:
+
+```powershell
+Get-CimInstance Win32_Process |
+  Where-Object {
+    $_.CommandLine -like "*NatureProtector.Backoffice.Api*" -or
+    $_.CommandLine -like "*NatureProtector.Prevention.Host*" -or
+    $_.CommandLine -like "*NatureProtector.Simulator.Host*" -or
+    $_.CommandLine -like "*NatureProtector\webUI*" -or
+    $_.CommandLine -like "*vite*"
+  } |
+  Select-Object ProcessId, ParentProcessId, CreationDate, CommandLine
+```
+
+Parar processos:
+
+```powershell
+Get-CimInstance Win32_Process |
+  Where-Object {
+    $_.CommandLine -like "*NatureProtector.Backoffice.Api*" -or
+    $_.CommandLine -like "*NatureProtector.Prevention.Host*" -or
+    $_.CommandLine -like "*NatureProtector.Simulator.Host*" -or
+    $_.CommandLine -like "*NatureProtector\webUI*" -or
+    $_.CommandLine -like "*vite*"
+  } |
+  ForEach-Object {
+    Stop-Process -Id $_.ProcessId -Force
+  }
+```
+
+### 15.2 Remover containers e volumes Docker
+
+```powershell
+docker compose --project-directory . -f .\docker-compose.yml down -v --remove-orphans
+```
+
+Confirmar:
+
+```powershell
+docker ps -a
+```
+
+### 15.3 Apagar estado local ignorado
+
+Ver primeiro o que seria apagado:
+
+```powershell
+git clean -ndX
+```
+
+Se a lista fizer sentido:
+
+```powershell
+git clean -fdX
+```
+
+Isto remove ficheiros ignorados, como:
+
+- `.env`;
+- `bin/`;
+- `obj/`;
+- `node_modules/`;
+- `data/runtime/`;
+- logs locais;
+- caches locais.
+
+Não usar `git clean -fd` sem `-X`, porque isso pode apagar ficheiros untracked não ignorados.
+
+### 15.4 Restaurar evidência versionada removida por engano
+
+Se tiverem sido apagados ficheiros tracked de `docs/evidence/runs`, restaurar:
+
+```powershell
+git restore docs/evidence/runs
+```
+
+Confirmar estado:
+
+```powershell
+git status --short --branch
+```
+
+### 15.5 Validar que o estado está próximo de clone novo
+
+```powershell
+Test-Path .env
+Test-Path data\runtime
+Test-Path .\webUI\node_modules
+docker ps -a
+git ls-files .env .env.example
+```
+
+Esperado:
+
+```text
+.env -> False
+data/runtime -> False
+webUI/node_modules -> False
+docker ps -a -> sem containers da baseline
+git ls-files -> .env não aparece; .env.example aparece
+```
+
+Depois regressar ao passo 3 deste documento e seguir o setup completo.

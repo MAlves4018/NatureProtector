@@ -92,31 +92,17 @@ Esse guia é a fonte principal para correr a baseline. Deve ser preferido a nota
 Fluxo resumido:
 
 ```powershell
-copy .env.example .env
-```
-
-Configurar um `INFLUXDB_TOKEN` local no `.env`. O ficheiro `.env` é local e não deve ser versionado.
-
-Depois:
-
-```powershell
+Copy-Item .env.example .env
 .\infra\scripts\up.ps1
-```
-
-Aplicar migrations:
-
-```powershell
-dotnet-ef database update `
-  --project .\src\NatureProtector.Infrastructure.Postgres\NatureProtector.Infrastructure.Postgres.csproj `
-  --startup-project .\src\NatureProtector.Postgres.Bootstrap\NatureProtector.Postgres.Bootstrap.csproj `
-  --context NatureProtectorControlDbContext
-```
-
-Arrancar runtime local:
-
-```powershell
+.\scripts\postgres\bootstrap-control-plane.ps1
+.\scripts\setup\Test-LocalBaseline.ps1 -InfrastructureOnly
+cd .\webUI
+npm ci
+cd ..
 powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
 ```
+
+O `.env.example` inclui o token local/dev de conveniência usado pela baseline académica. O ficheiro `.env` é local e não deve ser versionado. `dotnet ef` fica reservado para validação avançada/desenvolvimento; não é parte do caminho normal clone-to-run.
 
 Login local em ambiente `Development`:
 

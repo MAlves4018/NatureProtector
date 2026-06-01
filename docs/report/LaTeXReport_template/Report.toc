@@ -39,7 +39,7 @@
 \contentsline {section}{\numberline {6.2}Contratos, Eventos e Pipeline Durável}{22}{section.6.2}%
 \contentsline {section}{\numberline {6.3}Validação, Elegibilidade e Avaliação de Risco}{23}{section.6.3}%
 \contentsline {section}{\numberline {6.4}Persistência, Projeções, API e Alertas}{24}{section.6.4}%
-\contentsline {section}{\numberline {6.5}Observabilidade e Limitações Técnicas}{25}{section.6.5}%
+\contentsline {section}{\numberline {6.5}Observabilidade e Limitações Técnicas}{26}{section.6.5}%
 \contentsline {chapter}{\numberline {7}Validação Técnica e Evidência em Tempo de Execução}{27}{chapter.7}%
 \contentsline {section}{\numberline {7.1}Âmbito e Estratégia de Validação}{27}{section.7.1}%
 \contentsline {section}{\numberline {7.2}Evidência da Pipeline e das Projeções}{28}{section.7.2}%

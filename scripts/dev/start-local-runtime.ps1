@@ -388,6 +388,12 @@ $commonEnvironment = @{
     VITE_API_PROXY_TARGET   = $apiUrl
 }
 
+$webUiRoot = Join-Path $repositoryRoot 'webUI'
+$webUiNodeModules = Join-Path $webUiRoot 'node_modules'
+if (-not (Test-Path $webUiNodeModules)) {
+    throw "webUI dependencies were not found at $webUiNodeModules. Run 'cd .\webUI; npm ci; cd ..' before starting the local runtime."
+}
+
 $processes = @()
 $processes += Start-LoggedPowerShell `
     -Name 'Backoffice API' `
@@ -411,7 +417,7 @@ $processes += Start-LoggedPowerShell `
 
 $processes += Start-LoggedPowerShell `
     -Name 'webUI' `
-    -WorkingDirectory (Join-Path $repositoryRoot 'webUI') `
+    -WorkingDirectory $webUiRoot `
     -Environment $commonEnvironment `
     -Command "npm run dev -- --host 127.0.0.1 --port $WebPort --strictPort" `
     -LogPath (Join-Path $runRoot 'webui.log') `

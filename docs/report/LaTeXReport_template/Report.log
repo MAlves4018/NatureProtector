@@ -1,7 +1,6 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.5.3)  30 MAY 2026 20:36
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.5.3)  1 JUN 2026 18:11
 entering extended mode
  restricted \write18 enabled.
- file:line:error style messages enabled.
  %&-line parsing enabled.
 **./Report.tex
 (Report.tex
@@ -1589,40 +1588,6 @@ Chapter 6.
 
 
 ] [23]
-Overfull \hbox (27.7503pt too wide) in paragraph at lines 73--73
-[]|\T1/cmtt/m/n/12 pipeline.processing_attempts| 
- []
-
-
-Overfull \hbox (3.05634pt too wide) in paragraph at lines 74--74
-[]|\T1/cmtt/m/n/12 pipeline.rejected_events| 
- []
-
-
-Overfull \hbox (21.57681pt too wide) in paragraph at lines 75--75
-[]|\T1/cmtt/m/n/12 pipeline.quarantined_events| 
- []
-
-
-Overfull \hbox (46.27078pt too wide) in paragraph at lines 76--76
-[]|\T1/cmtt/m/n/12 projection.accepted_reading_log| 
- []
-
-
-Overfull \hbox (40.09729pt too wide) in paragraph at lines 77--77
-[]|\T1/cmtt/m/n/12 projection.risk_assessment_log| 
- []
-
-
-Overfull \hbox (58.61777pt too wide) in paragraph at lines 78--78
-[]|\T1/cmtt/m/n/12 projection.cell_operational_state| 
- []
-
-
-Overfull \hbox (58.61777pt too wide) in paragraph at lines 79--79
-[]|\T1/cmtt/m/n/12 projection.area_operational_state| 
- []
-
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
@@ -1688,7 +1653,7 @@ type1/urw/helvetic/uhvr8a.pfb><C:/Users/Miguel/AppData/Local/Programs/MiKTeX/fo
 nts/type1/urw/times/utmb8a.pfb><C:/Users/Miguel/AppData/Local/Programs/MiKTeX/f
 onts/type1/urw/times/utmr8a.pfb><C:/Users/Miguel/AppData/Local/Programs/MiKTeX/
 fonts/type1/urw/times/utmri8a.pfb>
-Output written on Report.pdf (40 pages, 514715 bytes).
+Output written on Report.pdf (40 pages, 514699 bytes).
 PDF statistics:
  710 PDF objects out of 1000 (max. 8388607)
  122 named destinations out of 1000 (max. 500000)
