@@ -192,7 +192,6 @@ public sealed class PostgresUserRolePlaneService : IUserRolePlaneService
         return new UserResponse(
             user.Id,
             user.Username,
-            request.FullName,
             user.Email,
             roles.Select(role => role.Name).ToArray());
     }
@@ -346,7 +345,6 @@ public sealed class PostgresUserRolePlaneService : IUserRolePlaneService
         return new LoginResponse(
             user.Id,
             user.Username,
-            null,
             user.Email,
             roleNames,
             token);
@@ -664,7 +662,6 @@ public sealed class PostgresUserRolePlaneService : IUserRolePlaneService
         return new UserResponse(
             user.Id,
             user.Username,
-            null,
             user.Email,
             roleNames);
     }
@@ -684,7 +681,6 @@ public sealed class PostgresUserRolePlaneService : IUserRolePlaneService
                 (userRole, user) => new UserSummaryResponse(
                     user.Id,
                     user.Username,
-                    null,
                     user.Email))
             .OrderBy(user => user.Username)
             .ToListAsync(cancellationToken);

@@ -1,48 +1,7 @@
 @NatureProtector_Backoffice_Api_HostAddress = http://localhost:5254
 
-GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/configurations/active
-Accept: application/json
 
-###
-
-GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas
-Accept: application/json
-
-###
-# Pode devolver 404 antes de existir estado operacional persistido para a área.
-GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/operational-state
-Accept: application/json
-
-###
-
-GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/cells/operational-state
-Accept: application/json
-
-###
-
-GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/alerts/active
-Accept: application/json
-
-###
-
-GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/simulation-runs?areaCode=proenca-a-nova
-Accept: application/json
-
-###
-
-GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/GeoJSON
-Accept: application/json
-
-###
-
-GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/grid-cells
-Accept: application/json
-
-
-
-
-//login / create user testing
-###
+// 1 -login / create user testing
 POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/login
 Content-Type: application/json
 
@@ -53,64 +12,71 @@ Content-Type: application/json
 
 ###
 
-
-###
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhZG1pbiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFhYUBhYWEuYWFhIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQWRtaW4iLCJuYmYiOjE3ODAxMzI3MzIsImV4cCI6MTc4MDEzNjMzMiwiaXNzIjoiTmF0dXJlUHJvdGVjdG9yIiwiYXVkIjoiTmF0dXJlUHJvdGVjdG9yLkJhY2tvZmZpY2UifQ.Cn61fnCRo4eb0sQULBcNF9rTXEmsFTBkP_nhrJ-Z3Ec
+// copia o token e userId do login anterior para a linha abaixo e descomenta
+// @adminToken =
+// @adminId = 
 
 POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}
 
 {
     "username": "simUser2",
-    "password": "newuser123",
-    "fullname": "Sim User",
+    "password": "simUser123",
     "email": "newuse22r@example.com",
     "organization": "Nature Protector",
     "roles": ["Sim"]
 }
 
 ###
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhZG1pbiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFhYUBhYWEuYWFhIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQWRtaW4iLCJuYmYiOjE3ODAxMzI3MzIsImV4cCI6MTc4MDEzNjMzMiwiaXNzIjoiTmF0dXJlUHJvdGVjdG9yIiwiYXVkIjoiTmF0dXJlUHJvdGVjdG9yLkJhY2tvZmZpY2UifQ.Cn61fnCRo4eb0sQULBcNF9rTXEmsFTBkP_nhrJ-Z3Ec
-
 POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}
 
 {
     "username": "pipeUser",
     "password": "pipeUser123",
-    "fullname": "pipeUser",
     "email": "pipeuser@example.com",
     "organization": "Nature Protector",
     "roles": ["Pipeline"]
 }
 
 ###
-@simId = 1c322301-5789-49a4-a604-5a84030f07b4
-@pipelineId = 52c566b1-d753-418f-90ad-9d248c602956
-@adminId = 00000000-0000-0000-0000-000000000001
+// Copia os userIds dos create User anteriores para as linhas abaixo e descomenta
+// @simId = 
+// @pipelineId =
 
+
+// 2 - verificar roles dos users criados
+// Valores: 1 - Admin, 2 - Sim, 3 - Pipeline
+
+// Este deve retornar 200 OK
 POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users/{{simId}}/roles/2
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}
 
 ###
 
+// Este deve retornar 404 NOT FOUND
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users/{{simId}}/roles/2
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}
 
 ###
+// Este deve retornar 200 OK
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users/{{adminId}}/roles/1
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}
 
 ### 
+// Este deve retornar 404 NOT FOUND
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users/{{adminId}}/roles/2
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}
 
 ###
+// Este deve retornar 200 OK
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users/{{pipelineId}}/roles/3
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}
 
+
+// 3 - Login com os users criados para obter token de acesso e testar endpoints com diferentes roles
 ###
 POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/login
 Content-Type: application/json
@@ -126,27 +92,28 @@ POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/login
 Content-Type: application/json
 
 {
-    "usernameOrEmail": "simUser",
+    "usernameOrEmail": "simUser2",
     "password": "simUser123"
 }
 
-@simToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjUyYzU2NmIxLWQ3NTMtNDE4Zi05MGFkLTlkMjQ4YzYwMjk1NiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJwaXBlVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6InBpcGV1c2VyQGV4YW1wbGUuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiUGlwZWxpbmUiLCJuYmYiOjE3ODAxMzM0MTEsImV4cCI6MTc4MDEzNzAxMSwiaXNzIjoiTmF0dXJlUHJvdGVjdG9yIiwiYXVkIjoiTmF0dXJlUHJvdGVjdG9yLkJhY2tvZmZpY2UifQ.8x-nuuHebWpwZ0jxPcoqBV85hMUzKVy6Z4ST_tGjKqw 
-@pipeToken  = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjUyYzU2NmIxLWQ3NTMtNDE4Zi05MGFkLTlkMjQ4YzYwMjk1NiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJwaXBlVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6InBpcGV1c2VyQGV4YW1wbGUuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiUGlwZWxpbmUiLCJuYmYiOjE3ODAxMzM0NTQsImV4cCI6MTc4MDEzNzA1NCwiaXNzIjoiTmF0dXJlUHJvdGVjdG9yIiwiYXVkIjoiTmF0dXJlUHJvdGVjdG9yLkJhY2tvZmZpY2UifQ.j2GFSwNrfiBbpvRdUwldSKvON4mbTCz1uhKtb6JkTJk
-
+// Copia os tokens do login anteriores para as linhas abaixo e descomenta
+// @simToken =
+// @pipeToken = 
 ###
 
+// Deve retornar 200 OK, desde que se tenha autorização, pode-se obter informação de control/areas/{areaCode}/scenarios
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/scenarios
 Accept: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}
 
 ###
-
+// Mesmo caso, o role Sim deve consegui pedir o GET
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/scenarios
 Accept: application/json
 Authorization: Bearer {{simToken}}
 
 ###
-
+// Outra vez, mesmo resultado para o role Pipeline
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/scenarios
 Accept: application/json
 Authorization: Bearer {{pipeToken}}
@@ -155,9 +122,11 @@ Authorization: Bearer {{pipeToken}}
 
 ###
 
+// control/runtime/runs só permite roles Sim e Admin
+// Este deve retornar 200 OK
 POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/runtime/runs
 Accept: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -166,6 +135,7 @@ Content-Type: application/json
 }
 
 ###
+// Este deve retornar 200 OK
 POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/runtime/runs
 Accept: application/json
 Authorization: Bearer {{simToken}}
@@ -177,7 +147,7 @@ Content-Type: application/json
     "ScenarioCode": "scenario_a"
 }
 ###
-
+// Este deve retornar 403 FORBIDDEN, pois o role Pipeline não tem acesso a este endpoint
 POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/runtime/runs
 Accept: application/json
 Authorization: Bearer {{pipeToken}}
@@ -187,3 +157,88 @@ Content-Type: application/json
     "AreaCode": "proenca-a-nova",
     "ScenarioCode": "scenario_a"
 }
+
+###
+// 4 - adicionar Sim ao user Pipeline e testar se tem acesso ao endpoint control/runtime/runs
+
+PUT {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users/{{pipelineId}}/roles/2
+Authorization: Bearer {{adminToken}}
+
+// Como o token ainda mantém apenas o role Pipeline, este deve retornar 403 FORBIDDEN
+###
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/runtime/runs
+Accept: application/json
+Authorization: Bearer {{pipeToken}}
+Content-Type: application/json
+
+{
+    "AreaCode": "proenca-a-nova",
+    "ScenarioCode": "scenario_a"
+}
+
+###
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/login
+Content-Type: application/json
+
+{
+    "usernameOrEmail": "pipeUser",
+    "password": "pipeUser123"
+}
+
+// @pipeToken2 = 
+###
+// Agora, com o role Sim adicionado, este deve retornar 200 OK
+POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/runtime/runs
+Accept: application/json
+Authorization: Bearer {{pipeToken2}}
+Content-Type: application/json
+
+{
+    "AreaCode": "proenca-a-nova",
+    "ScenarioCode": "scenario_a"
+}
+
+// ----------------------------------------------------------------------------------------
+// testes de rotas de controlo antigo
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/configurations/active
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/cells/operational-state
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/alerts/active
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/simulation-runs?areaCode=proenca-a-nova
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/GeoJSON
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+###
+
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/grid-cells
+Accept: application/json
+Authorization: Bearer {{adminToken}}

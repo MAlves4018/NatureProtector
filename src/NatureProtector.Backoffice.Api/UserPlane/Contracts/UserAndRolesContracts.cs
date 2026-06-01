@@ -4,7 +4,6 @@ namespace NatureProtector.Backoffice.Api.UserPlane.Contracts;
 public sealed record UserRequest(
     string Username,
     string Password,
-    string FullName,
     string Email,
     string Organization,
     string[]? Roles);
@@ -20,14 +19,12 @@ public sealed record RoleRequest(
 public sealed record UserResponse(
     Guid Id,
     string Username,
-    string FullName,
     string Email,
     IReadOnlyList<string> Roles);
 
 public sealed record LoginResponse(
     Guid UserId,
     string Username,
-    string FullName,
     string Email,
     IReadOnlyList<string> Roles,
     string Token);
@@ -39,7 +36,6 @@ public sealed record RoleResponse(
 public sealed record UserSummaryResponse(
     Guid Id,
     string Username,
-    string FullName,
     string Email);
 
 public sealed record UserRoleResponse(
