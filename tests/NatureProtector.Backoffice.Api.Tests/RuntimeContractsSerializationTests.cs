@@ -129,4 +129,46 @@ public sealed class RuntimeContractsSerializationTests
         Assert.True(resetRoundTrip!.DryRun);
         Assert.Equal(30, resetRoundTrip.Before[0].Count);
     }
+
+    [Fact]
+    public void ControlledValidationP3Contracts_PreserveUiFields()
+    {
+        var request = new ControlledValidationP3RunRequest(
+            "controlled-validation-p3-negative-pipeline-tests",
+            WaitForCompletion: true,
+            CollectEvidence: true,
+            RunAuditAfterCompletion: false,
+            TimeoutSeconds: 300);
+        var response = new ControlledValidationP3RunResponse(
+            Guid.Parse("70000000-0000-0000-0000-000000000001"),
+            request.RunLabel!,
+            "P3NegativePipeline",
+            "Validated",
+            "Development",
+            "P3 request is valid.",
+            new DateTimeOffset(2026, 6, 5, 16, 0, 0, TimeSpan.Zero),
+            MessageCount: 11,
+            ExecutableCases: 10,
+            BlockedCases: 2,
+            EvidencePath: "docs/evidence/controlled-validation/p3/run",
+            QueryPackPath: null,
+            AuditRequired: true,
+            Run: null,
+            Notes: ["query_pack_manual"]);
+
+        var requestRoundTrip = JsonSerializer.Deserialize<ControlledValidationP3RunRequest>(
+            JsonSerializer.Serialize(request, JsonOptions),
+            JsonOptions);
+        var responseRoundTrip = JsonSerializer.Deserialize<ControlledValidationP3RunResponse>(
+            JsonSerializer.Serialize(response, JsonOptions),
+            JsonOptions);
+
+        Assert.NotNull(requestRoundTrip);
+        Assert.Equal(300, requestRoundTrip!.TimeoutSeconds);
+        Assert.NotNull(responseRoundTrip);
+        Assert.Equal("P3NegativePipeline", responseRoundTrip!.Phase);
+        Assert.True(responseRoundTrip.AuditRequired);
+        Assert.Null(responseRoundTrip.QueryPackPath);
+        Assert.Equal("query_pack_manual", responseRoundTrip.Notes[0]);
+    }
 }

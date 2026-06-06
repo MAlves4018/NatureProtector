@@ -487,6 +487,42 @@ export interface RuntimeResetResponse {
     after: RuntimeTableCountResponse[];
 }
 
+export interface ControlledValidationP3AvailabilityResponse {
+    phase: string;
+    environment: string;
+    available: boolean;
+    message: string;
+    messageCount: number;
+    executableCases: number;
+    blockedCases: number;
+}
+
+export interface ControlledValidationP3RunRequest {
+    runLabel: string | null;
+    waitForCompletion: boolean;
+    collectEvidence: boolean;
+    runAuditAfterCompletion: boolean;
+    timeoutSeconds: number;
+}
+
+export interface ControlledValidationP3RunResponse {
+    requestId: string;
+    runLabel: string;
+    phase: string;
+    status: string;
+    environment: string;
+    message: string;
+    requestedAtUtc: string;
+    messageCount: number;
+    executableCases: number;
+    blockedCases: number;
+    evidencePath: string | null;
+    queryPackPath: string | null;
+    auditRequired: boolean;
+    run: RuntimeRunSummaryResponse | null;
+    notes: string[];
+}
+
 export interface ScenarioResponse {
     id: string;
     code: string;

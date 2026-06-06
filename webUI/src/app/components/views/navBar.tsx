@@ -4,7 +4,7 @@ import { Sun, Moon } from "lucide-react";
 import { getColors } from '../../utils/utils';
 import { useToken } from '../../context/TokenContext';
 import { UserModal } from '../components/UserModal';
-
+import npLogoUrl from '../../../../images/NPIconNoBg.png';
 
 export function NavBar(
     { isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }
@@ -29,10 +29,11 @@ export function NavBar(
             shadow="sm" flexShrink={0} transition="background 0.2s"
         >
             <img
-                src="images/NPIconNoBg.png"
-                width="36px"
-                height="36px"
+                src={npLogoUrl}
+                width="36"
+                height="36"
                 alt="Nature Protector"
+                style={{ display: "block", objectFit: "contain" }}
             />
             <Text fontWeight="semibold" fontSize="lg" color={c.textPrimary} letterSpacing="wide">
                 Nature Protector

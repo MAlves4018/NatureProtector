@@ -364,6 +364,7 @@ public sealed class PreventionWorkerTests
             pipeline,
             inbox,
             new PassThroughReadingSemanticValidator(),
+            new NoOpProcessingFaultInjector(),
             new DefaultProcessingFailureClassifier());
 
         return new PreventionWorker(

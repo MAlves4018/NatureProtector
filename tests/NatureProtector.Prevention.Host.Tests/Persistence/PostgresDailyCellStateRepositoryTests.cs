@@ -241,6 +241,53 @@ public sealed class PostgresDailyCellStateRepositoryTests
         Assert.Equal(KbdiCalculationStatus.LimitedAntecedentHistory, secondState.KbdiCalculationStatus);
     }
 
+    [Fact]
+    public async Task UpsertAsync_ToleratesConcurrentCreates_ForSameCellDayAndRun()
+    {
+        await using var scope = new SqliteControlDbContextScope(useFileDatabase: true);
+        var ids = await SeedTopologyAsync(scope);
+        var runId = await SeedSimulationRunAsync(scope, ids, numberOfCycles: 3);
+        var repository = new PostgresDailyCellStateRepository(scope.Factory);
+        var firstEventTime = new DateTimeOffset(2026, 5, 18, 12, 30, 0, TimeSpan.Zero);
+        var readings = Enumerable.Range(0, 3)
+            .Select(index => CreateReading(
+                ids.AreaId,
+                ids.SensorId,
+                SensorMetricType.Temperature,
+                MeasurementUnit.Celsius,
+                31.0 + index,
+                firstEventTime.AddSeconds(index)))
+            .ToArray();
+        var lookups = await Task.WhenAll(readings.Select(reading =>
+            repository.GetForReadingAsync(reading, runId, CancellationToken.None)));
+        var inputs = readings
+            .Zip(lookups, (reading, lookup) => RiskInput.FromNormalizedReading(
+                reading,
+                RiskEligibilityResult.Eligible,
+                lookup.State,
+                runId,
+                lookup.GridCellId,
+                lookup.ConfigurationVersionId,
+                lookup.TerritorialContext))
+            .ToArray();
+
+        await Task.WhenAll(inputs.Select(input => repository.UpsertAsync(input, CancellationToken.None)));
+
+        await using var dbContext = scope.CreateDbContext();
+        var day = new DateTimeOffset(2026, 5, 18, 0, 0, 0, TimeSpan.Zero);
+        var dailyStates = await dbContext.DailyCellStates
+            .Where(entity =>
+                entity.AreaId == ids.AreaId &&
+                entity.GridCellId == ids.GridCellId &&
+                entity.LogicalDate == day &&
+                entity.SimulationRunId == runId)
+            .ToListAsync();
+
+        Assert.All(lookups, lookup => Assert.Null(lookup.State));
+        var dailyState = Assert.Single(dailyStates);
+        Assert.Contains(readings, reading => reading.EventId == dailyState.LastSourceEventId);
+    }
+
     private static async Task<SeedIds> SeedTopologyAsync(SqliteControlDbContextScope scope)
     {
         var ids = new SeedIds(
@@ -305,6 +352,56 @@ public sealed class PostgresDailyCellStateRepositoryTests
         });
 
         return ids;
+    }
+
+    private static async Task<Guid> SeedSimulationRunAsync(
+        SqliteControlDbContextScope scope,
+        SeedIds ids,
+        int numberOfCycles)
+    {
+        var scenarioId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        await scope.SeedAsync(dbContext =>
+        {
+            dbContext.ScenarioDefinitions.Add(new ScenarioDefinitionRecord
+            {
+                Id = scenarioId,
+                AreaId = ids.AreaId,
+                ConfigurationVersionId = ids.ConfigurationVersionId,
+                Code = "scenario-concurrent",
+                Name = "Scenario Concurrent",
+                ScenarioKind = ScenarioCategory.HighRisk,
+                ParametersJson = """
+                    {
+                      "daily_reference": {
+                        "temperature_max_c": 33.9,
+                        "relative_humidity_min_pct": 18.0,
+                        "precipitation_total_mm": 0.0,
+                        "wind_speed_max_ms": 4.95
+                      },
+                      "simulator_options": {}
+                    }
+                    """
+            });
+            dbContext.SimulationRuns.Add(new SimulationRunRecord
+            {
+                Id = runId,
+                AreaId = ids.AreaId,
+                ScenarioId = scenarioId,
+                ConfigurationVersionId = ids.ConfigurationVersionId,
+                ScenarioCode = "scenario-concurrent",
+                ScenarioName = "Scenario Concurrent",
+                CreatedAt = DateTimeOffset.UtcNow,
+                LogicalStartTimestamp = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero),
+                IntervalSeconds = 30,
+                NumberOfCycles = numberOfCycles,
+                Status = SimulationRunStatus.Running
+            });
+
+            return Task.CompletedTask;
+        });
+
+        return runId;
     }
 
     private static NormalizedReading CreateReading(

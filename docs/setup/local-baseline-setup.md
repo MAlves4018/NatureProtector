@@ -205,6 +205,12 @@ Executar:
 powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
 ```
 
+Ou se já tiver o Browser aberto:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -ForceRestart
+```
+
 O launcher:
 
 - usa `docker compose --project-directory <repo> -f <repo>\docker-compose.yml up -d`;

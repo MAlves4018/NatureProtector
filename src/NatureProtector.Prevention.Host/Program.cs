@@ -40,6 +40,9 @@ builder.Services.AddSingleton<IValidateOptions<PreventionHostOptions>, Preventio
 builder.Services.AddOptions<PreventionHostOptions>()
     .Bind(builder.Configuration.GetSection(PreventionHostOptions.SectionName))
     .ValidateOnStart();
+builder.Services.AddOptions<ControlledValidationProcessingFaultOptions>()
+    .Bind(builder.Configuration.GetSection(ControlledValidationProcessingFaultOptions.SectionName))
+    .ValidateOnStart();
 builder.Services.Configure<RabbitMqOptions>(
     builder.Configuration.GetSection(RabbitMqOptions.SectionName));
 
@@ -77,6 +80,17 @@ else
 }
 
 builder.Services.AddSingleton<IProcessingFailureClassifier, DefaultProcessingFailureClassifier>();
+var processingFaultOptions = builder.Configuration
+    .GetSection(ControlledValidationProcessingFaultOptions.SectionName)
+    .Get<ControlledValidationProcessingFaultOptions>() ?? new ControlledValidationProcessingFaultOptions();
+if (processingFaultOptions.Enabled)
+{
+    builder.Services.AddSingleton<IProcessingFaultInjector, ControlledValidationProcessingFaultInjector>();
+}
+else
+{
+    builder.Services.AddSingleton<IProcessingFaultInjector, NoOpProcessingFaultInjector>();
+}
 builder.Services.AddSingleton<IRiskEligibilityService, RiskEligibilityService>();
 builder.Services.AddSingleton<SimpleRiskScoringService>();
 builder.Services.AddSingleton<IRiskScoringService>(sp => sp.GetRequiredService<SimpleRiskScoringService>());

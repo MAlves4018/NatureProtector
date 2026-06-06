@@ -3,6 +3,9 @@ import {
     AreaCellResponse,
     AreaGeoJSONResponse,
     AreaResponse,
+    ControlledValidationP3AvailabilityResponse,
+    ControlledValidationP3RunRequest,
+    ControlledValidationP3RunResponse,
     LoginRequest,
     LoginResponse,
     RoleResponse,
@@ -130,6 +133,21 @@ export const api = {
     resetRuntimeState: (request: RuntimeResetRequest) => {
         return httpClient.post<RuntimeResetResponse>(
             '/control/runtime/reset',
+            request,
+            api.getRequestOptions()
+        );
+    },
+
+    getControlledValidationP3Availability: () => {
+        return httpClient.get<ControlledValidationP3AvailabilityResponse>(
+            '/dev/controlled-validation/p3',
+            api.getRequestOptions()
+        );
+    },
+
+    startControlledValidationP3: (request: ControlledValidationP3RunRequest) => {
+        return httpClient.post<ControlledValidationP3RunResponse>(
+            '/dev/controlled-validation/p3/run',
             request,
             api.getRequestOptions()
         );

@@ -391,6 +391,65 @@ public sealed class ControlPlaneApiTests
     }
 
     [Fact]
+    public async Task ControlledValidationP3Availability_ControlPlaneUnavailable_ReturnsProblemDetails()
+    {
+        const string availabilityMessage = "Control plane unavailable for P3.";
+        await using var factory = new ControlPlaneApiWebApplicationFactory(
+            controlPlaneAvailable: false,
+            availabilityMessage: availabilityMessage);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/dev/controlled-validation/p3");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        await AssertUnavailableProblemDetailsAsync(response, availabilityMessage);
+    }
+
+    [Fact]
+    public async Task ControlledValidationP3Run_Production_ReturnsForbidden()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory(environmentName: "Production");
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/dev/controlled-validation/p3/run",
+            JsonContent.Create(new { runLabel = "controlled-validation-p3-negative-pipeline-tests" }));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("Production", document.RootElement.GetProperty("environment").GetString());
+    }
+
+    [Fact]
+    public async Task ControlledValidationP3Run_Development_ReturnsStructuredResponse()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/dev/controlled-validation/p3/run",
+            JsonContent.Create(new
+            {
+                runLabel = "controlled-validation-p3-negative-pipeline-tests",
+                waitForCompletion = true,
+                collectEvidence = true,
+                runAuditAfterCompletion = false,
+                timeoutSeconds = 300
+            }));
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+
+        Assert.Equal("controlled-validation-p3-negative-pipeline-tests", root.GetProperty("runLabel").GetString());
+        Assert.Equal("P3NegativePipeline", root.GetProperty("phase").GetString());
+        Assert.True(root.GetProperty("auditRequired").GetBoolean());
+        Assert.Equal(11, root.GetProperty("messageCount").GetInt32());
+        Assert.Equal(10, root.GetProperty("executableCases").GetInt32());
+        Assert.Equal(2, root.GetProperty("blockedCases").GetInt32());
+    }
+
+    [Fact]
     public async Task RuntimeRunTimingsEndpoint_ReturnsTimingSummary()
     {
         await using var factory = new ControlPlaneApiWebApplicationFactory();

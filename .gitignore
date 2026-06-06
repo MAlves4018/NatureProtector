@@ -82,7 +82,19 @@ repomix.config.json
 # Runtime evidence logs
 docs/evidence/dev-runtime/*
 docs/evidence/runs/*
+docs/evidence/ml/*
+docs/evidence/ui/*
+docs/evidence/V0/*
+docs/evidence/V1/*
+docs/evidence/V3/*
+docs/evidence/controlled-validation/*
 /docs/evidence/diagnostics/
+
+#TEMP 
+docs/planning/V0/
+docs/planning/V1/
+docs/planning/V3/
+
 # Node / frontend
 webUI/node_modules/
 webUI/dist/

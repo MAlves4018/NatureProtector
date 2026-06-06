@@ -105,6 +105,8 @@ public sealed class DefaultProcessingFailureClassifierTests
         return new TheoryData<Exception, ProcessingFailureKind, string, bool>
         {
             { new TimeoutException("timeout"), ProcessingFailureKind.Transient, "timeout", true },
+            { new ControlledValidationProcessingFaultException(ProcessingFailureKind.Transient, "transient_failure", "controlled"), ProcessingFailureKind.Transient, "transient_failure", true },
+            { new ControlledValidationProcessingFaultException(ProcessingFailureKind.Permanent, "permanent_failure", "controlled"), ProcessingFailureKind.Permanent, "permanent_failure", false },
             { new HttpRequestException("http failed"), ProcessingFailureKind.Transient, "http_request_failed", true },
             { new IOException("io failed"), ProcessingFailureKind.Transient, "io_failed", true },
             { new ArgumentException("bad argument"), ProcessingFailureKind.Permanent, "invalid_argument", false },

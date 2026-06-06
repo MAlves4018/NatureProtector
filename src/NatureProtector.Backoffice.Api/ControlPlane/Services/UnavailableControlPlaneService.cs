@@ -143,6 +143,27 @@ public sealed class UnavailableControlPlaneService : IControlPlaneService
             null,
             null));
 
+    public Task<ControlledValidationP3RunResponse> StartControlledValidationP3Async(
+        ControlledValidationP3RunRequest request,
+        string environmentName,
+        CancellationToken cancellationToken)
+        => Task.FromResult(new ControlledValidationP3RunResponse(
+            Guid.NewGuid(),
+            request.RunLabel ?? "controlled-validation-p3-negative-pipeline-unavailable",
+            "P3NegativePipeline",
+            "Unavailable",
+            environmentName,
+            AvailabilityMessage,
+            DateTimeOffset.UtcNow,
+            11,
+            10,
+            2,
+            null,
+            null,
+            true,
+            null,
+            ["Control plane unavailable; no controlled validation P3 execution was started."]));
+
     public Task<RuntimeResetResponse> ResetRuntimeStateAsync(
         RuntimeResetRequest request,
         CancellationToken cancellationToken)

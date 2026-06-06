@@ -104,4 +104,13 @@ internal static class NatureProtectorUniqueConstraints
 
     public static readonly ExpectedUniqueConstraint AreaOperationalStateAreaId =
         new("IX_area_operational_state_AreaId", "area_operational_state", "AreaId");
+
+    public static readonly ExpectedUniqueConstraint DailyCellStateCellDayRun =
+        new(
+            "IX_daily_cell_state_AreaId_GridCellId_LogicalDate_SimulationRu~",
+            "daily_cell_state",
+            "AreaId",
+            "GridCellId",
+            "LogicalDate",
+            "SimulationRunId");
 }

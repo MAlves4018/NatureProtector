@@ -93,38 +93,77 @@ public sealed class PostgresDailyCellStateRepository(
             input.SimulationRunId,
             cancellationToken);
 
-        var domain = existing is null
-            ? DailyCellState.FromRiskInput(
-                input with
+        if (existing is null)
+        {
+            var domain = BuildDailyCellState(
+                existingState: null,
+                input,
+                gridCellId.Value,
+                configurationVersionId,
+                scenarioDailyReference);
+            dbContext.DailyCellStates.Add(ToRecord(domain));
+
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (DbUpdateException exception) when (ExpectedUniqueViolationDetector.IsExpected(
+                exception,
+                NatureProtectorUniqueConstraints.DailyCellStateCellDayRun))
+            {
+                dbContext.ChangeTracker.Clear();
+                existing = await dbContext.DailyCellStates
+                    .SingleOrDefaultAsync(entity =>
+                        entity.AreaId == input.AreaId &&
+                        entity.GridCellId == gridCellId.Value &&
+                        entity.LogicalDate == day &&
+                        entity.SimulationRunId == input.SimulationRunId,
+                        cancellationToken);
+
+                if (existing is null)
                 {
-                    GridCellId = gridCellId,
-                    ConfigurationVersionId = configurationVersionId
-                },
+                    throw;
+                }
+            }
+        }
+
+        var updated = BuildDailyCellState(
+            existingState: ToDomain(existing),
+            input,
+            gridCellId.Value,
+            configurationVersionId,
+            scenarioDailyReference);
+        Apply(existing, updated);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static DailyCellState BuildDailyCellState(
+        DailyCellState? existingState,
+        RiskInput input,
+        Guid gridCellId,
+        Guid? configurationVersionId,
+        ScenarioDailyReference? scenarioDailyReference)
+    {
+        var resolvedInput = input with
+        {
+            GridCellId = gridCellId,
+            ConfigurationVersionId = configurationVersionId
+        };
+        var state = existingState is null
+            ? DailyCellState.FromRiskInput(
+                resolvedInput,
                 antecedentState: "runtime-observed",
                 candidateParameterSetVersion: CandidateParameterSetV1.Version,
                 provenance: "prevention_pipeline")
-            : ToDomain(existing).ApplyRiskInput(input with
-            {
-                GridCellId = gridCellId,
-                ConfigurationVersionId = configurationVersionId
-            });
-        domain = ApplyScenarioDailyReference(domain, scenarioDailyReference);
-        domain = ApplyFireWeatherIndex(ApplyKbdi(domain));
-        if (existing is null)
-        {
-            domain = MarkFirstDailyKbdiAsLimited(domain);
-        }
+            : existingState.ApplyRiskInput(resolvedInput);
 
-        if (existing is null)
-        {
-            dbContext.DailyCellStates.Add(ToRecord(domain));
-        }
-        else
-        {
-            Apply(existing, domain);
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
+        state = ApplyScenarioDailyReference(state, scenarioDailyReference);
+        state = ApplyFireWeatherIndex(ApplyKbdi(state));
+        return existingState is null
+            ? MarkFirstDailyKbdiAsLimited(state)
+            : state;
     }
 
     private static DailyCellState ApplyScenarioDailyReference(

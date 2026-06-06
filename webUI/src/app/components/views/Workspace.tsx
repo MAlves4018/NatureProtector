@@ -37,6 +37,9 @@ import { api } from "../../services/api";
 import {
   AreaCellResponse,
   AreaResponse,
+  ControlledValidationP3AvailabilityResponse,
+  ControlledValidationP3RunRequest,
+  ControlledValidationP3RunResponse,
   RuntimeAlertSummaryResponse,
   RuntimeDiagnosticDefinitionResponse,
   RuntimeDiagnosticResultResponse,
@@ -61,10 +64,10 @@ const DEFAULT_AREA = "proenca-a-nova";
 const WINDOW_OPTIONS = [10, 30, 1440];
 const MAIN_TABS = ["Monitoring", "Scenario Lab", "Flow Explorer", "Evidence & Comparison", "Model & Provenance"] as const;
 const MONITORING_TABS = ["Overview", "Map & Cells", "Sensor Dashboards", "Area Risk", "Alerts"] as const;
-const SCENARIO_TABS = ["Run Orchestrator", "Scenario Definition", "Latest Run", "Runtime State Control"] as const;
-const EVIDENCE_TABS = ["Latest Run Audit", "Compare B vs C", "Run Timings", "Diagnostics", "Export Evidence"] as const;
+const SCENARIO_TABS = ["Run Orchestrator", "Scenario Definition", "P3 Negative Pipeline", "Latest Run", "Runtime State Control"] as const;
+const EVIDENCE_TABS = ["Latest Run Audit", "Controlled Validation", "Compare B vs C", "Run Timings", "Diagnostics", "Export Evidence"] as const;
 const FLOW_TABS = ["Runtime Chain", "Processing Pipeline", "Retry & Quarantine", "Persistence Views", "Deployment & Services", "Nominal Flow"] as const;
-const MODEL_TABS = ["Domain Model", "Data Chain", "Data Provenance", "Territorial & Weather Context", "Code Mapping"] as const;
+const MODEL_TABS = ["Domain Model", "Data Chain", "Data Provenance", "V3 Readiness", "Territorial & Weather Context", "Code Mapping"] as const;
 const DEGRADATION_PROFILE_OPTIONS = [
   "none",
   "missing-readings",
@@ -77,6 +80,65 @@ const DEGRADATION_PROFILE_OPTIONS = [
   "lag/delay",
   "duplicate",
   "out-of-order",
+];
+
+const DEGRADATION_PROFILE_DETAILS: Record<string, { label: string; status: string; detail: string; blocked?: boolean }> = {
+  "none": { label: "none", status: "Baseline", detail: "No simulator degradation profile is requested." },
+  "missing-readings": { label: "missing-readings", status: "P2 supported", detail: "Observation stream drops readings so expected-vs-accepted can expose missing events." },
+  "noise": { label: "noise", status: "P2 value profile", detail: "Simulator value perturbation profile; not a pipeline fault." },
+  "bias": { label: "bias", status: "P2 value profile", detail: "Simulator value offset profile; not a scoring calibration claim." },
+  "drift": { label: "drift", status: "P2 value profile", detail: "Simulator gradual value change profile." },
+  "stuck-value": { label: "stuck-value", status: "P2 value profile", detail: "Repeated value profile for observation degradation evidence." },
+  "outlier": { label: "outlier", status: "P2 value profile", detail: "Extreme value profile; validation evidence must decide whether runtime accepts or rejects it." },
+  "clipping/range": { label: "clipping/range", status: "P2 value profile", detail: "Boundary/range degradation profile." },
+  "lag/delay": { label: "lag/delay", status: "P2 temporal profile", detail: "Delayed observations; not the same as retry scheduling." },
+  "duplicate": { label: "duplicate idempotent replay", status: "P2 idempotency", detail: "Simulator duplicate replay. This is separate from P3 duplicate_payload_mismatch." },
+  "out-of-order": { label: "out-of-order", status: "Blocked/future", detail: "Temporal semantics are blocked until safe classifier/window state is wired.", blocked: true },
+};
+
+const P3_CANONICAL = {
+  runLabel: "controlled-validation-p3-negative-pipeline-20260605-002",
+  generatedAt: "2026-06-05",
+  sidecar: "docs/evidence/controlled-validation/p3/20260605-130508-controlled-validation-p3-negative-pipeline-20260605-002/",
+  queryPack: "docs/evidence/ml/momento2/runs/20260605-150738/",
+  summary: "docs/evidence/controlled-validation/p3/20260605-130508-controlled-validation-p3-negative-pipeline-20260605-002/summary.md",
+  queryPackSql: "tools/data-audit/postgres/11_controlled_validation_p3_negative_pipeline.sql",
+};
+
+const P3_CASES = [
+  { id: "P3_REJECT_INVALID_JSON", category: "Rejected", expected: "invalid_json", status: "matched", effect: "pre-inbox rejection; no accepted/risk projection" },
+  { id: "P3_REJECT_MISSING_PAYLOAD", category: "Rejected", expected: "missing_payload", status: "matched", effect: "pre-inbox rejection; no accepted/risk projection" },
+  { id: "P3_REJECT_UNSUPPORTED_EVENT_TYPE", category: "Rejected", expected: "unsupported_event_type", status: "matched", effect: "pre-inbox rejection; no accepted/risk projection" },
+  { id: "P3_REJECT_UNSUPPORTED_SCHEMA_VERSION", category: "Rejected", expected: "unsupported_schema_version", status: "matched", effect: "pre-inbox rejection; no accepted/risk projection" },
+  { id: "P3_REJECT_INVALID_OPERATIONAL_STATE", category: "Rejected", expected: "invalid_operational_state", status: "matched", effect: "pre-inbox rejection; no accepted/risk projection" },
+  { id: "P3_QUARANTINE_SENSOR_NOT_FOUND", category: "Quarantined", expected: "sensor_not_found", status: "matched", effect: "terminal quarantine; no accepted/risk projection" },
+  { id: "P3_QUARANTINE_DUPLICATE_PAYLOAD_MISMATCH", category: "Rejected", expected: "duplicate_payload_mismatch", status: "matched", effect: "inbox-linked rejection after idempotency mismatch" },
+  { id: "P3_RETRY_TRANSIENT_THEN_SUCCESS", category: "Retry", expected: "retry_then_success", status: "matched", effect: "2 attempts, 1 retry, 1 accepted/risk projection" },
+  { id: "P3_RETRY_EXHAUSTED_TO_QUARANTINE", category: "Retry/quarantine", expected: "retries_exhausted", status: "matched", effect: "3 attempts, 2 retries, terminal quarantine" },
+  { id: "P3_PERMANENT_FAILURE_TO_QUARANTINE", category: "Quarantined", expected: "permanent_failure", status: "matched", effect: "1 attempt, terminal quarantine" },
+  { id: "P3_QUARANTINE_SENSOR_INACTIVE", category: "Quarantined", expected: "sensor_inactive", status: "blocked_needs_fixture", effect: "requires safe fixture; no real sensor mutation" },
+  { id: "P3_QUARANTINE_SENSOR_AREA_MISMATCH", category: "Quarantined", expected: "sensor_area_mismatch", status: "blocked_needs_fixture", effect: "requires safe fixture; no real area/sensor mutation" },
+];
+
+const P3_EVIDENCE_REFERENCES = [
+  ["P3 runtime summary", P3_CANONICAL.summary, "Canonical closure summary."],
+  ["P3 query pack manifest", `${P3_CANONICAL.queryPack}manifest.md`, "Read-only PostgreSQL query pack manifest."],
+  ["P3 expected vs observed", `${P3_CANONICAL.queryPack}postgres/p3_expected_vs_observed.csv`, "Fault-case expected/observed status."],
+  ["P3 rejected by fault case", `${P3_CANONICAL.queryPack}postgres/p3_rejected_by_fault_case.csv`, "Rejected path details, including pre-inbox rejections."],
+  ["P3 quarantined by fault case", `${P3_CANONICAL.queryPack}postgres/p3_quarantined_by_fault_case.csv`, "Quarantine path details."],
+  ["P3 retry paths", `${P3_CANONICAL.queryPack}postgres/p3_retry_paths_by_fault_case.csv`, "Retry then success and retry-to-quarantine evidence."],
+  ["P3 unexpected accepted/risk", `${P3_CANONICAL.queryPack}postgres/p3_unexpected_accepted_or_risk.csv`, "Header-only in canonical P3 run: no unexpected accepted/risk rows."],
+  ["P3 negative M5 traceability", `${P3_CANONICAL.queryPack}postgres/p3_negative_m5_traceability.csv`, "Negative-path traceability support."],
+  ["P3 SQL", P3_CANONICAL.queryPackSql, "Query pack source SQL."],
+];
+
+const VALIDATION_PHASE_ROWS = [
+  ["P0 runtime", "Closed prerequisite", "Rejected and quarantine paths, mismatch/sensor_not_found and no positive projections were proven before P1/P3."],
+  ["P1 retry/failure", "Evidence present", "retry_transitions, retry_then_success, retry_to_quarantine, processing_faults_by_case and p1_expected_vs_observed are in the query pack."],
+  ["P2 degradation", "Evidence present with limitations", "Observation degradation profiles are separate from P3 pipeline faults; out-of-order remains blocked/future."],
+  ["P3 negative pipeline", "Closed for executable cases", "10 required cases matched; sensor_inactive and sensor_area_mismatch are blocked_needs_fixture."],
+  ["M3 label support", "Audit artifact", "Negative labels are query-pack/readiness evidence, not ML training completion."],
+  ["M5 traceability", "Ready for negative paths", "Negative-path traceability files are present for controlled validation evidence."],
 ];
 
 const MODEL_ARTIFACTS = [
@@ -129,6 +191,17 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
   const [runResult, setRunResult] = useState<RuntimeRunStartResponse | null>(null);
   const [runMessage, setRunMessage] = useState<string | null>(null);
   const [submittingRun, setSubmittingRun] = useState(false);
+  const [p3Availability, setP3Availability] = useState<ControlledValidationP3AvailabilityResponse | null>(null);
+  const [p3RunRequest, setP3RunRequest] = useState<ControlledValidationP3RunRequest>(() => ({
+    runLabel: buildP3RunLabel(),
+    waitForCompletion: true,
+    collectEvidence: true,
+    runAuditAfterCompletion: false,
+    timeoutSeconds: 300,
+  }));
+  const [p3RunResult, setP3RunResult] = useState<ControlledValidationP3RunResponse | null>(null);
+  const [p3RunMessage, setP3RunMessage] = useState<string | null>(null);
+  const [submittingP3Run, setSubmittingP3Run] = useState(false);
   const [resetResult, setResetResult] = useState<RuntimeResetResponse | null>(null);
   const [confirm, setConfirm] = useState("");
   const canAccessScenarioLab = Boolean(user && (user.roles.includes("Sim") || user.roles.includes("Admin")));
@@ -242,11 +315,16 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
     setLoading(true);
 
     try {
-      const [diagnosticCatalog] = await Promise.all([
+      const [diagnosticCatalog, p3AvailabilityResult] = await Promise.all([
         api.getRuntimeDiagnostics(),
+        api.getControlledValidationP3Availability().catch(error => {
+          setP3RunMessage(`P3 endpoint availability unavailable: ${formatError(error)}`);
+          return null;
+        }),
       ]);
 
       setDiagnostics(diagnosticCatalog.diagnostics);
+      setP3Availability(p3AvailabilityResult);
       setLastUpdated(new Date());
       setMessage(null);
 
@@ -322,6 +400,11 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
       setRunMessage(`sensorCount ${runForm.sensorCount} exceeds ${activeSensorCount} active sensor(s) for area '${areaCode}'.`);
       return;
     }
+    const blockedProfiles = normalizeProfiles(runForm.degradationProfiles, runForm.degradationProfile).filter(isBlockedDegradationProfile);
+    if (blockedProfiles.length > 0) {
+      setRunMessage(`Blocked profile(s) cannot be started from the UI: ${blockedProfiles.join(", ")}.`);
+      return;
+    }
 
     setSubmittingRun(true);
     setRunMessage("Submitting run request...");
@@ -329,11 +412,35 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
       const result = await api.startRuntimeRun({ ...runForm, areaCode });
       setRunResult(result);
       setRunMessage(result.message);
-      await loadWorkspaceSim();
+
+      const refreshedSummary = await loadWorkspacePipeline();
+      await loadWorkspaceSim(refreshedSummary?.currentRun?.id ?? refreshedSummary?.latestRun?.id ?? null);
     } catch (error) {
       setRunMessage(formatError(error));
     } finally {
       setSubmittingRun(false);
+    }
+  };
+
+  const startControlledValidationP3 = async () => {
+    if (!p3Availability?.available) {
+      setP3RunMessage(p3Availability?.message ?? "P3 endpoint availability has not been confirmed by the backend.");
+      return;
+    }
+
+    setSubmittingP3Run(true);
+    setP3RunMessage("Submitting controlled validation P3 request...");
+    try {
+      const result = await api.startControlledValidationP3(p3RunRequest);
+      setP3RunResult(result);
+      setP3RunMessage(result.message);
+
+      const refreshedSummary = await loadWorkspacePipeline();
+      await loadWorkspaceSim(result.run?.id ?? refreshedSummary?.currentRun?.id ?? refreshedSummary?.latestRun?.id ?? null);
+    } catch (error) {
+      setP3RunMessage(formatError(error));
+    } finally {
+      setSubmittingP3Run(false);
     }
   };
 
@@ -403,6 +510,7 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
               <Tabs values={SCENARIO_TABS} selected={scenarioTab} onSelect={setScenarioTab} colors={colors} compact />
               {scenarioTab === "Run Orchestrator" && <RunOrchestrator colors={colors} scenarios={scenarios} sensorCountTooHigh={sensorCountTooHigh} activeSensorCount={activeSensorCount} runForm={runForm} setRunForm={setRunForm} startRun={startRun} submittingRun={submittingRun} runResult={runResult} runMessage={runMessage} areaCode={areaCode} setMainTab={setMainTab} setScenarioTab={setScenarioTab} />}
               {scenarioTab === "Scenario Definition" && <ScenarioDefinition colors={colors} scenarios={scenarios} />}
+              {scenarioTab === "P3 Negative Pipeline" && <P3NegativePipelinePanel colors={colors} summary={summary} p3Availability={p3Availability} p3RunRequest={p3RunRequest} setP3RunRequest={setP3RunRequest} p3RunResult={p3RunResult} p3RunMessage={p3RunMessage} submittingP3Run={submittingP3Run} startControlledValidationP3={startControlledValidationP3} setMainTab={setMainTab} setEvidenceTab={setEvidenceTab} setFlowTab={setFlowTab} />}
               {scenarioTab === "Latest Run" && <LatestRunView colors={colors} run={displayRun} />}
               {scenarioTab === "Runtime State Control" && <RuntimeStateControl colors={colors} confirm={confirm} setConfirm={setConfirm} resetRuntime={resetRuntime} loading={loading} resetResult={resetResult} />}
             </>
@@ -418,6 +526,7 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
             <>
               <Tabs values={EVIDENCE_TABS} selected={evidenceTab} onSelect={setEvidenceTab} colors={colors} compact />
               {evidenceTab === "Latest Run Audit" && <LatestRunAuditView colors={colors} audit={runAudit} />}
+              {evidenceTab === "Controlled Validation" && <ControlledValidationEvidenceView colors={colors} />}
               {evidenceTab === "Compare B vs C" && <CompareBvsC colors={colors} compare={compareResult} />}
               {evidenceTab === "Run Timings" && <RunTimings colors={colors} run={displayRun} summary={summary} audit={runAudit} timings={runTimings} timingsMessage={runTimingsMessage} />}
               {evidenceTab === "Diagnostics" && <DiagnosticsView colors={colors} diagnostics={diagnostics} selectedDiagnostic={selectedDiagnostic} diagnosticResult={diagnosticResult} executeDiagnostic={executeDiagnostic} loading={loading} />}
@@ -461,11 +570,12 @@ export function Workspace({ isDark, setIsDark }: { isDark: boolean; setIsDark: D
               {modelTab === "Domain Model" && <DomainModel colors={colors} />}
               {modelTab === "Data Chain" && <DataChain colors={colors} />}
               {modelTab === "Data Provenance" && <DataProvenance colors={colors} summary={summary} />}
+              {modelTab === "V3 Readiness" && <V3ReadinessView colors={colors} />}
               {modelTab === "Territorial & Weather Context" && <TerritorialContext colors={colors} cells={cells} sensors={sensorNodes} summary={summary} />}
               {modelTab === "Code Mapping" && <CodeMapping colors={colors} />}
             </>
           )}
-        </WorkspacePanel>)};
+        </WorkspacePanel>)}
     </main>
   );
 }
@@ -596,6 +706,7 @@ function AreaRiskView({ colors, areaId, summary, dashboardLink }: { colors: Colo
         <Metric colors={colors} title="Precipitation 24h" value={formatMaybeScore(summary?.indexComparison?.dailyPrecipitationMillimeters)} detail={summary?.indexComparison?.provenance ?? "daily reference not exposed"} icon={<CloudRain size={18} />} tone="#0369a1" />
         <Metric colors={colors} title="Recent Risk Rows" value={summary?.risk.recentCount ?? 0} detail={formatRiskRange(summary?.risk.minScore, summary?.risk.maxScore)} icon={<Clock size={18} />} tone="#0891b2" />
       </MetricGrid>
+      <Banner colors={colors} tone="#64748b">NP, FWI and KBDI values shown here are persisted backend projections/diagnostics. The frontend does not score, recalibrate indexes or claim scientific ground truth.</Banner>
       <Panel colors={colors}>
         <SectionHeader title="Score Components" subtitle="Read from persisted risk_assessment_log; frontend does not score." />
         <KeyValues colors={colors} rows={[
@@ -662,8 +773,12 @@ function RunOrchestrator(props: {
   const { colors, scenarios, activeSensorCount, sensorCountTooHigh, runForm, setRunForm, startRun, submittingRun, runResult, runMessage, areaCode, setMainTab, setScenarioTab } = props;
   const activeProfiles = normalizeProfiles(runForm.degradationProfiles, runForm.degradationProfile);
   const scenarioCWithoutDegradation = runForm.scenarioCode === "scenario_c" && activeProfiles.every(profile => profile === "none");
+  const blockedProfiles = activeProfiles.filter(isBlockedDegradationProfile);
   const setDegradationProfile = (profile: string, checked: boolean) => {
     setRunForm(current => {
+      if (isBlockedDegradationProfile(profile) && checked) {
+        return current;
+      }
       const currentProfiles = normalizeProfiles(current.degradationProfiles, current.degradationProfile);
       let next = currentProfiles;
       if (profile === "none") {
@@ -698,10 +813,10 @@ function RunOrchestrator(props: {
         <LabeledInput colors={colors} label="run label" value={runForm.runLabel ?? ""} onChange={value => setRunForm(current => ({ ...current, runLabel: value || null }))} />
       </FormGrid>
       <div style={{ marginTop: "10px" }}>
-        <label style={labelStyle(colors)}>degradation profiles</label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+        <label style={labelStyle(colors)}>P2 observation degradation profiles</label>
+        <div style={cardGrid()}>
           {DEGRADATION_PROFILE_OPTIONS.map(profile => (
-            <CheckRow key={profile} colors={colors} label={profile} checked={activeProfiles.includes(profile)} onChange={checked => setDegradationProfile(profile, checked)} />
+            <ProfileCheckCard key={profile} colors={colors} profile={profile} checked={activeProfiles.includes(profile)} onChange={checked => setDegradationProfile(profile, checked)} />
           ))}
         </div>
       </div>
@@ -710,15 +825,149 @@ function RunOrchestrator(props: {
       </div>
       {sensorCountTooHigh && <Banner colors={colors} tone="#dc2626">sensorCount exceeds active sensors for this area.</Banner>}
       {scenarioCWithoutDegradation && <Banner colors={colors} tone="#b45309">scenario_c is intended for degraded/operational comparison. Select at least one degradation profile for a meaningful C run.</Banner>}
+      {blockedProfiles.length > 0 && <Banner colors={colors} tone="#dc2626">Blocked profile(s): {blockedProfiles.join(", ")}. They are represented as future validation work and cannot be launched from this UI.</Banner>}
+      <Banner colors={colors} tone="#2563eb">These profiles alter simulator observations for P2-style evidence. P3 negative pipeline fault cases are represented separately and are not launched through this scenario endpoint.</Banner>
       <CheckRow colors={colors} label="collect evidence" checked={runForm.collectEvidence} onChange={value => setRunForm(current => ({ ...current, collectEvidence: value }))} />
       <CheckRow colors={colors} label="wait for completion" checked={runForm.waitForCompletion} onChange={value => setRunForm(current => ({ ...current, waitForCompletion: value }))} />
       <CheckRow colors={colors} label="allow parallel run" checked={runForm.allowParallelRun} onChange={value => setRunForm(current => ({ ...current, allowParallelRun: value }))} />
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
-        <button style={button(colors)} onClick={startRun} disabled={submittingRun || sensorCountTooHigh}><Play size={16} /> {submittingRun ? "Submitting..." : "Start Run"}</button>
+        <button style={button(colors)} onClick={startRun} disabled={submittingRun || sensorCountTooHigh || blockedProfiles.length > 0}><Play size={16} /> {submittingRun ? "Submitting..." : "Start Run"}</button>
         <button style={button(colors)} onClick={() => { setMainTab("Scenario Lab"); setScenarioTab("Latest Run"); }}><ArrowRight size={16} /> Latest Run</button>
       </div>
       {(runMessage || runResult) && <RunRequestResult colors={colors} result={runResult} request={runForm} message={runMessage} areaCode={areaCode} />}
     </Panel>
+  );
+}
+
+function ProfileCheckCard({ colors, profile, checked, onChange }: { colors: Colors; profile: string; checked: boolean; onChange: (value: boolean) => void }) {
+  const details = DEGRADATION_PROFILE_DETAILS[profile] ?? { label: profile, status: "Profile", detail: "Simulator degradation profile." };
+  const blocked = isBlockedDegradationProfile(profile);
+  return (
+    <label style={{ ...panel(colors), display: "grid", gridTemplateColumns: "auto 1fr", gap: "9px", alignItems: "start", opacity: blocked ? 0.72 : 1, cursor: blocked ? "not-allowed" : "pointer" }}>
+      <input type="checkbox" checked={checked && !blocked} disabled={blocked} onChange={event => onChange(event.target.checked)} style={{ marginTop: "3px" }} />
+      <span>
+        <span style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+          <strong style={{ color: colors.textPrimary }}>{details.label}</strong>
+          <Badge colors={colors}>{details.status}</Badge>
+        </span>
+        <span style={{ ...paragraph(colors), display: "block" }}>{details.detail}</span>
+      </span>
+    </label>
+  );
+}
+
+function P3NegativePipelinePanel(props: {
+  colors: Colors;
+  summary: RuntimeSummaryResponse | null;
+  p3Availability: ControlledValidationP3AvailabilityResponse | null;
+  p3RunRequest: ControlledValidationP3RunRequest;
+  setP3RunRequest: Dispatch<SetStateAction<ControlledValidationP3RunRequest>>;
+  p3RunResult: ControlledValidationP3RunResponse | null;
+  p3RunMessage: string | null;
+  submittingP3Run: boolean;
+  startControlledValidationP3: () => void;
+  setMainTab: Dispatch<SetStateAction<(typeof MAIN_TABS)[number]>>;
+  setEvidenceTab: Dispatch<SetStateAction<(typeof EVIDENCE_TABS)[number]>>;
+  setFlowTab: Dispatch<SetStateAction<(typeof FLOW_TABS)[number]>>;
+}) {
+  const {
+    colors,
+    summary,
+    p3Availability,
+    p3RunRequest,
+    setP3RunRequest,
+    p3RunResult,
+    p3RunMessage,
+    submittingP3Run,
+    startControlledValidationP3,
+    setMainTab,
+    setEvidenceTab,
+    setFlowTab,
+  } = props;
+  const latestRunLabel = summary?.latestRun?.orchestratorCorrelationId ?? summary?.latestRun?.scenarioCode ?? "Not available";
+  const executableCases = P3_CASES.filter(item => item.status === "matched").length;
+  const blockedCases = P3_CASES.filter(item => item.status === "blocked_needs_fixture").length;
+  const canRunP3 = Boolean(p3Availability?.available) && !submittingP3Run;
+  return (
+    <ViewStack>
+      <MetricGrid>
+        <Metric colors={colors} title="P3 status" value="Closed" detail={`canonical run ${P3_CANONICAL.runLabel}`} icon={<ShieldCheck size={18} />} tone="#059669" />
+        <Metric colors={colors} title="Executable cases" value={`${executableCases}/10`} detail="all required executable P3 cases matched" icon={<Clipboard size={18} />} tone="#2563eb" />
+        <Metric colors={colors} title="Blocked fixtures" value={blockedCases} detail="sensor_inactive and sensor_area_mismatch" icon={<AlertTriangle size={18} />} tone="#b45309" />
+        <Metric colors={colors} title="Unexpected accepted/risk" value="0" detail="p3_unexpected_accepted_or_risk.csv has no data rows" icon={<ShieldCheck size={18} />} tone="#059669" />
+      </MetricGrid>
+      <Panel colors={colors} accent="#7c3aed">
+        <SectionHeader title="P3 Negative Pipeline" subtitle="Dedicated controlled-validation endpoint; the normal Scenario Lab runtime endpoint is not used for P3 faults." />
+        <KeyValues colors={colors} rows={[
+          ["Canonical run label", P3_CANONICAL.runLabel],
+          ["Sidecar", P3_CANONICAL.sidecar],
+          ["Query pack", P3_CANONICAL.queryPack],
+          ["Latest runtime label visible to UI", latestRunLabel],
+          ["Endpoint availability", p3Availability ? `${p3Availability.available ? "Available" : "Blocked"} (${p3Availability.environment})` : "Not loaded"],
+          ["Endpoint phase", p3Availability?.phase ?? "Not loaded"],
+        ]} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px", marginTop: "12px" }}>
+          <LabeledInput
+            colors={colors}
+            label="Run label"
+            value={p3RunRequest.runLabel ?? ""}
+            onChange={value => setP3RunRequest(current => ({ ...current, runLabel: value }))}
+          />
+          <LabeledNumber
+            colors={colors}
+            label="Timeout seconds"
+            value={p3RunRequest.timeoutSeconds}
+            onChange={value => setP3RunRequest(current => ({ ...current, timeoutSeconds: value ?? 300 }))}
+          />
+          <div style={panel(colors)}>
+            <strong style={{ color: colors.textPrimary, display: "block", marginBottom: "8px" }}>Execution flags</strong>
+            <CheckRow colors={colors} label="Wait for completion" checked={p3RunRequest.waitForCompletion} onChange={value => setP3RunRequest(current => ({ ...current, waitForCompletion: value }))} />
+            <CheckRow colors={colors} label="Collect evidence" checked={p3RunRequest.collectEvidence} onChange={value => setP3RunRequest(current => ({ ...current, collectEvidence: value }))} />
+            <CheckRow colors={colors} label="Request audit after completion" checked={p3RunRequest.runAuditAfterCompletion} onChange={value => setP3RunRequest(current => ({ ...current, runAuditAfterCompletion: value }))} />
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
+          <button style={{ ...button(colors), opacity: canRunP3 ? 1 : 0.65, cursor: canRunP3 ? "pointer" : "not-allowed" }} disabled={!canRunP3} onClick={startControlledValidationP3}>
+            <Play size={16} /> {submittingP3Run ? "Running P3..." : "Run P3 suite"}
+          </button>
+          <button style={button(colors)} onClick={() => { setMainTab("Evidence & Comparison"); setEvidenceTab("Controlled Validation"); }}><Search size={16} /> Evidence</button>
+          <button style={button(colors)} onClick={() => { setMainTab("Flow Explorer"); setFlowTab("Retry & Quarantine"); }}><ArrowRight size={16} /> Retry paths</button>
+        </div>
+        <Banner colors={colors} tone={p3Availability?.available ? "#2563eb" : "#b45309"}>{p3Availability?.message ?? "P3 execution remains disabled until the backend confirms Development/Evidence availability."}</Banner>
+        <Banner colors={colors} tone="#b45309">This action is allowlisted: it does not accept raw JSON, routing keys, fault-case edits, sensor edits or area edits. Query-pack audit remains mandatory after runtime completion.</Banner>
+        {p3RunMessage && <Banner colors={colors} tone="#2563eb">{p3RunMessage}</Banner>}
+        {p3RunResult && <P3RunResult colors={colors} result={p3RunResult} />}
+      </Panel>
+      <Panel colors={colors}>
+        <SectionHeader title="P3 Cases" subtitle="Executable cases are closed; fixture cases remain explicitly blocked." />
+        <SimpleTable colors={colors} columns={["Fault case", "Path", "Expected code/path", "Status", "Projection expectation"]} rows={p3CaseRows()} />
+      </Panel>
+    </ViewStack>
+  );
+}
+
+function P3RunResult({ colors, result }: { colors: Colors; result: ControlledValidationP3RunResponse }) {
+  return (
+    <div style={{ ...panel(colors), marginTop: "12px", borderColor: result.auditRequired ? "#b45309" : "#059669" }}>
+      <SectionHeader title="Latest P3 Request" subtitle={`${result.status} in ${result.environment}`} />
+      <KeyValues colors={colors} rows={[
+        ["Run label", result.runLabel],
+        ["Phase", result.phase],
+        ["Message count", String(result.messageCount)],
+        ["Executable / blocked", `${result.executableCases} / ${result.blockedCases}`],
+        ["Simulation run", result.run?.id ?? "Not observed"],
+        ["Evidence path", result.evidencePath ?? "Not collected"],
+        ["Query pack path", result.queryPackPath ?? "Manual audit required"],
+        ["Audit required", result.auditRequired ? "Yes" : "No"],
+      ]} />
+      {result.notes.length > 0 && (
+        <SimpleTable
+          colors={colors}
+          columns={["Notes"]}
+          rows={result.notes.map(note => [note])}
+        />
+      )}
+    </div>
   );
 }
 
@@ -770,9 +1019,11 @@ function LatestRunAuditView({ colors, audit }: { colors: Colors; audit: RuntimeR
   if (!audit) {
     return <Panel colors={colors}><EmptyState colors={colors} text="No latest run audit is available." /></Panel>;
   }
+  const p3LikeRun = isControlledValidationP3Run(audit.run);
 
   return (
     <ViewStack>
+      {p3LikeRun && <Banner colors={colors} tone="#7c3aed">This latest run appears to be part of controlled validation P3. The generic run audit is not the full P3 expected-vs-observed report; use Controlled Validation for the canonical query pack.</Banner>}
       <MetricGrid>
         <Metric colors={colors} title="Expected events" value={audit.expectedEvents ?? "Not available"} detail="run overrides x cycles" icon={<Clipboard size={18} />} tone="#2563eb" />
         <Metric colors={colors} title="Accepted readings" value={audit.acceptedReadings} detail="accepted_reading_log" icon={<ShieldCheck size={18} />} tone="#059669" />
@@ -809,6 +1060,32 @@ function LatestRunAuditView({ colors, audit }: { colors: Colors; audit: RuntimeR
           {audit.limitations.map(item => <li key={item.code}>{item.message}</li>)}
         </ul>
         <CollapsibleJson colors={colors} title="Raw audit JSON" value={audit} />
+      </Panel>
+    </ViewStack>
+  );
+}
+
+function ControlledValidationEvidenceView({ colors }: { colors: Colors }) {
+  return (
+    <ViewStack>
+      <MetricGrid>
+        <Metric colors={colors} title="P0/P1/P2/P3 evidence" value="Present" detail="controlled validation query pack and sidecar summaries" icon={<Database size={18} />} tone="#2563eb" />
+        <Metric colors={colors} title="P3 executable cases" value="10 matched" detail="negative pipeline required cases" icon={<ShieldCheck size={18} />} tone="#059669" />
+        <Metric colors={colors} title="P3 blocked cases" value="2 fixtures" detail="sensor_inactive; sensor_area_mismatch" icon={<AlertTriangle size={18} />} tone="#b45309" />
+        <Metric colors={colors} title="P3 positive leakage" value="0" detail="no unexpected accepted/risk rows" icon={<ShieldCheck size={18} />} tone="#059669" />
+      </MetricGrid>
+      <Panel colors={colors} accent="#2563eb">
+        <SectionHeader title="Controlled Validation Status" subtitle="Evidence is represented from local query packs and summaries; the UI does not execute SQL or recalculate risk." />
+        <SimpleTable colors={colors} columns={["Phase/artifact", "Status", "Meaning"]} rows={VALIDATION_PHASE_ROWS} />
+      </Panel>
+      <Panel colors={colors} accent="#7c3aed">
+        <SectionHeader title="P3 Expected vs Observed" subtitle={`Canonical run: ${P3_CANONICAL.runLabel}`} />
+        <SimpleTable colors={colors} columns={["Fault case", "Path", "Expected code/path", "Status", "Projection expectation"]} rows={p3CaseRows()} />
+        <Banner colors={colors} tone="#b45309">`sensor_inactive` and `sensor_area_mismatch` are not treated as runtime failures. They remain blocked until safe fixtures exist.</Banner>
+      </Panel>
+      <Panel colors={colors}>
+        <SectionHeader title="Evidence References" subtitle="Paths are local repository artifacts generated by controlled validation and read-only query packs." />
+        <SimpleTable colors={colors} columns={["Artifact", "Path", "Purpose", "Action"]} rows={p3EvidenceRows(colors)} />
       </Panel>
     </ViewStack>
   );
@@ -993,6 +1270,16 @@ function ProcessingPipeline({ colors, summary }: { colors: Colors; summary: Runt
 function RetryQuarantine({ colors, summary }: { colors: Colors; summary: RuntimeSummaryResponse | null }) {
   return (
     <ViewStack>
+      <Panel colors={colors} accent="#7c3aed">
+        <SectionHeader title="P3 Retry, Rejected and Quarantine Paths" subtitle="Canonical controlled-validation interpretation; live charts below still come from the current runtime summary window." />
+        <div style={cardGrid()}>
+          <InfoCard colors={colors} title="Retry then success" status="matched" detail="P3_RETRY_TRANSIENT_THEN_SUCCESS: 2 attempts, 1 retry, 1 accepted/risk projection." />
+          <InfoCard colors={colors} title="Retry exhausted" status="matched" detail="P3_RETRY_EXHAUSTED_TO_QUARANTINE: 3 attempts, 2 retries, terminal quarantine, no accepted/risk projection." />
+          <InfoCard colors={colors} title="Permanent failure" status="matched" detail="P3_PERMANENT_FAILURE_TO_QUARANTINE: 1 attempt, terminal quarantine." />
+          <InfoCard colors={colors} title="Pre-inbox rejected" status="5 matched" detail="Invalid JSON, missing payload, unsupported type/version and invalid operational state never become accepted readings." />
+        </div>
+        <SimpleTable colors={colors} columns={["Fault case", "Path", "Expected code/path", "Status", "Projection expectation"]} rows={p3CaseRows().filter(row => String(row[1]).includes("Retry") || String(row[1]).includes("Quarantined") || String(row[1]).includes("Rejected"))} />
+      </Panel>
       <div style={cardGrid()}>
         <ChartPanel colors={colors} title="Attempts by Outcome"><BarGraph data={(summary?.pipeline.attemptsByOutcomeAndError ?? []).map(item => ({ name: item.errorCode ? `${item.outcome}/${item.errorCode}` : item.outcome, value: item.count }))} color="#7c3aed" /></ChartPanel>
         <ChartPanel colors={colors} title="Failed Attempts by Error"><BarGraph data={(summary?.pipeline.attemptsByOutcomeAndError ?? []).filter(item => item.errorCode || !/success|completed|accepted/i.test(item.outcome)).map(item => ({ name: item.errorCode ?? item.outcome, value: item.count }))} color="#b45309" /></ChartPanel>
@@ -1004,7 +1291,7 @@ function RetryQuarantine({ colors, summary }: { colors: Colors; summary: Runtime
         <Panel colors={colors}><SectionHeader title="Latest Quarantined" /><EventRows colors={colors} rows={(summary?.pipeline.latestQuarantined ?? []).map(item => [item.quarantineCode, item.quarantineReason, formatDate(item.quarantinedAt)])} empty="No recent quarantined events." /></Panel>
         <Panel colors={colors}><SectionHeader title="Latest Failed Attempts" /><EventRows colors={colors} rows={(summary?.pipeline.latestFailedAttempts ?? []).map(item => [item.errorCode ?? item.outcome, `${item.stage} / attempt ${item.attemptNumber} / ${item.errorMessage ?? "No error message"}`, `${formatDate(item.startedAt)} -> ${formatDate(item.finishedAt)}`])} empty="No recent failed attempts." /></Panel>
       </div>
-      <Banner colors={colors} tone="#64748b">Retry and quarantine are backend pipeline concerns: invalid events are rejected early; failed processing attempts may retry; terminal poison cases are quarantined. Counts here come from persisted pipeline summaries and diagnostics.</Banner>
+      <Banner colors={colors} tone="#64748b">Retry and quarantine are backend pipeline concerns: invalid events may be rejected before inbox persistence; failed processing attempts may retry; terminal poison cases are quarantined. Counts here come from persisted pipeline summaries and diagnostics.</Banner>
     </ViewStack>
   );
 }
@@ -1115,6 +1402,38 @@ function DataProvenance({ colors, summary }: { colors: Colors; summary: RuntimeS
           ["Admin", "Runtime State Control; Reset; future user/role management"],
         ]} />
         <Banner colors={colors} tone="#b45309">Role-based visibility can be applied to tabs and actions, but backend authorization is required for enforcement. Frontend visibility is not security.</Banner>
+      </Panel>
+    </ViewStack>
+  );
+}
+
+function V3ReadinessView({ colors }: { colors: Colors }) {
+  const artifacts = [
+    ["Controlled validation P3 summary", P3_CANONICAL.summary, "Negative pipeline closure summary."],
+    ["Query pack manifest", `${P3_CANONICAL.queryPack}manifest.md`, "Read-only extraction inventory."],
+    ["M3 label support", `${P3_CANONICAL.queryPack}postgres/p3_m3_label_support.csv`, "Label support/readiness evidence only."],
+    ["M5 negative traceability", `${P3_CANONICAL.queryPack}postgres/p3_negative_m5_traceability.csv`, "Traceability across negative paths."],
+    ["Unexpected accepted/risk guard", `${P3_CANONICAL.queryPack}postgres/p3_unexpected_accepted_or_risk.csv`, "Guards against positive projections for negative cases."],
+  ];
+  return (
+    <ViewStack>
+      <Banner colors={colors} tone="#7c3aed">V3 here means data audit and controlled-validation readiness. It does not mean trained ML, shadow runtime, dataset publication, GNN implementation or final scientific calibration.</Banner>
+      <Panel colors={colors} accent="#2563eb">
+        <SectionHeader title="Validation Readiness" subtitle="Current evidence state by phase and milestone." />
+        <SimpleTable colors={colors} columns={["Phase/milestone", "State", "Evidence boundary"]} rows={VALIDATION_PHASE_ROWS} />
+      </Panel>
+      <Panel colors={colors} accent="#7c3aed">
+        <SectionHeader title="V3 Artifacts" subtitle="Repository evidence paths; not frontend-generated data." />
+        <SimpleTable colors={colors} columns={["Artifact", "Path", "Use"]} rows={artifacts} />
+      </Panel>
+      <Panel colors={colors}>
+        <SectionHeader title="Blocked/Future Work" />
+        <SimpleTable colors={colors} columns={["Item", "State", "Reason"]} rows={[
+          ["sensor_inactive", "blocked_needs_fixture", "Requires a safe fixture instead of mutating nominal sensors."],
+          ["sensor_area_mismatch", "blocked_needs_fixture", "Requires a safe two-area/controlled event fixture instead of changing real relationships."],
+          ["P3 UI generation", "not wired", "Requires guarded Development/Evidence backend endpoint with allowlist and evidence reporting."],
+          ["ML/GNN", "not implemented", "Out of scope for this controlled-validation UI representation mission."],
+        ]} />
       </Panel>
     </ViewStack>
   );
@@ -1560,6 +1879,10 @@ function formatError(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected UI/runtime error";
 }
 
+function buildP3RunLabel() {
+  return `controlled-validation-p3-negative-pipeline-${new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14)}-ui`;
+}
+
 function parseJson(value: string | null | undefined) {
   if (!value) {
     return null;
@@ -1592,6 +1915,38 @@ function formatRiskRange(min: number | null | undefined, max: number | null | un
     return "No recent scores";
   }
   return `min ${min.toFixed(2)} / max ${max.toFixed(2)}`;
+}
+
+function isBlockedDegradationProfile(profile: string) {
+  return DEGRADATION_PROFILE_DETAILS[profile]?.blocked === true;
+}
+
+function isControlledValidationP3Run(run: RuntimeRunSummaryResponse | null | undefined) {
+  if (!run) {
+    return false;
+  }
+  const text = [
+    run.orchestratorCorrelationId,
+    run.scenarioCode,
+    run.scenarioName,
+    run.metadataJson,
+    run.runOverrides?.requested?.degradationProfile,
+    run.runOverrides?.resolved?.degradationProfile,
+  ].filter(Boolean).join(" ").toLowerCase();
+  return text.includes(P3_CANONICAL.runLabel.toLowerCase()) || text.includes("p3_negative_pipeline") || text.includes("p3-negative-pipeline");
+}
+
+function p3CaseRows(): ReactNode[][] {
+  return P3_CASES.map(item => [item.id, item.category, item.expected, item.status, item.effect]);
+}
+
+function p3EvidenceRows(colors: Colors): ReactNode[][] {
+  return P3_EVIDENCE_REFERENCES.map(([label, path, purpose]) => [
+    label,
+    path,
+    purpose,
+    <button key={path} style={button(colors)} onClick={() => copyText(path)}><Clipboard size={16} /> Copy path</button>,
+  ]);
 }
 
 function normalizeProfiles(values: string[] | null | undefined, legacy: string | null | undefined) {

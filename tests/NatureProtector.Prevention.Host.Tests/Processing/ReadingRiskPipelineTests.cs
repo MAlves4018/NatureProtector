@@ -411,6 +411,74 @@ public sealed class ReadingRiskPipelineTests
     }
 
     [Fact]
+    public async Task ProcessAcceptedReadingAsync_PreservesDelayedEligibility_WhenDailyMetricsAreComplete()
+    {
+        var areaId = Guid.NewGuid();
+        var sensorId = Guid.NewGuid();
+        var simulationRunId = Guid.NewGuid();
+        var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
+        var riskAssessmentRepository = new InMemoryRiskAssessmentRepository();
+        var areaRiskSnapshotRepository = new InMemoryAreaRiskSnapshotRepository();
+        var projectionStore = new InMemoryAreaOperationalProjectionStore();
+        var influxWriteService = new FakeInfluxWriteService();
+        var scoringService = new CapturingRiskScoringService();
+        var pipeline = CreatePipeline(
+            acceptedReadingRepository,
+            riskAssessmentRepository,
+            areaRiskSnapshotRepository,
+            projectionStore,
+            influxWriteService,
+            new RiskEligibilityService(),
+            scoringService);
+        var start = new DateTimeOffset(2026, 5, 18, 8, 0, 0, TimeSpan.Zero);
+        var temperature = EnvelopeFactory.Create(
+            areaId: areaId,
+            simulationRunId: simulationRunId,
+            sensorId: sensorId,
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 30.0,
+            eventTime: start);
+        var humidity = EnvelopeFactory.Create(
+            areaId: areaId,
+            simulationRunId: simulationRunId,
+            sensorId: sensorId,
+            metricType: SensorMetricType.Humidity,
+            unit: MeasurementUnit.Percent,
+            value: 35.0,
+            eventTime: start.AddMinutes(1));
+        var wind = EnvelopeFactory.Create(
+            areaId: areaId,
+            simulationRunId: simulationRunId,
+            sensorId: sensorId,
+            metricType: SensorMetricType.WindSpeed,
+            unit: MeasurementUnit.MetersPerSecond,
+            value: 7.0,
+            eventTime: start.AddMinutes(2));
+        var delayed = EnvelopeFactory.Create(
+            areaId: areaId,
+            simulationRunId: simulationRunId,
+            sensorId: sensorId,
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 34.2,
+            operationalState: SensorOperationalState.Delayed,
+            eventTime: start.AddMinutes(3));
+
+        await pipeline.ProcessAcceptedReadingAsync(temperature, CancellationToken.None);
+        await pipeline.ProcessAcceptedReadingAsync(humidity, CancellationToken.None);
+        await pipeline.ProcessAcceptedReadingAsync(wind, CancellationToken.None);
+        await pipeline.ProcessAcceptedReadingAsync(delayed, CancellationToken.None);
+
+        Assert.Equal(4, scoringService.Inputs.Count);
+        var delayedInput = scoringService.Inputs[^1];
+        Assert.True(delayedInput.Metrics.IsCompleteV1);
+        Assert.Equal(RiskInputStatus.PartialButUsable, delayedInput.InputStatus);
+        Assert.Equal(RiskEligibilityReason.DelayedReading, delayedInput.EligibilityReason);
+        Assert.Contains("Delayed", delayedInput.QualityFlags);
+    }
+
+    [Fact]
     public async Task ProcessAcceptedReadingAsync_CompletesWithoutRiskArtifacts_WhenReadingIsNotEligible()
     {
         var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();

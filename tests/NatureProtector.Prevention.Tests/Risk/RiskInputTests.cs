@@ -237,6 +237,37 @@ public sealed class RiskInputTests
     }
 
     [Fact]
+    public void FromWindow_PreservesPartialEligibility_WhenMetricsAreComplete()
+    {
+        var areaId = Guid.NewGuid();
+        var sensorId = Guid.NewGuid();
+        var start = new DateTimeOffset(2026, 4, 30, 10, 45, 0, TimeSpan.Zero);
+        var readings = new[]
+        {
+            CreateReading(areaId, sensorId, SensorMetricType.Temperature, MeasurementUnit.Celsius, 32.0, start),
+            CreateReading(areaId, sensorId, SensorMetricType.Humidity, MeasurementUnit.Percent, 24.0, start.AddSeconds(10)),
+            CreateReading(areaId, sensorId, SensorMetricType.WindSpeed, MeasurementUnit.MetersPerSecond, 6.0, start.AddSeconds(20))
+        };
+        var eligibility = RiskEligibilityResult.PartialButUsable(
+            RiskEligibilityReason.DelayedReading,
+            "Reading is delayed but still usable.",
+            qualityFlags: ["Delayed"]);
+
+        var input = RiskInput.FromWindow(
+            readings,
+            eligibility,
+            dailyCellState: null,
+            simulationRunId: Guid.NewGuid(),
+            gridCellId: Guid.NewGuid(),
+            configurationVersionId: Guid.NewGuid());
+
+        Assert.True(input.Metrics.IsCompleteV1);
+        Assert.Equal(RiskInputStatus.PartialButUsable, input.InputStatus);
+        Assert.Equal(RiskEligibilityReason.DelayedReading, input.EligibilityReason);
+        Assert.Contains("Delayed", input.QualityFlags);
+    }
+
+    [Fact]
     public void FromWindow_MarksPartialWithLowCoverage_WhenOnlyOneMetricIsAvailable()
     {
         var input = RiskInput.FromWindow(

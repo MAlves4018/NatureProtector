@@ -19,17 +19,21 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
     private const string TestAuthScheme = "TestAuth";
     private readonly bool _controlPlaneAvailable;
     private readonly string _availabilityMessage;
+    private readonly string _environmentName;
 
     public ControlPlaneApiWebApplicationFactory(
         bool controlPlaneAvailable = true,
-        string availabilityMessage = "Fake control plane available for API tests.")
+        string availabilityMessage = "Fake control plane available for API tests.",
+        string environmentName = "Development")
     {
         _controlPlaneAvailable = controlPlaneAvailable;
         _availabilityMessage = availabilityMessage;
+        _environmentName = environmentName;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment(_environmentName);
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
         {
             configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
@@ -659,6 +663,27 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
                 [],
                 null,
                 null));
+
+        public Task<ControlledValidationP3RunResponse> StartControlledValidationP3Async(
+            ControlledValidationP3RunRequest request,
+            string environmentName,
+            CancellationToken cancellationToken)
+            => Task.FromResult(new ControlledValidationP3RunResponse(
+                Guid.Parse("93000000-0000-0000-0000-000000000001"),
+                request.RunLabel ?? "controlled-validation-p3-negative-pipeline-tests",
+                "P3NegativePipeline",
+                "Validated",
+                environmentName,
+                "Fake P3 request accepted.",
+                DateTimeOffset.UtcNow,
+                11,
+                10,
+                2,
+                "docs/evidence/controlled-validation/p3/fake",
+                null,
+                true,
+                null,
+                ["Fake control plane does not launch P3 runtime."]));
 
         public Task<RuntimeResetResponse> ResetRuntimeStateAsync(
             RuntimeResetRequest request,

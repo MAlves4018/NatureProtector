@@ -31,6 +31,7 @@ public sealed class ReadingEventProcessingService(
     ReadingRiskPipeline readingRiskPipeline,
     IReadingEventInbox readingEventInbox,
     IReadingSemanticValidator readingSemanticValidator,
+    IProcessingFaultInjector processingFaultInjector,
     IProcessingFailureClassifier failureClassifier)
 {
     private readonly PreventionHostOptions _options = preventionHostOptions.Value;
@@ -90,6 +91,11 @@ public sealed class ReadingEventProcessingService(
                     errorCode);
                 return;
             }
+
+            await processingFaultInjector.InjectAsync(
+                envelope,
+                lease,
+                cancellationToken);
 
             await readingRiskPipeline.ProcessAcceptedReadingAsync(
                 envelope,

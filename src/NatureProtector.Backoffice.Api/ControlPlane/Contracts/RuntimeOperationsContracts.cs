@@ -113,3 +113,36 @@ public sealed record RuntimeResetResponse(
     string Message,
     IReadOnlyList<RuntimeTableCountResponse> Before,
     IReadOnlyList<RuntimeTableCountResponse> After);
+
+public sealed record ControlledValidationP3AvailabilityResponse(
+    string Phase,
+    string Environment,
+    bool Available,
+    string Message,
+    int MessageCount,
+    int ExecutableCases,
+    int BlockedCases);
+
+public sealed record ControlledValidationP3RunRequest(
+    string? RunLabel = null,
+    bool WaitForCompletion = true,
+    bool CollectEvidence = true,
+    bool RunAuditAfterCompletion = false,
+    int TimeoutSeconds = 300);
+
+public sealed record ControlledValidationP3RunResponse(
+    Guid RequestId,
+    string RunLabel,
+    string Phase,
+    string Status,
+    string Environment,
+    string Message,
+    DateTimeOffset RequestedAtUtc,
+    int MessageCount,
+    int ExecutableCases,
+    int BlockedCases,
+    string? EvidencePath,
+    string? QueryPackPath,
+    bool AuditRequired,
+    RuntimeRunSummaryResponse? Run,
+    IReadOnlyList<string> Notes);

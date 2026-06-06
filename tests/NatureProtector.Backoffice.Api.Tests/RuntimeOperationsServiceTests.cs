@@ -240,6 +240,62 @@ public sealed class RuntimeOperationsServiceTests
     }
 
     [Fact]
+    public async Task StartControlledValidationP3_WithLaunchDisabled_ReturnsValidatedAndAuditRequired()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.StartControlledValidationP3Async(
+            ValidP3Request(),
+            "Development",
+            CancellationToken.None);
+
+        Assert.Equal("Validated", result.Status);
+        Assert.Equal("P3NegativePipeline", result.Phase);
+        Assert.Equal(11, result.MessageCount);
+        Assert.Equal(10, result.ExecutableCases);
+        Assert.Equal(2, result.BlockedCases);
+        Assert.True(result.AuditRequired);
+        Assert.Null(result.QueryPackPath);
+        Assert.Contains("controlled-validation-p3-negative-pipeline-tests", result.EvidencePath);
+        Assert.Contains(result.Notes, note => note.Contains("launch is disabled", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task StartControlledValidationP3_ActiveRun_IsBlocked()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: true);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.StartControlledValidationP3Async(
+            ValidP3Request(),
+            "Development",
+            CancellationToken.None);
+
+        Assert.Equal("Blocked", result.Status);
+        Assert.Contains("active runtime run", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.True(result.AuditRequired);
+    }
+
+    [Fact]
+    public async Task StartControlledValidationP3_InvalidRunLabel_IsRejected()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.StartControlledValidationP3Async(
+            ValidP3Request() with { RunLabel = "bad label" },
+            "Development",
+            CancellationToken.None);
+
+        Assert.Equal("Rejected", result.Status);
+        Assert.Contains("runLabel", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task ResetRuntimeState_DryRun_DoesNotDeleteRows()
     {
         await using var scope = new SqliteControlDbContextScope();
@@ -318,6 +374,14 @@ public sealed class RuntimeOperationsServiceTests
             TimeoutSeconds: 180,
             AllowParallelRun: false,
             RunLabel: "tests");
+
+    private static ControlledValidationP3RunRequest ValidP3Request()
+        => new(
+            "controlled-validation-p3-negative-pipeline-tests",
+            WaitForCompletion: true,
+            CollectEvidence: true,
+            RunAuditAfterCompletion: false,
+            TimeoutSeconds: 300);
 
     private static async Task SeedRuntimeAsync(SqliteControlDbContextScope scope, bool activeRun)
     {

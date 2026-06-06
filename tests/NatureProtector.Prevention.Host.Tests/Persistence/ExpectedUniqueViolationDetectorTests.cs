@@ -57,6 +57,20 @@ public sealed class ExpectedUniqueViolationDetectorTests
     }
 
     [Fact]
+    public void IsExpected_PostgresUniqueViolationWithDailyCellStateConstraint_ReturnsTrue()
+    {
+        var exception = CreateDbUpdateException(
+            PostgresErrorCodes.UniqueViolation,
+            NatureProtectorUniqueConstraints.DailyCellStateCellDayRun.PostgresConstraintName);
+
+        var result = ExpectedUniqueViolationDetector.IsExpected(
+            exception,
+            NatureProtectorUniqueConstraints.DailyCellStateCellDayRun);
+
+        Assert.True(result);
+    }
+
+    [Fact]
     public void IsExpected_PostgresUniqueViolationWithUnknownConstraint_ReturnsFalse()
     {
         var exception = CreateDbUpdateException(

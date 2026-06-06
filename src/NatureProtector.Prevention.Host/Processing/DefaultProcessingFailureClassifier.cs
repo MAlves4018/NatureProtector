@@ -30,6 +30,10 @@ public sealed class DefaultProcessingFailureClassifier : IProcessingFailureClass
 
         return exception switch
         {
+            ControlledValidationProcessingFaultException controlledValidationFault => new ProcessingFailureClassification(
+                controlledValidationFault.Kind,
+                controlledValidationFault.ErrorCode),
+
             TimeoutException => new ProcessingFailureClassification(
                 ProcessingFailureKind.Transient,
                 "timeout"),

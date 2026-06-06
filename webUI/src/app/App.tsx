@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ChakraProvider, createSystem, defaultConfig, defineConfig, Box,
 } from '@chakra-ui/react';
-import { createBrowserRouter, Outlet, RouterProvider, useLocation } from 'react-router-dom';
+import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
 import { MainPage } from './components/views/mainPage';
 import { DashBoards } from './components/views/dashBoards';
 import { NavBar } from './components/views/navBar';
@@ -16,9 +16,7 @@ import { TokenProvider } from './context/TokenContext';
 // ─── Chakra system ─────────────────────────────────────────────────────────────
 const system = createSystem(defaultConfig, defineConfig({ theme: {} }));
 
-function AppLayout({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {
-  const location = useLocation();
-  
+function AppLayout({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {  
   return (
     <>
       <NavBar isDark={isDark} setIsDark={setIsDark} />

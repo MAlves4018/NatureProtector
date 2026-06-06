@@ -36,10 +36,20 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
     private const int DefaultRecentMinutes = 30;
     private const int MinRecentMinutes = 1;
     private const int MaxRecentMinutes = 24 * 60;
+    private const string ControlledValidationP3Phase = "P3NegativePipeline";
+    private const string ControlledValidationP3AreaCode = "proenca-a-nova";
+    private const string ControlledValidationP3ScenarioCode = "scenario_b";
+    private const string ControlledValidationP3RunLabelPrefix = "controlled-validation-p3-negative-pipeline-";
+    private const int ControlledValidationP3MessageCount = 11;
+    private const int ControlledValidationP3ExecutableCases = 10;
+    private const int ControlledValidationP3BlockedCases = 2;
 
     private readonly IDbContextFactory<NatureProtectorControlDbContext> _dbContextFactory;
     private readonly string _repositoryRoot;
     private readonly bool _enableRuntimeProcessLaunch;
+    private static readonly Regex ControlledValidationRunLabelRegex = new(
+        "^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$",
+        RegexOptions.Compiled);
 
     private static readonly IReadOnlyList<RuntimeDiagnosticDefinitionResponse> RuntimeDiagnostics =
     [
@@ -1255,6 +1265,272 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
                 warnings.ToArray(),
                 directory,
                 request.CollectEvidence ? directory : null);
+    }
+
+    public async Task<ControlledValidationP3RunResponse> StartControlledValidationP3Async(
+        ControlledValidationP3RunRequest request,
+        string environmentName,
+        CancellationToken cancellationToken)
+    {
+        var requestedAtUtc = DateTimeOffset.UtcNow;
+        var requestId = Guid.NewGuid();
+        var notes = new List<string>
+        {
+            "Dedicated P3 endpoint: no arbitrary payload, fault-case list, routing key, sensor or area input is accepted.",
+            "Query pack 11 is not executed by this endpoint; post-run audit remains mandatory.",
+            "sensor_inactive and sensor_area_mismatch remain blocked_needs_fixture in the current P3 manifest."
+        };
+
+        if (!IsControlledValidationEnvironmentAllowed(environmentName))
+        {
+            return P3Response(
+                "Rejected",
+                "Controlled validation P3 execution is only available in Development or Evidence.",
+                NormalizeControlledValidationRunLabel(request.RunLabel, requestedAtUtc),
+                null,
+                null);
+        }
+
+        var runLabel = NormalizeControlledValidationRunLabel(request.RunLabel, requestedAtUtc);
+        if (!ControlledValidationRunLabelRegex.IsMatch(runLabel) ||
+            !runLabel.StartsWith(ControlledValidationP3RunLabelPrefix, StringComparison.Ordinal))
+        {
+            return P3Response(
+                "Rejected",
+                $"runLabel must start with '{ControlledValidationP3RunLabelPrefix}' and contain only letters, digits, '.', '_' or '-'.",
+                runLabel,
+                null,
+                null);
+        }
+
+        if (request.RunAuditAfterCompletion)
+        {
+            notes.Add("runAuditAfterCompletion was requested, but no safe Backoffice query-pack executor exists yet; auditRequired remains true.");
+        }
+
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var activeRunCount = await dbContext.SimulationRuns
+            .AsNoTracking()
+            .CountAsync(entity => entity.EndedAt == null, cancellationToken);
+        if (activeRunCount > 0)
+        {
+            return P3Response(
+                "Blocked",
+                $"Controlled validation P3 is blocked while {activeRunCount} active runtime run(s) exist.",
+                runLabel,
+                null,
+                null);
+        }
+
+        var duplicateRunLabel = await dbContext.SimulationRuns
+            .AsNoTracking()
+            .AnyAsync(entity => entity.MetadataJson != null && entity.MetadataJson.Contains(runLabel), cancellationToken);
+        if (duplicateRunLabel)
+        {
+            return P3Response(
+                "Rejected",
+                "runLabel was already observed in control.simulation_runs metadata; choose a unique label.",
+                runLabel,
+                null,
+                null);
+        }
+
+        var area = await dbContext.Areas
+            .AsNoTracking()
+            .SingleOrDefaultAsync(entity => entity.Code == ControlledValidationP3AreaCode, cancellationToken);
+        if (area is null)
+        {
+            return P3Response(
+                "Rejected",
+                $"Required P3 area '{ControlledValidationP3AreaCode}' was not found.",
+                runLabel,
+                null,
+                null);
+        }
+
+        var scenarioExists = await dbContext.ScenarioDefinitions
+            .AsNoTracking()
+            .AnyAsync(entity => entity.AreaId == area.Id && entity.Code == ControlledValidationP3ScenarioCode, cancellationToken);
+        if (!scenarioExists)
+        {
+            return P3Response(
+                "Rejected",
+                $"Required P3 scenario '{ControlledValidationP3ScenarioCode}' was not found for area '{ControlledValidationP3AreaCode}'.",
+                runLabel,
+                null,
+                null);
+        }
+
+        var nominalSensor = await dbContext.SensorNodes
+            .AsNoTracking()
+            .Where(entity => entity.AreaId == area.Id && entity.IsActive)
+            .OrderBy(entity => entity.Name)
+            .Select(entity => new { entity.Id, entity.Name })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (nominalSensor is null)
+        {
+            return P3Response(
+                "Rejected",
+                $"Required active sensor was not found for area '{ControlledValidationP3AreaCode}'.",
+                runLabel,
+                null,
+                null);
+        }
+
+        var controlledValidationRunId = Guid.NewGuid();
+        var simulationRunId = Guid.NewGuid();
+        var sensorNotFoundId = Guid.NewGuid();
+        var evidenceRoot = Path.Combine(_repositoryRoot, "docs", "evidence", "controlled-validation", "p3");
+        var evidencePath = BuildControlledValidationEvidencePath(evidenceRoot, requestedAtUtc, runLabel);
+
+        if (!_enableRuntimeProcessLaunch)
+        {
+            notes.Add("Runtime process launch is disabled for this service instance; P3 request was validated only.");
+            return P3Response(
+                "Validated",
+                "Controlled validation P3 request is valid; process launch is disabled in this context.",
+                runLabel,
+                evidencePath,
+                null);
+        }
+
+        Directory.CreateDirectory(evidencePath);
+        await WriteJsonEvidenceAsync(evidencePath, "backoffice-request.json", request, cancellationToken);
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            WorkingDirectory = _repositoryRoot,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = request.CollectEvidence,
+            RedirectStandardError = request.CollectEvidence
+        };
+        startInfo.ArgumentList.Add("run");
+        startInfo.ArgumentList.Add("--no-restore");
+        startInfo.ArgumentList.Add("--configfile");
+        startInfo.ArgumentList.Add("NuGet.Config");
+        startInfo.ArgumentList.Add("--project");
+        startInfo.ArgumentList.Add("src/NatureProtector.Simulator.Host");
+        startInfo.Environment["DOTNET_ENVIRONMENT"] = environmentName;
+        startInfo.Environment["Simulator__ControlPlaneEnabled"] = "true";
+        startInfo.Environment["Simulator__ControlPlaneAreaCode"] = ControlledValidationP3AreaCode;
+        startInfo.Environment["Simulator__ControlPlaneScenarioCode"] = ControlledValidationP3ScenarioCode;
+        startInfo.Environment["ControlledValidation__Enabled"] = "true";
+        startInfo.Environment["ControlledValidation__Phase"] = ControlledValidationP3Phase;
+        startInfo.Environment["ControlledValidation__ControlledValidationRunId"] = controlledValidationRunId.ToString("D");
+        startInfo.Environment["ControlledValidation__RunLabel"] = runLabel;
+        startInfo.Environment["ControlledValidation__ScenarioCode"] = ControlledValidationP3ScenarioCode;
+        startInfo.Environment["ControlledValidation__AreaId"] = area.Id.ToString("D");
+        startInfo.Environment["ControlledValidation__SimulationRunId"] = simulationRunId.ToString("D");
+        startInfo.Environment["ControlledValidation__NominalSensorId"] = nominalSensor.Id.ToString("D");
+        startInfo.Environment["ControlledValidation__NominalSensorName"] = nominalSensor.Name;
+        startInfo.Environment["ControlledValidation__SensorNotFoundId"] = sensorNotFoundId.ToString("D");
+        startInfo.Environment["ControlledValidation__EventTime"] = requestedAtUtc.ToString("o");
+        startInfo.Environment["ControlledValidation__WriteEvidenceSidecar"] = "true";
+        startInfo.Environment["ControlledValidation__EvidenceOutputRoot"] = evidenceRoot;
+
+        var process = Process.Start(startInfo);
+        if (process is null)
+        {
+            return P3Response(
+                "Failed",
+                "Simulator.Host process could not be started for controlled validation P3.",
+                runLabel,
+                evidencePath,
+                null);
+        }
+
+        Task<string>? stdoutTask = request.CollectEvidence ? process.StandardOutput.ReadToEndAsync(cancellationToken) : null;
+        Task<string>? stderrTask = request.CollectEvidence ? process.StandardError.ReadToEndAsync(cancellationToken) : null;
+
+        if (request.WaitForCompletion)
+        {
+            var timeout = TimeSpan.FromSeconds(Math.Clamp(request.TimeoutSeconds, 5, 3600));
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(timeout);
+            try
+            {
+                await process.WaitForExitAsync(timeoutCts.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                await TryTerminateProcessTreeAsync(
+                    process,
+                    timeout,
+                    warning =>
+                    {
+                        notes.Add(warning);
+                        return Task.CompletedTask;
+                    });
+            }
+        }
+
+        var run = await FindRuntimeRunByCorrelationAsync(
+            dbContext,
+            ControlledValidationP3AreaCode,
+            ControlledValidationP3ScenarioCode,
+            requestedAtUtc.AddSeconds(-5),
+            $"controlled-validation:{runLabel}",
+            cancellationToken);
+
+        var status = request.WaitForCompletion switch
+        {
+            true when process.HasExited && process.ExitCode != 0 => "Failed",
+            true when run is not null => run.Status,
+            true => "Completed",
+            false => "Started"
+        };
+        var message = status switch
+        {
+            "Failed" => $"Controlled validation P3 process exited with code {process.ExitCode}.",
+            "Started" => "Controlled validation P3 was started; query pack audit is still required.",
+            _ when run is null => "Controlled validation P3 finished, but the persisted SimulationRun was not observed yet; query pack audit is still required.",
+            _ => "Controlled validation P3 finished; query pack audit is still required."
+        };
+        var response = P3Response(
+            status,
+            message,
+            runLabel,
+            request.CollectEvidence ? evidencePath : null,
+            ToRuntimeRun(run, notes));
+
+        if (request.CollectEvidence)
+        {
+            await WriteJsonEvidenceAsync(evidencePath, "backoffice-response.json", response, cancellationToken);
+            _ = Task.Run(() => CompleteControlledValidationP3EvidenceBundleAsync(
+                evidencePath,
+                process,
+                stdoutTask,
+                stderrTask,
+                CancellationToken.None), CancellationToken.None);
+        }
+
+        return response;
+
+        ControlledValidationP3RunResponse P3Response(
+            string status,
+            string message,
+            string label,
+            string? evidenceDirectory,
+            RuntimeRunSummaryResponse? run)
+            => new(
+                requestId,
+                label,
+                ControlledValidationP3Phase,
+                status,
+                environmentName,
+                message,
+                requestedAtUtc,
+                ControlledValidationP3MessageCount,
+                ControlledValidationP3ExecutableCases,
+                ControlledValidationP3BlockedCases,
+                evidenceDirectory,
+                null,
+                true,
+                run,
+                notes.ToArray());
     }
 
     public async Task<RuntimeResetResponse> ResetRuntimeStateAsync(
@@ -3053,14 +3329,35 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
         string LikelyEquivalentTo,
         string Notes);
 
+    private static bool IsControlledValidationEnvironmentAllowed(string? environmentName)
+        => string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase) ||
+           string.Equals(environmentName, "Evidence", StringComparison.OrdinalIgnoreCase);
+
+    private static string NormalizeControlledValidationRunLabel(
+        string? runLabel,
+        DateTimeOffset requestedAtUtc)
+        => string.IsNullOrWhiteSpace(runLabel)
+            ? $"{ControlledValidationP3RunLabelPrefix}{requestedAtUtc:yyyyMMdd-HHmmss}-ui"
+            : runLabel.Trim();
+
+    private static string BuildControlledValidationEvidencePath(
+        string evidenceRoot,
+        DateTimeOffset requestedAtUtc,
+        string runLabel)
+        => Path.Combine(
+            evidenceRoot,
+            $"{requestedAtUtc:yyyyMMdd-HHmmss}-{SanitizePathSegment(runLabel)}");
+
+    private static string SanitizePathSegment(string value)
+    {
+        var safeLabel = new string(value.Select(character =>
+            char.IsLetterOrDigit(character) || character is '-' or '_' or '.' ? character : '-').ToArray());
+        return string.IsNullOrWhiteSpace(safeLabel) ? "run" : safeLabel;
+    }
+
     private string PrepareApiRunLogDirectory(DateTimeOffset requestedAtUtc, string label)
     {
-        var safeLabel = new string(label.Select(character =>
-            char.IsLetterOrDigit(character) || character is '-' or '_' or '.' ? character : '-').ToArray());
-        if (string.IsNullOrWhiteSpace(safeLabel))
-        {
-            safeLabel = "run";
-        }
+        var safeLabel = SanitizePathSegment(label);
 
         var path = Path.Combine(
             _repositoryRoot,
@@ -3070,6 +3367,55 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             $"{requestedAtUtc:yyyyMMdd-HHmmss}-{safeLabel}");
         Directory.CreateDirectory(path);
         return path;
+    }
+
+    private static async Task CompleteControlledValidationP3EvidenceBundleAsync(
+        string evidenceDirectory,
+        Process process,
+        Task<string>? stdoutTask,
+        Task<string>? stderrTask,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            try
+            {
+                await process.WaitForExitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // The endpoint has already returned or the request was cancelled; leave persisted evidence intact.
+            }
+
+            if (stdoutTask is not null)
+            {
+                await WriteTextEvidenceAsync(evidenceDirectory, "simulator-host.stdout.log", await stdoutTask);
+            }
+
+            if (stderrTask is not null)
+            {
+                await WriteTextEvidenceAsync(evidenceDirectory, "simulator-host.stderr.log", await stderrTask);
+            }
+
+            await WriteJsonEvidenceAsync(
+                evidenceDirectory,
+                "process-exit.json",
+                new
+                {
+                    hasExited = process.HasExited,
+                    exitCode = process.HasExited ? process.ExitCode : (int?)null,
+                    completedAtUtc = DateTimeOffset.UtcNow
+                },
+                CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            await WriteTextEvidenceAsync(evidenceDirectory, "evidence-error.txt", exception.ToString());
+        }
+        finally
+        {
+            process.Dispose();
+        }
     }
 
     private async Task CompleteRunEvidenceBundleAsync(

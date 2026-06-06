@@ -287,17 +287,22 @@ public sealed record RiskInput(
             return RiskInputStatus.Blocked;
         }
 
+        if (metrics.V1MetricCount == 0)
+        {
+            return RiskInputStatus.Blocked;
+        }
+
+        if (eligibility.Status == RiskInputStatus.PartialButUsable)
+        {
+            return RiskInputStatus.PartialButUsable;
+        }
+
         if (metrics.IsCompleteV1)
         {
             return RiskInputStatus.CompleteEligible;
         }
 
-        if (metrics.V1MetricCount >= 1)
-        {
-            return RiskInputStatus.PartialButUsable;
-        }
-
-        return RiskInputStatus.Blocked;
+        return RiskInputStatus.PartialButUsable;
     }
 
     private static ObservationalConfidenceLevel ResolveWindowConfidence(

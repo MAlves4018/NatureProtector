@@ -1637,6 +1637,8 @@ Foi diagnosticada uma regressão runtime em `projection.daily_cell_state`, provo
 
 Foram executados build e testes após as alterações principais. A validação runtime mostrou que o sistema ficou novamente capaz de apresentar score NP, FWI, KBDI e proxy contextual português, embora permaneça como próximo ponto de estabilização a explicação de attempts que não entram diretamente nas categorias `successful`, `failed` ou `quarantined`.
 
+Foi ainda validado, numa fase posterior, o caminho clone-to-run após limpeza de containers, volumes e estado local. O fluxo `up.ps1` → `bootstrap-control-plane.ps1` → `Test-LocalBaseline.ps1 -InfrastructureOnly` → `npm ci` → `start-local-runtime.ps1` permitiu reconstruir a baseline, abrir a UI, autenticar com o utilizador local de desenvolvimento e executar `scenario_b` com sucesso.
+
 ---
 ## 12. Reestruturação e consolidação provisória do relatório V1
 
@@ -1674,6 +1676,171 @@ Permanecem limitações importantes no relatório. A principal é a falta de ima
 Outra limitação importante é o desalinhamento temporal face ao repositório. O relatório documenta a V1, mas o projeto já avançou para trabalho próximo da V2, nomeadamente com integração e exposição de FWI, KBDI, Portuguese Context Proxy, melhoria da fórmula NatureProtector, componentes de secura, histórico diário, comparação com índices e reforço da proveniência. Assim, o relatório atual é útil como fecho da V1, mas já não representa tudo o que existe ou está a ser estabilizado no repositório.
 
 A formulação correta para esta fase é, portanto, que o relatório atual é uma base provisória da V1: suficientemente coerente para documentar a baseline técnica, mas ainda incompleta como relatório final do projeto NatureProtector.
+
+Nesta fase foram também preparados artefactos complementares para entrega e discussão com os professores: o documento de organização do repositório e o poster do projeto. Estes documentos servem objetivos diferentes do relatório: o documento de organização explica a estrutura e execução do repositório, enquanto o poster sintetiza visualmente o projeto para apresentação.
+
+## 12A. Fecho do caminho clone-to-run e preparação da baseline para beta
+
+Depois da consolidação inicial do setup local, foi feita uma validação mais próxima do cenário de um utilizador que clona o repositório pela primeira vez. O objetivo foi confirmar que o projeto não dependia apenas de conhecimento tácito ou de estado local já preparado, mas que podia ser executado seguindo uma sequência documentada.
+
+Para simular esse cenário, foram parados processos locais do projeto, removidos containers e volumes Docker da baseline, apagado o ficheiro `.env` local, removido estado runtime local e limpos artefactos ignorados pelo Git. Esta validação permitiu perceber melhor que o caminho correto de primeira execução não deve depender de `dotnet-ef` como passo obrigatório, porque essa ferramenta pode não estar instalada no ambiente do utilizador.
+
+Ficou estabilizado que o caminho principal de setup deve ser:
+
+```powershell
+Copy-Item .env.example .env
+
+.\infra\scripts\up.ps1
+
+.\scripts\postgres\bootstrap-control-plane.ps1
+
+.\scripts\setup\Test-LocalBaseline.ps1 -InfrastructureOnly
+
+cd .\webUI
+npm ci
+cd ..
+
+powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+```
+
+Com esta validação, foi clarificado que o bootstrap PostgreSQL é o mecanismo principal para preparar a base de dados local. O `dotnet-ef` ficou reservado para validação avançada ou desenvolvimento, e não como requisito normal para executar a baseline.
+
+Também foi confirmado que, num clone limpo, a pasta `webUI/node_modules` não existe. Ao tentar arrancar o runtime sem instalar dependências frontend, o Vite falhava com a mensagem `'vite' is not recognized`. Por isso, o setup passou a incluir explicitamente o passo `npm ci` dentro da pasta `webUI`, antes de arrancar o runtime local.
+
+O script `start-local-runtime.ps1` foi ajustado para tornar esta falha mais clara. Em vez de esperar 60 segundos pela porta `5173` sem explicar a causa, o script passou a verificar se as dependências da webUI existem e a indicar diretamente que é necessário correr `cd .\webUI; npm ci; cd ..`.
+
+Foi ainda validado o comportamento do login local. Em ambiente de desenvolvimento, a UI pode ser acedida com:
+
+* utilizador: `admin`;
+* password: `admin123`.
+
+Este fluxo não foi tratado como autenticação de produção, mas como mecanismo local de desenvolvimento e demonstração. A documentação passou a indicar que estas credenciais são apenas para a baseline local.
+
+Durante esta fase, foi também analisado o comportamento do `Test-LocalBaseline.ps1 -Full`. Verificou-se que esse modo pode reportar falha no endpoint da Backoffice API com erro `401 Unauthorized`, porque alguns endpoints estão protegidos por autenticação. Esse resultado não invalida a baseline quando a infraestrutura está funcional, a UI responde, o login local funciona e o Run Orchestrator consegue executar runs. Por isso, a validação recomendada para primeira instalação passou a ser `Test-LocalBaseline.ps1 -InfrastructureOnly`, deixando o modo `Full` como diagnóstico adicional.
+
+## 12B. Validação final do Run Orchestrator e evidência runtime
+
+Após a limpeza do ambiente e a reconstrução da baseline, foi executada uma nova validação do `scenario_b` através do fluxo atual de execução. A run ficou registada em `control.simulation_runs` com `StartedAt`, `EndedAt` e `Status = 3`, confirmando que a execução terminou corretamente.
+
+A validação SQL confirmou:
+
+* `processing_attempts = 30`;
+* `Outcome = 1`;
+* `ErrorCode` vazio;
+* `risk_assessments = 30`;
+* score mínimo aproximadamente `0.4178`;
+* score máximo aproximadamente `0.4482`.
+
+Foi ainda confirmado que, depois da run, não existia processo `NatureProtector.Simulator.Host` ativo. Isto resolveu uma preocupação anterior sobre o possível comportamento pendurado do simulador depois de uma execução lançada pelo orquestrador.
+
+Esta evidência confirmou que o caminho nominal da demo está funcional: infraestrutura ativa, base de dados inicializada, webUI acessível, login local funcional, Run Orchestrator operacional, eventos processados, avaliações de risco geradas e simulador encerrado após a run.
+
+Permaneceu como reserva a necessidade de manter evidência recente do `scenario_c`, caso este cenário seja usado como parte central da demo para demonstrar degradações operacionais. O `scenario_b` ficou validado como fluxo nominal; o `scenario_c` deve ser validado quando for necessário apresentar a comparação B/C ou demonstrar perfis de erro.
+
+## 12C. Ajustes finais de documentação, README e limitações operacionais
+
+Na fase final, o `README.md` foi revisto para deixar de apresentar instruções antigas ou ambíguas de arranque manual dos hosts. O fluxo principal passou a apontar para o documento de setup local, evitando duplicar instruções e reduzindo o risco de o utilizador seguir caminhos desatualizados.
+
+O documento `docs/setup/local-baseline-setup.md` foi atualizado para refletir o caminho real de execução. Foram acrescentadas instruções sobre:
+
+* criação do `.env` a partir do `.env.example`;
+* utilização do token local de desenvolvimento já presente no `.env.example`;
+* arranque da infraestrutura com `up.ps1`;
+* bootstrap PostgreSQL;
+* validação com `Test-LocalBaseline.ps1 -InfrastructureOnly`;
+* instalação das dependências da webUI com `npm ci`;
+* arranque do runtime local;
+* login `admin` / `admin123`;
+* execução de `scenario_b` no Run Orchestrator;
+* validação por queries SQL;
+* troubleshooting de Docker, PostgreSQL, InfluxDB, Grafana, webUI, erro `vite is not recognized`, erro `401` e processos locais pendurados.
+
+Foi também documentada uma limitação operacional importante: quando o runtime local está ativo, os processos `NatureProtector.Backoffice.Api` e `NatureProtector.Prevention.Host` podem bloquear DLLs em `bin\Debug\net9.0`. Nessa situação, o `dotnet build` pode falhar não por erro de código, mas porque o Windows não consegue substituir ficheiros em uso. A solução documentada foi confirmar e parar os processos locais antes de compilar.
+
+Ficou também registado que, antes de correr a suite de testes completa, é recomendável subir a infraestrutura com:
+
+```powershell
+.\infra\scripts\up.ps1
+```
+
+Isto é necessário porque alguns testes de API ou integração dependem dos serviços locais da baseline, como PostgreSQL, RabbitMQ e restantes dependências configuradas.
+
+## 12D. Evidência das bases de dados PostgreSQL e InfluxDB
+
+Foi iniciada a recolha estruturada de evidência sobre o estado das bases de dados. Para PostgreSQL, foram exportadas informações sobre:
+
+* tabelas existentes;
+* colunas e tipos;
+* constraints;
+* índices;
+* contagens por tabela;
+* amostras de dados;
+* dump apenas do schema.
+
+Esta evidência cobre os schemas `control`, `pipeline` e `projection`, permitindo demonstrar a separação entre configuração operacional, processamento de eventos e projeções de risco.
+
+Foi também preparado o método de recolha equivalente para InfluxDB, com o objetivo de documentar a base temporal `np_telemetry`, as tabelas/measurements existentes, colunas, tipos, contagens e amostras. Ao contrário do PostgreSQL, o InfluxDB é tratado como suporte de telemetria e observabilidade, não como fonte primária do estado funcional da pipeline.
+
+Durante esta análise, ficou reforçada a distinção entre os papéis das duas bases de dados:
+
+* PostgreSQL é a base principal para controlo, pipeline, projeções, risco e alertas;
+* InfluxDB suporta telemetria e observabilidade temporal da baseline local.
+
+## 12E. Preparação dos artefactos de entrega
+
+Para além do trabalho técnico no repositório, foi preparado material de entrega e comunicação.
+
+Foi produzida uma primeira versão do relatório do projeto. Esta versão foi assumida como provisória e ainda incompleta, mas suficientemente coerente para apresentar aos orientadores uma base de discussão. Foi reconhecido que o relatório ainda tem limitações, nomeadamente a ausência de imagens, diagramas e elementos visuais. Também ficou claro que o relatório principal deve beneficiar da criação de anexos técnicos, para que os detalhes mais extensos possam ser deslocados para documentação complementar e o corpo principal do relatório se concentre melhor na narrativa, compreensão do problema, solução desenvolvida, decisões tomadas e resultados obtidos.
+
+Foi também preparado o documento de organização do repositório, com o objetivo de explicar como o projeto está estruturado, como aceder ao repositório, que pastas existem, como correr a baseline local e quais são as principais notas de execução e validação.
+
+Além disso, foi criado o poster do projeto, funcionando como material visual de síntese para apresentação. O poster complementa o relatório e a demonstração, apresentando de forma mais direta o problema, a proposta, a arquitetura geral, os principais componentes e a validação.
+
+Foi ainda preparada uma mensagem formal para enviar aos professores, acompanhando a primeira versão do relatório e o documento de organização. Nessa mensagem foi explicado que o relatório ainda é uma primeira versão, que a tarefa foi subestimada inicialmente e que seria importante ter maior acompanhamento dos professores nesta fase, sobretudo na estrutura, nível de detalhe e forma de apresentação do projeto.
+
+## 12F. Revisão final antes da beta/demo
+
+Antes da entrega beta/demo, foi realizada uma revisão final leve ao estado do projeto. O objetivo não foi abrir nova fase de desenvolvimento, mas avaliar readiness: Git, setup, README, scripts principais, infraestrutura, documentação e evidência runtime.
+
+A revisão final concluiu que o estado mais adequado era `Pronto com reservas`. Não foram identificados P0 ativos. O caminho nominal da demo estava provado com `scenario_b`, o setup clone-to-run estava documentado e a infraestrutura local podia ser reconstruída a partir de um ambiente limpo.
+
+As reservas principais ficaram associadas a:
+
+* necessidade de evidência recente do `scenario_c`, se este for usado na demo;
+* decisão sobre versionar, resumir ou ignorar exports completos de evidência das bases de dados;
+* manutenção da documentação de setup alinhada com os scripts reais;
+* limitação operacional de DLLs bloqueadas quando se tenta compilar com runtime local ativo.
+
+Foi decidido não abrir alterações estruturais nesta fase. A solução robusta para evitar DLLs bloqueadas seria correr os hosts a partir de uma pasta `publish` isolada por execução, mas isso ficou fora do âmbito imediato por falta de tempo. Para a beta, a limitação foi documentada com comandos de diagnóstico e paragem dos processos locais.
+
+## Atualização aos próximos passos
+
+Alguns próximos passos anteriormente listados foram entretanto concluídos ou parcialmente fechados. Em particular:
+
+* o caminho de setup local foi validado com infraestrutura limpa;
+* o uso obrigatório de `dotnet-ef` foi removido do fluxo principal;
+* o bootstrap PostgreSQL passou a ser o caminho recomendado para preparar a base de dados;
+* o passo `npm ci` foi acrescentado como requisito para a webUI num clone novo;
+* o login local `admin` / `admin123` foi documentado;
+* o `scenario_b` foi validado com 30 processing attempts e 30 risk assessments;
+* o comportamento do `Simulator.Host` foi validado, não ficando pendurado após a run;
+* a limitação de DLLs bloqueadas por runtime ativo foi documentada;
+* o README foi revisto para apontar para o setup atualizado;
+* foram preparados o relatório, o documento de organização do repositório e o poster.
+
+Os próximos passos que permanecem relevantes são:
+
+1. Validar uma run recente de `scenario_c` caso a comparação B/C seja usada na demo.
+2. Recolher screenshots finais da UI, incluindo score NP, FWI, KBDI e Portuguese Context Proxy.
+3. Integrar imagens e diagramas essenciais no relatório.
+4. Rever a estrutura de anexos técnicos para aliviar o relatório principal.
+5. Decidir que evidência de base de dados deve ser versionada, resumida ou mantida apenas como artefacto local.
+6. Rever o relatório com os professores, em especial a estrutura, o nível de detalhe e a separação entre relatório principal e anexos.
+7. Continuar a clarificar no relatório a distinção entre V1, V2, validação técnica, comparação metodológica e validação científica futura.
+8. Preparar uma explicação curta para a demo sobre a diferença entre score NatureProtector, FWI, KBDI e Portuguese Context Proxy.
+9. Manter explícito que FWI, KBDI e Portuguese Context Proxy são componentes candidatos de comparação e proveniência, não produtos oficiais.
+10. Planear, numa fase posterior, a execução dos hosts a partir de uma pasta `publish` isolada para evitar bloqueios de DLL durante builds com runtime ativo.
+
 ---
 
 ## 13. Próximos passos

@@ -3,6 +3,7 @@ using NatureProtector.Infrastructure.Postgres.DependencyInjection;
 using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Observability;
 using NatureProtector.Simulator.Host.Configuration;
+using NatureProtector.Simulator.Host.ControlledValidation;
 using NatureProtector.Simulator.Host.Publishing;
 using NatureProtector.Simulator.Host.Services;
 
@@ -34,6 +35,8 @@ builder.Services.AddNatureProtectorOpenTelemetry(
 
 builder.Services.Configure<RabbitMqOptions>(
     builder.Configuration.GetSection(RabbitMqOptions.SectionName));
+builder.Services.Configure<ControlledValidationOptions>(
+    builder.Configuration.GetSection(ControlledValidationOptions.SectionName));
 
 builder.Services.AddSingleton<IValidateOptions<SimulatorOptions>, SimulatorOptionsValidator>();
 builder.Services.AddOptions<SimulatorOptions>()
@@ -77,8 +80,23 @@ builder.Services.AddSingleton<ISimulationRunStore>(
 
 builder.Services.AddSingleton<IReadingPublisher, ConsoleReadingPublisher>();
 builder.Services.AddSingleton<IReadingPublisher, RabbitMqReadingPublisher>();
+builder.Services.AddSingleton<ControlledValidationManifestFactory>();
+builder.Services.AddSingleton<ControlledValidationEvidenceWriter>();
+builder.Services.AddSingleton<IControlledValidationMessagePublisher, RabbitMqControlledValidationMessagePublisher>();
+builder.Services.AddSingleton<ControlledValidationOrchestrator>();
 
-builder.Services.AddHostedService<SimulationRunner>();
+var controlledValidationEnabled = builder.Configuration
+    .GetSection(ControlledValidationOptions.SectionName)
+    .GetValue<bool>(nameof(ControlledValidationOptions.Enabled));
+
+if (controlledValidationEnabled)
+{
+    builder.Services.AddHostedService<ControlledValidationRunner>();
+}
+else
+{
+    builder.Services.AddHostedService<SimulationRunner>();
+}
 
 var host = builder.Build();
 host.Run();

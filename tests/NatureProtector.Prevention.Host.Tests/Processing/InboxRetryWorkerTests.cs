@@ -68,6 +68,7 @@ public sealed class InboxRetryWorkerTests
             pipeline,
             new InMemoryReadingEventInbox(),
             new PassThroughReadingSemanticValidator(),
+            new NoOpProcessingFaultInjector(),
             new DefaultProcessingFailureClassifier());
     }
 

@@ -372,20 +372,23 @@ $webUrl = "http://127.0.0.1:$WebPort"
 $developerUrl = "$webUrl"
 
 $commonEnvironment = @{
-    ASPNETCORE_ENVIRONMENT  = 'Development'
-    DOTNET_ENVIRONMENT      = 'Development'
-    ASPNETCORE_URLS         = $apiUrl
-    POSTGRES_HOST           = $postgresHost
-    POSTGRES_PORT           = [string]$postgresPort
-    POSTGRES_DB             = $postgresDb
-    POSTGRES_USER           = $postgresUser
-    POSTGRES_PASSWORD       = $postgresPassword
-    RabbitMq__HostName      = 'localhost'
-    RabbitMq__Port          = [string]$rabbitPort
-    RabbitMq__UserName      = $rabbitUser
-    RabbitMq__Password      = $rabbitPassword
-    InfluxDb__Url           = "http://localhost:$influxPort"
-    VITE_API_PROXY_TARGET   = $apiUrl
+    ASPNETCORE_ENVIRONMENT                                             = 'Development'
+    DOTNET_ENVIRONMENT                                                 = 'Development'
+    ASPNETCORE_URLS                                                    = $apiUrl
+    POSTGRES_HOST                                                      = $postgresHost
+    POSTGRES_PORT                                                      = [string]$postgresPort
+    POSTGRES_DB                                                        = $postgresDb
+    POSTGRES_USER                                                      = $postgresUser
+    POSTGRES_PASSWORD                                                  = $postgresPassword
+    RabbitMq__HostName                                                 = 'localhost'
+    RabbitMq__Port                                                     = [string]$rabbitPort
+    RabbitMq__UserName                                                 = $rabbitUser
+    RabbitMq__Password                                                 = $rabbitPassword
+    InfluxDb__Url                                                      = "http://localhost:$influxPort"
+    VITE_API_PROXY_TARGET                                              = $apiUrl
+    ControlledValidation__ProcessingFaults__Enabled                    = 'true'
+    ControlledValidation__ProcessingFaults__EnableBuiltInP3Cases       = 'true'
+    ControlledValidation__ProcessingFaults__AllowedRunLabelPrefixes__0 = 'controlled-validation-p3-negative-pipeline-'
 }
 
 $webUiRoot = Join-Path $repositoryRoot 'webUI'
