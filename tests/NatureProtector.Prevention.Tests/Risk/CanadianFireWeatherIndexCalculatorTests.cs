@@ -19,12 +19,12 @@ public sealed class CanadianFireWeatherIndexCalculatorTests
         Assert.Equal(FireWeatherIndexCalculationStatus.CompleteWithCandidateDefaults, result.Status);
         Assert.Equal(1.0, result.InputCompleteness, precision: 6);
         Assert.Equal(93.788, result.FineFuelMoistureCode!.Value, precision: 3);
-        Assert.Equal(10.473, result.DuffMoistureCode!.Value, precision: 3);
-        Assert.Equal(22.536, result.DroughtCode!.Value, precision: 3);
+        Assert.Equal(154.473, result.DuffMoistureCode!.Value, precision: 3);
+        Assert.Equal(657.536, result.DroughtCode!.Value, precision: 3);
         Assert.Equal(18.142, result.InitialSpreadIndex!.Value, precision: 3);
-        Assert.Equal(10.402, result.BuildupIndex!.Value, precision: 3);
-        Assert.Equal(16.501, result.FireWeatherIndex!.Value, precision: 3);
-        Assert.Equal(0.206261, result.NormalizedFireWeatherIndex!.Value, precision: 6);
+        Assert.Equal(194.634, result.BuildupIndex!.Value, precision: 3);
+        Assert.Equal(56.460, result.FireWeatherIndex!.Value, precision: 3);
+        Assert.Equal(0.705752, result.NormalizedFireWeatherIndex!.Value, precision: 6);
         Assert.Contains("antecedent_fwi_codes_candidate_defaults", result.Limitations);
     }
 

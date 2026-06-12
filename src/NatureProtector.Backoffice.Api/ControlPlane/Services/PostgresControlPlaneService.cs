@@ -3955,6 +3955,7 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
                 entity.NormalizedKeetchByramDroughtIndex,
                 entity.KbdiCalculationStatus,
                 entity.Provenance,
+                entity.FireIndexProvenance,
                 entity.FireWeatherLimitations,
                 entity.KbdiLimitations,
                 entity.DailyPrecipitationMillimeters,
@@ -4003,10 +4004,19 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             .FirstOrDefault();
         var portugueseProxy = BuildPortugueseContextProxy(fwiClass.IpmaClass, latestRisk?.TerritoryComponent);
         var localPercentile = LocalFwiPercentileNotAvailable();
-        var valueSource = latest.Provenance?.Contains("reference", StringComparison.OrdinalIgnoreCase) == true ||
-            latest.Provenance?.Contains("import", StringComparison.OrdinalIgnoreCase) == true
-                ? "reference_or_imported"
-                : "calculated_candidate";
+        var fwiValueSource = ResolveIndexValueSource(
+            latest.FireWeatherIndex,
+            latest.FireWeatherCalculationStatus,
+            latest.FireIndexProvenance,
+            latest.Provenance,
+            "candidate_fwi_calculator");
+
+        var kbdiValueSource = ResolveIndexValueSource(
+            latest.KeetchByramDroughtIndex,
+            latest.KbdiCalculationStatus,
+            latest.FireIndexProvenance,
+            latest.Provenance,
+            "candidate_kbdi_calculator");
         var kbdiAntecedentDays = latest.KbdiLimitations?.Contains("antecedent_kbdi_candidate_default", StringComparison.OrdinalIgnoreCase) == true ||
             string.Equals(latest.KbdiCalculationStatus, "LimitedAntecedentHistory", StringComparison.OrdinalIgnoreCase)
                 ? 0
@@ -4019,21 +4029,21 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             latest.KeetchByramDroughtIndex,
             latest.NormalizedKeetchByramDroughtIndex,
             latest.KbdiCalculationStatus,
-            latest.Provenance,
+            latest.FireIndexProvenance ?? latest.Provenance,
             string.IsNullOrWhiteSpace(limitations) ? null : limitations,
             latest.DailyPrecipitationMillimeters,
             latest.LogicalDate,
-            valueSource == "calculated_candidate" ? latest.FireWeatherIndex : null,
-            valueSource == "reference_or_imported" ? latest.FireWeatherIndex : null,
-            valueSource,
+            fwiValueSource == "calculated_candidate" ? latest.FireWeatherIndex : null,
+            fwiValueSource == "reference_or_imported" ? latest.FireWeatherIndex : null,
+            fwiValueSource,
             fwiClass.IpmaClass,
             fwiClass.IpmaLabel,
             fwiClass.EffisClass,
             fwiClass.DistanceToNext,
             fwiClass.NextIpmaClass,
-            valueSource == "calculated_candidate" ? latest.KeetchByramDroughtIndex : null,
-            valueSource == "reference_or_imported" ? latest.KeetchByramDroughtIndex : null,
-            valueSource,
+            kbdiValueSource == "calculated_candidate" ? latest.KeetchByramDroughtIndex : null,
+            kbdiValueSource == "reference_or_imported" ? latest.KeetchByramDroughtIndex : null,
+            kbdiValueSource,
             kbdiClass.Code,
             kbdiClass.Label,
             kbdiClass.AntecedentQuality,
@@ -4045,6 +4055,45 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             localPercentile.Percentile,
             localPercentile.Reason);
     }
+
+    private static string ResolveIndexValueSource(
+        double? value,
+        string? calculationStatus,
+        string? indexProvenance,
+        string? generalProvenance,
+        string calculatorMarker)
+    {
+        if (!value.HasValue)
+        {
+            return "missing";
+        }
+
+        if (!string.IsNullOrWhiteSpace(indexProvenance) &&
+            indexProvenance.Contains(calculatorMarker, StringComparison.OrdinalIgnoreCase))
+        {
+            return "calculated_candidate";
+        }
+
+        if (string.Equals(calculationStatus, "CompleteWithCandidateDefaults", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(calculationStatus, "CalculatedFromHistory", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(calculationStatus, "Complete", StringComparison.OrdinalIgnoreCase))
+        {
+            return "calculated_candidate";
+        }
+
+        if ((!string.IsNullOrWhiteSpace(indexProvenance) &&
+             (indexProvenance.Contains("reference", StringComparison.OrdinalIgnoreCase) ||
+              indexProvenance.Contains("import", StringComparison.OrdinalIgnoreCase))) ||
+            (!string.IsNullOrWhiteSpace(generalProvenance) &&
+             (generalProvenance.Contains("reference", StringComparison.OrdinalIgnoreCase) ||
+              generalProvenance.Contains("import", StringComparison.OrdinalIgnoreCase))))
+        {
+            return "reference_or_imported";
+        }
+
+        return "calculated_candidate";
+    }
+
 
     private static RuntimeScoreComponentSummaryResponse BuildScoreComponentSummary(
         double? riskScore,

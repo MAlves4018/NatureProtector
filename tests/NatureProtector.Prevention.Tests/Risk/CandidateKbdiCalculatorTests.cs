@@ -15,9 +15,9 @@ public sealed class CandidateKbdiCalculatorTests
 
         Assert.Equal(KbdiCalculationStatus.LimitedAntecedentHistory, result.Status);
         Assert.Equal(1.0, result.InputCompleteness, precision: 6);
-        Assert.Equal(0.0, result.PreviousKeetchByramDroughtIndex!.Value, precision: 3);
-        Assert.Equal(18.401, result.KeetchByramDroughtIndex!.Value, precision: 3);
-        Assert.Equal(0.023001, result.NormalizedKeetchByramDroughtIndex!.Value, precision: 6);
+        Assert.Equal(650.0, result.PreviousKeetchByramDroughtIndex!.Value, precision: 3);
+        Assert.Equal(653.450, result.KeetchByramDroughtIndex!.Value, precision: 3);
+        Assert.Equal(0.816813, result.NormalizedKeetchByramDroughtIndex!.Value, precision: 6);
         Assert.Contains("antecedent_kbdi_candidate_default", result.Limitations);
         Assert.Contains("limited_antecedent_history", result.Limitations);
         Assert.Contains("mean_annual_rain_candidate_default", result.Limitations);

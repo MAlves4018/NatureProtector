@@ -6,7 +6,7 @@ namespace NatureProtector.Prevention.Risk;
 /// </summary>
 public sealed class CandidateKbdiCalculator : IKbdiCalculator
 {
-    public const double InitialKeetchByramDroughtIndex = 0.0;
+    public const double InitialKeetchByramDroughtIndex = 650.0;
 
     public KbdiResult Calculate(KbdiInput input)
     {

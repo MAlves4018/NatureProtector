@@ -7,8 +7,8 @@ namespace NatureProtector.Prevention.Risk;
 public sealed class CanadianFireWeatherIndexCalculator : IFireWeatherIndexCalculator
 {
     public const double InitialFineFuelMoistureCode = 85.0;
-    public const double InitialDuffMoistureCode = 6.0;
-    public const double InitialDroughtCode = 15.0;
+    public const double InitialDuffMoistureCode = 150.0;
+    public const double InitialDroughtCode = 650.0;
 
     private static readonly double[] DmcDayLengthFactors =
         [6.5, 7.5, 9.0, 12.8, 13.9, 13.9, 12.4, 10.9, 9.4, 8.0, 7.0, 6.0];
