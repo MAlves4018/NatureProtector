@@ -1,0 +1,77 @@
+name: Engineering foundations
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  backend:
+    name: Backend build and tests
+    runs-on: windows-latest
+    env:
+      BackofficeApi__ControlPlaneEnabled: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore .\NatureProtector.sln --configfile NuGet.Config --nologo
+
+      - name: Build
+        run: dotnet build .\NatureProtector.sln --no-restore --nologo -v minimal
+
+      - name: Test
+        run: dotnet test .\NatureProtector.sln --no-restore --nologo -v minimal -m:1
+
+  frontend:
+    name: Frontend typecheck, tests, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webUI
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.17.0
+          cache: npm
+          cache-dependency-path: webUI/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Coverage
+        run: npm run test:coverage
+
+      - name: Build
+        run: npm run build
+
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high --json > npm-audit.json || true
+
+      - name: Upload frontend test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-test-artifacts
+          path: |
+            webUI/test-results/
+            webUI/coverage/
+            webUI/npm-audit.json

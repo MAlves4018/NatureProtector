@@ -13,14 +13,19 @@ import {
     RuntimeDiagnosticCatalogResponse,
     RuntimeDiagnosticRequest,
     RuntimeDiagnosticResultResponse,
+    RuntimeEvidenceCatalogResponse,
+    RuntimeOperationalHealthResponse,
+    RabbitMqMetricsResponse,
     RuntimeResetRequest,
     RuntimeResetResponse,
     RuntimeRunAuditResponse,
+    RuntimeRunSummaryResponse,
     RuntimeRunStartRequest,
     RuntimeRunStartResponse,
     RuntimeRunTimingSummaryResponse,
     RuntimeSummaryResponse,
     ScenarioResponse,
+    SimulationRunResponse,
     SensorNodeResponse
 } from '../types';
 
@@ -82,6 +87,22 @@ export const api = {
         return httpClient.get<SensorNodeResponse[]>(url, api.getRequestOptions());
     },
 
+    listSimulationRuns: (areaCode?: string | null, scenarioCode?: string | null, take = 10) => {
+        const params = new URLSearchParams();
+        if (areaCode) {
+            params.set('areaCode', areaCode);
+        }
+        if (scenarioCode) {
+            params.set('scenarioCode', scenarioCode);
+        }
+        params.set('take', String(take));
+
+        return httpClient.get<SimulationRunResponse[]>(
+            `/control/simulation-runs?${params.toString()}`,
+            api.getRequestOptions()
+        );
+    },
+
     getRuntimeSummary: (areaCode?: string, recentMinutes = 30) => {
         const params = new URLSearchParams();
         if (areaCode) {
@@ -100,9 +121,37 @@ export const api = {
         );
     },
 
+    getRuntimeRun: (runId: string) => {
+        return httpClient.get<RuntimeRunSummaryResponse>(
+            `/control/runtime/runs/${runId}`,
+            api.getRequestOptions()
+        );
+    },
+
     getRuntimeRunTimings: (runId: string) => {
         return httpClient.get<RuntimeRunTimingSummaryResponse>(
             `/control/runtime/runs/${runId}/timings`,
+            api.getRequestOptions()
+        );
+    },
+
+    getRuntimeOperationalHealth: () => {
+        return httpClient.get<RuntimeOperationalHealthResponse>(
+            '/control/runtime/observability/health',
+            api.getRequestOptions()
+        );
+    },
+
+    getRuntimeRabbitMqMetrics: () => {
+        return httpClient.get<RabbitMqMetricsResponse>(
+            '/control/runtime/observability/rabbitmq',
+            api.getRequestOptions()
+        );
+    },
+
+    listRuntimeEvidence: () => {
+        return httpClient.get<RuntimeEvidenceCatalogResponse>(
+            '/control/runtime/observability/evidence',
             api.getRequestOptions()
         );
     },

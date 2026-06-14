@@ -33,7 +33,7 @@ export function LoggedOutBlock({ isDark, message, onAuthChange, mode = "panel" }
                         </div>
                     </div>
                 </div>
-                <p style={{ color: c.textSecondary, textAlign: "center", marginTop: "12px" }}>
+                <p style={{ color: c.textSecond, textAlign: "center", marginTop: "12px" }}>
                     {message}
                 </p>
             </section>

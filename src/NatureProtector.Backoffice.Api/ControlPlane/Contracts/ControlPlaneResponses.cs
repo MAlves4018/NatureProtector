@@ -262,7 +262,8 @@ public sealed record RuntimeRunAuditResponse(
     RuntimeAreaSnapshotAuditResponse? AreaSnapshot,
     IReadOnlyList<RuntimeLimitationResponse> Limitations,
     RuntimeScoreComponentSummaryResponse? ScoreComponents = null,
-    RuntimeIndexComparisonSummaryResponse? IndexComparison = null);
+    RuntimeIndexComparisonSummaryResponse? IndexComparison = null,
+    RuntimeDataScopeResponse? DataScope = null);
 
 public sealed record RuntimeAreaSnapshotAuditResponse(
     DateTimeOffset SnapshotTimestamp,

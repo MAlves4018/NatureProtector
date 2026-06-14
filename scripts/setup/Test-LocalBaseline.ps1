@@ -493,13 +493,25 @@ if ($checkInfrastructure) {
 }
 
 if ($checkRuntime) {
-    $backofficeUri = "http://localhost:$apiPort/api/control/configurations/active"
-    $backofficeHttp = Invoke-HttpCheck $backofficeUri
-    if ($backofficeHttp.Unauthorized) {
-        Add-Result "OK" "Backoffice API" "$backofficeUri requires authentication, which is expected" $true
+    $backofficeHealthUri = "http://localhost:$apiPort/health"
+    $backofficeHealth = Invoke-HttpCheck $backofficeHealthUri
+    if ($backofficeHealth.Success) {
+        Add-Result "OK" "Backoffice API health" "$backofficeHealthUri returned HTTP $($backofficeHealth.StatusCode)" $true
     }
     else {
-        Add-Result "FAIL" "Backoffice API" "not available or not ready at ${backofficeUri}: $($backofficeHttp.Error)" $true
+        Add-Result "FAIL" "Backoffice API health" "not available or not ready at ${backofficeHealthUri}: $($backofficeHealth.Error)" $true
+    }
+
+    $backofficeAuthGuardUri = "http://localhost:$apiPort/api/control/configurations/active"
+    $backofficeAuthGuard = Invoke-HttpCheck $backofficeAuthGuardUri
+    if ($backofficeAuthGuard.Success) {
+        Add-Result "OK" "Backoffice API auth guard" "$backofficeAuthGuardUri returned HTTP $($backofficeAuthGuard.StatusCode)" $false
+    }
+    elseif ($backofficeAuthGuard.StatusCode -eq 401 -or $backofficeAuthGuard.StatusCode -eq 403) {
+        Add-Result "OK" "Backoffice API auth guard" "$backofficeAuthGuardUri returned HTTP $($backofficeAuthGuard.StatusCode); authenticated endpoint is protected as expected" $false
+    }
+    else {
+        Add-Result "WARN" "Backoffice API auth guard" "unexpected response from ${backofficeAuthGuardUri}: $($backofficeAuthGuard.Error)" $false
     }
 
     $webUri = "http://localhost:$webPort"

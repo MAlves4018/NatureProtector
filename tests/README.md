@@ -102,13 +102,67 @@ Este comando:
 * agrega todos os `coverage.cobertura.xml`;
 * gera HTML e `Summary.txt` em `coveragereport_core`.
 
+## Frontend test gate
+
+A webUI tem uma gate propria de engenharia em `webUI/package.json`:
+
+```powershell
+cd .\webUI
+npm ci
+npm run typecheck
+npm test
+npm run test:coverage
+npm run build
+```
+
+O ambiente de testes usa Vitest, jsdom, Testing Library e `axe-core` para uma primeira baseline de componente/acessibilidade. Os artefactos `webUI/coverage/` e `webUI/test-results/` sao gerados localmente e ignorados por git.
+
+Ver tambem [docs/implementation/engineering-foundations.md](../docs/implementation/engineering-foundations.md) para a gate M02 completa, incluindo CI, auditoria npm e infraestrutura local.
+
+A fatia UI v2 da M03 acrescentou testes dedicados em `webUI/src/app/ui-v2/` para capacidades read-only, adapter de contexto, estados degradados, ajuda/F1, troca PT/EN e uma smoke de acessibilidade com `axe-core`. A M04 expandiu essa suite para selecao dinamica de area, runs/cenarios, ajuda integrada, simulacao read-only/autorizada e URLs novas do client API. A M05 expandiu novamente a suite para superficies tecnicas: Pipeline/Observability, QA, Evidence/Limitations, Administracao proporcional, P3 experimental, readiness, claims seguros e estados de ausencia explicita.
+
+Validacao M06 em `14/06/2026`:
+
+* `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\performance\run-local-readiness-workload.ps1 -DryRun`: passou;
+* `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\performance\run-local-readiness-workload.ps1 -ApiBaseUrl http://127.0.0.1:5254 -WebBaseUrl http://127.0.0.1:5173 -Repetitions 5`: passou com 55/55 statuses esperados;
+* `dotnet test .\NatureProtector.sln --nologo -v minimal -m:1`: passou com `1182` testes e `NU1902` conhecido;
+* `npm run typecheck`: passou;
+* `npm test`: passou com `30` testes frontend;
+* `npm run test:coverage`: passou, com `31.71%` de line coverage global da webUI e `84.28%` de line coverage em `app/ui-v2`;
+* `npm run build`: passou.
+
+O workload M06 e uma medicao local de HTTP/status/tempo. Nao mede throughput maximo, stress, broker backlog, publisher timestamps ou latencia end-to-end por evento.
+
+Validacao PRE-EXTERNAL-VERIFICATION-READINESS em `14/06/2026`:
+
+* `scripts\tests\generate-coverage-report.ps1`: passou com `82%` line coverage backend, `68.1%` branch coverage e `89.5%` method coverage; `Backoffice.Api.Tests` passou com `92` testes, incluindo auth guard de `configurations/active`;
+* `npm run test:coverage`: passou inicialmente com `31.66%` line coverage global da webUI e `84.12%` em `app/ui-v2`, abaixo do piso M06 de `84.28%`;
+* foi adicionado um teste para roles desconhecidas em `webUI/src/app/ui-v2/capabilities.test.ts`, cobrindo o fallback publico demo/help sem inventar roles;
+* `npm run test:coverage`: passou de novo com `31` testes frontend, `31.76%` line coverage global da webUI e `84.45%` em `app/ui-v2`.
+
+Os gaps restantes continuam concentrados na UI legacy/beta, user-plane API sem cobertura agregada relevante, integration glue e caminhos dependentes de infraestrutura externa. Nao foram adicionados testes artificiais apenas para inflar percentagens.
+
+Validacao M05 em `14/06/2026`:
+
+* `npm run typecheck`: passou;
+* `npm test -- src/app/ui-v2 src/app/services/api.test.ts`: passou com `27` testes;
+* `npm run test:coverage -- src/app/ui-v2 src/app/services/api.test.ts`: passou, com `30.72%` de line coverage global da webUI no run focado e `84.12%` de line coverage em `app/ui-v2`;
+* `npm run build`: passou;
+* `npm test`: passou com `30` testes frontend;
+* `dotnet test tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj --no-restore --nologo -v minimal -m:1`: passou com `91` testes;
+* `dotnet test NatureProtector.sln --no-restore --nologo -v minimal -m:1`: passou com `1182` testes.
+
+O ratchet local da UI v2 fica, apos M05, em `84.12%` de line coverage para `app/ui-v2`, acima do baseline M04 de `81.28%`. Isto nao altera a leitura da coverage global da beta/webUI legacy, que continua baixa e fora do escopo destas missoes UI v2.
+
 ## Warnings conhecidos
 
 A execução atual pode apresentar o warning `NU1902` associado ao pacote `OpenTelemetry.Exporter.OpenTelemetryProtocol 1.10.0`. Este warning é conhecido e não bloqueia a execução da suite, mas deve continuar registado enquanto a dependência não for atualizada ou justificada.
 
 ## Resultados atuais
 
-Atualizacao de `28/05/2026`: a medicao consolidada mais recente em `coveragereport_core/Summary.txt` reporta `87.6%` de line coverage, `76.8%` de branch coverage, `91.9%` de method coverage e `86.1%` de full method coverage. A queda face a medicoes anteriores e conhecida e vem sobretudo de DTOs, diagnostics, glue runtime/API, migrations e scripts de evidencia adicionados na frente V1. A prioridade imediata e estabilidade funcional dos indices NP/FWI/KBDI; testes adicionais devem focar `ControlRuntimeController`, diagnostics vazios/preenchidos, projection status e smoke B/C, sem criar testes artificiais apenas para inflar coverage.
+Atualizacao PRE-EXTERNAL-VERIFICATION-READINESS de `14/06/2026`: a medicao consolidada mais recente em `coveragereport_core/Summary.txt` reporta `82%` de line coverage, `68.1%` de branch coverage, `89.5%` de method coverage e `83.5%` de full method coverage, com `1183` testes backend passados nos projetos cobertos. A descida face ao valor historico acompanha a inclusao de API/runtime/control-plane/user-plane e glue operacional no escopo agregado; nao deve ser lida como validacao cientifica do modelo.
+
+Atualizacao de `28/05/2026`: a medicao consolidada anterior em `coveragereport_core/Summary.txt` reportava `87.6%` de line coverage, `76.8%` de branch coverage, `91.9%` de method coverage e `86.1%` de full method coverage. A queda face a medicoes anteriores e conhecida e vem sobretudo de DTOs, diagnostics, glue runtime/API, migrations e scripts de evidencia adicionados na frente V1. A prioridade imediata e estabilidade funcional dos indices NP/FWI/KBDI; testes adicionais devem focar `ControlRuntimeController`, diagnostics vazios/preenchidos, projection status e smoke B/C, sem criar testes artificiais apenas para inflar coverage.
 
 Medição histórica de `16/05/2026`, antes da frente V1 de diagnostics/API:
 

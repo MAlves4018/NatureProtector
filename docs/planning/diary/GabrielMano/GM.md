@@ -1,8 +1,4 @@
-﻿Aqui está o documento preenchido com a síntese da investigação técnica discutida. A estrutura original foi mantida, e o conteúdo foi injetado nas secções pertinentes, servindo como um registo formal e consolidado para o teu diário técnico.
-
-***
-
-# Diário Técnico de Gabriel Mano
+﻿# Diário Técnico de Gabriel Mano
 
 ## Recapitulação Quinzenal 1
 

@@ -34,6 +34,8 @@ builder.Services.AddNatureProtectorOpenTelemetry(
     enableAspNetCoreInstrumentation: true);
 
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks();
+builder.Services.AddHttpClient();
 builder.Services.AddOpenApi();
 builder.Services.Configure<BackofficeApiOptions>(
     builder.Configuration.GetSection(BackofficeApiOptions.SectionName));
@@ -76,6 +78,7 @@ if (backofficeOptions.ControlPlaneEnabled)
             services.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<NatureProtector.Infrastructure.Postgres.Persistence.NatureProtectorControlDbContext>>(),
             builder.Environment.ContentRootPath,
             enableRuntimeProcessLaunch: true));
+    builder.Services.AddScoped<IRuntimeObservabilityService, RuntimeObservabilityService>();
     builder.Services.AddSingleton<IPasswordHasher<UserRecord>, PasswordHasher<UserRecord>>();
     builder.Services.AddScoped<IUserRolePlaneService, PostgresUserRolePlaneService>();
 }
@@ -86,6 +89,9 @@ else
     builder.Services.AddSingleton<IControlPlaneService>(
         _ => new UnavailableControlPlaneService(
             "The control-plane API is disabled. Set BackofficeApi:ControlPlaneEnabled=true to enable PostgreSQL-backed endpoints."));
+    builder.Services.AddSingleton<IRuntimeObservabilityService>(
+        _ => new UnavailableRuntimeObservabilityService(
+            "Runtime observability is disabled because the control plane is not enabled."));
     builder.Services.AddSingleton<IUserRolePlaneService>(
         _ => new UnavailableUserRolePlaneService(
             "The user plane API is disabled because the control plane is not enabled."));
@@ -178,6 +184,7 @@ app.UseExceptionHandler(errorApp =>
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();

@@ -20,15 +20,24 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
     private readonly bool _controlPlaneAvailable;
     private readonly string _availabilityMessage;
     private readonly string _environmentName;
+    private readonly bool _authenticated;
+    private readonly IReadOnlyList<string> _roles;
+    private readonly IRuntimeObservabilityService? _runtimeObservabilityService;
 
     public ControlPlaneApiWebApplicationFactory(
         bool controlPlaneAvailable = true,
         string availabilityMessage = "Fake control plane available for API tests.",
-        string environmentName = "Development")
+        string environmentName = "Development",
+        IReadOnlyList<string>? roles = null,
+        bool authenticated = true,
+        IRuntimeObservabilityService? runtimeObservabilityService = null)
     {
         _controlPlaneAvailable = controlPlaneAvailable;
         _availabilityMessage = availabilityMessage;
         _environmentName = environmentName;
+        _authenticated = authenticated;
+        _roles = roles is { Count: > 0 } ? roles : [RoleRecord.Admin];
+        _runtimeObservabilityService = runtimeObservabilityService;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -47,6 +56,12 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
             services.RemoveAll<IControlPlaneService>();
             services.AddSingleton<IControlPlaneService>(_ =>
                 new FakeControlPlaneService(_controlPlaneAvailable, _availabilityMessage));
+            if (_runtimeObservabilityService is not null)
+            {
+                services.RemoveAll<IRuntimeObservabilityService>();
+                services.AddSingleton(_runtimeObservabilityService);
+            }
+            services.AddSingleton(new TestAuthState(_authenticated, _roles));
 
             services.AddAuthentication(options =>
                 {
@@ -62,17 +77,23 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
     private sealed class TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
-        UrlEncoder encoder)
+        UrlEncoder encoder,
+        TestAuthState authState)
         : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            var claims = new[]
+            if (!authState.Authenticated)
+            {
+                return Task.FromResult(AuthenticateResult.NoResult());
+            }
+
+            var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, UserRecord.AdminIdString),
                 new Claim(ClaimTypes.Name, UserRecord.AdminUsername),
-                new Claim(ClaimTypes.Role, RoleRecord.Admin)
             };
+            claims.AddRange(authState.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
             var identity = new ClaimsIdentity(claims, TestAuthScheme);
             var principal = new ClaimsPrincipal(identity);
@@ -80,6 +101,8 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
             return Task.FromResult(AuthenticateResult.Success(ticket));
         }
     }
+
+    private sealed record TestAuthState(bool Authenticated, IReadOnlyList<string> Roles);
 
     private sealed class FakeControlPlaneService(
         bool isAvailable,

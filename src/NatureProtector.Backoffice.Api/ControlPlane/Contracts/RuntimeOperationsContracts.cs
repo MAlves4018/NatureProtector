@@ -42,7 +42,9 @@ public sealed record RuntimeRunTimingSummaryResponse(
     double? TimeToFirstAlertMs,
     RuntimeAttemptTimingSummaryResponse Attempts,
     IReadOnlyList<RuntimeStageTimingSummaryResponse> Stages,
-    IReadOnlyList<string> Limitations);
+    IReadOnlyList<string> Limitations,
+    RuntimeDataScopeResponse? DataScope = null,
+    IReadOnlyList<RuntimeTimelinePointResponse>? Timeline = null);
 
 public sealed record RuntimeAttemptTimingSummaryResponse(
     int AttemptCount,

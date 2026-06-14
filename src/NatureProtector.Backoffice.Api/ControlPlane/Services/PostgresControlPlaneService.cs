@@ -194,6 +194,16 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
                     durations.Length == 0 ? null : durations.Max());
             })
             .ToArray();
+        var timeline = BuildRunTimeline(
+            run.Id,
+            run.CreatedAt,
+            run.StartedAt,
+            run.EndedAt,
+            firstInboxReceivedAt,
+            firstProcessingAttemptStartedAt,
+            lastProcessingAttemptFinishedAt,
+            firstRiskAssessmentCreatedAt,
+            firstAlertTriggeredAt);
 
         return new RuntimeRunTimingSummaryResponse(
             run.Id,
@@ -220,7 +230,14 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
                 attemptDurations.Length == 0 ? null : attemptDurations.Average(),
                 attemptDurations.Length == 0 ? null : attemptDurations.Max()),
             stages,
-            limitations);
+            limitations,
+            BuildRunDataScope(
+                runId,
+                run.Id,
+                run.Id,
+                "PostgreSQL runtime tables",
+                "simulation-run timings"),
+            timeline);
     }
 
     /// <summary>
@@ -666,7 +683,9 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             .AsNoTracking()
             .ToListAsync(cancellationToken);
         var runInboxEvents = inboxEvents
-            .Where(entity => TryGetSimulationRunId(entity.PayloadJson) == runId)
+            .Where(entity =>
+                TryGetSimulationRunId(entity.PayloadJson) == runId ||
+                TryGetSimulationRunId(entity.EnvelopeJson) == runId)
             .ToArray();
         var areaSnapshotRows = await dbContext.AreaRiskSnapshotLogs
             .AsNoTracking()
@@ -715,7 +734,13 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
                 new RuntimeLimitationResponse("diagnostics_do_not_recalculate_risk", "Run audit reads persisted risk assessments and snapshots only; it does not recalculate risk.")
             ],
             scoreComponents,
-            indexComparison);
+            indexComparison,
+            BuildRunDataScope(
+                runId,
+                runId,
+                runId,
+                "PostgreSQL runtime tables",
+                "simulation-run"));
     }
 
     /// <summary>
@@ -4725,6 +4750,71 @@ public sealed class PostgresControlPlaneService : IControlPlaneService
             .ToArray();
 
         return finishedAtValues.Length == 0 ? null : finishedAtValues.Max();
+    }
+
+    private static RuntimeDataScopeResponse BuildRunDataScope(
+        Guid requestedRunId,
+        Guid? resolvedRunId,
+        Guid? dataRunId,
+        string source,
+        string scope)
+        => new(
+            requestedRunId,
+            resolvedRunId,
+            dataRunId,
+            DateTimeOffset.UtcNow,
+            source,
+            scope,
+            [
+                new RuntimeLimitationResponse(
+                    "risk_not_recalculated",
+                    "Runtime audit and timing endpoints read persisted runtime records only; they do not recalculate risk."),
+                new RuntimeLimitationResponse(
+                    "publisher_timestamp_not_persisted",
+                    "Event publish timestamps are not persisted as PublishedAt in the current RabbitMQ contract.")
+            ]);
+
+    private static IReadOnlyList<RuntimeTimelinePointResponse> BuildRunTimeline(
+        Guid runId,
+        DateTimeOffset createdAt,
+        DateTimeOffset? startedAt,
+        DateTimeOffset? endedAt,
+        DateTimeOffset? firstInboxReceivedAt,
+        DateTimeOffset? firstProcessingAttemptStartedAt,
+        DateTimeOffset? lastProcessingAttemptFinishedAt,
+        DateTimeOffset? firstRiskAssessmentCreatedAt,
+        DateTimeOffset? firstAlertTriggeredAt)
+    {
+        var points = new List<RuntimeTimelinePointResponse>
+        {
+            new("requested", createdAt, "control.simulation_runs.created_at", "simulation-run", null, "measured")
+        };
+
+        AddTimelinePoint(points, "started", startedAt, "control.simulation_runs.started_at");
+        AddTimelinePoint(points, "first_received", firstInboxReceivedAt, "pipeline.event_inbox.received_at");
+        AddTimelinePoint(points, "first_processing_started", firstProcessingAttemptStartedAt, "pipeline.processing_attempts.started_at");
+        AddTimelinePoint(points, "first_risk_assessment", firstRiskAssessmentCreatedAt, "projection.risk_assessment_log.created_at");
+        AddTimelinePoint(points, "first_alert", firstAlertTriggeredAt, "projection.alert_state.triggered_at");
+        AddTimelinePoint(points, "last_processing_finished", lastProcessingAttemptFinishedAt, "pipeline.processing_attempts.finished_at");
+        AddTimelinePoint(points, "completed", endedAt, "control.simulation_runs.ended_at");
+
+        return points
+            .OrderBy(point => point.Timestamp)
+            .ThenBy(point => point.Stage, StringComparer.Ordinal)
+            .Select(point => point with { Scope = $"simulation-run:{runId:D}" })
+            .ToArray();
+    }
+
+    private static void AddTimelinePoint(
+        ICollection<RuntimeTimelinePointResponse> points,
+        string stage,
+        DateTimeOffset? timestamp,
+        string source)
+    {
+        if (timestamp.HasValue)
+        {
+            points.Add(new RuntimeTimelinePointResponse(stage, timestamp.Value, source, "simulation-run", null, "measured"));
+        }
     }
 
     private static string? ParseAlertState(string? message)

@@ -18,6 +18,12 @@ Assim evitamos dois extremos: nem tudo fica espalhado por pequenos ficheiros loc
   - mapa técnico dos projetos `.NET`;
 - [../tests/README.md](../tests/README.md)
   - estado atual da estratégia de testes;
+- [implementation/engineering-foundations.md](implementation/engineering-foundations.md)
+  - gate M02 para build, testes, coverage, CI, infraestrutura local, auditoria frontend e health check;
+- [implementation/ui-v2-foundation.md](implementation/ui-v2-foundation.md)
+  - fundacao M03/M04 da UI v2 isolada, primeira vista read-only, area dinamica, runs, cenarios, simulacao autorizada, Data Status Strip, ajuda, PT/EN e validacao executada;
+- [implementation/delivery-capacity-cutover-readiness.md](implementation/delivery-capacity-cutover-readiness.md)
+  - handoff M06 de delivery/readiness local, medicoes API/web, simulacoes curtas, capacidade estimada, dependency/security findings e recomendacao de cutover;
 - [architecture/README.md](architecture/README.md)
   - leitura da arquitetura atual e ligação aos documentos de planeamento;
 - [architecture/repository-exploration-guide.md](architecture/repository-exploration-guide.md)

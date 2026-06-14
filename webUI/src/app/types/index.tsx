@@ -203,6 +203,23 @@ export interface RuntimeRunSummaryResponse {
     runOverrides: RuntimeRunOverridesResponse | null;
 }
 
+export interface SimulationRunResponse {
+    id: string;
+    areaCode: string;
+    scenarioCode: string;
+    scenarioName: string;
+    status: string;
+    configurationVersionNumber: number;
+    createdAt: string;
+    startedAt: string | null;
+    endedAt: string | null;
+    logicalStartTimestamp: string;
+    intervalSeconds: number;
+    numberOfCycles: number;
+    executionSeed: number | null;
+    metadataJson: string | null;
+}
+
 export interface RuntimeRunAuditResponse {
     run: RuntimeRunSummaryResponse;
     expectedEvents: number | null;
@@ -218,6 +235,7 @@ export interface RuntimeRunAuditResponse {
     limitations: RuntimeLimitationResponse[];
     scoreComponents: RuntimeScoreComponentSummaryResponse | null;
     indexComparison: RuntimeIndexComparisonSummaryResponse | null;
+    dataScope?: RuntimeDataScopeResponse | null;
 }
 
 export interface RuntimeRunTimingSummaryResponse {
@@ -237,6 +255,27 @@ export interface RuntimeRunTimingSummaryResponse {
     attempts: RuntimeAttemptTimingSummaryResponse;
     stages: RuntimeStageTimingSummaryResponse[];
     limitations: string[];
+    dataScope?: RuntimeDataScopeResponse | null;
+    timeline?: RuntimeTimelinePointResponse[] | null;
+}
+
+export interface RuntimeDataScopeResponse {
+    requestedRunId: string;
+    resolvedRunId: string | null;
+    dataRunId: string | null;
+    observedAt: string;
+    source: string;
+    scope: string;
+    limitations: RuntimeLimitationResponse[];
+}
+
+export interface RuntimeTimelinePointResponse {
+    stage: string;
+    timestamp: string;
+    source: string;
+    scope: string;
+    eventId: string | null;
+    status: string | null;
 }
 
 export interface RuntimeAttemptTimingSummaryResponse {
@@ -399,6 +438,67 @@ export interface RuntimeAlertSummaryResponse {
 export interface RuntimeLimitationResponse {
     code: string;
     message: string;
+}
+
+export interface RuntimeOperationalHealthResponse {
+    observedAt: string;
+    components: RuntimeOperationalHealthComponentResponse[];
+    rabbitMq: RabbitMqMetricsResponse;
+    limitations: RuntimeLimitationResponse[];
+}
+
+export interface RuntimeOperationalHealthComponentResponse {
+    component: string;
+    status: 'Healthy' | 'Degraded' | 'Unhealthy' | 'Unknown' | 'NotInstrumented' | 'NotApplicable' | string;
+    observedAt: string;
+    source: string;
+    reason: string;
+    lastSuccessAt: string | null;
+    lastFailureAt: string | null;
+    ageSeconds: number | null;
+    scope: string;
+    limitation: string | null;
+}
+
+export interface RabbitMqMetricsResponse {
+    observedAt: string;
+    source: string;
+    collectionStatus: 'Measured' | 'Unavailable' | 'Error' | 'NotApplicable' | string;
+    queues: RabbitMqQueueMetricResponse[];
+    limitations: RuntimeLimitationResponse[];
+}
+
+export interface RabbitMqQueueMetricResponse {
+    queueName: string;
+    messagesReady: number | null;
+    messagesUnacknowledged: number | null;
+    messagesTotal: number | null;
+    consumers: number | null;
+    observedAt: string;
+    source: string;
+    collectionStatus: 'Measured' | 'Unavailable' | 'Error' | 'NotApplicable' | string;
+    limitation: string | null;
+}
+
+export interface RuntimeEvidenceCatalogResponse {
+    observedAt: string;
+    items: RuntimeEvidenceCatalogItemResponse[];
+    limitations: RuntimeLimitationResponse[];
+}
+
+export interface RuntimeEvidenceCatalogItemResponse {
+    evidenceId: string;
+    title: string;
+    type: string;
+    generatedAt: string | null;
+    environment: string;
+    scope: string;
+    version: string | null;
+    contentAvailable: boolean;
+    downloadAvailable: boolean;
+    size: number;
+    status: string;
+    limitation: string | null;
 }
 
 export interface RuntimeFreshnessSummaryResponse {

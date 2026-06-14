@@ -1,17 +1,19 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import {
   ChakraProvider, createSystem, defaultConfig, defineConfig, Box,
 } from '@chakra-ui/react';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
-import { MainPage } from './components/views/mainPage';
-import { DashBoards } from './components/views/dashBoards';
 import { NavBar } from './components/views/navBar';
 import { getColors } from './utils/utils';
-import { Pipeline } from './components/views/Pipeline';
-import { DeveloperRuntimeControl } from './components/views/DeveloperRuntimeControl';
-import { Workspace } from './components/views/Workspace';
-import { LogInOut } from './components/views/LogInOut';
 import { TokenProvider } from './context/TokenContext';
+
+const MainPage = lazy(() => import('./components/views/mainPage').then(module => ({ default: module.MainPage })));
+const DashBoards = lazy(() => import('./components/views/dashBoards').then(module => ({ default: module.DashBoards })));
+const Pipeline = lazy(() => import('./components/views/Pipeline').then(module => ({ default: module.Pipeline })));
+const DeveloperRuntimeControl = lazy(() => import('./components/views/DeveloperRuntimeControl').then(module => ({ default: module.DeveloperRuntimeControl })));
+const Workspace = lazy(() => import('./components/views/Workspace').then(module => ({ default: module.Workspace })));
+const LogInOut = lazy(() => import('./components/views/LogInOut').then(module => ({ default: module.LogInOut })));
+const UiV2App = lazy(() => import('./ui-v2/UiV2App').then(module => ({ default: module.UiV2App })));
 
 // ─── Chakra system ─────────────────────────────────────────────────────────────
 const system = createSystem(defaultConfig, defineConfig({ theme: {} }));
@@ -20,12 +22,32 @@ function AppLayout({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Di
   return (
     <>
       <NavBar isDark={isDark} setIsDark={setIsDark} />
-      <Outlet />
+      <Suspense fallback={<RouteLoading isDark={isDark} />}>
+        <Outlet />
+      </Suspense>
     </>
   );
 }
 
 // ─── Root ──────────────────────────────────────────────────────────────────────
+function RouteLoading({ isDark }: { isDark: boolean }) {
+  const c = getColors(isDark);
+
+  return (
+    <Box
+      minH="calc(100vh - 58px)"
+      bg={c.pageBg}
+      color={c.textSecond}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      fontWeight={700}
+    >
+      Loading...
+    </Box>
+  );
+}
+
 export default function App() {
   const [isDark, setIsDark] = useState(false);
   const c = getColors(isDark);
@@ -50,6 +72,10 @@ export default function App() {
         {
           path: "/login",
           element: <LogInOut isDark={isDark} />,
+        },
+        {
+          path: "/ui-v2",
+          element: <UiV2App isDark={isDark} />,
         },
         {
           path: "/dashboards/:areaCode",

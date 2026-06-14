@@ -89,7 +89,7 @@ docs/evidence/V1/*
 docs/evidence/V3/*
 docs/evidence/controlled-validation/*
 /docs/evidence/diagnostics/
-
+/docs/evidence/m06-readiness
 #TEMP 
 docs/planning/V0/
 docs/planning/V1/
@@ -99,6 +99,8 @@ docs/planning/V3/
 webUI/node_modules/
 webUI/dist/
 webUI/.vite/
+webUI/coverage/
+webUI/test-results/
 
 /data/runtime/influx/admin-token.json
 

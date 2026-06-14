@@ -1754,7 +1754,7 @@ function Metric({ colors, title, value, detail, icon, tone }: { colors: Colors; 
   );
 }
 
-function Tabs<T extends string>({ values, selected, onSelect, colors, compact = false }: { values: readonly T[]; selected: T; onSelect: (value: T) => void; colors: Colors; compact?: boolean }) {
+function Tabs<T extends string>({ values, selected, onSelect, colors, compact = false }: { values: readonly T[]; selected: T; onSelect: Dispatch<SetStateAction<T>>; colors: Colors; compact?: boolean }) {
   return (
     <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: compact ? "14px" : "12px" }}>
       {values.map(value => (

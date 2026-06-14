@@ -56,7 +56,7 @@ export function LogInOut({ isDark, message, onAuthChange, mode = "page" }: LogIn
 			<section style={cardStyle(c, isPanel)}>
 				<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
 					<div style={{ ...iconRing(c), color: signedIn ? "#16a34a" : "#d97706" }}>
-						<img src="./images/NPIconNoBg.png" size={18} />
+						<img src="./images/NPIconNoBg.png" width={18} height={18} alt="" />
 					</div>
 					<div>
 						<div style={{ color: c.textPrimary, fontSize: "20px", fontWeight: 800 }}>

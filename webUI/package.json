@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -16,17 +20,25 @@
     "leaflet": "^1.9.4",
     "lucide-react": "0.487.0",
     "react-leaflet": "^4.2.1",
-    "react-router": "^7.13.0",
-    "react-router-dom": "^7.14.2",
+    "react-router": "^7.17.0",
+    "react-router-dom": "^7.17.0",
     "recharts": "2.15.2",
     "tailwind-merge": "3.2.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.12",
+    "@tailwindcss/vite": "^4.3.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^25.6.0",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "4.7.0",
-    "tailwindcss": "4.1.12",
-    "vite": "^6.4.2"
+    "@vitest/coverage-v8": "^4.1.8",
+    "axe-core": "^4.12.1",
+    "jsdom": "^26.1.0",
+    "tailwindcss": "^4.3.1",
+    "typescript": "^6.0.3",
+    "vite": "^6.4.3",
+    "vitest": "^4.1.8"
   },
   "peerDependencies": {
     "react": "^18.3.1",

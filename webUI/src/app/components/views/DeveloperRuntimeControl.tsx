@@ -501,7 +501,7 @@ function RunRequestResult({ result, request, message, areaCode, colors }: { resu
           title: "Run request result",
           description: "Run submission response",
           columns: ["field", "value"],
-          rows: rows.map(([field, value]) => ({ field, value: String(value ?? "") })),
+          rows: rows.map(([field, value]) => ({ field: String(field), value: String(value ?? "") })),
           limitations: result?.warnings ?? [],
         }}
       />

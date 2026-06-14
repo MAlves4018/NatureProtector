@@ -1894,3 +1894,195 @@ Os próximos passos que permanecem relevantes são:
 46. Verificar se o relatório ainda contém vestígios de conteúdo antigo ou desalinhado com o projeto atual.
 47. Avaliar se o relatório deve incluir uma pequena secção ou nota sobre a evolução V1 → V2, sem tentar documentar toda a V2 em detalhe.
 48. Fazer uma última compilação limpa do PDF e arquivar a versão gerada como evidência documental da baseline V1.
+
+---
+
+# Recapitulação Quinzenal
+
+### Período
+
+2 de junho a 16 de junho de 2026
+
+### Objetivo desta entrada
+
+Registar a missão M01 de baseline real, preservação seletiva da beta e controlo operacional inicial, sem iniciar a missão seguinte.
+
+## Resumo Estruturado
+
+### O que foi feito
+
+1. Foi confirmado o repositório correto do projeto, usando Git apenas de forma read-only e dirigido explicitamente a `NatureProtector`.
+2. Foi criado um snapshot inicial fora do repositório, com branch, HEAD, estado do working tree, diffs vazios, untracked e conflitos.
+3. Foram identificados os mecanismos principais de build, teste, frontend, setup local, infraestrutura e evidence smoke.
+4. Foi executada uma baseline técnica suficiente: build .NET, suite de testes, instalação/build da webUI, validações de scripts e smoke B/C em dry-run.
+5. Foi preservada seletivamente a beta fora do Git, excluindo `.env`, `.env.example`, outputs reconstruíveis, caches, `node_modules`, `bin`, `obj` e artefactos sensíveis/locais.
+6. Foram consultados Brain e Graphify. Graphify foi apenas lido como artefacto estático, sem refresh nem execução.
+7. Foi criada uma matriz inicial de rastreabilidade entre findings/feedback da beta e capabilities/missões prováveis.
+8. Foi produzido um handoff operacional para revisão externa antes de qualquer trabalho de M02.
+
+### Resultado principal da quinzena
+
+A M01 deixou o projeto com uma referência operacional mais concreta para avançar: o repositório estava limpo no início da missão, o build .NET passou, a maioria dos testes passou, a webUI instalou e compilou, e a beta ficou preservada num ZIP seletivo externo ao repositório.
+
+Ao mesmo tempo, a missão não fechou uma validação runtime completa. O Docker Engine não estava disponível no ambiente local, o que impediu validar PostgreSQL, RabbitMQ, InfluxDB, Grafana e uma smoke B/C real. Por esse motivo, os testes da `Backoffice.Api` falharam por indisponibilidade do PostgreSQL em `127.0.0.1:5433`, e não por uma regressão funcional comprovada nesta missão.
+
+## 1. Identidade, Git e proteção do estado inicial
+
+A missão começou por confirmar explicitamente o `WorkspaceRoot` e o `RepoRoot`. O comando `git -C "$RepoRoot" rev-parse --show-toplevel` devolveu o root esperado de `NatureProtector`, e todos os comandos Git seguintes foram executados apenas contra esse root.
+
+O estado inicial observado foi:
+
+* branch `master`;
+* HEAD `143a7f5750c596e4a7c2665a3bb6953c7394c279`;
+* working tree limpo;
+* sem ficheiros untracked;
+* sem conflitos;
+* sem diff tracked ou cached.
+
+Antes de qualquer alteração documental, foi criado um snapshot read-only em `NatureProtector.brain/control/M01-BASELINE-PRESERVATION-AND-CONTROL/initial-snapshot/`. Esse snapshot serve apenas como evidence operacional e não é uma baseline Git, commit, branch ou tag.
+
+## 2. Baseline técnica executada
+
+O build da solution passou com:
+
+```powershell
+dotnet build .\NatureProtector.sln --nologo -v minimal --configfile NuGet.Config
+```
+
+Ficaram registados warnings já materiais para acompanhamento, incluindo `NU1902` no pacote `OpenTelemetry.Exporter.OpenTelemetryProtocol` e warnings de XML documentation em `RiskAssessment` e migrations.
+
+A suite de testes foi executada com:
+
+```powershell
+dotnet test .\NatureProtector.sln --no-restore --nologo -v minimal -m:1
+```
+
+Passaram os projetos `Core`, `Prevention`, `Shared`, `Simulator.Host`, `IntegrationTests`, `Infrastructure.Influx` e `Prevention.Host`. O projeto `Backoffice.Api.Tests` falhou 37 testes porque a API tentava ligar ao PostgreSQL local em `127.0.0.1:5433`, que não estava disponível por Docker estar desligado.
+
+No frontend, `npm ci` e `npm run build` passaram. O `npm ci` reportou 6 vulnerabilidades high e o build Vite avisou que o bundle principal ficou acima de 500 kB depois da minificação.
+
+## 3. Limitação runtime e classificação das falhas
+
+O Docker CLI existia, mas o Docker Engine não estava acessível. Por isso, `Test-LocalPrerequisites.ps1` e `Test-LocalBaseline.ps1 -InfrastructureOnly` falharam nos checks dependentes de Docker e containers.
+
+Esta falha foi classificada como bloqueio de ambiente para runtime/infraestrutura, não como falha comprovada do código. O smoke B/C foi executado apenas em:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\run-v1-bc-smoke.ps1 -DryRun
+```
+
+Esse dry-run validou parâmetros e criação de diretório de evidence, mas não fez chamadas HTTP, reset, simulação, diagnósticos ou assertions runtime.
+
+## 4. Preservação seletiva da beta
+
+Foi criado um ZIP seletivo fora de `NatureProtector`, em:
+
+```text
+NatureProtector.brain/control/M01-BASELINE-PRESERVATION-AND-CONTROL/beta-preservation/
+```
+
+O ZIP inclui ficheiros versionados relevantes para compreender, reconstruir e rever a beta: código, testes, scripts, infraestrutura, documentação permanente, fonte da webUI, assets e manifests principais. Foram excluídos secrets, `.env`, `.env.example`, `.git`, `bin`, `obj`, `node_modules`, `webUI/dist`, evidence gerada, coverage, caches e dados runtime locais.
+
+Esta preservação é um artefacto operacional, não substitui Git e não deve ser extraída por cima de uma working tree sem revisão.
+
+## 5. Continuidade para a próxima missão
+
+O handoff da M01 recomenda corrigir a baseline antes de iniciar M02. O passo mínimo seguinte é repetir a validação com Docker ativo: infraestrutura, bootstrap/health PostgreSQL, `Backoffice.Api.Tests`, smoke runtime se necessário e triagem do audit npm.
+
+A distinção metodológica continua importante: a baseline atual é técnica e operacional. Os parâmetros candidatos, FWI/KBDI/proxy português e qualquer leitura de risco continuam a não constituir validação científica final nem alerta oficial.
+
+## 11. M02 - Fundacoes de engenharia, CI e validacao local
+
+Depois da M01, a M02 avancou sobre a frente de engenharia sem iniciar trabalho de M03, ML ou GNN. O objectivo foi transformar os bloqueios e warnings observados numa base mais repetivel de build, testes, cobertura, CI, frontend, infraestrutura local e observabilidade minima.
+
+A diferenca principal face a M01 foi a disponibilidade do Docker Engine. A stack local foi validada com PostgreSQL, RabbitMQ, InfluxDB e Grafana activos. O bootstrap do control plane voltou a popular a area `proenca-a-nova`, celulas, sensores, cenarios e artefactos de dados. Com PostgreSQL disponivel, a suite `Backoffice.Api.Tests` passou, confirmando que as falhas da M01 eram falhas de ambiente/infraestrutura e nao uma regressao funcional demonstrada.
+
+No backend, foram corridos build, testes e coverage consolidado. A suite completa passou com `1179` testes e o relatorio agregado registou `82%` de line coverage, `68.1%` de branch coverage e `89.5%` de method coverage. Estes valores sao tratados como baseline tecnica actual, nao como validacao cientifica do modelo ou dos parametros candidatos.
+
+No frontend, foi adicionada uma gate explicita com `typecheck`, Vitest, jsdom, Testing Library, `axe-core`, JUnit e coverage. Tambem foram corrigidos pequenos erros de tipos ja existentes que passaram a ser visiveis com `tsc --noEmit`. O bundle Vite foi dividido por rotas com `React.lazy` e `Suspense`, removendo o aviso de chunk principal acima de 500 kB no build local.
+
+Foi criada uma workflow de CI em GitHub Actions para backend e frontend. A workflow nao sobe Docker por defeito: corre a API com o control plane desligado para evitar que a gate basica dependa de PostgreSQL local. A validacao completa de infraestrutura continua documentada como gate local/manual ate existir um contrato estavel de service containers.
+
+A auditoria npm foi reduzida de 6 vulnerabilidades high para 3, mas nao foi forcada. O risco residual fica ligado a `vite -> esbuild`: corrigir exige upgrade major/linha nova ou override fora da gama declarada pelo Vite 6. A decisao da M02 foi documentar esse risco em vez de aplicar uma alteracao larga sem missao propria.
+
+Tambem foi exposto um endpoint tecnico `GET /health` na Backoffice API. Este endpoint serve observabilidade minima e nao muda contratos RabbitMQ, eventos, scoring, schemas, politica de alertas, projecoes publicas de dominio ou qualquer claim cientifico.
+
+## 12. M03 - Fundacao UI v2 e primeira fatia read-only
+
+Depois da M02, a M03 criou uma primeira superficie UI v2 isolada em `/ui-v2`, sem substituir a beta e sem iniciar P3, cutover, alteracoes de backend ou calibracao cientifica. A intencao foi testar uma direcao de interface mais explicativa: antes de apresentar um score, a UI contextualiza origem, tempo, disponibilidade, cobertura, elegibilidade, proveniencia e limitacoes.
+
+A fatia implementada inclui uma entrada demo, uma vista read-only de risco contextualizado, uma Data Status Strip, suporte PT/EN, ajuda contextual tambem acessivel por F1 e testes focados de componente, adapter e acessibilidade. A UI le o contrato existente `RuntimeSummaryResponse` atraves de um adapter frontend e nao recalcula risco. Estados como `Blocked`, falta de dados, erro ou acesso negado ocultam o score apresentavel em vez de converterem ausencia de output em risco baixo.
+
+A validacao local da M03 passou em `14/06/2026`: `npm run typecheck`, `npm test`, `npm run test:coverage`, `npm run build`, a suite estreita `Backoffice.Api.Tests` e uma smoke em browser com login, abertura de `/ui-v2`, navegacao para a vista read-only, confirmacao do Data Status Strip, ajuda e troca de idioma. A cobertura frontend global continua baixa por codigo legado nao tocado, mas o novo modulo `app/ui-v2` ficou com cobertura alta para esta fatia.
+
+Continuam fora desta entrada: migracao da beta, P3, nova politica de alertas, novos contratos RabbitMQ/API, schemas, claims JWT, roles, ou qualquer afirmacao de equivalencia com sistemas oficiais. A UI v2 deve continuar a apresentar o NatureProtector como prototipo academico e output calculado, nao como sistema operacional de protecao civil.
+
+## 13. M04 - Expansao core da UI v2
+
+Depois da M03, a M04 expandiu a UI v2 sem substituir a beta e sem criar contratos novos. A area fixa `proenca-a-nova` foi removida da implementacao da UI v2: a app passa a carregar o catalogo real de areas, distinguir area pedida e area resolvida, persistir a escolha localmente e refletir a selecao no URL.
+
+A superficie `/ui-v2` passou tambem a expor contexto de cenario, run e provenance usando endpoints existentes do control plane. A vista de simulacao ficou ligada ao endpoint real `POST /api/control/runtime/runs`, mas a capability de execucao continua apenas UX frontend; a autorizacao real permanece no backend, onde `Admin` e `Sim` podem escrever e `Pipeline` fica limitado a leitura.
+
+Foram removidas as dependencias da ajuda em caminhos locais de `docs/` servidos pela app. A ajuda passou a ser conteudo integrado, acessivel pelo botao e por F1, mantendo PT/EN e os limites metodologicos do prototipo.
+
+A validacao local da M04 passou em `14/06/2026`: `npm run typecheck`, `npm test -- src/app/ui-v2 src/app/services/api.test.ts`, `npm run test:coverage -- src/app/ui-v2 src/app/services/api.test.ts`, `npm run build` e `dotnet test tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj --no-restore --nologo -v minimal -m:1`. O run frontend focado passou com `20` testes e `81.28%` de line coverage em `app/ui-v2`; a suite Backoffice API passou `91/91` com o warning `NU1902` conhecido.
+
+Foi feito smoke em browser contra Vite e Backoffice API locais com login `admin`, selecao de area real, ajuda integrada e submissao de uma run minima (`1` sensor, `1` ciclo, intervalo `1`) pelo endpoint real. Esse smoke valida a ligacao funcional, mas nao deve ser apresentado como validacao cientifica ou como execucao completa de campanha operacional.
+
+Continuam fora desta entrada: P3, cutover, remocao da beta, novos eventos RabbitMQ, schema/migrations, alteracao de scoring, politica final de alertas, claims/roles novos ou calibracao cientifica.
+
+## 14. M05 - Superficies tecnicas, QA e hardening da UI v2
+
+Depois da M04, a M05 reforcou a UI v2 como superficie tecnica, mantendo a beta preservada e sem alterar contratos backend, schema, scoring, eventos RabbitMQ ou semantica de alertas. A nova camada acrescentou vistas para Pipeline/Observability, QA, Evidence/Limitations, administracao proporcional, P3 experimental e readiness para staging/demo.
+
+A vista de Pipeline/Observability usa os contratos ja existentes de runtime summary, run audit e run timings. Quando a informacao nao existe, a UI mostra ausencia explicita, por exemplo `Not instrumented`, `Not confirmed` ou `No evidence`, em vez de inventar backlog RabbitMQ, health do broker, timestamps de publicacao ou latencia end-to-end por evento.
+
+A vista de QA passou a distinguir definicao de teste, execucao, resultado, coverage e evidencia. A validacao local da M05 em `14/06/2026` passou com `npm run typecheck`, testes focados da UI v2 (`27` testes), coverage focado, build Vite, suite frontend completa (`30` testes), `Backoffice.Api.Tests` (`91` testes) e `dotnet test NatureProtector.sln` (`1182` testes). O ratchet de `app/ui-v2` ficou em `84.12%` de line coverage, acima do baseline M04 de `81.28%`.
+
+A administracao foi tratada de forma proporcional: a UI lista acoes sensiveis e o enforcement backend, mas nao expoe reset destrutivo, execucao de diagnostics nem execucao P3. P3 permanece como contexto experimental separado, nao integrado no scoring, alertas, schema ou runtime principal.
+
+Os security gates registaram findings conhecidos: `npm audit` continua a reportar a cadeia Vite/esbuild e `dotnet list package --vulnerable --include-transitive` continua a reportar o advisory moderado de OpenTelemetry (`NU1902`). A M05 nao aplicou upgrades major nem fixes forcados.
+
+Continuam fora desta entrada: integracao P3, nova politica final de alertas, cutover da beta, reset/rebaseline destrutivo, novas roles persistentes, migracoes, deployment externo e validacao cientifica externa.
+
+## 15. M06 - Delivery, capacidade local e readiness de cutover
+
+Depois da M05, a M06 fechou a sequencia como handoff tecnico local. A missao nao executou cutover, nao removeu a beta, nao fez deployment externo, nao contactou stakeholders e nao alterou contratos RabbitMQ, schema, scoring, politica de alertas, roles ou P3 runtime.
+
+Foi criada uma ferramenta pequena de medicao local em `scripts/performance/run-local-readiness-workload.ps1`. O script mede apenas status HTTP e tempo decorrido em probes API/web delimitados; nao mede stress, throughput maximo, backlog RabbitMQ, publisher timestamps ou latencia end-to-end por evento. Na execucao M06 foram obtidos 55/55 statuses esperados, com `/health`, catalogo de areas, area detail, grid cells, sensor nodes, alerts e rotas web a responder localmente.
+
+Foram executadas tres runs curtas pelo mecanismo oficial de cenarios, sem reset e sem apagar dados: `scenario_b` nominal (`ceb20860-ed0a-4554-ac43-70d3a6596f70`), `scenario_c` com `missing-readings` (`93a397e9-87b3-4730-9e58-a44554c70072`) e `scenario_b` com `noise` (`467ddba8-80f9-4874-9949-1ac5c376d94e`). Todas terminaram `Completed`. O perfil `missing-readings` deve ser lido como lacuna observacional, nao como falha tecnica da pipeline.
+
+A validacao local da M06 passou com `dotnet test .\NatureProtector.sln --nologo -v minimal -m:1` (`1182` testes), `npm run typecheck`, `npm test` (`30` testes), `npm run test:coverage` e `npm run build`. A cobertura `app/ui-v2` ficou em `84.28%` de linhas; a cobertura global da webUI continua condicionada pelo legado.
+
+O browser local confirmou jornada anonima/read-only, login Admin de Development e abertura de `/ui-v2`. Nao houve matriz real em browser para identidades Pipeline/Sim, porque a base local observada continha apenas Admin como utilizador existente.
+
+A recomendacao final e: `conditional go` para demo tecnica local controlada, com disclaimers academicos/non-operational, e `no-go` para cutover externo/producao. Continuam abertos os riscos de dependencias (`npm audit` Vite/esbuild high e OpenTelemetry moderate), secrets dev em `.env`/`.env.example`, falta de instrumentacao de backlog/latencia completa e ausencia de validacao externa/stakeholder.
+
+## 16. UI-STRUCTURAL-RECOVERY-002 - Recuperacao estrutural da UI v2
+
+Depois da revisao de owner ter considerado insuficiente a recuperacao visual anterior, foi feita uma recuperacao estrutural da UI v2 sem substituir a beta e sem alterar contratos RabbitMQ, eventos, schema, scoring, alertas, roles, claims, P3 runtime ou observabilidade.
+
+O ponto principal foi retirar `webUI/src/app/ui-v2/UiV2App.tsx` do papel de monolito. A UI v2 passou a estar organizada por shell, provider de estado, registry de paginas, navegacao declarativa, componentes reutilizaveis, paginas por tarefa, conteudos centralizados e CSS de tema. A pagina publica `/ui-v2` ficou orientada a produto e limites metodologicos, com Data Status e selecao de area, sem expor Pipeline, Simulacao, Runs, QA/Evidence, Admin ou P3 a utilizadores anonimos.
+
+Para utilizadores autenticados, a navegacao passou a seguir tarefas: overview/dados, risco e dados, runs, simulacao quando autorizada, pipeline, qualidade/evidencia, administracao e experimental P3 quando autorizados. A Data Status ficou progressiva, com cinco campos de primeiro nivel e detalhes tecnicos separados. A ajuda contextual, labels tecnicos e links de paridade com a beta ficaram em registries proprios.
+
+A validacao local passou em `14/06/2026`: `npm run typecheck`, testes focados UI v2 (`26` testes), `npm test` tres vezes (`33` testes por run), `npm run test:coverage`, `npm run build` e `Backoffice.Api.Tests` (`92` testes, com o warning NU1902 conhecido). O browser local confirmou que a superficie publica so mostra `Visao geral` e `Dados`, que a Data Status publica tem os cinco campos principais e que a pagina publica de dados nao contem termos internos de pipeline/P3/admin.
+
+Continuam fora desta entrada: metricas/observabilidade, integracao P3, cutover, remocao da beta, novos contratos, alteracoes de schema, validacao cientifica externa e qualquer declaracao operacional.
+
+## 17. OBSERVABILITY-AND-RUNTIME-EVIDENCE-001 - Observabilidade interna e evidence HTTP
+
+Depois da recuperacao estrutural da UI v2, foi implementada uma fatia interna de observabilidade runtime sem alterar scoring, formulas, thresholds, semantica de alertas, roles, claims, P3, UI beta, `.env`, `.env.example` ou contratos RabbitMQ publicados.
+
+A Backoffice API passou a expor endpoints autenticados internos em `/api/control/runtime/observability`: health operacional detalhado, metricas RabbitMQ e catalogo/conteudo HTTP de evidence allowlisted. O `/health` tecnico simples foi preservado. O modelo de health distingue `Healthy`, `Degraded`, `Unhealthy`, `Unknown`, `NotInstrumented` e `NotApplicable`; ausencia de erros nao e tratada como health.
+
+RabbitMQ passou a expor, por fila relevante, `messages_ready`, `messages_unacknowledged`, `messages`, `consumers`, fonte, timestamp e estado de recolha. Valores indisponiveis ficam nulos e marcados, nao sao convertidos em zero. No smoke local de `14/06/2026`, `np.ingestion.readings` tinha `ready=0`, `unack=0`, `total=0`, `consumers=1`, enquanto `np.observability.raw` tinha `ready=52`, `unack=0`, `total=52`, `consumers=0`, levando RabbitMQ a `Degraded`.
+
+Run audit e run timings ganharam metadata opcional de `dataScope`, e timings passou a devolver uma timeline ordenada de pontos persistidos quando existem. O audit foi ajustado para associar inbox events por `PayloadJson` ou `EnvelopeJson`. A fronteira de risco foi preservada: audit e timings leem registos persistidos e nao recalculam risk.
+
+Evidence HTTP ficou limitado a `docs/evidence`, com IDs gerados, allowlist de extensoes, limite de 1 MiB, validacao canonica de path e rejeicao de traversal. O smoke local confirmou conteudo `200` para evidence allowlisted e `400` para traversal.
+
+A UI v2 Pipeline passou a consumir health/RabbitMQ/evidence de forma proporcional: health de servicos, metricas de filas e catalogo evidence aparecem onde existem; `Unknown` nao vira healthy e valor indisponivel nao vira zero. Publisher timestamps continuam marcados como hard gate porque `EventEnvelope<TPayload>` nao tem `PublishedAt` persistido. Classifier/Quality persistence detalhada ficou em owner review porque exige decisao aditiva de schema, retencao e payload sem alterar semantica de elegibilidade.
+
+Validacao local: `Backoffice.Api.Tests` passou `98/98`, `dotnet test NatureProtector.sln --no-build --no-restore -m:1` passou `1189/1189`, `npm run typecheck` passou, `npm test -- src/app/ui-v2/technicalSurfaces.test.ts` passou `5/5`, `npm test -- src/app/ui-v2 src/app/services/api.test.ts` passou `31/31` e a cobertura focada da UI v2 passou com `app/ui-v2` a `81.89%` de linhas. O warning `NU1902` de OpenTelemetry continua conhecido.

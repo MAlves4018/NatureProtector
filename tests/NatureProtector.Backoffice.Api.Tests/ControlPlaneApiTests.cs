@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Net;
 using System.Net.Http.Json;
+using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
+using NatureProtector.Backoffice.Api.ControlPlane.Services;
 
 namespace NatureProtector.Backoffice.Api.Tests;
 
@@ -44,6 +46,17 @@ public sealed class ControlPlaneApiTests
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         await AssertUnavailableProblemDetailsAsync(response, availabilityMessage);
+    }
+
+    [Fact]
+    public async Task ActiveConfigurationEndpoint_Unauthenticated_ReturnsUnauthorized()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory(authenticated: false);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/configurations/active");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -299,6 +312,21 @@ public sealed class ControlPlaneApiTests
     }
 
     [Fact]
+    public async Task RuntimeSummaryEndpoint_PipelineRole_AllowsRead()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory(roles: ["Pipeline"]);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal("proenca-a-nova", document.RootElement.GetProperty("areaCode").GetString());
+        Assert.Equal("scenario_b", document.RootElement.GetProperty("latestRun").GetProperty("scenarioCode").GetString());
+    }
+
+    [Fact]
     public async Task AreaGeoJsonEndpoint_ReturnsGeometry()
     {
         await using var factory = new ControlPlaneApiWebApplicationFactory();
@@ -365,17 +393,7 @@ public sealed class ControlPlaneApiTests
 
         var startResponse = await client.PostAsync(
             "/api/control/runtime/runs",
-            JsonContent.Create(new
-            {
-                areaCode = "proenca-a-nova",
-                scenarioCode = "scenario_c",
-                sensorCount = 6,
-                numberOfCycles = 5,
-                intervalSeconds = 30,
-                seed = 42,
-                degradationProfile = "missing-readings",
-                degradationProfiles = new[] { "missing-readings" }
-            }));
+            JsonContent.Create(CreateRuntimeRunStartPayload()));
         var resetResponse = await client.PostAsync(
             "/api/control/runtime/reset",
             JsonContent.Create(new { scope = "runtime", confirm = "RESET", dryRun = true }));
@@ -388,6 +406,35 @@ public sealed class ControlPlaneApiTests
 
         Assert.Equal("Validated", startDocument.RootElement.GetProperty("status").GetString());
         Assert.Equal("DryRun", resetDocument.RootElement.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task RuntimeRunStart_SimRole_AllowsWrite()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory(roles: ["Sim"]);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/control/runtime/runs",
+            JsonContent.Create(CreateRuntimeRunStartPayload()));
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal("Validated", document.RootElement.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task RuntimeRunStart_PipelineRole_ReturnsForbidden()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory(roles: ["Pipeline"]);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/control/runtime/runs",
+            JsonContent.Create(CreateRuntimeRunStartPayload()));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
@@ -468,6 +515,74 @@ public sealed class ControlPlaneApiTests
     }
 
     [Fact]
+    public async Task RuntimeObservabilityHealth_Unauthenticated_ReturnsUnauthorized()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory(authenticated: false);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/runtime/observability/health");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RuntimeObservabilityHealth_ReturnsExplicitComponentStates()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory(
+            runtimeObservabilityService: new FakeRuntimeObservabilityService());
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/runtime/observability/health");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var components = document.RootElement.GetProperty("components").EnumerateArray().ToArray();
+
+        Assert.Contains(components, component =>
+            component.GetProperty("component").GetString() == "Backoffice.Api" &&
+            component.GetProperty("status").GetString() == RuntimeOperationalHealthStatus.Healthy);
+        Assert.Contains(components, component =>
+            component.GetProperty("component").GetString() == "Prevention.Host" &&
+            component.GetProperty("status").GetString() == RuntimeOperationalHealthStatus.Unknown);
+        Assert.Contains(components, component =>
+            component.GetProperty("component").GetString() == "Simulator.Host" &&
+            component.GetProperty("status").GetString() == RuntimeOperationalHealthStatus.NotApplicable);
+    }
+
+    [Fact]
+    public async Task RuntimeObservabilityRabbitMq_DistinguishesMeasuredZeroFromUnavailable()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory(
+            runtimeObservabilityService: new FakeRuntimeObservabilityService());
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/runtime/observability/rabbitmq");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var queues = document.RootElement.GetProperty("queues").EnumerateArray().ToArray();
+        var measured = queues.Single(queue => queue.GetProperty("queueName").GetString() == "np.ingestion.readings");
+        var unavailable = queues.Single(queue => queue.GetProperty("queueName").GetString() == "np.observability.raw");
+
+        Assert.Equal(0, measured.GetProperty("messagesReady").GetInt32());
+        Assert.Equal(RuntimeMetricCollectionStatus.Measured, measured.GetProperty("collectionStatus").GetString());
+        Assert.Equal(JsonValueKind.Null, unavailable.GetProperty("messagesReady").ValueKind);
+        Assert.Equal(RuntimeMetricCollectionStatus.Unavailable, unavailable.GetProperty("collectionStatus").GetString());
+    }
+
+    [Fact]
+    public async Task RuntimeEvidenceEndpoint_RejectsTraversalIds()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory(
+            runtimeObservabilityService: new FakeRuntimeObservabilityService());
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/runtime/observability/evidence/..%2Fsecret");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task RuntimeRunTimingsEndpoint_MissingRun_ReturnsNotFound()
     {
         await using var factory = new ControlPlaneApiWebApplicationFactory();
@@ -532,5 +647,60 @@ public sealed class ControlPlaneApiTests
         Assert.Equal(expectedDetail, root.GetProperty("detail").GetString());
         Assert.Equal((int)HttpStatusCode.ServiceUnavailable, root.GetProperty("status").GetInt32());
         Assert.Equal(JsonValueKind.String, root.GetProperty("traceId").ValueKind);
+    }
+
+    private static object CreateRuntimeRunStartPayload()
+        => new
+        {
+            areaCode = "proenca-a-nova",
+            scenarioCode = "scenario_c",
+            sensorCount = 6,
+            numberOfCycles = 5,
+            intervalSeconds = 30,
+            seed = 42,
+            degradationProfile = "missing-readings",
+            degradationProfiles = new[] { "missing-readings" }
+        };
+
+    private sealed class FakeRuntimeObservabilityService : IRuntimeObservabilityService
+    {
+        public bool IsAvailable => true;
+
+        public string AvailabilityMessage => "Fake runtime observability available.";
+
+        public Task<RuntimeOperationalHealthResponse> GetOperationalHealthAsync(CancellationToken cancellationToken)
+        {
+            var observedAt = new DateTimeOffset(2026, 4, 7, 20, 16, 0, TimeSpan.Zero);
+            var rabbitMq = BuildRabbitMq(observedAt);
+            return Task.FromResult(new RuntimeOperationalHealthResponse(
+                observedAt,
+                [
+                    new RuntimeOperationalHealthComponentResponse("Backoffice.Api", RuntimeOperationalHealthStatus.Healthy, observedAt, "test", "positive test request", observedAt, null, null, "test", null),
+                    new RuntimeOperationalHealthComponentResponse("Prevention.Host", RuntimeOperationalHealthStatus.Unknown, observedAt, "test", "no heartbeat signal", null, null, null, "test", "unknown is not healthy"),
+                    new RuntimeOperationalHealthComponentResponse("Simulator.Host", RuntimeOperationalHealthStatus.NotApplicable, observedAt, "test", "no active run", observedAt, null, null, "test", null)
+                ],
+                rabbitMq,
+                []));
+        }
+
+        public Task<RabbitMqMetricsResponse> GetRabbitMqMetricsAsync(CancellationToken cancellationToken)
+            => Task.FromResult(BuildRabbitMq(new DateTimeOffset(2026, 4, 7, 20, 16, 0, TimeSpan.Zero)));
+
+        public Task<RuntimeEvidenceCatalogResponse> ListEvidenceAsync(CancellationToken cancellationToken)
+            => Task.FromResult(new RuntimeEvidenceCatalogResponse(DateTimeOffset.UtcNow, [], []));
+
+        public Task<RuntimeEvidenceContentResponse?> GetEvidenceContentAsync(string evidenceId, CancellationToken cancellationToken)
+            => Task.FromResult<RuntimeEvidenceContentResponse?>(null);
+
+        private static RabbitMqMetricsResponse BuildRabbitMq(DateTimeOffset observedAt)
+            => new(
+                observedAt,
+                "test",
+                RuntimeMetricCollectionStatus.Unavailable,
+                [
+                    new RabbitMqQueueMetricResponse("np.ingestion.readings", 0, 0, 0, 1, observedAt, "test", RuntimeMetricCollectionStatus.Measured, null),
+                    new RabbitMqQueueMetricResponse("np.observability.raw", null, null, null, null, observedAt, "test", RuntimeMetricCollectionStatus.Unavailable, "management unavailable")
+                ],
+                []);
     }
 }

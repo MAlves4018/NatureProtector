@@ -107,6 +107,7 @@ UserRoles
   - [src/NatureProtector.Backoffice.Api/Controllers/ControlConfigurationsController.cs](src/NatureProtector.Backoffice.Api/Controllers/ControlConfigurationsController.cs)
   - [src/NatureProtector.Backoffice.Api/Controllers/ControlRuntimeController.cs](src/NatureProtector.Backoffice.Api/Controllers/ControlRuntimeController.cs)
   - [src/NatureProtector.Backoffice.Api/Controllers/ControlSimulationRunsController.cs](src/NatureProtector.Backoffice.Api/Controllers/ControlSimulationRunsController.cs)
+  - [src/NatureProtector.Backoffice.Api/Controllers/DevControlledValidationController.cs](src/NatureProtector.Backoffice.Api/Controllers/DevControlledValidationController.cs)
 
 ### 7.3. Rotas de user/roles
 
@@ -145,6 +146,24 @@ UserRoles
 | GET    | `api/control/runtime/runs/{runId}/timings`             | Sim, Pipeline, Admin |
 | GET    | `api/control/simulation-runs`                          | Sim, Pipeline, Admin |
 | GET    | `api/control/simulation-runs/{runId}`                  | Sim, Pipeline, Admin |
+| GET    | `api/dev/controlled-validation/p3`                     | Sim, Admin           |
+| POST   | `api/dev/controlled-validation/p3/run`                 | Sim, Admin + Development/Evidence environment |
+
+### 7.4.1. UI v2 capabilities versus backend authorization
+
+M05 adds client-side UI v2 capabilities for technical navigation:
+
+- `pipeline.read`
+- `qa.read`
+- `evidence.read`
+- `limitations.read`
+- `admin.read`
+- `admin.execute`
+- `p3.read`
+
+These names are UI presentation capabilities only. They do not create new JWT claims, persistent roles, policies or backend authorization semantics.
+
+The M05 Admin surface is proportional and read-oriented: it lists sensitive actions, required backend authorization and evidence/confirmation state. It does not expose runtime reset, runtime diagnostic execution or P3 run execution as buttons. Existing backend tests continue to be the security evidence for allowed and denied write paths, especially `Sim/Admin` allowed for runtime start and `Pipeline` denied.
 
 ### 7.5. Rotas do control plane com acesso anónimo
 
