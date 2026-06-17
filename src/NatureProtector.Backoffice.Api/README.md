@@ -2,7 +2,7 @@
 
 Este projeto deixou de ser apenas um esqueleto ASP.NET Core e passou a expor a primeira superfície HTTP do plano de controlo.
 
-Ainda não fecha autenticação nem comandos ricos de backoffice, mas já consegue servir configurações, áreas, sensores, cenários, `simulation_runs` e a primeira leitura do estado operacional por área e por célula a partir dos schemas `control` e `projection`.
+Já inclui autenticação JWT e autorização por roles nos endpoints atuais. A suite de API cobre token válido, token expirado, assinatura inválida, issuer/audience inválidos, roles e utilizadores distintos. A API consegue servir configurações, áreas, sensores, cenários, `simulation_runs` e a primeira leitura do estado operacional por área e por célula a partir dos schemas `control` e `projection`.
 
 ## O que existe hoje
 
@@ -10,6 +10,8 @@ Ainda não fecha autenticação nem comandos ricos de backoffice, mas já conseg
   - arranque da API e ligação opcional ao `PostgreSQL`
 - `Configuration/BackofficeApiOptions.cs`
 - ativação da frente do plano de controlo via `BackofficeApi:ControlPlaneEnabled`
+- `OpenApi/`
+  - transformers para declarar JWT bearer e security por operação no OpenAPI runtime
 - `ControlPlane/Contracts/`
   - contratos HTTP desta fase
 - `ControlPlane/Services/IControlPlaneService.cs`
@@ -50,7 +52,12 @@ Ainda não fecha autenticação nem comandos ricos de backoffice, mas já conseg
 - `GET /api/control/runtime/summary`
   - query params: `areaCode` opcional, `recentMinutes` com janela recente por defeito de 30 minutos;
   - agrega `simulation_runs`, inbox, attempts, rejected/quarantine, risk assessments recentes, estado operacional, alertas ativos e limitacoes de observabilidade;
-  - endpoint read-only: nao recalcula risco, nao recalcula alertas, nao consulta RabbitMQ Management API e nao expoe ficheiros de evidencia por HTTP.
+  - endpoint read-only: nao recalcula risco nem alertas.
+- `GET /api/control/runtime/observability/health`
+- `GET /api/control/runtime/observability/rabbitmq`
+- `GET /api/control/runtime/observability/evidence`
+- `GET /api/control/runtime/observability/evidence/{evidenceId}`
+  - `evidenceId` e um identificador gerado pelo catalogo, nao um caminho de filesystem.
 
 ### Developer Runtime Control
 
@@ -86,6 +93,8 @@ Quando `BackofficeApi:ControlPlaneEnabled = false`, a API continua a arrancar, m
 - consulta de alertas ativos simples por área;
 - consulta das `simulation_runs`;
 - resumo agregado read-only para a vista tecnica Runtime Monitor;
+- observabilidade interna de runtime, incluindo health operacional, RabbitMQ e evidence HTTP allowlisted;
+- contrato OpenAPI runtime com security JWT e schemas das respostas runtime/observability consumidas pela UI;
 - ativação mínima de `configuration_versions`.
 
 ## O que ainda não fecha
@@ -93,4 +102,4 @@ Quando `BackofficeApi:ControlPlaneEnabled = false`, a API continua a arrancar, m
 - cenário ativo por área;
 - alertas ricos com ciclo de vida completo;
 - inbox, novas tentativas e estado durável do fluxo operacional por HTTP;
-- autenticação e autorização de backoffice.
+- refresh token, sessão persistente por cookie e gestão produtiva de rotação/revogação de tokens.

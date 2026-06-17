@@ -1,0 +1,148 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - csharp
+          - javascript-typescript
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup .NET
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup Node
+        if: matrix.language == 'javascript-typescript'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20.17.0
+          cache: npm
+          cache-dependency-path: webUI/package-lock.json
+
+      - name: Check frontend toolchain
+        if: matrix.language == 'javascript-typescript'
+        run: npm --prefix webUI run check:toolchain
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Restore C#
+        if: matrix.language == 'csharp'
+        run: dotnet restore ./NatureProtector.sln --configfile NuGet.Config --nologo
+
+      - name: Build C#
+        if: matrix.language == 'csharp'
+        run: dotnet build ./NatureProtector.sln -c Release --no-restore --nologo -v minimal
+
+      - name: Install frontend dependencies
+        if: matrix.language == 'javascript-typescript'
+        working-directory: webUI
+        run: npm ci
+
+      - name: Build frontend
+        if: matrix.language == 'javascript-typescript'
+        working-directory: webUI
+        run: npm run build
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3
+
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+
+  audits:
+    name: Audits and secret canaries
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20.17.0
+          cache: npm
+          cache-dependency-path: webUI/package-lock.json
+
+      - name: Check frontend toolchain
+        run: npm --prefix webUI run check:toolchain
+
+      - name: Install frontend dependencies
+        working-directory: webUI
+        run: npm ci
+
+      - name: Restore .NET
+        run: dotnet restore .\NatureProtector.sln --configfile NuGet.Config --nologo
+
+      - name: NuGet audit
+        run: .\scripts\ci\check-dotnet-audit.ps1 -OutputPath .\artifacts\dotnet-audit.txt
+
+      - name: NPM audit
+        working-directory: webUI
+        run: npm run audit:ci
+
+      - name: Secret scan
+        run: .\scripts\ci\run-secret-scan.ps1 -RepositoryRoot . -IncludeUntracked
+
+      - name: Upload security artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: security-audit-artifacts
+          retention-days: 14
+          path: |
+            artifacts/dotnet-audit.txt
+            artifacts/secret-scan/
+            webUI/npm-audit.json

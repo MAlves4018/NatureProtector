@@ -8,6 +8,32 @@ public sealed class RuntimeEvidenceCatalog
 {
     private const long MaxContentBytes = 1_048_576;
     private const int MaxCatalogItems = 250;
+    private static readonly HashSet<string> ReservedEvidenceIds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        "COM1",
+        "COM2",
+        "COM3",
+        "COM4",
+        "COM5",
+        "COM6",
+        "COM7",
+        "COM8",
+        "COM9",
+        "LPT1",
+        "LPT2",
+        "LPT3",
+        "LPT4",
+        "LPT5",
+        "LPT6",
+        "LPT7",
+        "LPT8",
+        "LPT9"
+    };
+
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".csv",
@@ -21,6 +47,17 @@ public sealed class RuntimeEvidenceCatalog
     public RuntimeEvidenceCatalog(string repositoryRoot)
     {
         _evidenceRoot = Path.GetFullPath(Path.Combine(repositoryRoot, "docs", "evidence"));
+    }
+
+    public static bool IsValidEvidenceId(string? evidenceId)
+    {
+        if (string.IsNullOrWhiteSpace(evidenceId) ||
+            ReservedEvidenceIds.Contains(evidenceId))
+        {
+            return false;
+        }
+
+        return evidenceId.All(character => char.IsLetterOrDigit(character) || character == '-');
     }
 
     public RuntimeEvidenceCatalogResponse List(DateTimeOffset observedAt)
@@ -64,9 +101,7 @@ public sealed class RuntimeEvidenceCatalog
         DateTimeOffset observedAt,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(evidenceId) ||
-            evidenceId.Contains("..", StringComparison.Ordinal) ||
-            evidenceId.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        if (!IsValidEvidenceId(evidenceId))
         {
             return null;
         }
@@ -99,9 +134,18 @@ public sealed class RuntimeEvidenceCatalog
             return [];
         }
 
-        return Directory.EnumerateFiles(_evidenceRoot, "*", SearchOption.AllDirectories)
+        return Directory.EnumerateFiles(
+                _evidenceRoot,
+                "*",
+                new EnumerationOptions
+                {
+                    RecurseSubdirectories = true,
+                    IgnoreInaccessible = true,
+                    AttributesToSkip = FileAttributes.ReparsePoint
+                })
             .Select(path => new FileInfo(path))
             .Where(file => AllowedExtensions.Contains(file.Extension))
+            .Where(file => !file.Attributes.HasFlag(FileAttributes.ReparsePoint))
             .Where(file => IsUnderEvidenceRoot(file.FullName));
     }
 

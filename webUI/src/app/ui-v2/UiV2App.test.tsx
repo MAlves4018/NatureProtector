@@ -138,6 +138,25 @@ describe('UiV2App', () => {
     expect(screen.getByText(/nao depende de path local de docs/i)).toBeInTheDocument();
   });
 
+  it('keeps keyboard focus inside contextual help and restores it on close', async () => {
+    renderUiV2();
+
+    const englishButton = await screen.findByRole('button', { name: 'EN' });
+    englishButton.focus();
+    fireEvent.keyDown(window, { key: 'F1' });
+
+    const dialog = await screen.findByRole('dialog', { name: /ajuda contextual/i });
+    const close = await screen.findByRole('button', { name: /fechar ajuda/i });
+    await waitFor(() => expect(close).toHaveFocus());
+
+    fireEvent.keyDown(dialog, { key: 'Tab' });
+    expect(close).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /ajuda contextual/i })).not.toBeInTheDocument());
+    expect(englishButton).toHaveFocus();
+  });
+
   it('keeps simulation hidden for Pipeline profiles and combines quality with evidence', async () => {
     vi.stubGlobal('fetch', createFetchMock({ roles: ['Pipeline'] }));
     renderAuthenticatedUiV2(['Pipeline']);

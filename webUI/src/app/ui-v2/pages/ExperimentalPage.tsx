@@ -14,7 +14,7 @@ export function ExperimentalPage() {
           <h3>{p3Surface.objective}</h3>
           <StatusBadge label={p3Loading ? copy('state.loading') : p3Surface.status} state="partial" />
         </div>
-        <div className="ui-v2-key-values">
+        <div className="ui-v2-fact-list">
           <span><strong>Integracao</strong>{p3Surface.integrationStatus}</span>
           <span><strong>Inputs esperados</strong>{p3Surface.expectedInputs}</span>
           <span><strong>Outputs esperados</strong>{p3Surface.expectedOutputs}</span>

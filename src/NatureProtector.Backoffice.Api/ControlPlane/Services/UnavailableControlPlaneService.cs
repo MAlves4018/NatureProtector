@@ -109,7 +109,7 @@ public sealed class UnavailableControlPlaneService : IControlPlaneService
             null,
             null,
             null,
-            RuntimeLimitations.Default,
+            RuntimeLimitations.ControlPlaneUnavailable(AvailabilityMessage),
             [AvailabilityMessage]));
 
     public Task<RuntimeDiagnosticCatalogResponse> ListRuntimeDiagnosticsAsync(CancellationToken cancellationToken)

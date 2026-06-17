@@ -291,17 +291,17 @@
   margin: 0;
 }
 
-.ui-v2-key-values,
+.ui-v2-fact-list,
 .ui-v2-detail-grid {
   display: grid;
   gap: 10px;
 }
 
-.ui-v2-key-values {
+.ui-v2-fact-list {
   margin: 12px 0;
 }
 
-.ui-v2-key-values span,
+.ui-v2-fact-list span,
 .ui-v2-detail-row {
   display: grid;
   gap: 4px;
@@ -312,7 +312,7 @@
   overflow-wrap: anywhere;
 }
 
-.ui-v2-key-values strong {
+.ui-v2-fact-list strong {
   color: var(--ui-muted);
   font-size: 12px;
   text-transform: uppercase;

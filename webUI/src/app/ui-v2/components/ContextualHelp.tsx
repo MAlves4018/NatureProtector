@@ -1,19 +1,44 @@
 import { HelpCircle, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { findHelpTopic } from '../content/helpTopics';
 import type { HelpTopicId } from '../types';
 import { localize } from '../types';
 import { useUiV2 } from '../state/UiV2Context';
+import { trapDialogTab } from './dialogFocus';
 
 export function ContextualHelp({ topicId, mode = 'popover' }: { topicId: HelpTopicId; mode?: 'popover' | 'dialog' }) {
   const [open, setOpen] = useState(false);
   const { locale } = useUiV2();
   const topic = findHelpTopic(topicId);
   const title = localize(locale, topic.title);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (open && mode === 'dialog') {
+      closeRef.current?.focus();
+    }
+  }, [mode, open]);
+
+  const closeDialog = () => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  const handleDialogKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeDialog();
+      return;
+    }
+
+    trapDialogTab(event);
+  };
 
   return (
     <span className="ui-v2-help">
       <button
+        ref={triggerRef}
         type="button"
         className="ui-v2-icon-button"
         aria-label={`${title}: ajuda`}
@@ -33,10 +58,10 @@ export function ContextualHelp({ topicId, mode = 'popover' }: { topicId: HelpTop
       )}
       {open && mode === 'dialog' && (
         <div className="ui-v2-help-overlay">
-          <section className="ui-v2-help-dialog" role="dialog" aria-modal="true" aria-label={title}>
+          <section className="ui-v2-help-dialog" role="dialog" aria-modal="true" aria-label={title} onKeyDown={handleDialogKeyDown}>
             <div className="ui-v2-page-header">
               <h2 className="ui-v2-page-title">{title}</h2>
-              <button type="button" className="ui-v2-icon-button" onClick={() => setOpen(false)} aria-label="Fechar ajuda">
+              <button type="button" className="ui-v2-icon-button" onClick={closeDialog} aria-label="Fechar ajuda" ref={closeRef}>
                 <X size={16} />
               </button>
             </div>

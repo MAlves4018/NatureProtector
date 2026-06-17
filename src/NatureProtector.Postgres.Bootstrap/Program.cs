@@ -2,21 +2,22 @@ using Microsoft.EntityFrameworkCore;
 using NatureProtector.Infrastructure.Postgres.Bootstrap;
 using NatureProtector.Infrastructure.Postgres.Configuration;
 using NatureProtector.Infrastructure.Postgres.Persistence;
+using NatureProtector.Postgres.Bootstrap;
 using NatureProtector.Shared.Observability;
 
 /*
  * Este ponto de entrada executa o bootstrap da baseline PostgreSQL do projeto.
  *
  * Rationale:
- * - A operação de bootstrap é usada em linha de comandos e precisa de ter um
- *   fluxo claro e autónomo.
- * - O programa limita-se a resolver a ligação, construir o DbContext e delegar
- *   a importação para o bootstrapper dedicado.
+ * - A operacao de bootstrap e usada em linha de comandos e precisa de ter um
+ *   fluxo claro e autonomo.
+ * - O programa limita-se a resolver a ligacao, construir o DbContext e delegar
+ *   a importacao para o bootstrapper dedicado.
  */
 
 using var bootstrapActivity = PostgresBootstrapTelemetry.ActivitySource.StartActivity("natureprotector.bootstrap.program");
 
-var repoRoot = ResolveRepoRoot(AppContext.BaseDirectory);
+var repoRoot = BootstrapProgram.ResolveRepoRoot(AppContext.BaseDirectory);
 var settings = PostgresConnectionSettingsLoader.LoadFromEnvironmentOrDotEnv(repoRoot);
 
 var optionsBuilder = new DbContextOptionsBuilder<NatureProtectorControlDbContext>();
@@ -36,23 +37,3 @@ Console.WriteLine($"Sensor nodes imported: {summary.SensorNodeCount}");
 Console.WriteLine($"Scenarios imported: {summary.ScenarioCount}");
 Console.WriteLine($"Dataset artifacts indexed: {summary.DatasetArtifactCount}");
 Console.WriteLine($"Scenario bindings created: {summary.ScenarioDatasetBindingCount}");
-
-/// <summary>
-/// Resolve a raiz do repositório a partir da pasta de execução da aplicação.
-/// </summary>
-static string ResolveRepoRoot(string startPath)
-{
-    var current = new DirectoryInfo(Path.GetFullPath(startPath));
-
-    while (current is not null)
-    {
-        if (File.Exists(Path.Combine(current.FullName, "NatureProtector.sln")))
-        {
-            return current.FullName;
-        }
-
-        current = current.Parent;
-    }
-
-    throw new InvalidOperationException("Could not resolve the repository root from the bootstrap application path.");
-}

@@ -1,6 +1,6 @@
 # UI v2 Owner Maintenance Guide
 
-Last updated: 2026-06-14
+Last updated: 2026-06-16
 
 ## Scope
 
@@ -64,10 +64,13 @@ npm test
 npm test
 npm run test:coverage
 npm run build
+npm run test:e2e -- ui-v2-authenticated.spec.ts
 dotnet test tests/NatureProtector.Backoffice.Api.Tests/NatureProtector.Backoffice.Api.Tests.csproj --no-restore
 ```
 
 When changing visibility/profile behavior, run the full frontend suite at least three times and check stderr for React `act(...)` warnings.
+
+For browser-auth changes, `webUI/e2e/ui-v2-authenticated.spec.ts` is the focused regression suite. It exercises the built `/ui-v2` bundle with an HTTP fixture for Anonymous/Admin/Sim/Pipeline journeys, degraded runtime summary states and authenticated evidence download. It does not replace backend authorization/JWT tests. For accessibility regressions, `webUI/e2e/ui-v2-public.spec.ts` covers axe, skip link keyboard activation, F1 help dialog focus lifecycle, dark mode, mobile viewport and reduced motion. Chromium is the normal local/PR gate; use `NP_PLAYWRIGHT_BROWSER_MATRIX=all` for the Chromium/Firefox/WebKit matrix.
 
 ## Latest Recovery Evidence
 
@@ -84,12 +87,13 @@ Key screenshots:
 
 Final local validation:
 
+- `npm run test:e2e` passed on 2026-06-16, 18 Playwright tests against `vite preview`.
 - `npm test` passed three consecutive times, 33 tests each.
 - `npm run typecheck` passed.
 - `npm test -- src/app/ui-v2` passed, 26 tests.
 - `npm run test:coverage` passed; `app/ui-v2` line coverage was `82.56%`.
 - `npm run build` passed.
-- `dotnet test tests/NatureProtector.Backoffice.Api.Tests/NatureProtector.Backoffice.Api.Tests.csproj --no-restore` passed, 92 tests, with known `NU1902`.
+- `dotnet test tests/NatureProtector.Backoffice.Api.Tests/NatureProtector.Backoffice.Api.Tests.csproj --no-restore` passed, 92 tests, with the then-known `NU1902`; E2 validation on 2026-06-16 reports no vulnerable NuGet packages.
 
 ## Remaining Owner Decisions
 

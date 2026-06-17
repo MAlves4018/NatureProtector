@@ -30,7 +30,8 @@ describe('UI v2 risk read model', () => {
 
     expect(model.state).toBe('blocked');
     expect(model.canShowScore).toBe(false);
-    expect(model.scoreDisplay).toBe('0');
+    expect(model.scoreDisplay).toBeNull();
+    expect(model.classDisplay).toBeNull();
   });
 
   it('deduplicates repeated limitations from the existing runtime projections', () => {

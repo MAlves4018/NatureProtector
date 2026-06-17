@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NatureProtector.Prevention.Host.Configuration;
@@ -158,6 +159,59 @@ public sealed class PreventionWorkerTests
         Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
         Assert.Single(inbox.Rejections);
         Assert.Equal("invalid_json", inbox.Rejections.Single().RejectionCode);
+    }
+
+    [Fact]
+    public async Task HandleReceivedAsync_AcknowledgesPreviousV1FixtureWithoutOptionalIngestTime()
+    {
+        var body = CreateContractFixtureBytes();
+
+        var (inbox, recorder) = await InvokeWorkerWithBodyAsync(body, 23);
+
+        AssertAckedWithoutNack(recorder, 23);
+        Assert.Single(inbox.Events);
+        Assert.Empty(inbox.Rejections);
+    }
+
+    [Fact]
+    public async Task HandleReceivedAsync_AcknowledgesForwardCompatibleUnknownOptionalFields()
+    {
+        var body = CreateContractFixtureBytes(root =>
+        {
+            root["producerBuild"] = "future-field";
+            GetPayloadObject(root)["futurePayloadField"] = "ignored";
+        });
+
+        var (inbox, recorder) = await InvokeWorkerWithBodyAsync(body, 24);
+
+        AssertAckedWithoutNack(recorder, 24);
+        Assert.Single(inbox.Events);
+        Assert.Empty(inbox.Rejections);
+    }
+
+    [Theory]
+    [InlineData(ContractFixtureMutation.UnsupportedSchemaVersion, "unsupported_schema_version")]
+    [InlineData(ContractFixtureMutation.MissingEventId, "invalid_event_id")]
+    [InlineData(ContractFixtureMutation.MissingCorrelationId, "missing_correlation_id")]
+    [InlineData(ContractFixtureMutation.NullProducer, "missing_producer")]
+    [InlineData(ContractFixtureMutation.UnknownEventType, "unsupported_event_type")]
+    [InlineData(ContractFixtureMutation.MissingEventTime, "invalid_event_time")]
+    [InlineData(ContractFixtureMutation.MissingSimulationRunId, "missing_simulation_run_id")]
+    [InlineData(ContractFixtureMutation.MissingSensorId, "missing_sensor_id")]
+    [InlineData(ContractFixtureMutation.NullSensorName, "missing_sensor_name")]
+    [InlineData(ContractFixtureMutation.UnknownStringMetricType, "invalid_json")]
+    public async Task HandleReceivedAsync_AcknowledgesInvalidVersionedContractFixtures_AndStoresRejection(
+        ContractFixtureMutation mutation,
+        string expectedRejectionCode)
+    {
+        var body = CreateContractFixtureBytes(root => ApplyContractMutation(root, mutation));
+
+        var (inbox, recorder) = await InvokeWorkerWithBodyAsync(body, 25);
+
+        AssertAckedWithoutNack(recorder, 25);
+        Assert.Empty(inbox.Events);
+        Assert.Single(inbox.Rejections);
+        Assert.Equal(expectedRejectionCode, inbox.Rejections.Single().RejectionCode);
     }
 
     [Fact]
@@ -336,16 +390,120 @@ public sealed class PreventionWorkerTests
             "DeclareTopology",
             BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException("DeclareTopology method was not found.");
+        var options = new RabbitMqOptions
+        {
+            ExchangeName = "np.it.events",
+            IngestionReadingsQueueName = "np.it.ingestion",
+            ObservabilityRawQueueName = "np.it.raw"
+        };
 
-        method.Invoke(null, [channel]);
+        method.Invoke(null, [channel, options]);
 
         var exchangeDeclare = Assert.Single(recorder.Invocations, x => x.MethodName == "ExchangeDeclare");
-        Assert.Equal(NatureProtectorRabbitMqTopology.ExchangeName, Assert.IsType<string>(exchangeDeclare.Arguments[0]));
+        Assert.Equal("np.it.events", Assert.IsType<string>(exchangeDeclare.Arguments[0]));
         Assert.Equal(NatureProtectorRabbitMqTopology.ExchangeType, Assert.IsType<string>(exchangeDeclare.Arguments[1]));
 
         var queueDeclares = recorder.Invocations.Where(x => x.MethodName == "QueueDeclare").ToList();
         Assert.Equal(2, queueDeclares.Count);
-        Assert.Equal(NatureProtectorRabbitMqTopology.Bindings.Count(), recorder.Invocations.Count(x => x.MethodName == "QueueBind"));
+        Assert.Contains(queueDeclares, x => Equals(x.Arguments[0], "np.it.ingestion"));
+        Assert.Contains(queueDeclares, x => Equals(x.Arguments[0], "np.it.raw"));
+        Assert.Equal(2, recorder.Invocations.Count(x => x.MethodName == "QueueBind"));
+    }
+
+    private static async Task<(InMemoryReadingEventInbox Inbox, RecordingDispatchProxy<IModel> Recorder)> InvokeWorkerWithBodyAsync(
+        byte[] body,
+        ulong deliveryTag)
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var worker = CreateWorker(inbox);
+        var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
+
+        await InvokeHandleReceivedAsync(
+            worker,
+            channel,
+            CreateEventArgs(body, deliveryTag),
+            CancellationToken.None);
+
+        return (inbox, recorder);
+    }
+
+    private static void AssertAckedWithoutNack(RecordingDispatchProxy<IModel> recorder, ulong deliveryTag)
+    {
+        var ack = Assert.Single(recorder.Invocations, x => x.MethodName == "BasicAck");
+        Assert.Equal(deliveryTag, Assert.IsType<ulong>(ack.Arguments[0]));
+        Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
+    }
+
+    private static byte[] CreateContractFixtureBytes(Action<JsonObject>? mutate = null)
+    {
+        var envelope = EnvelopeFactory.Create(
+            areaId: Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            eventId: Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            simulationRunId: Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            sensorId: Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"));
+        var root = JsonNode.Parse(JsonEventSerializer.SerializeToString(envelope))?.AsObject()
+            ?? throw new InvalidOperationException("Contract fixture JSON could not be parsed.");
+
+        mutate?.Invoke(root);
+
+        return Encoding.UTF8.GetBytes(root.ToJsonString());
+    }
+
+    private static void ApplyContractMutation(JsonObject root, ContractFixtureMutation mutation)
+    {
+        var payload = GetPayloadObject(root);
+
+        switch (mutation)
+        {
+            case ContractFixtureMutation.UnsupportedSchemaVersion:
+                root["schemaVersion"] = "2.0";
+                break;
+            case ContractFixtureMutation.MissingEventId:
+                root.Remove("eventId");
+                break;
+            case ContractFixtureMutation.MissingCorrelationId:
+                root.Remove("correlationId");
+                break;
+            case ContractFixtureMutation.NullProducer:
+                root["producer"] = null;
+                break;
+            case ContractFixtureMutation.UnknownEventType:
+                root["eventType"] = "UnknownFutureEvent";
+                break;
+            case ContractFixtureMutation.MissingEventTime:
+                root.Remove("eventTime");
+                break;
+            case ContractFixtureMutation.MissingSimulationRunId:
+                payload.Remove("simulationRunId");
+                break;
+            case ContractFixtureMutation.MissingSensorId:
+                payload.Remove("sensorId");
+                break;
+            case ContractFixtureMutation.NullSensorName:
+                payload["sensorName"] = null;
+                break;
+            case ContractFixtureMutation.UnknownStringMetricType:
+                payload["metricType"] = "UnknownFutureMetric";
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null);
+        }
+    }
+
+    private static JsonObject GetPayloadObject(JsonObject root)
+    {
+        return root["payload"]?.AsObject()
+            ?? throw new InvalidOperationException("Contract fixture payload is missing.");
+    }
+
+    private static PreventionWorker CreateWorker(IReadingEventInbox inbox)
+    {
+        return CreateWorker(CreatePipeline(
+            new InMemoryAcceptedReadingRepository(),
+            new InMemoryRiskAssessmentRepository(),
+            new InMemoryAreaRiskSnapshotRepository(),
+            new FakeInfluxWriteService()),
+            inbox);
     }
 
     private static PreventionWorker CreateWorker(ReadingRiskPipeline pipeline, IReadingEventInbox inbox)
@@ -441,5 +599,19 @@ public sealed class PreventionWorkerTests
         {
             return Task.FromResult<IReadOnlyCollection<EventEnvelope<SensorReadingProducedPayload>>>([]);
         }
+    }
+
+    public enum ContractFixtureMutation
+    {
+        UnsupportedSchemaVersion,
+        MissingEventId,
+        MissingCorrelationId,
+        NullProducer,
+        UnknownEventType,
+        MissingEventTime,
+        MissingSimulationRunId,
+        MissingSensorId,
+        NullSensorName,
+        UnknownStringMetricType
     }
 }

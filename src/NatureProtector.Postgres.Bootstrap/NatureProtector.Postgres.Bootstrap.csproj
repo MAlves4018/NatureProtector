@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\NatureProtector.Infrastructure.Postgres\NatureProtector.Infrastructure.Postgres.csproj" />
     <ProjectReference Include="..\NatureProtector.Shared\NatureProtector.Shared.csproj" />
+    <ProjectReference Include="..\NatureProtector.Shared.Observability\NatureProtector.Shared.Observability.csproj" />
   </ItemGroup>
 
   <ItemGroup>

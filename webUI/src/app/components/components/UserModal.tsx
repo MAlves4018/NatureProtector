@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useToken } from "../../context/TokenContext";
 import { getColors } from "../../utils/utils";
 import { User } from "../../types";

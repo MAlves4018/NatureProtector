@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 
 namespace NatureProtector.Backoffice.Api.Controllers;
@@ -17,6 +18,8 @@ public sealed class ControlRuntimeObservabilityController : ControllerBase
     }
 
     [HttpGet("health")]
+    [ProducesResponseType(typeof(RuntimeOperationalHealthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult> GetOperationalHealth(CancellationToken cancellationToken = default)
     {
         if (!_observability.IsAvailable)
@@ -28,6 +31,8 @@ public sealed class ControlRuntimeObservabilityController : ControllerBase
     }
 
     [HttpGet("rabbitmq")]
+    [ProducesResponseType(typeof(RabbitMqMetricsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult> GetRabbitMqMetrics(CancellationToken cancellationToken = default)
     {
         if (!_observability.IsAvailable)
@@ -39,6 +44,8 @@ public sealed class ControlRuntimeObservabilityController : ControllerBase
     }
 
     [HttpGet("evidence")]
+    [ProducesResponseType(typeof(RuntimeEvidenceCatalogResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult> ListEvidence(CancellationToken cancellationToken = default)
     {
         if (!_observability.IsAvailable)
@@ -50,6 +57,10 @@ public sealed class ControlRuntimeObservabilityController : ControllerBase
     }
 
     [HttpGet("evidence/{evidenceId}")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult> GetEvidenceContent(string evidenceId, CancellationToken cancellationToken = default)
     {
         if (!_observability.IsAvailable)
@@ -57,9 +68,7 @@ public sealed class ControlRuntimeObservabilityController : ControllerBase
             return ObservabilityUnavailable();
         }
 
-        if (evidenceId.Contains("..", StringComparison.Ordinal) ||
-            evidenceId.Contains('\\', StringComparison.Ordinal) ||
-            evidenceId.Contains('/', StringComparison.Ordinal))
+        if (!RuntimeEvidenceCatalog.IsValidEvidenceId(evidenceId))
         {
             return BadRequest(new { message = "EvidenceId is invalid." });
         }

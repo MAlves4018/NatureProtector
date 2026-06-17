@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using NatureProtector.Backoffice.Api.Configuration;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Backoffice.Api.OpenApi;
 using NatureProtector.Backoffice.Api.UserPlane.Services;
 using NatureProtector.Infrastructure.Postgres.DependencyInjection;
 using NatureProtector.Infrastructure.Postgres.Persistence;
@@ -36,7 +37,11 @@ builder.Services.AddNatureProtectorOpenTelemetry(
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpClient();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer<BackofficeOpenApiSecurityDocumentTransformer>();
+    options.AddOperationTransformer<BackofficeOpenApiSecurityOperationTransformer>();
+});
 builder.Services.Configure<BackofficeApiOptions>(
     builder.Configuration.GetSection(BackofficeApiOptions.SectionName));
 builder.Services.Configure<JwtAuthenticationOptions>(

@@ -1,6 +1,6 @@
 # UI v2 foundation and core capability expansion
 
-This page documents the UI v2 implementation delivered by M03 and expanded by M04/M05. It is an implementation note, not a product claim.
+This page documents the UI v2 implementation delivered by M03 and expanded by M04/M05, with later browser-auth hardening. It is an implementation note, not a product claim.
 
 UI v2 is an isolated prototype experience mounted at `/ui-v2`. It keeps the existing beta routes intact and does not change RabbitMQ contracts, public API projections, database schema/migrations, alert semantics, scoring, JWT claims or role names.
 
@@ -37,6 +37,8 @@ M05 hardens the UI v2 technical surface without adding backend contracts:
 - staging/demo readiness checklist that is explicit about browser-visible evidence versus handoff/runtime evidence;
 - focused tests for the new adapters, capabilities, claims/absence states and route wiring.
 
+The 2026-06-16 browser hardening adds Playwright coverage against the built UI artifact for Anonymous, Admin, Sim and Pipeline journeys, plus login/session/API failure states, degraded runtime summary states and authenticated evidence download. It also expands accessibility regression coverage for axe, skip link keyboard activation, F1 help dialog focus lifecycle, Escape/focus restore, dark mode, mobile viewport and reduced-motion media settings. A Vitest guardrail rejects browser app `console.*` statements whose messages include sensitive user, token or session terms. These browser tests use an HTTP fixture at the Playwright boundary; they validate UI behavior, token propagation, capability gating, sensitive-console regressions and accessibility regressions, not a live external identity store or WCAG certification.
+
 The UI reads existing backend output through frontend adapters. It does not recalculate risk and does not reinterpret `Blocked` as risk score `0`.
 
 ## Runtime path
@@ -63,13 +65,17 @@ GET  /api/control/simulation-runs?areaCode={areaCode}&take=20
 GET  /api/control/runtime/runs/{runId}
 GET  /api/control/runtime/runs/{runId}/audit
 GET  /api/control/runtime/runs/{runId}/timings
+GET  /api/control/runtime/observability/health
+GET  /api/control/runtime/observability/rabbitmq
+GET  /api/control/runtime/observability/evidence
+GET  /api/control/runtime/observability/evidence/{evidenceId}
 GET  /api/dev/controlled-validation/p3
 POST /api/control/runtime/runs
 ```
 
 `GET /api/dev/controlled-validation/p3` is only queried by UI v2 when the current profile has `Sim` or `Admin`; otherwise the P3 surface reports availability as not confirmed for that profile/session.
 
-No new backend endpoint was added for M03, M04 or M05.
+No new backend endpoint was added for M03, M04, M05 or the 2026-06-16 browser-auth hardening.
 
 ## Output-context adapters
 
@@ -139,6 +145,16 @@ UI v2 must keep these boundaries visible:
 
 ## Validation snapshot
 
+Browser hardening validation on 2026-06-16:
+
+- `npm test -- src/app/services/api.test.ts src/app/ui-v2/outputContext.test.ts`: passed, 9 tests.
+- `npm run typecheck`: passed.
+- `npm test`: passed, 43 frontend tests after the sensitive-console guardrail addition.
+- `npm run test:coverage`: passed, 43 frontend tests after D7 lint fixes; all frontend line coverage `34.25%`, `app/ui-v2` line coverage `83.33%`.
+- `npm run test:e2e`: passed, 18 Playwright tests against `npm run build` + `vite preview`.
+
+The Playwright specs cover UI v2 role/capability behavior, error surfaces and selected accessibility regressions with bounded API fixtures. Backend authorization and JWT behavior remain covered by Backoffice API tests.
+
 M05 local validation on 2026-06-14:
 
 - `npm run typecheck`: passed.
@@ -148,11 +164,11 @@ M05 local validation on 2026-06-14:
   - `app/ui-v2` line coverage: `84.12%`.
 - `npm run build`: passed.
 - `npm test`: passed, 30 tests.
-- `dotnet test tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj --no-restore --nologo -v minimal -m:1`: passed, 91 tests, with the known `NU1902` warning.
-- `dotnet test NatureProtector.sln --no-restore --nologo -v minimal -m:1`: passed, 1182 tests, with the known `NU1902` warning.
+- `dotnet test tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj --no-restore --nologo -v minimal -m:1`: passed, 91 tests, with the then-known `NU1902` warning.
+- `dotnet test NatureProtector.sln --no-restore --nologo -v minimal -m:1`: passed, 1182 tests, with the then-known `NU1902` warning.
 - Security checks:
   - `npm audit --json` returned 3 high findings in the existing Vite/esbuild chain; no forced or major dependency fix was applied.
-  - `dotnet list NatureProtector.sln package --vulnerable --include-transitive` returned the known moderate OpenTelemetry advisory.
+  - `dotnet list NatureProtector.sln package --vulnerable --include-transitive` returned the then-known moderate OpenTelemetry advisory; E2 validation on 2026-06-16 reports no vulnerable NuGet packages.
   - targeted UI v2 scan found only test fixture strings and technical labels, not new secrets.
 
 M04 local validation on 2026-06-14:
@@ -163,7 +179,7 @@ M04 local validation on 2026-06-14:
   - all frontend line coverage: `26.06%`;
   - `app/ui-v2` line coverage: `81.28%`.
 - `npm run build`: passed.
-- `dotnet test tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj --no-restore --nologo -v minimal -m:1`: passed, 91 tests, with the known `NU1902` warning.
+- `dotnet test tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj --no-restore --nologo -v minimal -m:1`: passed, 91 tests, with the then-known `NU1902` warning.
 - Browser smoke against local Vite and Backoffice API:
   - login with existing admin credentials;
   - open `/ui-v2`;
@@ -182,7 +198,7 @@ M03 local validation on 2026-06-14:
   - all frontend line coverage: `13.67%`;
   - `app/ui-v2` line coverage: `86.48%`.
 - `npm run build`: passed.
-- `dotnet test .\tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj --no-restore --nologo -v minimal -m:1`: passed, 88 tests, with the known `NU1902` warning.
+- `dotnet test .\tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj --no-restore --nologo -v minimal -m:1`: passed, 88 tests, with the then-known `NU1902` warning.
 - Browser smoke against local Vite and Backoffice API confirmed login, `/ui-v2`, read-only risk, Data Status Strip, help drawer and PT/EN toggle.
 
 ## Known limitations
@@ -195,6 +211,7 @@ M03 local validation on 2026-06-14:
 - The existing Vite/esbuild npm audit finding from M02 remains unresolved.
 - Runtime backlog, broker health, publisher timestamps and full per-event latency are not instrumented through the current UI v2 contracts.
 - The M05 Admin view is intentionally read-oriented; destructive reset and P3 execution are not exposed.
+- The 2026-06-16 Playwright matrix uses an HTTP fixture; it is not evidence of a deployed multi-user environment, external validation or accessibility certification.
 - P3 integration, final alert policy, beta removal, cutover, new backend contracts and scientific calibration remain out of scope.
 
 ## Next mission boundary

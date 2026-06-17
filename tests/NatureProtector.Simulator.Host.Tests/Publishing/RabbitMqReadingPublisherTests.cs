@@ -89,6 +89,25 @@ public sealed class RabbitMqReadingPublisherTests
         Assert.Equal(expectedMessage, ex.Message);
     }
 
+    [Fact]
+    public async Task PublishAsync_Throws_WhenPublisherConfirmTimeoutIsInvalid()
+    {
+        using var publisher = CreatePublisher(new RabbitMqOptions
+        {
+            HostName = "localhost",
+            UserName = "np",
+            Password = "pass",
+            ExchangeName = "np.events",
+            PublisherConfirmTimeoutSeconds = 0
+        });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => publisher.PublishAsync(
+            envelope: CreateEnvelope(),
+            cancellationToken: CancellationToken.None));
+
+        Assert.Equal("RabbitMQ PublisherConfirmTimeoutSeconds must be greater than zero.", ex.Message);
+    }
+
     private static RabbitMqReadingPublisher CreatePublisher(RabbitMqOptions options)
     {
         return new RabbitMqReadingPublisher(

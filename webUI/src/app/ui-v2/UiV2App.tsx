@@ -1,5 +1,5 @@
 import { LogIn, Moon, Sun } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { UiV2Navigation } from './navigation/UiV2Navigation';
 import { UiV2Provider, useUiV2 } from './state/UiV2Context';
 import { PublicOverviewPage } from './pages/PublicOverviewPage';
@@ -13,6 +13,7 @@ import { QualityEvidencePage } from './pages/QualityEvidencePage';
 import { AdminPage } from './pages/AdminPage';
 import { ExperimentalPage } from './pages/ExperimentalPage';
 import type { UiV2NavTarget } from './capabilities';
+import { trapDialogTab } from './components/dialogFocus';
 import './theme/ui-v2.css';
 
 export function UiV2App({ isDark = false }: { isDark?: boolean }) {
@@ -35,14 +36,40 @@ function UiV2Shell({ isDark }: { isDark: boolean }) {
     isPublic,
   } = useUiV2();
   const [helpTopic, setHelpTopic] = useState<string | null>(null);
+  const helpCloseRef = useRef<HTMLButtonElement | null>(null);
+  const helpReturnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const handler = (event: Event) => {
+      helpReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setHelpTopic(String((event as CustomEvent).detail ?? 'overview'));
     };
     window.addEventListener('np-ui-v2-help', handler);
     return () => window.removeEventListener('np-ui-v2-help', handler);
   }, []);
+
+  useEffect(() => {
+    if (!helpTopic) {
+      return;
+    }
+
+    helpCloseRef.current?.focus();
+    return () => {
+      helpReturnFocusRef.current?.focus();
+      helpReturnFocusRef.current = null;
+    };
+  }, [helpTopic]);
+
+  const closeHelp = () => setHelpTopic(null);
+  const handleHelpDialogKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeHelp();
+      return;
+    }
+
+    trapDialogTab(event);
+  };
 
   const mainId = 'ui-v2-main';
 
@@ -69,7 +96,7 @@ function UiV2Shell({ isDark }: { isDark: boolean }) {
           </p>
         </div>
         <div className="ui-v2-hero-actions">
-          <div className="ui-v2-language" aria-label="Idioma">
+          <div className="ui-v2-language">
             <button type="button" className={locale === 'pt-PT' ? 'ui-v2-button' : 'ui-v2-secondary'} onClick={() => setLocale('pt-PT')}>{copy('language.pt')}</button>
             <button type="button" className={locale === 'en' ? 'ui-v2-button' : 'ui-v2-secondary'} onClick={() => setLocale('en')}>{copy('language.en')}</button>
           </div>
@@ -92,11 +119,17 @@ function UiV2Shell({ isDark }: { isDark: boolean }) {
       <footer className="ui-v2-footer">{copy('footer.beta')}</footer>
       {helpTopic && (
         <div className="ui-v2-help-overlay">
-          <section className="ui-v2-help-dialog" role="dialog" aria-modal="true" aria-label={copy('help.title')}>
+          <section
+            className="ui-v2-help-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={copy('help.title')}
+            onKeyDown={handleHelpDialogKeyDown}
+          >
             <h2 className="ui-v2-page-title">{copy('help.title')}</h2>
             <p>{copy('help.intro')}</p>
             <p>{copy('help.browser')}</p>
-            <button type="button" className="ui-v2-button" onClick={() => setHelpTopic(null)}>{copy('help.close')}</button>
+            <button type="button" className="ui-v2-button" onClick={closeHelp} ref={helpCloseRef}>{copy('help.close')}</button>
           </section>
         </div>
       )}

@@ -56,7 +56,7 @@ Key local observations:
 | Frontend coverage | `npm run test:coverage` | `app/ui-v2` line coverage 84.28%; global webUI 31.71% | Measured locally |
 | Frontend build | `npm run build` | passed | Measured locally |
 | Dependency audit | `npm audit --audit-level=high --json` | 3 high Vite/esbuild-chain findings | Measured locally |
-| NuGet audit | `dotnet list package --vulnerable --include-transitive` | OpenTelemetry exporter moderate advisory | Measured locally |
+| NuGet audit | `dotnet list package --vulnerable --include-transitive` | M06 measured an OpenTelemetry exporter advisory; E2 on 2026-06-16 reports no vulnerable NuGet packages | Measured locally |
 
 ## Local readiness workload
 
@@ -152,7 +152,7 @@ Not available:
 Open findings:
 
 - `npm audit --audit-level=high --json`: 3 high findings through `@vitejs/plugin-react`, `vite` and `esbuild`. The available npm fix path reports semver-major changes; M06 did not apply `npm audit fix --force`.
-- `dotnet list package --vulnerable --include-transitive`: `OpenTelemetry.Exporter.OpenTelemetryProtocol 1.10.0` moderate advisory.
+- `dotnet list package --vulnerable --include-transitive`: no vulnerable NuGet packages in the E2 validation on 2026-06-16. M06 previously recorded an `OpenTelemetry.Exporter.OpenTelemetryProtocol 1.10.0` moderate advisory before the package update.
 - `.env` and `.env.example` contain non-empty development secret values. M06 recorded only redacted classifications and did not print values.
 
 Minimum before any external sharing or stronger delivery claim:

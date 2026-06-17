@@ -1,3 +1,4 @@
+using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 using NatureProtector.Backoffice.Api.Tests.TestInfrastructure;
 using NatureProtector.Core.Scenarios;
@@ -25,7 +26,9 @@ public sealed class RuntimeSummaryServiceTests
         Assert.Equal(0, summary.Risk.RecentCount);
         Assert.Null(summary.AreaOperationalState);
         Assert.Empty(summary.ActiveAlerts);
-        Assert.Contains(summary.Limitations, limitation => limitation.Code == "rabbitmq_metrics_unavailable");
+        Assert.Contains(summary.Limitations, limitation => limitation.Code == "runtime_observability_separate_endpoint");
+        Assert.Contains(summary.Limitations, limitation => limitation.Code == "classifier_payload_details_not_persisted");
+        Assert.DoesNotContain(summary.Limitations, IsStaleMaterializedCapabilityLimitation);
     }
 
     [Fact]
@@ -72,6 +75,7 @@ public sealed class RuntimeSummaryServiceTests
         Assert.Single(summary.ActiveAlerts);
         Assert.Equal("Alarm", summary.ActiveAlerts[0].AlertState);
         Assert.Empty(summary.Warnings);
+        Assert.DoesNotContain(summary.Limitations, IsStaleMaterializedCapabilityLimitation);
     }
 
     [Fact]
@@ -511,4 +515,11 @@ public sealed class RuntimeSummaryServiceTests
         """;
 
     private sealed record SeededRuntimeIds(Guid RunId);
+
+    private static bool IsStaleMaterializedCapabilityLimitation(RuntimeLimitationResponse limitation)
+        => limitation.Code is
+            "rabbitmq_metrics_unavailable" or
+            "eligibility_projection_unavailable" or
+            "evidence_http_unavailable" or
+            "host_health_unavailable";
 }

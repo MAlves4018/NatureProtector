@@ -35,7 +35,7 @@ export function AreaSelector({ compact = false }: { compact?: boolean }) {
           ))}
         </select>
       </label>
-      <div className="ui-v2-key-values">
+      <div className="ui-v2-fact-list">
         <span><strong>{copy('area.requested')}</strong>{areaResolution.requestedArea ?? copy('area.notSelected')}</span>
         <span><strong>{copy('area.resolved')}</strong>{area ? `${area.name} (${area.code})` : copy('value.notAvailable')}</span>
         <span><strong>{copy('area.available')}</strong>{areas.length}</span>

@@ -308,7 +308,12 @@ public sealed class ControlPlaneApiTests
         Assert.Equal("High", root.GetProperty("indexComparison").GetProperty("portugueseContextRiskProxyClass").GetString());
         Assert.Equal("NotAvailable", root.GetProperty("indexComparison").GetProperty("localFwiPercentileStatus").GetString());
         Assert.Equal(1, root.GetProperty("activeAlerts").GetArrayLength());
-        Assert.NotEmpty(root.GetProperty("limitations").EnumerateArray());
+        var limitations = root.GetProperty("limitations").EnumerateArray().ToArray();
+        Assert.NotEmpty(limitations);
+        Assert.Contains(limitations, limitation =>
+            limitation.GetProperty("code").GetString() == "runtime_observability_separate_endpoint" &&
+            limitation.GetProperty("message").GetString()?.Contains("/api/control/runtime/observability", StringComparison.Ordinal) == true);
+        Assert.DoesNotContain(limitations, limitation => IsStaleRuntimeLimitationCode(limitation.GetProperty("code").GetString()));
     }
 
     [Fact]
@@ -661,6 +666,13 @@ public sealed class ControlPlaneApiTests
             degradationProfile = "missing-readings",
             degradationProfiles = new[] { "missing-readings" }
         };
+
+    private static bool IsStaleRuntimeLimitationCode(string? code)
+        => code is
+            "rabbitmq_metrics_unavailable" or
+            "eligibility_projection_unavailable" or
+            "evidence_http_unavailable" or
+            "host_health_unavailable";
 
     private sealed class FakeRuntimeObservabilityService : IRuntimeObservabilityService
     {

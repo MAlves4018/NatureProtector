@@ -1,0 +1,8 @@
+# Historical local/dev fixtures and one CSS false positive.
+# Entries are Gitleaks fingerprints only; do not add secret values here.
+bfb8662544ff11d6b6029f7e0a2ebe4d77b35320:webUI/src/app/ui-v2/theme/ui-v2.css:generic-api-key:304
+74472c7a2819ae13ca76985990ba152d5ca37bf3:src/NatureProtector.Backoffice.Api/NatureProtector.Backoffice.Api.http:jwt:58
+74472c7a2819ae13ca76985990ba152d5ca37bf3:src/NatureProtector.Backoffice.Api/NatureProtector.Backoffice.Api.http:jwt:74
+74472c7a2819ae13ca76985990ba152d5ca37bf3:src/NatureProtector.Backoffice.Api/NatureProtector.Backoffice.Api.http:jwt:133
+74472c7a2819ae13ca76985990ba152d5ca37bf3:src/NatureProtector.Backoffice.Api/NatureProtector.Backoffice.Api.http:jwt:134
+7fff3bca0992c3bbb9da2c665c5d7b0689bfc76a:.env:generic-api-key:13

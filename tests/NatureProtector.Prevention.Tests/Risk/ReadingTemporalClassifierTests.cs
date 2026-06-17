@@ -1,3 +1,4 @@
+using FsCheck.Xunit;
 using NatureProtector.Prevention.Readings;
 using NatureProtector.Prevention.Risk;
 using NatureProtector.Shared.Contracts.Readings;
@@ -38,15 +39,173 @@ public sealed class ReadingTemporalClassifierTests
         var result = Assert.Single(ReadingTemporalClassifier.Classify(
             reading,
             TimeSpan.FromSeconds(60),
-            latestObservedEventTime: eventTime.AddMinutes(1)));
+            latestObservedEventTime: eventTime.AddMinutes(5)));
 
         Assert.Contains("OutOfOrder", result.QualityFlags);
-        Assert.Contains("event_time_before_latest_observed", result.Reasons);
+        Assert.Contains("event_time_before_latest_observed_outside_reorder_window", result.Reasons);
+    }
+
+    [Fact]
+    public void Classify_AllowsEarlierEventInsideReorderWindow()
+    {
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(eventTime, eventTime.AddSeconds(5));
+
+        var result = ReadingTemporalClassifier.Classify(
+            reading,
+            TimeSpan.FromSeconds(60),
+            latestObservedEventTime: eventTime.AddMinutes(2));
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void Classify_FlagsClockSkew_WhenIngestTimePrecedesEventTime()
+    {
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(eventTime, eventTime.AddSeconds(-1));
+
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(
+            reading,
+            TimeSpan.FromSeconds(60)));
+
+        Assert.Contains("SemanticMismatch", result.QualityFlags);
+        Assert.Contains("ingest_time_before_event_time_clock_skew", result.Reasons);
+    }
+
+    [Fact]
+    public void Classify_FlagsClockSkew_WhenEvaluationClockPrecedesEventTime()
+    {
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var fixedNow = eventTime.AddSeconds(-1);
+        var reading = CreateReading(eventTime, ingestTime: null);
+
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(
+            reading,
+            TimeSpan.FromSeconds(60),
+            timeProvider: new FixedTimeProvider(fixedNow)));
+
+        Assert.Equal(fixedNow, result.EvaluatedAt);
+        Assert.Contains("SemanticMismatch", result.QualityFlags);
+        Assert.Contains("evaluation_time_before_event_time_clock_skew", result.Reasons);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Classify_FlagsInvalidTemporalPolicy_WhenIntervalIsNotPositive(int intervalSeconds)
+    {
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(eventTime, eventTime.AddSeconds(5));
+
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(
+            reading,
+            TimeSpan.FromSeconds(intervalSeconds)));
+
+        Assert.Contains("SemanticMismatch", result.QualityFlags);
+        Assert.Contains("invalid_temporal_policy_interval_non_positive", result.Reasons);
+    }
+
+    [Fact]
+    public void Classify_UsesControllableClock_WhenIngestTimeIsMissing()
+    {
+        var fixedNow = new DateTimeOffset(2026, 5, 18, 12, 30, 0, TimeSpan.Zero);
+        var clock = new FixedTimeProvider(fixedNow);
+        var reading = CreateReading(
+            new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero),
+            ingestTime: null,
+            operationalState: SensorOperationalState.Retransmitted);
+
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(
+            reading,
+            TimeSpan.FromSeconds(60),
+            timeProvider: clock));
+
+        Assert.Equal(fixedNow, result.EvaluatedAt);
+        Assert.Contains("Duplicate", result.QualityFlags);
+    }
+
+    [Fact]
+    public void Classify_CalculatesSpringForwardLagByInstant_NotLocalWallClock()
+    {
+        var lisbon = FindEuropeLisbonTimeZone();
+        Assert.True(lisbon.IsInvalidTime(new DateTime(2026, 3, 29, 1, 30, 0, DateTimeKind.Unspecified)));
+
+        var eventTimeBeforeJump = new DateTimeOffset(2026, 3, 29, 0, 58, 0, TimeSpan.Zero);
+        var ingestTimeAfterJump = new DateTimeOffset(2026, 3, 29, 2, 4, 0, TimeSpan.FromHours(1));
+        var reading = CreateReading(eventTimeBeforeJump, ingestTimeAfterJump);
+
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(reading, TimeSpan.FromSeconds(60)));
+
+        Assert.Equal(TimeSpan.FromMinutes(6), ingestTimeAfterJump - eventTimeBeforeJump);
+        Assert.Contains("Delayed", result.QualityFlags);
+        Assert.Contains("Stale", result.QualityFlags);
+    }
+
+    [Fact]
+    public void Classify_CalculatesFallBackOrderingByInstant_NotAmbiguousLocalWallClock()
+    {
+        var lisbon = FindEuropeLisbonTimeZone();
+        Assert.True(lisbon.IsAmbiguousTime(new DateTime(2026, 10, 25, 1, 30, 0, DateTimeKind.Unspecified)));
+
+        var eventTimeFirstOccurrence = new DateTimeOffset(2026, 10, 25, 1, 50, 0, TimeSpan.FromHours(1));
+        var latestObservedSecondOccurrence = new DateTimeOffset(2026, 10, 25, 1, 30, 0, TimeSpan.Zero);
+        var reading = CreateReading(eventTimeFirstOccurrence, eventTimeFirstOccurrence.AddSeconds(5));
+
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(
+            reading,
+            TimeSpan.FromSeconds(60),
+            latestObservedEventTime: latestObservedSecondOccurrence));
+
+        Assert.True(eventTimeFirstOccurrence < latestObservedSecondOccurrence);
+        Assert.Contains("OutOfOrder", result.QualityFlags);
+    }
+
+    [Property(MaxTest = 100)]
+    public bool ResolveTemporalThresholds_ArePositiveAndOrdered(int rawIntervalSeconds)
+    {
+        var interval = TimeSpan.FromSeconds(Math.Abs(rawIntervalSeconds % 3600) + 1);
+        var lateness = ReadingTemporalClassifier.ResolveLatenessThreshold(interval);
+        var reorder = ReadingTemporalClassifier.ResolveReorderWindow(interval);
+        var stale = ReadingTemporalClassifier.ResolveStaleThreshold(interval);
+
+        return lateness > TimeSpan.Zero &&
+            reorder >= lateness &&
+            stale >= reorder;
+    }
+
+    [Property(MaxTest = 100)]
+    public bool Classify_NominalReadingsInsideLatenessThreshold_HaveNoTemporalFlags(
+        int rawIntervalSeconds,
+        int rawLagSeconds)
+    {
+        var interval = TimeSpan.FromSeconds(Math.Abs(rawIntervalSeconds % 3600) + 1);
+        var thresholdSeconds = (int)ReadingTemporalClassifier
+            .ResolveLatenessThreshold(interval)
+            .TotalSeconds;
+        var lagSeconds = Math.Abs(rawLagSeconds % (thresholdSeconds + 1));
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(eventTime, eventTime.AddSeconds(lagSeconds));
+
+        return ReadingTemporalClassifier.Classify(reading, interval).Count == 0;
+    }
+
+    [Property(MaxTest = 100)]
+    public bool Classify_NominalReadingsBeyondStaleThreshold_AreStale(int rawIntervalSeconds)
+    {
+        var interval = TimeSpan.FromSeconds(Math.Abs(rawIntervalSeconds % 3600) + 1);
+        var lag = ReadingTemporalClassifier.ResolveStaleThreshold(interval).Add(TimeSpan.FromSeconds(1));
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(eventTime, eventTime.Add(lag));
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(reading, interval));
+
+        return result.QualityFlags.Contains("Stale");
     }
 
     private static NormalizedReading CreateReading(
         DateTimeOffset eventTime,
-        DateTimeOffset ingestTime)
+        DateTimeOffset? ingestTime,
+        SensorOperationalState operationalState = SensorOperationalState.Nominal)
     {
         return new NormalizedReading(
             EventId: Guid.NewGuid(),
@@ -59,8 +218,25 @@ public sealed class ReadingTemporalClassifierTests
             Unit: MeasurementUnit.Celsius,
             Latitude: 39.7,
             Longitude: -7.9,
-            OperationalState: SensorOperationalState.Nominal,
+            OperationalState: operationalState,
             EventTime: eventTime,
             IngestTime: ingestTime);
+    }
+
+    private static TimeZoneInfo FindEuropeLisbonTimeZone()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Europe/Lisbon");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+        }
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset value) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => value;
     }
 }

@@ -12,7 +12,7 @@ Este projeto guarda os contratos e utilitários partilhados que hoje permitem ao
 ## Conteúdo atual
 
 - `Configuration/RabbitMqOptions.cs`
-  - opções de ligação e nome do exchange
+  - opções de ligação, vhost, nomes de exchange/filas e timeout de publisher confirms
 - `Contracts/Readings/`
   - `SensorReadingProducedPayload`
   - `MeasurementUnit`
@@ -40,11 +40,14 @@ Neste momento, ambas as filas são ligadas à mesma routing key de produção.
 
 Sem este projeto, o `Simulator.Host` e o `Prevention.Host` tenderiam a duplicar contratos, enums e serialização. O ganho principal aqui é consistência de mensagem e de topologia.
 
+Este projeto nao deve carregar exporters, OpenTelemetry instrumentation ou wiring de hosts runtime. Essa responsabilidade pertence a `NatureProtector.Shared.Observability`.
+
 ## Limitações e direção futura
 
 - O projeto mistura duas responsabilidades que a documentação de planeamento já distingue melhor: contratos partilhados e infraestrutura RabbitMQ.
 - O roadmap em [../../docs/planning/project-completion-roadmap.md](../../docs/planning/project-completion-roadmap.md) já aponta para uma futura separação entre um módulo de contratos e outro de infraestrutura de mensagens.
-- O projeto de testes correspondente em [../../tests/NatureProtector.Shared.Tests](../../tests/NatureProtector.Shared.Tests) existe, mas ainda não tem testes substantivos.
+- O wiring OpenTelemetry foi separado para `NatureProtector.Shared.Observability`; `NatureProtector.Shared` permanece livre de referencias `OpenTelemetry*`.
+- O projeto de testes correspondente em [../../tests/NatureProtector.Shared.Tests](../../tests/NatureProtector.Shared.Tests) cobre serialização camelCase, enums textuais, fixtures JSON V1, compatibilidade com a forma V1 sem `ingestTime`, campos opcionais desconhecidos e topologia RabbitMQ.
 
 ## Relação com os hosts
 

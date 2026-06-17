@@ -59,7 +59,7 @@ export const api = {
             return Promise.reject(new Error("No auth token set"));
         }
         const options = api.getRequestOptions();
-        return httpClient.get<User | null>(url, api.options);
+        return httpClient.get<User | null>(url, options);
     },
 
     getAreas: () => {
@@ -152,6 +152,13 @@ export const api = {
     listRuntimeEvidence: () => {
         return httpClient.get<RuntimeEvidenceCatalogResponse>(
             '/control/runtime/observability/evidence',
+            api.getRequestOptions()
+        );
+    },
+
+    downloadRuntimeEvidence: (evidenceId: string) => {
+        return httpClient.download(
+            `/control/runtime/observability/evidence/${encodeURIComponent(evidenceId)}`,
             api.getRequestOptions()
         );
     },

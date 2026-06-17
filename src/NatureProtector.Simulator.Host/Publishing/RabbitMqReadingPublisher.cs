@@ -61,25 +61,33 @@ public sealed class RabbitMqReadingPublisher(
         activity?.SetTag(TelemetryTags.SensorName, envelope.Payload.SensorName);
         activity?.SetTag(TelemetryTags.MetricType, envelope.Payload.MetricType);
 
-        EnsureChannel();
+        lock (_syncRoot)
+        {
+            EnsureChannel();
 
-        var channel = _channel
-            ?? throw new InvalidOperationException("RabbitMQ channel was not initialized.");
+            var channel = _channel
+                ?? throw new InvalidOperationException("RabbitMQ channel was not initialized.");
 
-        var body = JsonEventSerializer.SerializeToUtf8Bytes(envelope);
+            var body = JsonEventSerializer.SerializeToUtf8Bytes(envelope);
 
-        var properties = channel.CreateBasicProperties();
-        properties.Persistent = true;
-        properties.MessageId = envelope.EventId.ToString();
-        properties.CorrelationId = envelope.CorrelationId;
-        properties.Type = envelope.EventType;
-        properties.Timestamp = new AmqpTimestamp(envelope.EventTime.ToUnixTimeSeconds());
+            var properties = channel.CreateBasicProperties();
+            properties.Persistent = true;
+            properties.ContentType = "application/json";
+            properties.ContentEncoding = "utf-8";
+            properties.MessageId = envelope.EventId.ToString();
+            properties.CorrelationId = envelope.CorrelationId;
+            properties.Type = envelope.EventType;
+            properties.Timestamp = new AmqpTimestamp(envelope.EventTime.ToUnixTimeSeconds());
 
-        channel.BasicPublish(
-            exchange: _options.ExchangeName,
-            routingKey: RoutingKeys.SensorReadingProduced,
-            basicProperties: properties,
-            body: body);
+            RabbitMqPublishGuarantees.PublishMandatoryAndWaitForConfirm(
+                channel,
+                _options.ExchangeName,
+                RoutingKeys.SensorReadingProduced,
+                properties,
+                body,
+                TimeSpan.FromSeconds(_options.PublisherConfirmTimeoutSeconds),
+                $"reading event {envelope.EventId}");
+        }
 
         logger.LogInformation(
             "Published {EventType} to RabbitMQ | EventId={EventId} | CorrelationId={CorrelationId} | SensorId={SensorId} | SensorName={SensorName} | Value={Value}",
@@ -141,18 +149,26 @@ public sealed class RabbitMqReadingPublisher(
                 throw new InvalidOperationException("RabbitMQ ExchangeName is not configured.");
             }
 
+            if (_options.PublisherConfirmTimeoutSeconds <= 0)
+            {
+                throw new InvalidOperationException(
+                    "RabbitMQ PublisherConfirmTimeoutSeconds must be greater than zero.");
+            }
+
             var factory = new ConnectionFactory
             {
                 HostName = _options.HostName,
                 Port = _options.Port,
                 UserName = _options.UserName,
-                Password = _options.Password
+                Password = _options.Password,
+                VirtualHost = _options.VirtualHost
             };
 
             _connection = factory.CreateConnection();
             _channel = _connection.CreateModel();
 
             DeclareTopology(_channel);
+            RabbitMqPublishGuarantees.EnablePublisherConfirms(_channel);
 
             logger.LogInformation(
                 "RabbitMQ publisher connected | Host={Host} | Port={Port} | Exchange={Exchange}",
@@ -177,18 +193,18 @@ public sealed class RabbitMqReadingPublisher(
             autoDelete: false);
 
         channel.QueueDeclare(
-            queue: NatureProtectorRabbitMqTopology.IngestionReadingsQueue,
+            queue: _options.IngestionReadingsQueueName,
             durable: true,
             exclusive: false,
             autoDelete: false);
 
         channel.QueueDeclare(
-            queue: NatureProtectorRabbitMqTopology.ObservabilityRawQueue,
+            queue: _options.ObservabilityRawQueueName,
             durable: true,
             exclusive: false,
             autoDelete: false);
 
-        foreach (var (queueName, routingKey) in NatureProtectorRabbitMqTopology.Bindings)
+        foreach (var (queueName, routingKey) in _options.GetBindings())
         {
             channel.QueueBind(
                 queue: queueName,

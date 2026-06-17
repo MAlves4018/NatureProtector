@@ -1,7 +1,7 @@
 import { ArrowRight, Flame, GitBranch, ShieldCheck } from "lucide-react";
 import { useEffect, useReducer, useState } from "react";
 import type { ReactNode } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { areaReducer, initialAreaState } from "../../hooks/AreaIdReducer";
 import { api } from "../../services/api";
 import { getColors } from "../../utils/utils";

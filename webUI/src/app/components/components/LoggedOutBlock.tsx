@@ -1,20 +1,12 @@
-import { useState } from "react";
 import { getColors } from "../../utils/utils";
-import { backdropStyle, cardStyle, iconRing, inputStyle, labelStyle, primaryButton, wrapperStyle } from "../styles/styleUtils";
+import { backdropStyle, cardStyle, wrapperStyle } from "../styles/styleUtils";
 import { useToken } from "../../context/TokenContext";
-import { useNavigate } from "react-router";
-import { api } from "../../services/api";
 import { LogInOutProps } from "../../types";
 import { AlertTriangle } from "lucide-react";
 
-export function LoggedOutBlock({ isDark, message, onAuthChange, mode = "panel" }: LogInOutProps  ) {
+export function LoggedOutBlock({ isDark, message, mode = "panel" }: LogInOutProps  ) {
     const c = getColors(isDark);
-    const [usernameOrEmail, setUsernameOrEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const { token, login, logout } = useToken();
-    const nav = useNavigate();
+    const { token } = useToken();
 
     const signedIn = Boolean(token);
     const isPanel = mode === "panel";

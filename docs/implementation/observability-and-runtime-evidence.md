@@ -1,6 +1,6 @@
 # Observability and runtime evidence
 
-Last updated: 2026-06-14
+Last updated: 2026-06-16
 
 This document describes the current internal observability slice. It is runtime evidence for a technical prototype, not scientific validation of wildfire risk, official alerting, or calibrated prediction.
 
@@ -148,12 +148,16 @@ Rules:
 
 - source is limited to `docs/evidence`;
 - public identifiers are generated evidence IDs, not filesystem paths;
+- evidence IDs are constrained to generated identifier characters and reserved/path-like values are rejected before content lookup;
 - extensions are allowlisted to `.md`, `.txt`, `.json` and `.csv`;
 - the catalog returns the 250 most recent allowlisted files and reports `evidence_catalog_truncated` when more exist;
 - content is capped at 1 MiB;
 - canonical path validation prevents traversal outside `docs/evidence`;
+- recursive catalog enumeration skips filesystem reparse points/symlinks;
 - responses use `no-store`;
 - the Brain folder, `.env`, `.git`, arbitrary paths and binary files are not exposed.
+
+UI v2 downloads allowlisted runtime evidence through the existing authenticated API client, so the same bearer/session path used by the rest of the app is applied to `GET /api/control/runtime/observability/evidence/{evidenceId}`. It does not use a plain unauthenticated anchor to `/api`.
 
 ## UI Pipeline
 
@@ -165,6 +169,7 @@ UI v2 Pipeline consumes the new observability contracts proportionally:
 - publisher timestamps remain `NotInstrumented`;
 - current/global projections are still labelled as current projections when not guaranteed run-scoped;
 - run audit and timings continue to be preferred for selected run details.
+- evidence download is exposed only for catalog items that report available HTTP content.
 
 ## Grafana and InfluxDB
 

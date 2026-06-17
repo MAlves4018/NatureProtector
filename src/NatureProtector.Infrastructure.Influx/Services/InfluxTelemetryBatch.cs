@@ -27,17 +27,37 @@ public sealed class InfluxTelemetryBatch
         return this;
     }
 
-    public InfluxTelemetryBatch AddRiskAssessment(Guid areaId, Guid sensorId, RiskAssessment assessment)
+    public InfluxTelemetryBatch AddRiskAssessment(
+        Guid areaId,
+        Guid sensorId,
+        RiskAssessment assessment,
+        Guid? sourceEventId = null,
+        Guid? simulationRunId = null)
     {
         ArgumentNullException.ThrowIfNull(assessment);
-        _riskAssessments.Add(new InfluxRiskAssessmentWrite(areaId, sensorId, assessment));
+        _riskAssessments.Add(new InfluxRiskAssessmentWrite(
+            areaId,
+            sensorId,
+            assessment,
+            sourceEventId,
+            simulationRunId));
         return this;
     }
 
-    public InfluxTelemetryBatch AddAreaRiskSnapshot(Guid areaId, int assessmentCount, AreaRiskSnapshot snapshot)
+    public InfluxTelemetryBatch AddAreaRiskSnapshot(
+        Guid areaId,
+        int assessmentCount,
+        AreaRiskSnapshot snapshot,
+        Guid? sourceEventId = null,
+        Guid? simulationRunId = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        _areaRiskSnapshots.Add(new InfluxAreaRiskSnapshotWrite(areaId, assessmentCount, snapshot));
+        _areaRiskSnapshots.Add(new InfluxAreaRiskSnapshotWrite(
+            areaId,
+            assessmentCount,
+            snapshot,
+            sourceEventId,
+            simulationRunId));
         return this;
     }
 
@@ -60,7 +80,12 @@ public sealed class InfluxTelemetryBatch
         {
             foreach (var write in _riskAssessments)
             {
-                filtered.AddRiskAssessment(write.AreaId, write.SensorId, write.Assessment);
+                filtered.AddRiskAssessment(
+                    write.AreaId,
+                    write.SensorId,
+                    write.Assessment,
+                    write.SourceEventId,
+                    write.SimulationRunId);
             }
         }
 
@@ -68,7 +93,12 @@ public sealed class InfluxTelemetryBatch
         {
             foreach (var write in _areaRiskSnapshots)
             {
-                filtered.AddAreaRiskSnapshot(write.AreaId, write.AssessmentCount, write.Snapshot);
+                filtered.AddAreaRiskSnapshot(
+                    write.AreaId,
+                    write.AssessmentCount,
+                    write.Snapshot,
+                    write.SourceEventId,
+                    write.SimulationRunId);
             }
         }
 
@@ -79,9 +109,13 @@ public sealed class InfluxTelemetryBatch
 public readonly record struct InfluxRiskAssessmentWrite(
     Guid AreaId,
     Guid SensorId,
-    RiskAssessment Assessment);
+    RiskAssessment Assessment,
+    Guid? SourceEventId,
+    Guid? SimulationRunId);
 
 public readonly record struct InfluxAreaRiskSnapshotWrite(
     Guid AreaId,
     int AssessmentCount,
-    AreaRiskSnapshot Snapshot);
+    AreaRiskSnapshot Snapshot,
+    Guid? SourceEventId,
+    Guid? SimulationRunId);

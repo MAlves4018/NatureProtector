@@ -130,6 +130,8 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
         {
             points.Add(PointData
                 .Measurement("accepted_readings")
+                .Tag("event_id", envelope.EventId.ToString())
+                .Tag("simulation_run_id", envelope.Payload.SimulationRunId.ToString())
                 .Tag("area_id", envelope.AreaId.ToString())
                 .Tag("sensor_id", envelope.Payload.SensorId.ToString())
                 .Tag("sensor_name", envelope.Payload.SensorName)
@@ -152,6 +154,8 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
                 .Field("risk_score", write.Assessment.RiskScore)
                 .Timestamp(write.Assessment.Timestamp.UtcDateTime, WritePrecision.Ns);
 
+            point = AddOptionalContextTags(point, write.SourceEventId, write.SimulationRunId);
+
             if (!string.IsNullOrWhiteSpace(write.Assessment.ExplanationSummary))
             {
                 point = point.Field("has_explanation", 1);
@@ -164,17 +168,37 @@ public sealed class InfluxWriteService : IInfluxWriteService, IDisposable
         {
             var severity = SeverityExtensions.FromRiskLevel(write.Snapshot.AggregateRiskLevel);
 
-            points.Add(PointData
+            var point = PointData
                 .Measurement("area_risk_snapshots")
                 .Tag("area_id", write.AreaId.ToString())
                 .Tag("aggregate_risk_level", write.Snapshot.AggregateRiskLevel.ToString())
                 .Tag("severity", severity.ToString())
                 .Field("aggregate_risk_score", write.Snapshot.AggregateRiskScore)
                 .Field("assessment_count", write.AssessmentCount)
-                .Timestamp(write.Snapshot.Timestamp.UtcDateTime, WritePrecision.Ns));
+                .Timestamp(write.Snapshot.Timestamp.UtcDateTime, WritePrecision.Ns);
+
+            points.Add(AddOptionalContextTags(point, write.SourceEventId, write.SimulationRunId));
         }
 
         return points;
+    }
+
+    private static PointData AddOptionalContextTags(
+        PointData point,
+        Guid? sourceEventId,
+        Guid? simulationRunId)
+    {
+        if (sourceEventId is { } eventId)
+        {
+            point = point.Tag("event_id", eventId.ToString());
+        }
+
+        if (simulationRunId is { } runId)
+        {
+            point = point.Tag("simulation_run_id", runId.ToString());
+        }
+
+        return point;
     }
 
     private static TagList CreateBatchTelemetryTags(InfluxTelemetryBatch batch, string outcome)

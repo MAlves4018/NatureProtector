@@ -83,4 +83,31 @@ describe('api client', () => {
       }),
     );
   });
+
+  it('downloads runtime evidence through the authenticated API client', async () => {
+    api.withAuthToken('explicit-token');
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('runtime evidence', {
+        status: 200,
+        headers: {
+          'Content-Disposition': 'attachment; filename="runtime-smoke.txt"',
+          'Content-Type': 'text/plain',
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await api.downloadRuntimeEvidence('runtime-smoke');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/control/runtime/observability/evidence/runtime-smoke',
+      expect.objectContaining({
+        credentials: 'include',
+        headers: expect.objectContaining({ Authorization: 'Bearer explicit-token' }),
+      }),
+    );
+    expect(result.filename).toBe('runtime-smoke.txt');
+    expect(result.contentType).toBe('text/plain');
+    expect(await result.blob.text()).toBe('runtime evidence');
+  });
 });

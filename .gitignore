@@ -16,6 +16,8 @@ riderModule.iml
 
 **/TestResults/
 /coveragereport_core/
+/coveragereport_backend/
+/artifacts/
 /.config/AppData/
 /.config/dotnet/
 *.diag.log
@@ -36,6 +38,7 @@ docs/structurizr/output/*
 !docs/structurizr/output/.gitkeep
 docs/structurizr/.structurizr/
 docs/structurizr/workspace.json
+graphify-out
 
 .env
 node_modules/.package-lock.json
@@ -101,6 +104,11 @@ webUI/dist/
 webUI/.vite/
 webUI/coverage/
 webUI/test-results/
+webUI/playwright-report/
+webUI/npm-audit.json
+webUI/npm-audit.diagnostics.json
+webUI/npm-audit.exit-code.txt
+webUI/npm-audit.policy.json
 
 /data/runtime/influx/admin-token.json
 

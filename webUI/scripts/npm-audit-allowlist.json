@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "allowedAdvisories": [
+    {
+      "advisoryId": "GHSA-gv7w-rqvm-qjhr",
+      "package": "@vitejs/plugin-react",
+      "dependencyPath": [
+        "@vitejs/plugin-react"
+      ],
+      "classification": "dev",
+      "severity": "high",
+      "reason": "Development/build tooling exposure only in the current dependency graph; no runtime production dependency path is present. Revalidate on any Vite/plugin upgrade or production-bundle dependency change.",
+      "acceptedVersionRange": "4.0.0-beta.0 - 5.1.4",
+      "expiresOn": "2026-07-31",
+      "revalidationTriggers": [
+        "advisory id changes",
+        "package name changes",
+        "dependency path changes",
+        "accepted version range changes",
+        "frontend production runtime starts depending on this path"
+      ]
+    },
+    {
+      "advisoryId": "GHSA-gv7w-rqvm-qjhr",
+      "package": "vite",
+      "dependencyPath": [
+        "vite"
+      ],
+      "classification": "dev",
+      "severity": "high",
+      "reason": "Development/build tooling exposure only in the current dependency graph; no runtime production dependency path is present. Revalidate on any Vite upgrade or production-bundle dependency change.",
+      "acceptedVersionRange": "4.2.0-beta.0 - 8.0.3",
+      "expiresOn": "2026-07-31",
+      "revalidationTriggers": [
+        "advisory id changes",
+        "package name changes",
+        "dependency path changes",
+        "accepted version range changes",
+        "frontend production runtime starts depending on this path"
+      ]
+    },
+    {
+      "advisoryId": "GHSA-gv7w-rqvm-qjhr",
+      "package": "vite",
+      "dependencyPath": [
+        "vitest",
+        "vite"
+      ],
+      "classification": "dev",
+      "severity": "high",
+      "reason": "Development test tooling exposure through Vitest only in the current dependency graph; no runtime production dependency path is present. Revalidate on any Vitest/Vite upgrade or production-bundle dependency change.",
+      "acceptedVersionRange": "4.2.0-beta.0 - 8.0.3",
+      "expiresOn": "2026-07-31",
+      "revalidationTriggers": [
+        "advisory id changes",
+        "package name changes",
+        "dependency path changes",
+        "accepted version range changes",
+        "frontend production runtime starts depending on this path"
+      ]
+    },
+    {
+      "advisoryId": "GHSA-gv7w-rqvm-qjhr",
+      "package": "esbuild",
+      "dependencyPath": [
+        "vite",
+        "esbuild"
+      ],
+      "classification": "dev",
+      "severity": "high",
+      "reason": "Transitive development/build tooling exposure through Vite only in the current dependency graph. Revalidate on any Vite/esbuild upgrade or production-bundle dependency change.",
+      "acceptedVersionRange": "0.17.0 - 0.28.0",
+      "expiresOn": "2026-07-31",
+      "revalidationTriggers": [
+        "advisory id changes",
+        "package name changes",
+        "dependency path changes",
+        "accepted version range changes",
+        "frontend production runtime starts depending on this path"
+      ]
+    },
+    {
+      "advisoryId": "GHSA-gv7w-rqvm-qjhr",
+      "package": "esbuild",
+      "dependencyPath": [
+        "vitest",
+        "vite",
+        "esbuild"
+      ],
+      "classification": "dev",
+      "severity": "high",
+      "reason": "Transitive development test tooling exposure through Vitest and Vite only in the current dependency graph. Revalidate on any Vitest/Vite/esbuild upgrade or production-bundle dependency change.",
+      "acceptedVersionRange": "0.17.0 - 0.28.0",
+      "expiresOn": "2026-07-31",
+      "revalidationTriggers": [
+        "advisory id changes",
+        "package name changes",
+        "dependency path changes",
+        "accepted version range changes",
+        "frontend production runtime starts depending on this path"
+      ]
+    }
+  ]
+}

@@ -56,7 +56,6 @@ export function TokenProvider({ children }: { children: React.ReactNode }) {
             setUser(user);
             localStorage.setItem('token', resp.token);
         } catch (error) {
-            console.error('Login failed:', error);
             throw error;
         }
     };
@@ -77,12 +76,10 @@ export function TokenProvider({ children }: { children: React.ReactNode }) {
         }
         await api.withAuthToken(storedToken).getCurrentUser().then(user => {
             if (!user) {
-                console.warn('refreshToken: /users-roles/me returned null');
                 logout();
                 return;
             }
             if (!user.id) {
-                console.warn('refreshToken: /users-roles/me missing id', user);
                 logout();
                 return;
             }
@@ -94,9 +91,7 @@ export function TokenProvider({ children }: { children: React.ReactNode }) {
                 roles: user.roles
             };
             setUser(currentUser)
-            console.log('refreshToken: user loaded', currentUser);
         }).catch((e) => {
-            console.error('refreshToken: /users-roles/me threw', e);
             if (e instanceof Error && e.message !== "No auth token set") {
                 logout();
             }

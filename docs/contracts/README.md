@@ -12,6 +12,8 @@ seja lida como estado runtime atual.
 - Contratos externos são fronteiras de compatibilidade.
 - Alterações de contrato exigem versionamento explícito e plano de migração.
 - O contrato RabbitMQ vivo da V1 continua a ser `EventEnvelope<SensorReadingProducedPayload>`.
+- A `schemaVersion` runtime suportada para esse envelope é `1.0`; versões desconhecidas são rejeitadas pelo consumidor antes da materialização no inbox.
+- A publicação RabbitMQ do simulador usa mensagens persistentes, metadata JSON explícita, `mandatory` routing e publisher confirms; mensagens unroutable devem falhar localmente.
 - `SensorReadingProduced` é o evento externo atual da ingestão.
 - `OperationalEvent` é camada interna da prevenção, não contrato RabbitMQ externo.
 - Quando houver conflito entre documentação antiga e código/testes/evidência recente, prevalece o estado observado.
@@ -33,11 +35,12 @@ seja lida como estado runtime atual.
 
 | Check ID | Verificação | Método | Resultado esperado |
 |---|---|---|---|
-| CHK-001 | RabbitMQ mantém envelope atual | Testes de `Shared` e simulador | `SensorReadingProduced` serializa/deserializa sem alteração |
+| CHK-001 | RabbitMQ mantém envelope atual | Fixtures de `Shared`, testes do simulador e validação pré-inbox da prevenção | `SensorReadingProduced` serializa/deserializa sem alteração e versões desconhecidas são rejeitadas |
 | CHK-002 | Camadas internas não substituem contrato externo | Testes de prevenção | `OperationalEvent` nasce de `EventEnvelope<SensorReadingProducedPayload>` |
 | CHK-003 | `RiskInput` continua pré-scoring | Testes de risco | Não contém `BaseRisk`, `AdjustedScore`, `RiskScore`, `RiskLevel`, `AlertState` ou projeção |
 | CHK-004 | `Blocked` não vira risco zero | Testes de elegibilidade/scoring | Não é criado novo `RiskAssessment` numérico |
 | CHK-005 | API não recalcula risco | Testes de API/projeção | `alertState` é lido da projeção |
+| CHK-006 | Publisher RabbitMQ falha em unroutable | DockerIntegration RabbitMQ | `mandatory` + publisher confirms estão ativos e canal/conexão fechados são recriados |
 
 ## Relação com o Plano V1
 

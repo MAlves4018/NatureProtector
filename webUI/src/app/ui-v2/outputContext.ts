@@ -43,7 +43,6 @@ export interface UiV2RiskReadInput {
 
 const unknown = (locale: UiV2Locale) => translate(locale, 'value.unknown');
 const notAvailable = (locale: UiV2Locale) => translate(locale, 'value.notAvailable');
-const noData = (locale: UiV2Locale) => translate(locale, 'value.noData');
 
 export function buildUiV2RiskReadModel(input: UiV2RiskReadInput, locale: UiV2Locale): UiV2RiskReadModel {
   if (input.accessDenied) {
@@ -66,18 +65,6 @@ export function buildUiV2RiskReadModel(input: UiV2RiskReadInput, locale: UiV2Loc
     return emptyModel('no-data', locale);
   }
 
-  const score = summary.scoreComponents?.npScore ?? summary.areaOperationalState?.aggregateRiskScore ?? null;
-  const scoreDisplay = score === null ? null : formatUiV2Number(score, locale, 3);
-  const classDisplay =
-    summary.scoreComponents?.npRiskClassLabel ??
-    summary.scoreComponents?.npRiskClass ??
-    summary.areaOperationalState?.aggregateRiskLevel ??
-    null;
-  const timestamp =
-    summary.scoreComponents?.latestAssessmentTimestamp ??
-    summary.areaOperationalState?.lastAssessmentTimestamp ??
-    summary.areaOperationalState?.snapshotTimestamp ??
-    summary.generatedAtUtc;
   const limitations = uniqueValues([
     ...summary.limitations.map(item => item.message),
     ...splitMaybe(summary.scoreComponents?.limitations),
@@ -88,6 +75,19 @@ export function buildUiV2RiskReadModel(input: UiV2RiskReadInput, locale: UiV2Loc
     summary.scoreComponents?.calculationStatus,
     summary.areaOperationalState?.operationalStatusReason,
   ], ['blocked']);
+  const score = blocked ? null : summary.scoreComponents?.npScore ?? summary.areaOperationalState?.aggregateRiskScore ?? null;
+  const scoreDisplay = score === null ? null : formatUiV2Number(score, locale, 3);
+  const classDisplay = blocked
+    ? null
+    : summary.scoreComponents?.npRiskClassLabel ??
+      summary.scoreComponents?.npRiskClass ??
+      summary.areaOperationalState?.aggregateRiskLevel ??
+      null;
+  const timestamp =
+    summary.scoreComponents?.latestAssessmentTimestamp ??
+    summary.areaOperationalState?.lastAssessmentTimestamp ??
+    summary.areaOperationalState?.snapshotTimestamp ??
+    summary.generatedAtUtc;
   const stale = containsAny([
     summary.areaOperationalState?.freshnessStatus,
     summary.freshness?.note,

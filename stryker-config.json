@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/src/Stryker.CLI/Stryker.CLI/Resources/stryker.schema.json",
+  "stryker-config": {
+    "solution": "NatureProtector.sln",
+    "project": "src/NatureProtector.Prevention/NatureProtector.Prevention.csproj",
+    "test-projects": [
+      "tests/NatureProtector.Prevention.Tests/NatureProtector.Prevention.Tests.csproj"
+    ],
+    "mutate": [
+      "Risk/TerritorialRiskContext.cs",
+      "Risk/ReadingTemporalClassifier.cs"
+    ],
+    "reporters": [
+      "progress",
+      "cleartext"
+    ],
+    "thresholds": {
+      "high": 80,
+      "low": 60,
+      "break": 0
+    }
+  }
+}

@@ -33,6 +33,8 @@ public sealed class UnavailableControlPlaneServiceTests
         Assert.Null(runtimeSummary.LatestRun);
         Assert.Equal(0, runtimeSummary.Pipeline.InboxTotal);
         Assert.NotEmpty(runtimeSummary.Limitations);
+        Assert.Contains(runtimeSummary.Limitations, limitation => limitation.Code == "control_plane_unavailable");
+        Assert.Contains(runtimeSummary.Limitations, limitation => limitation.Code == "postgres_runtime_projection_unavailable");
 
         var diagnostics = await service.ListRuntimeDiagnosticsAsync(CancellationToken.None);
         Assert.Empty(diagnostics.Diagnostics);

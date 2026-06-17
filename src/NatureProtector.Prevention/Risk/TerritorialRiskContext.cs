@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+
 namespace NatureProtector.Prevention.Risk;
 
 public sealed record TerritorialRiskContext(
@@ -5,6 +8,71 @@ public sealed record TerritorialRiskContext(
     string Source,
     double StructuralHazardScore)
 {
+    private static readonly IReadOnlyDictionary<string, CanonicalComponentMapping> HazardAliases =
+        new Dictionary<string, CanonicalComponentMapping>(StringComparer.Ordinal)
+        {
+            ["muito alta"] = new("very_high_hazard", 0.90, true, null),
+            ["very high"] = new("very_high_hazard", 0.90, true, null),
+            ["extreme"] = new("very_high_hazard", 0.90, true, null),
+            ["alta"] = new("high_hazard", 0.75, true, null),
+            ["high"] = new("high_hazard", 0.75, true, null),
+            ["moderada"] = new("medium_hazard", 0.50, true, null),
+            ["media"] = new("medium_hazard", 0.50, true, null),
+            ["medium"] = new("medium_hazard", 0.50, true, null),
+            ["baixa"] = new("low_hazard", 0.25, true, null),
+            ["low"] = new("low_hazard", 0.25, true, null),
+            ["muito baixa"] = new("very_low_hazard", 0.10, true, null),
+            ["very low"] = new("very_low_hazard", 0.10, true, null)
+        };
+
+    private static readonly IReadOnlyDictionary<string, CanonicalComponentMapping> FuelAliases =
+        new Dictionary<string, CanonicalComponentMapping>(StringComparer.Ordinal)
+        {
+            ["florestas de eucalipto"] = new("high_flammability_forest", 0.85, true, null),
+            ["eucalipto"] = new("high_flammability_forest", 0.85, true, null),
+            ["eucaliptal"] = new("high_flammability_forest", 0.85, true, null),
+            ["florestas de pinheiro bravo"] = new("high_flammability_forest", 0.85, true, null),
+            ["pinheiro bravo"] = new("high_flammability_forest", 0.85, true, null),
+            ["pinhal"] = new("high_flammability_forest", 0.85, true, null),
+            ["pine"] = new("high_flammability_forest", 0.85, true, null),
+            ["florestas de resinosas"] = new("high_flammability_forest", 0.85, true, null),
+            ["resinosas"] = new("high_flammability_forest", 0.85, true, null),
+            ["matos"] = new("shrubland", 0.80, true, null),
+            ["mato"] = new("shrubland", 0.80, true, null),
+            ["mato denso"] = new("shrubland", 0.80, true, null),
+            ["matos densos"] = new("shrubland", 0.80, true, null),
+            ["shrub"] = new("shrubland", 0.80, true, null),
+            ["shrubs"] = new("shrubland", 0.80, true, null),
+            ["scrub"] = new("shrubland", 0.80, true, null),
+            ["florestas de outras folhosas"] = new("broadleaf_or_mixed_forest", 0.75, true, null),
+            ["outras folhosas"] = new("broadleaf_or_mixed_forest", 0.75, true, null),
+            ["florestas"] = new("broadleaf_or_mixed_forest", 0.75, true, null),
+            ["floresta"] = new("broadleaf_or_mixed_forest", 0.75, true, null),
+            ["forest"] = new("broadleaf_or_mixed_forest", 0.75, true, null),
+            ["wood"] = new("broadleaf_or_mixed_forest", 0.75, true, null),
+            ["woodland"] = new("broadleaf_or_mixed_forest", 0.75, true, null),
+            ["culturas temporarias de sequeiro e regadio"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["culturas temporarias e ou pastagens melhoradas associadas a olival"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["mosaicos culturais e parcelares complexos"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["olivais"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["olival"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["agricultura"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["agriculture"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["pastagem"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["pastagens"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["pasture"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["herbaceas"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["herbaceous"] = new("agriculture_or_pasture", 0.40, true, null),
+            ["albufeiras de barragens"] = new("water_or_artificial", 0.15, true, null),
+            ["corpos de agua"] = new("water_or_artificial", 0.15, true, null),
+            ["agua"] = new("water_or_artificial", 0.15, true, null),
+            ["water"] = new("water_or_artificial", 0.15, true, null),
+            ["urbano"] = new("water_or_artificial", 0.15, true, null),
+            ["urban"] = new("water_or_artificial", 0.15, true, null),
+            ["artificial"] = new("water_or_artificial", 0.15, true, null),
+            ["areas artificiais"] = new("water_or_artificial", 0.15, true, null)
+        };
+
     public double HazardComponent { get; init; } = CandidateParameterSetV1.ClampNormalized(StructuralHazardScore);
 
     public double FuelComponent { get; init; } = CandidateParameterSetV1.CandidateDefaultComponent;
@@ -72,35 +140,14 @@ public sealed record TerritorialRiskContext(
             return ComponentScore.Default("hazard_missing_candidate_default");
         }
 
-        var value = structuralHazard.Trim().ToLowerInvariant();
-        var score = value switch
-        {
-            var item when item.Contains("muito alta", StringComparison.Ordinal) ||
-                item.Contains("very high", StringComparison.Ordinal) ||
-                item.Contains("extreme", StringComparison.Ordinal) => 0.90,
-            var item when item.Contains("alta", StringComparison.Ordinal) ||
-                item.Contains("high", StringComparison.Ordinal) => 0.75,
-            var item when item.Contains("moderada", StringComparison.Ordinal) ||
-                item.Contains("media", StringComparison.Ordinal) ||
-                item.Contains("medium", StringComparison.Ordinal) => 0.50,
-            var item when item.Contains("baixa", StringComparison.Ordinal) ||
-                item.Contains("low", StringComparison.Ordinal) => 0.25,
-            _ => CandidateParameterSetV1.CandidateDefaultComponent
-        };
-        var mapped = value.Contains("muito alta", StringComparison.Ordinal) ||
-            value.Contains("very high", StringComparison.Ordinal) ||
-            value.Contains("extreme", StringComparison.Ordinal) ||
-            value.Contains("alta", StringComparison.Ordinal) ||
-            value.Contains("high", StringComparison.Ordinal) ||
-            value.Contains("moderada", StringComparison.Ordinal) ||
-            value.Contains("media", StringComparison.Ordinal) ||
-            value.Contains("medium", StringComparison.Ordinal) ||
-            value.Contains("baixa", StringComparison.Ordinal) ||
-            value.Contains("low", StringComparison.Ordinal);
+        var value = NormalizeClassifierText(structuralHazard);
+        var mapping = ResolveAlias(
+            value,
+            HazardAliases,
+            "unknown_hazard",
+            "hazard_unmapped_candidate_default");
 
-        return new ComponentScore(score, mapped
-            ? null
-            : "hazard_unmapped_candidate_default");
+        return new ComponentScore(mapping.Score, mapping.IsMapped ? null : mapping.Reason);
     }
 
     private static ComponentScore ResolveFuelComponent(
@@ -109,53 +156,22 @@ public sealed record TerritorialRiskContext(
         string? dominantFuelModel,
         double? treeCoverDensity)
     {
-        var text = string.Join(
-            " ",
-            new[] { landCoverClass, dominantForestType, dominantFuelModel }
-                .Where(item => !string.IsNullOrWhiteSpace(item)))
-            .Trim()
-            .ToLowerInvariant();
+        var normalizedLabels = new[] { dominantForestType, dominantFuelModel, landCoverClass }
+            .Select(NormalizeClassifierText)
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .ToArray();
 
-        if (!string.IsNullOrWhiteSpace(text))
+        if (normalizedLabels.Length > 0)
         {
-            var score = text switch
-            {
-                var item when item.Contains("eucal", StringComparison.Ordinal) ||
-                    item.Contains("pin", StringComparison.Ordinal) ||
-                    item.Contains("resin", StringComparison.Ordinal) => 0.85,
-                var item when item.Contains("mato", StringComparison.Ordinal) ||
-                    item.Contains("shrub", StringComparison.Ordinal) ||
-                    item.Contains("scrub", StringComparison.Ordinal) => 0.80,
-                var item when item.Contains("forest", StringComparison.Ordinal) ||
-                    item.Contains("florest", StringComparison.Ordinal) ||
-                    item.Contains("wood", StringComparison.Ordinal) => 0.75,
-                var item when item.Contains("agric", StringComparison.Ordinal) ||
-                    item.Contains("pasture", StringComparison.Ordinal) ||
-                    item.Contains("herb", StringComparison.Ordinal) => 0.40,
-                var item when item.Contains("urban", StringComparison.Ordinal) ||
-                    item.Contains("water", StringComparison.Ordinal) ||
-                    item.Contains("artificial", StringComparison.Ordinal) => 0.15,
-                _ => CandidateParameterSetV1.CandidateDefaultComponent
-            };
-            var mapped = text.Contains("eucal", StringComparison.Ordinal) ||
-                text.Contains("pin", StringComparison.Ordinal) ||
-                text.Contains("resin", StringComparison.Ordinal) ||
-                text.Contains("mato", StringComparison.Ordinal) ||
-                text.Contains("shrub", StringComparison.Ordinal) ||
-                text.Contains("scrub", StringComparison.Ordinal) ||
-                text.Contains("forest", StringComparison.Ordinal) ||
-                text.Contains("florest", StringComparison.Ordinal) ||
-                text.Contains("wood", StringComparison.Ordinal) ||
-                text.Contains("agric", StringComparison.Ordinal) ||
-                text.Contains("pasture", StringComparison.Ordinal) ||
-                text.Contains("herb", StringComparison.Ordinal) ||
-                text.Contains("urban", StringComparison.Ordinal) ||
-                text.Contains("water", StringComparison.Ordinal) ||
-                text.Contains("artificial", StringComparison.Ordinal);
+            var bestMapping = normalizedLabels
+                .Select(value => ResolveAlias(value, FuelAliases, "unknown_fuel", "fuel_unmapped_candidate_default"))
+                .Where(mapping => mapping.IsMapped)
+                .OrderByDescending(mapping => mapping.Score)
+                .FirstOrDefault();
 
-            return new ComponentScore(score, mapped
-                ? null
-                : "fuel_unmapped_candidate_default");
+            return bestMapping.IsMapped
+                ? new ComponentScore(bestMapping.Score, null)
+                : ComponentScore.Default("fuel_unmapped_candidate_default");
         }
 
         if (treeCoverDensity.HasValue)
@@ -164,6 +180,21 @@ public sealed record TerritorialRiskContext(
         }
 
         return ComponentScore.Default("fuel_missing_candidate_default");
+    }
+
+    private static CanonicalComponentMapping ResolveAlias(
+        string normalizedValue,
+        IReadOnlyDictionary<string, CanonicalComponentMapping> aliases,
+        string unmappedClass,
+        string unmappedReason)
+    {
+        return aliases.TryGetValue(normalizedValue, out var mapping)
+            ? mapping
+            : new CanonicalComponentMapping(
+                unmappedClass,
+                CandidateParameterSetV1.CandidateDefaultComponent,
+                false,
+                unmappedReason);
     }
 
     private static ComponentScore ResolveGeomorphologyComponent(
@@ -219,9 +250,50 @@ public sealed record TerritorialRiskContext(
             : source.Trim();
     }
 
+    private static string NormalizeClassifierText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var normalized = value.Trim().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(normalized.Length);
+        var previousWasSeparator = true;
+
+        foreach (var character in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
+            {
+                continue;
+            }
+
+            if (char.IsLetterOrDigit(character))
+            {
+                builder.Append(char.ToLowerInvariant(character));
+                previousWasSeparator = false;
+                continue;
+            }
+
+            if (!previousWasSeparator)
+            {
+                builder.Append(' ');
+                previousWasSeparator = true;
+            }
+        }
+
+        return builder.ToString().TrimEnd().Normalize(NormalizationForm.FormC);
+    }
+
     private readonly record struct ComponentScore(double Score, string? Limitation)
     {
         public static ComponentScore Default(string limitation)
             => new(CandidateParameterSetV1.CandidateDefaultComponent, limitation);
     }
+
+    private readonly record struct CanonicalComponentMapping(
+        string CanonicalClass,
+        double Score,
+        bool IsMapped,
+        string? Reason);
 }

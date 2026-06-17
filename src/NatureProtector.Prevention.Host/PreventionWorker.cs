@@ -55,69 +55,87 @@ public sealed class PreventionWorker(
             Port = _options.Port,
             UserName = _options.UserName,
             Password = _options.Password,
+            VirtualHost = _options.VirtualHost,
             DispatchConsumersAsync = true
         };
 
         var connection = factory.CreateConnection();
         var channel = connection.CreateModel();
 
-        DeclareTopology(channel);
-
-        // Um prefetch baixo limita o backlog invisivel de mensagens por
-        // materializar quando o inbox ou a base de dados abrandam.
-        channel.BasicQos(
-            prefetchSize: 0,
-            prefetchCount: _preventionHostOptions.ConsumerPrefetchCount,
-            global: false);
-
-        var consumer = new AsyncEventingBasicConsumer(channel);
-
-        consumer.Received += (_, ea) => HandleReceivedAsync(channel, ea, stoppingToken);
-
-        channel.BasicConsume(
-            queue: NatureProtectorRabbitMqTopology.IngestionReadingsQueue,
-            autoAck: false,
-            consumer: consumer);
-
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
-        }
+            DeclareTopology(channel, _options);
 
-        channel.Close();
-        connection.Close();
-        channel.Dispose();
-        connection.Dispose();
+            // Um prefetch baixo limita o backlog invisivel de mensagens por
+            // materializar quando o inbox ou a base de dados abrandam.
+            channel.BasicQos(
+                prefetchSize: 0,
+                prefetchCount: _preventionHostOptions.ConsumerPrefetchCount,
+                global: false);
+
+            var consumer = new AsyncEventingBasicConsumer(channel);
+
+            consumer.Received += (_, ea) => HandleReceivedAsync(channel, ea, stoppingToken);
+
+            channel.BasicConsume(
+                queue: _options.IngestionReadingsQueueName,
+                autoAck: false,
+                consumer: consumer);
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Normal host shutdown path.
+        }
+        finally
+        {
+            if (channel.IsOpen)
+            {
+                channel.Close();
+            }
+
+            if (connection.IsOpen)
+            {
+                connection.Close();
+            }
+
+            channel.Dispose();
+            connection.Dispose();
+        }
     }
 
     /// <summary>
     /// Declara a topologia mínima exigida pelo fluxo de prevenção.
     /// </summary>
-    private static void DeclareTopology(IModel channel)
+    private static void DeclareTopology(IModel channel, RabbitMqOptions options)
     {
         channel.ExchangeDeclare(
-            exchange: NatureProtectorRabbitMqTopology.ExchangeName,
+            exchange: options.ExchangeName,
             type: NatureProtectorRabbitMqTopology.ExchangeType,
             durable: true,
             autoDelete: false);
 
         channel.QueueDeclare(
-            queue: NatureProtectorRabbitMqTopology.IngestionReadingsQueue,
+            queue: options.IngestionReadingsQueueName,
             durable: true,
             exclusive: false,
             autoDelete: false);
 
         channel.QueueDeclare(
-            queue: NatureProtectorRabbitMqTopology.ObservabilityRawQueue,
+            queue: options.ObservabilityRawQueueName,
             durable: true,
             exclusive: false,
             autoDelete: false);
 
-        foreach (var (queueName, routingKey) in NatureProtectorRabbitMqTopology.Bindings)
+        foreach (var (queueName, routingKey) in options.GetBindings())
         {
             channel.QueueBind(
                 queue: queueName,
-                exchange: NatureProtectorRabbitMqTopology.ExchangeName,
+                exchange: options.ExchangeName,
                 routingKey: routingKey);
         }
     }

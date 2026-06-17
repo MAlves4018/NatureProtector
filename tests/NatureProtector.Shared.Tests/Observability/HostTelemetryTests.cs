@@ -67,6 +67,44 @@ public sealed class HostTelemetryTests
         Assert.NotEmpty(services);
     }
 
+    [Fact]
+    public async Task OpenTelemetryExtension_StartsWithOtlpExporterConfiguration()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Observability:ConsoleExporterEnabled"] = "false",
+                ["Observability:OtlpEndpoint"] = "http://127.0.0.1:4318"
+            })
+            .Build();
+
+        services.AddNatureProtectorOpenTelemetry(
+            configuration,
+            new FakeHostEnvironment("Production"),
+            "test-service",
+            ["test-activity-source"],
+            ["test-meter"],
+            enableAspNetCoreInstrumentation: false);
+
+        using var provider = services.BuildServiceProvider(validateScopes: true);
+        var hostedServices = provider.GetServices<IHostedService>().ToArray();
+
+        Assert.NotEmpty(hostedServices);
+
+        foreach (var hostedService in hostedServices)
+        {
+            await hostedService.StartAsync(CancellationToken.None);
+        }
+
+        foreach (var hostedService in hostedServices.Reverse())
+        {
+            await hostedService.StopAsync(CancellationToken.None);
+        }
+    }
+
     private sealed class LoggingBuilder(IServiceCollection services) : ILoggingBuilder
     {
         public IServiceCollection Services { get; } = services;

@@ -3,7 +3,7 @@ import { LogIn, LogOut } from "lucide-react";
 import { api } from "../../services/api";
 import { getColors } from "../../utils/utils";
 import { useToken } from "../../context/TokenContext";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { backdropStyle, cardStyle, iconRing, inputStyle, labelStyle, primaryButton, wrapperStyle } from "../styles/styleUtils";
 import { LogInOutProps } from "../../types";
 

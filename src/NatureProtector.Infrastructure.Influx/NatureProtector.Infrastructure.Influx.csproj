@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\NatureProtector.Core\NatureProtector.Core.csproj" />
     <ProjectReference Include="..\NatureProtector.Shared\NatureProtector.Shared.csproj" />
+    <ProjectReference Include="..\NatureProtector.Shared.Observability\NatureProtector.Shared.Observability.csproj" />
   </ItemGroup>
 
 </Project>

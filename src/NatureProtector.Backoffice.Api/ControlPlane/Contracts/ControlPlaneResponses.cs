@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore.Diagnostics;
-
 namespace NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 
 public sealed record ConfigurationVersionResponse(
@@ -394,9 +392,13 @@ public static class RuntimeLimitations
 {
     public static IReadOnlyList<RuntimeLimitationResponse> Default { get; } =
     [
-        new("rabbitmq_metrics_unavailable", "RabbitMQ metrics are not exposed in this version."),
-        new("eligibility_projection_unavailable", "Eligibility/Blocked/Partial/QualityFlags/Classifiers are not persisted as aggregate runtime projections yet."),
-        new("evidence_http_unavailable", "Evidence files are not exposed by HTTP in this version."),
-        new("host_health_unavailable", "Prevention.Host, Simulator.Host, InfluxDB and Grafana health are not exposed by this endpoint.")
+        new("runtime_observability_separate_endpoint", "RabbitMQ metrics, evidence files and service health are exposed by /api/control/runtime/observability/* endpoints and /health; the runtime summary does not embed those payloads."),
+        new("classifier_payload_details_not_persisted", "PostgreSQL runtime APIs expose persisted risk and operational projections, and run audit/diagnostics expose eligibility summaries, but detailed classifier payloads are not persisted.")
+    ];
+
+    public static IReadOnlyList<RuntimeLimitationResponse> ControlPlaneUnavailable(string availabilityMessage) =>
+    [
+        new("control_plane_unavailable", availabilityMessage),
+        new("postgres_runtime_projection_unavailable", "PostgreSQL-backed runtime summaries, diagnostics and projections are unavailable while the control plane is disabled.")
     ];
 }

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Messaging;
+using NatureProtector.Simulator.Host.Publishing;
 using RabbitMQ.Client;
 
 namespace NatureProtector.Simulator.Host.ControlledValidation;
@@ -23,29 +24,37 @@ public sealed class RabbitMqControlledValidationMessagePublisher(
         ArgumentNullException.ThrowIfNull(message);
         cancellationToken.ThrowIfCancellationRequested();
 
-        EnsureChannel();
-
-        var channel = _channel
-            ?? throw new InvalidOperationException("RabbitMQ channel was not initialized.");
-        var properties = channel.CreateBasicProperties();
-        properties.Persistent = true;
-        properties.MessageId = message.EventId?.ToString();
-        properties.CorrelationId = message.CorrelationId;
-        properties.Type = EventTypes.SensorReadingProduced;
-        properties.Headers = new Dictionary<string, object>
+        lock (_syncRoot)
         {
-            ["controlled_validation"] = "p0",
-            ["fault_case_id"] = message.FaultCase.FaultCaseId,
-            ["fault_layer"] = message.FaultCase.FaultLayer.ToString(),
-            ["expected_outcome"] = message.FaultCase.ExpectedOutcome.ToString(),
-            ["raw_body_sha256"] = message.BodySha256
-        };
+            EnsureChannel();
 
-        channel.BasicPublish(
-            exchange: _options.ExchangeName,
-            routingKey: RoutingKeys.SensorReadingProduced,
-            basicProperties: properties,
-            body: message.Body);
+            var channel = _channel
+                ?? throw new InvalidOperationException("RabbitMQ channel was not initialized.");
+            var properties = channel.CreateBasicProperties();
+            properties.Persistent = true;
+            properties.ContentType = "application/json";
+            properties.ContentEncoding = "utf-8";
+            properties.MessageId = message.EventId?.ToString();
+            properties.CorrelationId = message.CorrelationId;
+            properties.Type = EventTypes.SensorReadingProduced;
+            properties.Headers = new Dictionary<string, object>
+            {
+                ["controlled_validation"] = "p0",
+                ["fault_case_id"] = message.FaultCase.FaultCaseId,
+                ["fault_layer"] = message.FaultCase.FaultLayer.ToString(),
+                ["expected_outcome"] = message.FaultCase.ExpectedOutcome.ToString(),
+                ["raw_body_sha256"] = message.BodySha256
+            };
+
+            RabbitMqPublishGuarantees.PublishMandatoryAndWaitForConfirm(
+                channel,
+                _options.ExchangeName,
+                RoutingKeys.SensorReadingProduced,
+                properties,
+                message.Body,
+                TimeSpan.FromSeconds(_options.PublisherConfirmTimeoutSeconds),
+                $"controlled validation message {message.FaultCase.FaultCaseId}/{message.Sequence}");
+        }
 
         logger.LogInformation(
             "Published controlled validation P0 message | FaultCaseId={FaultCaseId} | Sequence={Sequence} | EventId={EventId} | CorrelationId={CorrelationId} | BodySha256={BodySha256}",
@@ -99,18 +108,26 @@ public sealed class RabbitMqControlledValidationMessagePublisher(
                 throw new InvalidOperationException("RabbitMQ ExchangeName is not configured.");
             }
 
+            if (_options.PublisherConfirmTimeoutSeconds <= 0)
+            {
+                throw new InvalidOperationException(
+                    "RabbitMQ PublisherConfirmTimeoutSeconds must be greater than zero.");
+            }
+
             var factory = new ConnectionFactory
             {
                 HostName = _options.HostName,
                 Port = _options.Port,
                 UserName = _options.UserName,
-                Password = _options.Password
+                Password = _options.Password,
+                VirtualHost = _options.VirtualHost
             };
 
             _connection = factory.CreateConnection();
             _channel = _connection.CreateModel();
 
             DeclareTopology(_channel);
+            RabbitMqPublishGuarantees.EnablePublisherConfirms(_channel);
 
             logger.LogInformation(
                 "RabbitMQ controlled validation publisher connected | Host={Host} | Port={Port} | Exchange={Exchange}",
@@ -129,18 +146,18 @@ public sealed class RabbitMqControlledValidationMessagePublisher(
             autoDelete: false);
 
         channel.QueueDeclare(
-            queue: NatureProtectorRabbitMqTopology.IngestionReadingsQueue,
+            queue: _options.IngestionReadingsQueueName,
             durable: true,
             exclusive: false,
             autoDelete: false);
 
         channel.QueueDeclare(
-            queue: NatureProtectorRabbitMqTopology.ObservabilityRawQueue,
+            queue: _options.ObservabilityRawQueueName,
             durable: true,
             exclusive: false,
             autoDelete: false);
 
-        foreach (var (queueName, routingKey) in NatureProtectorRabbitMqTopology.Bindings)
+        foreach (var (queueName, routingKey) in _options.GetBindings())
         {
             channel.QueueBind(
                 queue: queueName,

@@ -43,6 +43,7 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(_environmentName);
+        builder.UseSetting("BackofficeApi:ControlPlaneEnabled", "false");
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
         {
             configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>

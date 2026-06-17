@@ -1,3 +1,4 @@
+using FsCheck.Xunit;
 using NatureProtector.Prevention.Risk;
 using NatureProtector.Shared.Contracts.Readings;
 
@@ -254,6 +255,95 @@ public sealed class SimpleRiskScoringServiceTests
         Assert.Contains("Blocked risk inputs", ex.Message);
     }
 
+    [Property(MaxTest = 100)]
+    public bool CreateAssessment_KeepsScoresBoundedAndDeterministic(double rawValue)
+    {
+        var input = CreateRiskInput(
+            SensorMetricType.Temperature,
+            NormalizeFinite(rawValue, -50.0, 70.0));
+
+        var first = _service.CreateAssessment(input);
+        var second = _service.CreateAssessment(input);
+
+        return IsNormalized(first.BaseRisk) &&
+            IsNormalized(first.AdjustedScore) &&
+            IsNormalized(first.RiskScore) &&
+            IsNormalized(first.MeteorologyComponent) &&
+            IsNormalized(first.DroughtComponent) &&
+            IsNormalized(first.TerritoryComponent) &&
+            IsNormalized(first.HazardComponent) &&
+            IsNormalized(first.FuelComponent) &&
+            IsNormalized(first.GeomorphologyComponent) &&
+            first.BaseRisk == second.BaseRisk &&
+            first.AdjustedScore == second.AdjustedScore &&
+            first.Score100 == second.Score100 &&
+            first.DominantDriver == second.DominantDriver &&
+            first.CalculationStatus == second.CalculationStatus;
+    }
+
+    [Property(MaxTest = 100)]
+    public bool CreateAssessment_TemperatureAndWindIncrease_DoNotReduceScore(double rawA, double rawB)
+    {
+        var low = Math.Min(
+            NormalizeFinite(rawA, -30.0, 70.0),
+            NormalizeFinite(rawB, -30.0, 70.0));
+        var high = Math.Max(
+            NormalizeFinite(rawA, -30.0, 70.0),
+            NormalizeFinite(rawB, -30.0, 70.0));
+
+        var lowTemperature = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, low));
+        var highTemperature = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, high));
+        var lowWind = _service.CreateAssessment(CreateRiskInput(SensorMetricType.WindSpeed, low, MeasurementUnit.MetersPerSecond));
+        var highWind = _service.CreateAssessment(CreateRiskInput(SensorMetricType.WindSpeed, high, MeasurementUnit.MetersPerSecond));
+
+        return highTemperature.BaseRisk >= lowTemperature.BaseRisk &&
+            highWind.BaseRisk >= lowWind.BaseRisk;
+    }
+
+    [Property(MaxTest = 100)]
+    public bool CreateAssessment_HumidityIncrease_DoesNotIncreaseScore(double rawA, double rawB)
+    {
+        var lowHumidity = Math.Min(
+            NormalizeFinite(rawA, 0.0, 100.0),
+            NormalizeFinite(rawB, 0.0, 100.0));
+        var highHumidity = Math.Max(
+            NormalizeFinite(rawA, 0.0, 100.0),
+            NormalizeFinite(rawB, 0.0, 100.0));
+
+        var lowHumidityAssessment = _service.CreateAssessment(CreateRiskInput(
+            SensorMetricType.Humidity,
+            lowHumidity,
+            MeasurementUnit.Percent));
+        var highHumidityAssessment = _service.CreateAssessment(CreateRiskInput(
+            SensorMetricType.Humidity,
+            highHumidity,
+            MeasurementUnit.Percent));
+
+        return lowHumidityAssessment.BaseRisk >= highHumidityAssessment.BaseRisk;
+    }
+
+    [Property(MaxTest = 100)]
+    public bool CreateAssessment_TerritorialHazardIncrease_DoesNotReduceScore(double rawA, double rawB)
+    {
+        var low = Math.Min(
+            NormalizeFinite(rawA, 0.0, 1.0),
+            NormalizeFinite(rawB, 0.0, 1.0));
+        var high = Math.Max(
+            NormalizeFinite(rawA, 0.0, 1.0),
+            NormalizeFinite(rawB, 0.0, 1.0));
+        var baseInput = CreateRiskInput(SensorMetricType.Temperature, 30.0);
+        var lowAssessment = _service.CreateAssessment(baseInput with
+        {
+            TerritorialContext = new TerritorialRiskContext(Guid.NewGuid(), "property-test", low)
+        });
+        var highAssessment = _service.CreateAssessment(baseInput with
+        {
+            TerritorialContext = new TerritorialRiskContext(Guid.NewGuid(), "property-test", high)
+        });
+
+        return highAssessment.BaseRisk >= lowAssessment.BaseRisk;
+    }
+
     private static RiskInput CreateRiskInput(
         SensorMetricType metricType,
         double value,
@@ -267,5 +357,17 @@ public sealed class SimpleRiskScoringServiceTests
             Value: value,
             Unit: unit,
             EventTime: DateTimeOffset.UtcNow);
+    }
+
+    private static double NormalizeFinite(double value, double min, double max)
+    {
+        return double.IsFinite(value)
+            ? Math.Clamp(value, min, max)
+            : min;
+    }
+
+    private static bool IsNormalized(double value)
+    {
+        return value is >= 0.0 and <= 1.0;
     }
 }

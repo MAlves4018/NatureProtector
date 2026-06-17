@@ -17,8 +17,6 @@ export function NavBar(
     useEffect(() => {
         if (signedIn && !user) {
             refreshToken();
-
-            console.log("user", user);
         }
     }, [signedIn]);
 
@@ -80,8 +78,8 @@ export function NavBar(
                 cursor="pointer" transition="all 0.2s" _hover={{ opacity: 0.8 }}
             >
                 {isDark
-                    ? <><Sun size={14} color="#f59e0b" /><Text fontSize="xs" color={c.textSecond}>Light</Text></>
-                    : <><Moon size={14} color="#6366f1" /><Text fontSize="xs" color={c.textSecond}>Dark</Text></>
+                    ? <><Sun size={14} color="#f59e0b" /><Text fontSize="xs" color={c.textPrimary}>Light</Text></>
+                    : <><Moon size={14} color="#6366f1" /><Text fontSize="xs" color={c.textPrimary}>Dark</Text></>
                 }
             </Box>
             <UserModal

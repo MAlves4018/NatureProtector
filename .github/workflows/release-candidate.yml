@@ -1,0 +1,356 @@
+name: Release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release candidate version label
+        required: false
+        default: ""
+      benchmark_profile:
+        description: Benchmark profile
+        required: true
+        default: B0
+        type: choice
+        options:
+          - B0
+          - B1
+          - B2
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backend-gates:
+    name: Backend restore, audit, build and tests
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      BackofficeApi__ControlPlaneEnabled: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Restore
+        run: dotnet restore .\NatureProtector.sln --configfile NuGet.Config --nologo
+
+      - name: Audit NuGet dependencies
+        run: .\scripts\ci\check-dotnet-audit.ps1 -OutputPath .\artifacts\dotnet-audit.txt
+
+      - name: Build
+        run: dotnet build .\NatureProtector.sln -c Release --no-restore --nologo -v minimal
+
+      - name: Test with backend coverage
+        run: .\scripts\tests\generate-coverage-report.ps1 -NoRestore -NoBuild
+
+      - name: Upload backend gate artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: release-backend-gate-artifacts
+          retention-days: 14
+          path: |
+            artifacts/coverage/
+            artifacts/dotnet-audit.txt
+
+  backend-docker-integration:
+    name: Backend Docker integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: natureprotector
+          POSTGRES_USER: np
+          POSTGRES_PASSWORD: np_dev_pass
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U np -d natureprotector"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      rabbitmq:
+        image: rabbitmq:4.0.6-management
+        env:
+          RABBITMQ_DEFAULT_USER: np
+          RABBITMQ_DEFAULT_PASS: np_dev_pass
+        ports:
+          - 5672:5672
+          - 15672:15672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      NP_TEST_POSTGRES_HOST: localhost
+      NP_TEST_POSTGRES_PORT: "5433"
+      NP_TEST_POSTGRES_USER: np
+      NP_TEST_POSTGRES_PASSWORD: np_dev_pass
+      NP_TEST_RABBITMQ_HOST: localhost
+      NP_TEST_RABBITMQ_PORT: "5672"
+      NP_TEST_RABBITMQ_MANAGEMENT_URL: http://localhost:15672
+      NP_TEST_RABBITMQ_USER: np
+      NP_TEST_RABBITMQ_PASSWORD: np_dev_pass
+      NP_TEST_INFLUXDB_URL: http://localhost:8181
+      NP_TEST_INFLUXDB_TOKEN: local-test-token
+      NP_TEST_INFLUXDB_ORGANIZATION: natureprotector
+      NP_TEST_INFLUXDB_BUCKET: np_telemetry
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore ./NatureProtector.sln --configfile NuGet.Config --nologo
+
+      - name: Start InfluxDB 3
+        run: |
+          docker run -d --name np-influxdb-it -p 8181:8181 influxdb:3.7.0-core influxdb3 serve --node-id node1 --object-store memory --without-auth
+          for i in {1..60}; do
+            if docker exec np-influxdb-it influxdb3 query --host http://127.0.0.1:8181 --database np_telemetry "SELECT 1" >/dev/null 2>&1; then
+              exit 0
+            fi
+            docker exec np-influxdb-it influxdb3 create database --host http://127.0.0.1:8181 np_telemetry >/dev/null 2>&1 || true
+            sleep 1
+          done
+          docker logs np-influxdb-it
+          exit 1
+
+      - name: Run Docker integration tests
+        run: dotnet test ./tests/NatureProtector.IntegrationTests/NatureProtector.IntegrationTests.csproj -c Release --no-restore --nologo -v minimal --filter "Category=DockerIntegration" --logger "trx;LogFilePrefix=docker-integration" --results-directory ./TestResults
+
+      - name: Upload Docker integration artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: release-docker-integration-artifacts
+          retention-days: 14
+          path: TestResults/
+
+  frontend-gates:
+    name: Frontend typecheck, tests, browser smoke and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: webUI
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20.17.0
+          cache: npm
+          cache-dependency-path: webUI/package-lock.json
+
+      - name: Check frontend toolchain
+        run: npm run check:toolchain
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Test with coverage
+        run: npm run test:coverage
+
+      - name: Test npm audit policy
+        run: npm run test:audit-script
+
+      - name: Build
+        run: npm run build
+
+      - name: Browser smoke
+        run: npm run test:e2e
+
+      - name: Audit frontend dependencies
+        run: npm run audit:ci
+
+      - name: Upload frontend gate artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: release-frontend-gate-artifacts
+          retention-days: 14
+          path: |
+            webUI/test-results/
+            webUI/coverage/
+            webUI/playwright-report/
+            webUI/npm-audit.json
+
+  security-gates:
+    name: Security audits and secret canaries
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20.17.0
+          cache: npm
+          cache-dependency-path: webUI/package-lock.json
+
+      - name: Check frontend toolchain
+        run: npm --prefix webUI run check:toolchain
+
+      - name: Install frontend dependencies
+        working-directory: webUI
+        run: npm ci
+
+      - name: Restore .NET
+        run: dotnet restore .\NatureProtector.sln --configfile NuGet.Config --nologo
+
+      - name: NuGet audit
+        run: .\scripts\ci\check-dotnet-audit.ps1 -OutputPath .\artifacts\dotnet-audit.txt
+
+      - name: NPM audit
+        working-directory: webUI
+        run: npm run audit:ci
+
+      - name: Secret scan
+        run: .\scripts\ci\run-secret-scan.ps1 -RepositoryRoot . -IncludeUntracked
+
+      - name: Upload security gate artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: release-security-gate-artifacts
+          retention-days: 14
+          path: |
+            artifacts/dotnet-audit.txt
+            artifacts/secret-scan/
+            webUI/npm-audit.json
+
+  backup-restore:
+    name: PostgreSQL backup and restore gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: natureprotector
+          POSTGRES_USER: np
+          POSTGRES_PASSWORD: np_dev_pass
+        options: >-
+          --health-cmd "pg_isready -U np -d natureprotector"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Validate PostgreSQL backup/restore
+        shell: pwsh
+        run: ./scripts/release/test-postgres-backup-restore.ps1 -ContainerId "${{ job.services.postgres.id }}" -User np
+
+      - name: Upload backup/restore artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: release-backup-restore-artifacts
+          retention-days: 14
+          path: artifacts/release/postgres-restore/
+
+  package:
+    name: Build release candidate after gates
+    runs-on: windows-latest
+    timeout-minutes: 35
+    needs:
+      - backend-gates
+      - backend-docker-integration
+      - frontend-gates
+      - security-gates
+      - backup-restore
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20.17.0
+          cache: npm
+          cache-dependency-path: webUI/package-lock.json
+
+      - name: Check frontend toolchain
+        run: npm --prefix webUI run check:toolchain
+
+      - name: Build release candidate
+        shell: pwsh
+        run: .\scripts\release\build-release-candidate.ps1 -Version "${{ inputs.version }}"
+
+      - name: Validate clean install
+        shell: pwsh
+        run: |
+          $archive = Get-ChildItem .\artifacts\release -Filter "natureprotector-*.zip" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          .\scripts\release\test-clean-install.ps1 -ArchivePath $archive.FullName
+
+      - name: Validate package tamper detection
+        shell: pwsh
+        run: |
+          $archive = Get-ChildItem .\artifacts\release -Filter "natureprotector-*.zip" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          .\scripts\release\test-package-tamper-detection.ps1 -ArchivePath $archive.FullName
+
+      - name: Run B0/B1/B2 benchmarks
+        shell: pwsh
+        run: .\scripts\performance\run-benchmarks.ps1 -Profile "${{ inputs.benchmark_profile }}" -Filter "*SerializationBenchmarks*"
+
+      - name: Upload release candidate artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: natureprotector-release-candidate
+          retention-days: 14
+          path: |
+            artifacts/release/
+            artifacts/performance/
+            .testbin/clean-install/
+            .testbin/release-tamper/

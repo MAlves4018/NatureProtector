@@ -196,7 +196,9 @@ public sealed class ReadingRiskPipeline(
         influxBatch.AddRiskAssessment(
             normalizedReading.AreaId,
             normalizedReading.SensorId,
-            assessment);
+            assessment,
+            normalizedReading.EventId,
+            operationalEvent.SimulationRunId);
 
         // The current area aggregate is intentionally based on the latest
         // assessment known per sensor. Future models with temporal windows or
@@ -252,7 +254,9 @@ public sealed class ReadingRiskPipeline(
         influxBatch.AddAreaRiskSnapshot(
             normalizedReading.AreaId,
             areaAssessments.Count,
-            snapshot);
+            snapshot,
+            normalizedReading.EventId,
+            operationalEvent.SimulationRunId);
 
         var saveAreaProjectionStopwatch = Stopwatch.StartNew();
         await areaOperationalProjectionStore.SaveAsync(

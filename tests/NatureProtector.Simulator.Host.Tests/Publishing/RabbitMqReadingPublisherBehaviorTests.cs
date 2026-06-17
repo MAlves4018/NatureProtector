@@ -39,13 +39,23 @@ public sealed class RabbitMqReadingPublisherBehaviorTests
         var publish = Assert.Single(channelRecorder.Invocations, x => x.MethodName == "BasicPublish");
         Assert.Equal(options.ExchangeName, Assert.IsType<string>(publish.Arguments[0]));
         Assert.Equal(RoutingKeys.SensorReadingProduced, Assert.IsType<string>(publish.Arguments[1]));
+        Assert.True(Assert.IsType<bool>(publish.Arguments[2]));
         Assert.True(Assert.IsType<bool>(propertiesRecorder.Properties["Persistent"]));
+        Assert.Equal("application/json", Assert.IsType<string>(propertiesRecorder.Properties["ContentType"]));
+        Assert.Equal("utf-8", Assert.IsType<string>(propertiesRecorder.Properties["ContentEncoding"]));
         Assert.Equal(envelope.EventId.ToString(), Assert.IsType<string>(propertiesRecorder.Properties["MessageId"]));
         Assert.Equal(envelope.CorrelationId, Assert.IsType<string>(propertiesRecorder.Properties["CorrelationId"]));
         Assert.Equal(envelope.EventType, Assert.IsType<string>(propertiesRecorder.Properties["Type"]));
 
         var timestamp = Assert.IsType<AmqpTimestamp>(propertiesRecorder.Properties["Timestamp"]);
         Assert.Equal(envelope.EventTime.ToUnixTimeSeconds(), timestamp.UnixTime);
+
+        var confirm = Assert.Single(channelRecorder.Invocations, x => x.MethodName == "WaitForConfirmsOrDie");
+        Assert.Equal(
+            TimeSpan.FromSeconds(options.PublisherConfirmTimeoutSeconds),
+            Assert.IsType<TimeSpan>(confirm.Arguments[0]));
+        Assert.Single(channelRecorder.Invocations, x => x.MethodName == "add_BasicReturn");
+        Assert.Single(channelRecorder.Invocations, x => x.MethodName == "remove_BasicReturn");
     }
 
     [Fact]
@@ -57,7 +67,9 @@ public sealed class RabbitMqReadingPublisherBehaviorTests
             Port = 5672,
             UserName = "np",
             Password = "pass",
-            ExchangeName = "np.events"
+            ExchangeName = "np.events",
+            IngestionReadingsQueueName = "np.it.ingestion",
+            ObservabilityRawQueueName = "np.it.raw"
         });
         var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
 
@@ -69,11 +81,13 @@ public sealed class RabbitMqReadingPublisherBehaviorTests
 
         var queueDeclares = recorder.Invocations.Where(x => x.MethodName == "QueueDeclare").ToList();
         Assert.Equal(2, queueDeclares.Count);
-        Assert.Contains(queueDeclares, x => Equals(x.Arguments[0], NatureProtectorRabbitMqTopology.IngestionReadingsQueue));
-        Assert.Contains(queueDeclares, x => Equals(x.Arguments[0], NatureProtectorRabbitMqTopology.ObservabilityRawQueue));
+        Assert.Contains(queueDeclares, x => Equals(x.Arguments[0], "np.it.ingestion"));
+        Assert.Contains(queueDeclares, x => Equals(x.Arguments[0], "np.it.raw"));
 
         var queueBinds = recorder.Invocations.Where(x => x.MethodName == "QueueBind").ToList();
-        Assert.Equal(NatureProtectorRabbitMqTopology.Bindings.Count(), queueBinds.Count);
+        Assert.Equal(2, queueBinds.Count);
+        Assert.Contains(queueBinds, x => Equals(x.Arguments[0], "np.it.ingestion"));
+        Assert.Contains(queueBinds, x => Equals(x.Arguments[0], "np.it.raw"));
     }
 
     [Fact]

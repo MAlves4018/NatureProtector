@@ -18,7 +18,7 @@ export function DataStatusSummary({ showDetails = true }: { showDetails?: boolea
         <StatusBadge label={copy(stateLabelKey(riskModel.state))} state={riskModel.state} />
         <ContextualHelp topicId="freshness" />
       </div>
-      <div className="ui-v2-status-row" aria-label="Data Status summary">
+      <div className="ui-v2-status-row">
         <StatusItem label="Estado geral" value={copy(stateLabelKey(riskModel.state))} />
         <StatusItem label="Atualidade" value={freshness} />
         <StatusItem label="Cobertura" value={coverage} />

@@ -1,0 +1,135 @@
+{
+  "source": "Derived from GET /openapi/v1.json in Development with BackofficeApi:ControlPlaneEnabled=false.",
+  "paths": {
+    "/api/control/runtime/summary": {
+      "get": {
+        "security": ["Bearer"],
+        "responses": ["200", "401", "403", "503"]
+      }
+    },
+    "/api/control/runtime/runs": {
+      "post": {
+        "security": ["Bearer"],
+        "requestBodyContentTypes": ["application/json", "text/json", "application/*+json"],
+        "responses": ["200", "400", "401", "403", "503"]
+      }
+    },
+    "/api/control/runtime/runs/{runId}/audit": {
+      "get": {
+        "security": ["Bearer"],
+        "responses": ["200", "401", "403", "404"]
+      }
+    },
+    "/api/control/runtime/runs/{runId}/timings": {
+      "get": {
+        "security": ["Bearer"],
+        "responses": ["200", "401", "403", "404"]
+      }
+    },
+    "/api/control/runtime/observability/health": {
+      "get": {
+        "security": ["Bearer"],
+        "responses": ["200", "401", "403", "503"]
+      }
+    },
+    "/api/control/runtime/observability/rabbitmq": {
+      "get": {
+        "security": ["Bearer"],
+        "responses": ["200", "401", "403", "503"]
+      }
+    },
+    "/api/control/runtime/observability/evidence": {
+      "get": {
+        "security": ["Bearer"],
+        "responses": ["200", "401", "403", "503"]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RuntimeSummaryResponse": {
+        "required": [
+          "generatedAtUtc",
+          "recentWindowMinutes",
+          "areaCode",
+          "currentRun",
+          "latestRun",
+          "pipeline",
+          "risk",
+          "areaOperationalState",
+          "cellOperationalStateCount",
+          "activeAlerts",
+          "freshness",
+          "scoreComponents",
+          "indexComparison",
+          "limitations",
+          "warnings"
+        ],
+        "properties": {
+          "generatedAtUtc": { "type": "string", "format": "date-time" },
+          "recentWindowMinutes": { "type": "integer", "format": "int32" },
+          "areaCode": { "type": "string", "nullable": true },
+          "currentRun": { "$ref": "#/components/schemas/RuntimeRunSummaryResponse" },
+          "latestRun": { "$ref": "#/components/schemas/RuntimeRunSummaryResponse" },
+          "pipeline": { "$ref": "#/components/schemas/RuntimePipelineSummaryResponse" },
+          "risk": { "$ref": "#/components/schemas/RuntimeRiskSummaryResponse" },
+          "areaOperationalState": { "$ref": "#/components/schemas/RuntimeAreaOperationalSummaryResponse" },
+          "cellOperationalStateCount": { "type": "integer", "format": "int32" },
+          "activeAlerts": { "type": "array" },
+          "freshness": { "$ref": "#/components/schemas/RuntimeFreshnessSummaryResponse" },
+          "scoreComponents": { "$ref": "#/components/schemas/RuntimeScoreComponentSummaryResponse" },
+          "indexComparison": { "$ref": "#/components/schemas/RuntimeIndexComparisonSummaryResponse" },
+          "limitations": { "type": "array" },
+          "warnings": { "type": "array" }
+        }
+      },
+      "RuntimeIndexComparisonSummaryResponse": {
+        "required": [
+          "fireWeatherIndex",
+          "normalizedFireWeatherIndex",
+          "fireWeatherCalculationStatus",
+          "keetchByramDroughtIndex",
+          "normalizedKeetchByramDroughtIndex",
+          "kbdiCalculationStatus",
+          "provenance",
+          "limitations",
+          "dailyPrecipitationMillimeters",
+          "logicalDate"
+        ],
+        "properties": {
+          "fireWeatherIndex": { "type": "number", "nullable": true },
+          "normalizedFireWeatherIndex": { "type": "number", "nullable": true },
+          "fireWeatherCalculationStatus": { "type": "string", "nullable": true },
+          "keetchByramDroughtIndex": { "type": "number", "nullable": true },
+          "normalizedKeetchByramDroughtIndex": { "type": "number", "nullable": true },
+          "kbdiCalculationStatus": { "type": "string", "nullable": true },
+          "provenance": { "type": "string", "nullable": true },
+          "limitations": { "type": "string", "nullable": true },
+          "dailyPrecipitationMillimeters": { "type": "number" },
+          "logicalDate": { "type": "string", "format": "date-time" },
+          "calculatedFireWeatherIndex": { "type": "number", "nullable": true },
+          "referenceFireWeatherIndex": { "type": "number", "nullable": true },
+          "fireWeatherIndexValueSource": { "type": "string", "nullable": true },
+          "fireWeatherIpmaClass": { "type": "string", "nullable": true },
+          "fireWeatherIpmaClassLabel": { "type": "string", "nullable": true },
+          "fireWeatherEffisClass": { "type": "string", "nullable": true },
+          "fireWeatherThresholdDistanceToNextClass": { "type": "number", "nullable": true },
+          "fireWeatherNextIpmaClass": { "type": "string", "nullable": true },
+          "calculatedKeetchByramDroughtIndex": { "type": "number", "nullable": true },
+          "referenceKeetchByramDroughtIndex": { "type": "number", "nullable": true },
+          "kbdiValueSource": { "type": "string", "nullable": true },
+          "kbdiDrynessClass": { "type": "string", "nullable": true },
+          "kbdiDrynessClassLabel": { "type": "string", "nullable": true },
+          "kbdiAntecedentHistoryQuality": { "type": "string", "nullable": true },
+          "kbdiAntecedentDays": { "type": "integer", "nullable": true },
+          "portugueseContextRiskProxyClass": { "type": "string", "nullable": true },
+          "portugueseContextRiskProxyLabel": { "type": "string", "nullable": true },
+          "territorialHazardProxyClass": { "type": "string", "nullable": true },
+          "localFwiPercentileStatus": { "type": "string", "nullable": true },
+          "localFwiPercentile": { "type": "number", "nullable": true },
+          "localFwiPercentileReason": { "type": "string", "nullable": true }
+        }
+      }
+    }
+  }
+}

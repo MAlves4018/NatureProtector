@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using System.Text.Json;
 
 namespace NatureProtector.Backoffice.Api.Tests;
 
@@ -8,7 +11,18 @@ public sealed class ProgramSmokeTests : IClassFixture<WebApplicationFactory<Prog
 
     public ProgramSmokeTests(WebApplicationFactory<Program> factory)
     {
-        _factory = factory.WithWebHostBuilder(_ => { });
+        _factory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Development");
+            builder.UseSetting("BackofficeApi:ControlPlaneEnabled", "false");
+            builder.ConfigureAppConfiguration((_, configurationBuilder) =>
+            {
+                configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["BackofficeApi:ControlPlaneEnabled"] = "false"
+                });
+            });
+        });
     }
 
     [Fact]
@@ -24,6 +38,14 @@ public sealed class ProgramSmokeTests : IClassFixture<WebApplicationFactory<Prog
         Assert.True(response.IsSuccessStatusCode);
         var content = await response.Content.ReadAsStringAsync();
         Assert.Contains("\"openapi\"", content, StringComparison.OrdinalIgnoreCase);
+
+        using var document = JsonDocument.Parse(content);
+        var paths = document.RootElement.GetProperty("paths");
+
+        Assert.True(paths.TryGetProperty("/api/control/runtime/summary", out _));
+        Assert.True(paths.TryGetProperty("/api/control/runtime/runs", out _));
+        Assert.True(paths.TryGetProperty("/api/control/runtime/observability/health", out _));
+        Assert.True(paths.TryGetProperty("/api/control/runtime/observability/evidence/{evidenceId}", out _));
     }
 
     [Fact]

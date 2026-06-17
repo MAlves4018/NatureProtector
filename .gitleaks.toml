@@ -1,0 +1,27 @@
+title = "NatureProtector secret scanning"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Approved local-only fixtures and non-secret placeholders used by tests, docs, and developer baseline setup."
+paths = [
+  '''(^|.*[/\\])\.env\.example$''',
+  '''(^|.*[/\\])tests[/\\]NatureProtector\.Backoffice\.Api\.Tests[/\\]JwtAuthenticationTests\.cs$''',
+]
+regexes = [
+  '''np_dev_pass''',
+  '''local-test-token''',
+  '''admin123''',
+  '''simUser123''',
+  '''pipeUser123''',
+  '''wrong-password''',
+  '''expired-token''',
+  '''test-token''',
+  '''sim-token''',
+  '''pipeline-token''',
+  '''Bearer\s+\{\{[A-Za-z0-9_]+\}\}''',
+  '''<admin-local-password>''',
+  '''<pipeline-local-password>''',
+  '''<sim-local-password>''',
+]

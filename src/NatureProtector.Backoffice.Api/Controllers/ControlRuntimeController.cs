@@ -20,6 +20,8 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
     }
 
     [HttpGet("summary")]
+    [ProducesResponseType(typeof(RuntimeSummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult> GetSummary(
         [FromQuery] string? areaCode,
         [FromQuery] int recentMinutes = 30,
@@ -36,6 +38,8 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
     }
 
     [HttpGet("diagnostics")]
+    [ProducesResponseType(typeof(RuntimeDiagnosticCatalogResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult> ListDiagnostics(CancellationToken cancellationToken = default)
     {
         var unavailable = EnsureControlPlaneAvailable();
@@ -49,6 +53,9 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
 
     [HttpPost("diagnostics/{diagnosticId}")]
     [Authorize(Roles = "Sim,Admin")]
+    [ProducesResponseType(typeof(RuntimeDiagnosticResultResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult> ExecuteDiagnostic(
         string diagnosticId,
         [FromBody] RuntimeDiagnosticRequest? request,
@@ -70,6 +77,10 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
 
     [HttpPost("runs")]
     [Authorize(Roles = "Sim,Admin")]
+    [ProducesResponseType(typeof(RuntimeRunStartResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RuntimeRunStartResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult> StartRun(
         [FromBody] RuntimeRunStartRequest request,
         CancellationToken cancellationToken = default)
@@ -90,6 +101,8 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
     }
 
     [HttpGet("runs/latest")]
+    [ProducesResponseType(typeof(RuntimeRunSummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> GetLatestRun(
         [FromQuery] string? areaCode,
         CancellationToken cancellationToken = default)
@@ -100,6 +113,8 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
     }
 
     [HttpGet("runs/{runId:guid}")]
+    [ProducesResponseType(typeof(RuntimeRunSummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> GetRun(Guid runId, CancellationToken cancellationToken = default)
     {
         var run = await ControlPlane.GetSimulationRunAsync(runId, cancellationToken);
@@ -107,6 +122,8 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
     }
 
     [HttpGet("runs/{runId:guid}/audit")]
+    [ProducesResponseType(typeof(RuntimeRunAuditResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> GetRunAudit(Guid runId, CancellationToken cancellationToken = default)
     {
         var audit = await ControlPlane.GetRuntimeRunAuditAsync(runId, cancellationToken);
@@ -114,6 +131,8 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
     }
 
     [HttpGet("runs/{runId:guid}/timings")]
+    [ProducesResponseType(typeof(RuntimeRunTimingSummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> GetRunTimings(Guid runId, CancellationToken cancellationToken = default)
     {
         var timings = await ControlPlane.GetRuntimeRunTimingsAsync(runId, cancellationToken);
@@ -122,6 +141,10 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
 
     [HttpPost("reset")]
     [Authorize(Roles = "Sim,Admin")]
+    [ProducesResponseType(typeof(RuntimeResetResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RuntimeResetResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult> ResetRuntimeState(
         [FromBody] RuntimeResetRequest request,
         CancellationToken cancellationToken = default)
