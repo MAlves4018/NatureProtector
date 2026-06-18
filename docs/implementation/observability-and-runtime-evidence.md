@@ -1,22 +1,22 @@
-# Observability and runtime evidence
+# Observabilidade e evidence runtime
 
-Last updated: 2026-06-16
+Última atualização: 2026-06-18
 
-This document describes the current internal observability slice. It is runtime evidence for a technical prototype, not scientific validation of wildfire risk, official alerting, or calibrated prediction.
+Este documento descreve a fatia atual de observabilidade interna. É evidence runtime para um protótipo técnico, não validação científica de risco de incêndio, alerting oficial ou previsão calibrada.
 
-## Health model
+## Modelo de health
 
-The Backoffice keeps the simple technical `/health` endpoint for basic readiness.
+A Backoffice mantém o endpoint técnico simples `/health` para readiness básica.
 
-Detailed operational health is exposed through:
+O health operacional detalhado é exposto por:
 
 ```text
 GET /api/control/runtime/observability/health
 ```
 
-The endpoint is authenticated with the existing `Sim`, `Pipeline` or `Admin` roles. It does not add roles or claims.
+O endpoint é autenticado com as roles existentes `Sim`, `Pipeline` ou `Admin`. Não acrescenta roles nem claims.
 
-Component status is explicit:
+O estado de componente é explícito:
 
 ```text
 Healthy
@@ -27,27 +27,27 @@ NotInstrumented
 NotApplicable
 ```
 
-Absence of errors is not treated as `Healthy`. Missing or inaccessible signals are represented as `Unknown`, `NotInstrumented` or `NotApplicable`.
+A ausência de erros não é tratada como `Healthy`. Sinais ausentes ou inacessíveis são representados como `Unknown`, `NotInstrumented` ou `NotApplicable`.
 
-Current components:
+Componentes atuais:
 
-- `Backoffice.Api`: positive signal from the authenticated request reaching the controller.
-- `PostgreSQL`: EF Core connectivity probe.
-- `RabbitMQ`: RabbitMQ Management HTTP API and relevant queue state.
-- `Prevention.Host`: proxy signal from consumers on `np.ingestion.readings`.
-- `Simulator.Host`: latest simulation run lifecycle; a completed run is `NotApplicable`, not unhealthy.
-- `InfluxDB`: HTTP health probe; unauthorized or unreachable probes are `Unknown`.
-- `Grafana`: `/api/health` with database status where available.
+- `Backoffice.Api`: sinal positivo quando o pedido autenticado chega ao controller.
+- `PostgreSQL`: probe de conectividade EF Core.
+- `RabbitMQ`: RabbitMQ Management HTTP API e estado relevante de filas.
+- `Prevention.Host`: sinal proxy a partir de consumers em `np.ingestion.readings`.
+- `Simulator.Host`: ciclo de vida da última simulation run; uma run concluída é `NotApplicable`, não unhealthy.
+- `InfluxDB`: probe HTTP de health; probes unauthorized ou unreachable são `Unknown`.
+- `Grafana`: `/api/health` com estado da base de dados quando disponível.
 
-## RabbitMQ metrics
+## Métricas RabbitMQ
 
-RabbitMQ queue metrics are exposed through:
+As métricas de filas RabbitMQ são expostas por:
 
 ```text
 GET /api/control/runtime/observability/rabbitmq
 ```
 
-Per queue:
+Por fila:
 
 ```text
 QueueName
@@ -61,42 +61,42 @@ CollectionStatus
 Limitation
 ```
 
-The endpoint uses the RabbitMQ Management HTTP API. It does not expose credentials.
+O endpoint usa a RabbitMQ Management HTTP API. Não expõe credenciais.
 
-Unavailable metrics are nullable and marked with `CollectionStatus`. They are not converted to zero. A zero value means RabbitMQ reported zero.
+Métricas indisponíveis são nullable e marcadas com `CollectionStatus`. Não são convertidas para zero. Um valor zero significa que RabbitMQ reportou zero.
 
-Backlog is reported explicitly as ready, unacknowledged and total message counts. The UI v2 does not collapse these values into an ambiguous single backlog number.
+O backlog é reportado explicitamente como contagens ready, unacknowledged e total. A UI v2 não colapsa estes valores num único número ambíguo de backlog.
 
-## Timestamps and correlation
+## Timestamps e correlação
 
-The published RabbitMQ contract remains:
+O contrato RabbitMQ publicado continua a ser:
 
 ```text
 EventEnvelope<TPayload>
 SensorReadingProduced
 ```
 
-It contains `EventTime`, optional `IngestTime`, `EventId` and `CorrelationId`. It does not contain a persisted `PublishedAt`.
+Contém `EventTime`, `IngestTime` opcional, `EventId` e `CorrelationId`. Não contém `PublishedAt` persistido.
 
-This means publish-to-end latency is still gated. The system may show persisted run/inbox/processing/risk timestamps, but it must not claim full end-to-end latency until comparable publish/receive/process timestamps exist.
+Isto significa que a latência publish-to-end continua bloqueada. O sistema pode mostrar timestamps persistidos de run/inbox/processing/risk, mas não deve afirmar latência integral por evento até existirem timestamps comparáveis de publicação, receção e processamento.
 
-## Run-scoped audit and timings
+## Audit e timings por run
 
-Run audit:
+Audit por run:
 
 ```text
 GET /api/control/runtime/runs/{runId}/audit
 ```
 
-Run timings:
+Timings por run:
 
 ```text
 GET /api/control/runtime/runs/{runId}/timings
 ```
 
-Both continue to read persisted runtime records only. They do not recalculate risk.
+Ambos continuam a ler apenas registos runtime persistidos. Não recalculam risco.
 
-The responses now include optional `dataScope` metadata:
+As respostas incluem agora metadata opcional `dataScope`:
 
 ```text
 RequestedRunId
@@ -108,7 +108,7 @@ Scope
 Limitations
 ```
 
-Timings also include an ordered `timeline` of measured persisted points when available:
+Os timings também incluem uma `timeline` ordenada de pontos persistidos medidos quando disponíveis:
 
 ```text
 requested
@@ -121,65 +121,79 @@ last_processing_finished
 completed
 ```
 
-Only measured persisted points are included. Stopwatch log durations remain logs unless/until a structured run timing persistence model is added.
+Só são incluídos pontos persistidos medidos. Durações stopwatch em logs continuam a ser logs até existir um modelo estruturado de persistência de run timing.
 
-## Quality and classifiers
+## Qualidade e classificadores
 
-Current audit quality data remains partial:
+Os dados atuais de audit de qualidade continuam parciais:
 
-- quality flag summary is derived from persisted accepted-reading operational states and missing-event arithmetic;
-- eligibility summary is derived from persisted risk assessment explanation summaries and accepted/risk count differences;
-- detailed classifier payloads are not persisted as aggregate runtime projections.
+- o resumo de quality flags é derivado de estados operacionais persistidos de accepted readings e aritmética de missing events;
+- o resumo de eligibility é derivado de explanation summaries persistidos de risk assessments e diferenças entre contagem accepted/risk;
+- payloads detalhados de classifier não são persistidos como projeções runtime agregadas.
 
-No scoring, eligibility semantics, `Blocked`, `PartialButUsable`, `CompleteEligible`, quality flag meaning or classifier meaning was changed.
+Nenhuma semântica de scoring, eligibility, `Blocked`, `PartialButUsable`, `CompleteEligible`, quality flag ou classifier foi alterada.
 
-Detailed classifier/quality persistence remains owner-review work because it needs additive schema, retention and payload-size decisions.
+A persistência detalhada de classifier/quality continua a exigir owner review porque implica decisões aditivas de schema, retenção e tamanho de payload.
 
 ## Evidence HTTP
 
-Evidence is exposed through an allowlisted HTTP catalog:
+A evidence é exposta através de um catálogo HTTP allowlisted:
 
 ```text
 GET /api/control/runtime/observability/evidence
 GET /api/control/runtime/observability/evidence/{evidenceId}
 ```
 
-Rules:
+Regras:
 
-- source is limited to `docs/evidence`;
-- public identifiers are generated evidence IDs, not filesystem paths;
-- evidence IDs are constrained to generated identifier characters and reserved/path-like values are rejected before content lookup;
-- extensions are allowlisted to `.md`, `.txt`, `.json` and `.csv`;
-- the catalog returns the 250 most recent allowlisted files and reports `evidence_catalog_truncated` when more exist;
-- content is capped at 1 MiB;
-- canonical path validation prevents traversal outside `docs/evidence`;
-- recursive catalog enumeration skips filesystem reparse points/symlinks;
-- responses use `no-store`;
-- the Brain folder, `.env`, `.git`, arbitrary paths and binary files are not exposed.
+- a origem é limitada a `docs/evidence`;
+- identificadores públicos são evidence IDs gerados, não paths de filesystem;
+- evidence IDs são limitados aos caracteres do identificador gerado e valores reservados/path-like são rejeitados antes do lookup de conteúdo;
+- extensões são allowlisted para `.md`, `.txt`, `.json` e `.csv`;
+- o catálogo devolve os 250 ficheiros allowlisted mais recentes e reporta `evidence_catalog_truncated` quando existem mais;
+- o conteúdo é limitado a 1 MiB;
+- validação de path canónico impede traversal para fora de `docs/evidence`;
+- a enumeração recursiva do catálogo ignora filesystem reparse points/symlinks;
+- respostas usam `no-store`;
+- a pasta Brain, `.env`, `.git`, paths arbitrários e ficheiros binários não são expostos.
 
-UI v2 downloads allowlisted runtime evidence through the existing authenticated API client, so the same bearer/session path used by the rest of the app is applied to `GET /api/control/runtime/observability/evidence/{evidenceId}`. It does not use a plain unauthenticated anchor to `/api`.
+A UI v2 descarrega runtime evidence allowlisted através do cliente API autenticado existente, por isso o mesmo caminho bearer/session usado pelo resto da app é aplicado a `GET /api/control/runtime/observability/evidence/{evidenceId}`. Não usa um anchor simples e não autenticado para `/api`.
 
 ## UI Pipeline
 
-UI v2 Pipeline consumes the new observability contracts proportionally:
+A UI v2 Pipeline consome os novos contratos de observabilidade de forma proporcional:
 
-- service health appears as technical fields;
-- RabbitMQ ready/unacknowledged/consumer metrics appear only when measured;
-- unavailable queue values remain unavailable, not zero;
-- publisher timestamps remain `NotInstrumented`;
-- current/global projections are still labelled as current projections when not guaranteed run-scoped;
-- run audit and timings continue to be preferred for selected run details.
-- evidence download is exposed only for catalog items that report available HTTP content.
+- service health aparece como campos técnicos;
+- métricas RabbitMQ ready/unacknowledged/consumer aparecem apenas quando medidas;
+- valores de fila indisponíveis continuam indisponíveis, não zero;
+- publisher timestamps continuam `NotInstrumented`;
+- projeções atuais/globais continuam marcadas como projeções atuais quando não há garantia de scope por run;
+- run audit e timings continuam preferidos para detalhes da run selecionada;
+- download de evidence é exposto apenas para itens de catálogo que reportam conteúdo HTTP disponível.
 
-## Grafana and InfluxDB
+## Grafana e InfluxDB
 
-This pass did not create Grafana dashboards. Grafana health is probed through the real health endpoint and can be shown in operational health.
+Esta passagem não criou dashboards Grafana. Grafana health é verificado através do endpoint real de health e pode ser mostrado no operational health.
 
-InfluxDB health is probed through HTTP. If the local endpoint requires authorization and no configured token is available to Backoffice, the component is `Unknown`, not `Healthy`.
+InfluxDB health é verificado através de HTTP. Se o endpoint local exigir autorização e a Backoffice não tiver token configurado, o componente fica `Unknown`, não `Healthy`.
 
-## Validation commands
+## Evidence de validação
 
-Executed during this pass:
+Validação focada de observabilidade em 2026-06-18:
+
+```powershell
+dotnet test .\tests\NatureProtector.Shared.Tests\NatureProtector.Shared.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~HostTelemetryTests"
+dotnet test .\tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~RuntimeObservabilityServiceTests|FullyQualifiedName~UnavailableRuntimeObservabilityServiceTests|FullyQualifiedName~ControlPlaneApiTests.RuntimeObservability|FullyQualifiedName~RuntimeEvidenceHttpSecurityTests"
+```
+
+Resultados:
+
+- `HostTelemetryTests`: 4 passaram.
+- testes focados de runtime observability e evidence HTTP da Backoffice: 18 passaram.
+
+Esta passagem focada valida startup do OpenTelemetry host wiring sem infraestrutura externa de telemetry, estados explícitos de runtime observability indisponível, parsing de métricas RabbitMQ Management API através de HTTP client fake, autorização em endpoints de observability e segurança de evidence HTTP. Não é prova de entrega para collector real, prova de integração com broker RabbitMQ, prova de dashboard Grafana ou prova de latência integral por evento.
+
+Comandos de validação anteriores executados na passagem de 2026-06-16:
 
 ```powershell
 dotnet test tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj --no-restore
@@ -190,13 +204,13 @@ npm test -- src/app/ui-v2 src/app/services/api.test.ts
 npm run test:coverage -- src/app/ui-v2 src/app/services/api.test.ts
 ```
 
-Runtime smoke evidence was captured under:
+Runtime smoke evidence foi capturada em:
 
 ```text
 NatureProtector.brain/control/OBSERVABILITY-AND-RUNTIME-EVIDENCE-001/
 ```
 
-Observed runtime smoke on 2026-06-14:
+Runtime smoke observado em 2026-06-14:
 
 - `Backoffice.Api=Healthy`
 - `PostgreSQL=Healthy`
@@ -207,14 +221,14 @@ Observed runtime smoke on 2026-06-14:
 - `Grafana=Healthy`
 - `np.ingestion.readings`: ready `0`, unacknowledged `0`, total `0`, consumers `1`
 - `np.observability.raw`: ready `52`, unacknowledged `0`, total `52`, consumers `0`
-- evidence catalog returned the 250 most recent allowlisted items and marked `evidence_catalog_truncated`
-- evidence catalog returned HTTP content for an allowlisted item and rejected traversal with `400`
+- o catálogo de evidence devolveu os 250 itens allowlisted mais recentes e marcou `evidence_catalog_truncated`
+- o catálogo de evidence devolveu conteúdo HTTP para um item allowlisted e rejeitou traversal com `400`
 
-## Remaining limitations
+## Limitações restantes
 
-- No RabbitMQ `PublishedAt` without owner-approved contract/instrumentation work.
-- No detailed classifier payload persistence or aggregate quality projection persistence yet.
-- No Grafana dashboard was created in this pass.
-- No full e2e event latency is claimed.
-- Historical runs before future quality/classifier persistence will still lack detailed classifier evidence.
-- `np.observability.raw` may show backlog with zero consumers by design unless a consumer is expected and provisioned.
+- Sem `PublishedAt` RabbitMQ sem trabalho de contrato/instrumentação aprovado pelo owner.
+- Ainda sem persistência detalhada de payloads classifier ou persistência agregada de projeção de quality.
+- Esta passagem não criou dashboard Grafana.
+- Não há claim de latência integral por evento.
+- Runs históricas anteriores a futura persistência de quality/classifier continuarão sem evidence detalhada de classifier.
+- `np.observability.raw` pode mostrar backlog com zero consumers por desenho, salvo quando existir um consumer esperado e provisionado.

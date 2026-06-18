@@ -955,6 +955,8 @@ Se ambas forem verdadeiras, `ProcessAsync` chama `readingEventInbox.ScheduleRetr
 
 No caminho do retry, [InboxRetryWorker.ExecuteAsync](../../src/NatureProtector.Prevention.Host/Processing/InboxRetryWorker.cs) faz polling do inbox e chama `TryStartDueRetryAsync("reading_risk_pipeline", ...)`. Este método é o ponto exato onde a inbox deixa de apenas registar e volta a conceder lease: muda o evento para `Processing`, incrementa `AttemptCount`, cria uma nova linha em `processing_attempts` e devolve `InboxRetryWorkItem` com envelope e lease.
 
+O mesmo método também recupera eventos que ficaram em `Processing` para lá de `PreventionHostOptions.ProcessingLeaseTimeoutSeconds`. A tentativa expirada é fechada como `RetryScheduled` com `processing_lease_expired` antes de ser criada uma nova tentativa; se a política de tentativas já estiver esgotada, o evento segue para quarentena com `processing_lease_expired`. As operações de finalização (`CompleteProcessingAsync`, `ScheduleRetryAsync` e `QuarantineProcessingAsync`) só aceitam a lease que ainda corresponde ao `AttemptCount` atual e a uma tentativa `Started`, para que uma tentativa antiga que acorde tarde não sobrescreva a tentativa recuperada.
+
 Se o envelope persistido já não puder ser desserializado, a decisão terminal não passa por `ReadingEventProcessingService`: acontece dentro de `TryStartDueRetryAsync`, que chama `QuarantineMalformedRetryAsync` e cria diretamente a quarentena `invalid_retry_payload`.
 
 A validação semântica sensor-área fica depois da inbox e antes da pipeline de risco. Isto é intencional: o evento é tecnicamente válido e deve ficar auditável na inbox, mas não deve contaminar accepted readings, assessments, snapshots ou projeções se o sensor não existir, estiver inativo ou pertencer a outra área.
@@ -966,6 +968,7 @@ A inelegibilidade de risco é diferente. Uma leitura pode ser aceite e persistid
 - `StoreIncomingAsync` apenas regista quando encontra um duplicado. Nesse caso devolve `ShouldProcessNow = false` e `Lease = null`.
 - `StoreIncomingAsync` regista e concede lease quando recebe um evento novo. Nesse caso cria `pipeline.event_inbox`, a primeira linha de `pipeline.processing_attempts` e devolve `InboxProcessingLease`.
 - `TryStartDueRetryAsync` concede novo lease quando encontra um evento `RetryPending` cujo `NextAttemptNotBefore` já expirou e o envelope persistido ainda é legível.
+- `TryStartDueRetryAsync` também concede novo lease quando encontra um evento `Processing` cuja lease expirou, desde que a política de tentativas ainda não tenha sido esgotada.
 
 ### Estado persistido e efeito operacional
 

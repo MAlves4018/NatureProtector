@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using NatureProtector.Backoffice.Api.Bootstrap;
 using NatureProtector.Backoffice.Api.Configuration;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 using NatureProtector.Backoffice.Api.OpenApi;
@@ -119,39 +120,10 @@ if (backofficeOptions.ControlPlaneEnabled)
     if (!string.IsNullOrWhiteSpace(adminPassword))
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync();
-        var adminUser = await dbContext.Users
-            .SingleOrDefaultAsync(
-                entity => entity.Username == UserRecord.AdminUsername ||
-                          entity.Email == UserRecord.AdminEmail);
-
-        if (adminUser is null)
-        {
-            adminUser = new UserRecord
-            {
-                Id = Guid.Parse(UserRecord.AdminIdString),
-                Username = UserRecord.AdminUsername,
-                Email = UserRecord.AdminEmail,
-                Organization = UserRecord.AdminOrganization,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            dbContext.Users.Add(adminUser);
-        }
-
-        adminUser.PasswordHash = passwordHasher.HashPassword(adminUser, adminPassword);
-
-        var hasAdminRole = await dbContext.Set<UserRoleRecord>()
-            .AnyAsync(entity => entity.UserId == adminUser.Id && entity.RoleId == RoleRecord.AdminId);
-        if (!hasAdminRole)
-        {
-            dbContext.Set<UserRoleRecord>().Add(new UserRoleRecord
-            {
-                UserId = adminUser.Id,
-                RoleId = RoleRecord.AdminId
-            });
-        }
-
-        await dbContext.SaveChangesAsync();
+        await BackofficeAdminBootstrapper.EnsureAdminUserAsync(
+            dbContext,
+            passwordHasher,
+            adminPassword);
     }
 }
 

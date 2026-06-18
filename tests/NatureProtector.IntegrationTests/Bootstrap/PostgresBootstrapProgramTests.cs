@@ -16,6 +16,32 @@ public class PostgresBootstrapProgramTests
     }
 
     [Fact]
+    public void ResolveContentRoot_FindsPackageRootFromPublishedBootstrapPath()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"np-bootstrap-package-{Guid.NewGuid():N}");
+        var bootstrapPath = Path.Combine(tempRoot, "publish", "postgres-bootstrap");
+
+        try
+        {
+            Directory.CreateDirectory(bootstrapPath);
+            CreateFile(Path.Combine(tempRoot, "data", "manifests", "datasets", "proenca-a-nova-dataset-plan.json"));
+            CreateFile(Path.Combine(tempRoot, "data", "baseline", "areas", "proenca-a-nova", "area.geojson"));
+            CreateFile(Path.Combine(tempRoot, "data", "manifests", "scenarios", "proenca-a-nova-scenarios.generated.json"));
+
+            var resolved = BootstrapProgram.ResolveContentRoot(bootstrapPath);
+
+            Assert.Equal(tempRoot, resolved);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void ResolveRepoRoot_FailsWhenRepositoryMarkerIsAbsent()
     {
         var tempRoot = Path.Combine(Path.GetTempPath(), $"np-bootstrap-root-{Guid.NewGuid():N}");
@@ -25,7 +51,7 @@ public class PostgresBootstrapProgramTests
         {
             var exception = Assert.Throws<InvalidOperationException>(() => BootstrapProgram.ResolveRepoRoot(tempRoot));
 
-            Assert.Contains("Could not resolve the repository root", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("Could not resolve the repository or package content root", exception.Message, StringComparison.Ordinal);
         }
         finally
         {
@@ -48,5 +74,11 @@ public class PostgresBootstrapProgramTests
         }
 
         throw new DirectoryNotFoundException("Could not locate NatureProtector.sln from the test output directory.");
+    }
+
+    private static void CreateFile(string path)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, "{}");
     }
 }

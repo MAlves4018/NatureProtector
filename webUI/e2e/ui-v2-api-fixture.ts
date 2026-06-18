@@ -66,7 +66,7 @@ async function handleApiRoute(route: Route, path: string, options: UiV2ApiFixtur
   }
 
   if (path === '/users-roles/me') {
-    if (options.meStatus === 401 || authorizationHeader(route) === 'Bearer expired-token') {
+    if (options.meStatus === 401 || ['Bearer expired-token', 'Bearer invalid-token'].includes(authorizationHeader(route) ?? '')) {
       await json(route, { status: 401, title: 'Unauthorized', message: 'Session expired' }, 401);
       return;
     }

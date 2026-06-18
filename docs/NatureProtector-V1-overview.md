@@ -89,7 +89,7 @@ A V1 valida sobretudo engenharia de software, arquitetura, integração e execu�
 
 | Tipo de afirmação | Estado | Evidência aceitável |
 | --- | --- | --- |
-| O sistema processa eventos simulados end-to-end | Validado tecnicamente | Testes, execução local, PostgreSQL, evidência por run. |
+| O sistema processa eventos simulados através do fluxo runtime local | Validado tecnicamente | Testes, execução local, PostgreSQL, evidência por run. |
 | RabbitMQ transporta `SensorReadingProduced` em envelope comum | Validado tecnicamente | Código em `NatureProtector.Shared` e testes de compatibilidade. |
 | Leituras bloqueadas não geram novo assessment numérico | Validado tecnicamente | `ReadingRiskPipeline`, `SimpleRiskScoringService` e testes. |
 | A API lê projeções e alertas persistidos | Validado tecnicamente | `PostgresControlPlaneService` e testes da API. |

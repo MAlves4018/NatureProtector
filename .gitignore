@@ -39,6 +39,10 @@ docs/structurizr/output/*
 docs/structurizr/.structurizr/
 docs/structurizr/workspace.json
 graphify-out
+/StrykerOutput/
+/BenchmarkDotNet.Artifacts/
+/playwright-report/
+/test-results/
 
 .env
 node_modules/.package-lock.json

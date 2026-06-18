@@ -15,9 +15,10 @@ O caminho hoje ligado pelo `Program.cs` é este:
 7. Se o processamento terminar bem, a tentativa é marcada como concluída e o inbox passa a `Processed`.
 8. Se o processamento falhar com erro retryable, o evento passa a `RetryPending`, fica com `NextAttemptNotBefore` e será retomado por `InboxRetryWorker`.
 9. Se o processamento falhar com erro permanente ou esgotar a política de novas tentativas, o evento passa a `Quarantined` e fica registado em `pipeline.quarantined_events`.
-10. Cada assessment também atualiza `projection.cell_operational_state` para a célula do sensor que originou a leitura.
-11. Depois de cada `AreaRiskSnapshot`, o host atualiza `projection.area_operational_state` e um alerta ativo simples por área.
-12. A fotografia operacional da área é calculada a partir do último assessment conhecido por sensor, não do histórico completo da área.
+10. O `InboxRetryWorker` também recupera eventos que ficaram em `Processing` para lá de `ProcessingLeaseTimeoutSeconds`; quando uma lease expirada é recuperada, uma finalização tardia da tentativa antiga é ignorada e não pode sobrescrever a tentativa corrente.
+11. Cada assessment também atualiza `projection.cell_operational_state` para a célula do sensor que originou a leitura.
+12. Depois de cada `AreaRiskSnapshot`, o host atualiza `projection.area_operational_state` e um alerta ativo simples por área.
+13. A fotografia operacional da área é calculada a partir do último assessment conhecido por sensor, não do histórico completo da área.
 
 ## Ficheiros principais
 
@@ -66,6 +67,7 @@ O caminho hoje ligado pelo `Program.cs` é este:
   - `MaxProcessingAttempts`
   - `RetryDelaySeconds`
   - `RetryPollingIntervalSeconds`
+  - `ProcessingLeaseTimeoutSeconds`
 
 Quando `PipelinePersistenceEnabled = true`, o host usa o PostgreSQL como inbox durável, store dos logs operacionais e store das projeções operacionais.
 Quando `PipelinePersistenceEnabled = false`, o host continua a arrancar com inbox, persistência operacional e projeções em memória.
@@ -105,6 +107,7 @@ O perfil local suportado por defeito do repositório usa `PipelinePersistenceEna
 - registo de tentativas de processamento e rejeições técnicas;
 - rejeição semântica precoce para `SchemaVersion` e `EventType` fora do contrato suportado e para leituras com `OperationalState = Invalid`;
 - retries internos a partir da inbox;
+- recuperação de leases de processamento expiradas sem permitir que finalizações tardias sobrescrevam a tentativa atual;
 - quarentena persistida para falhas permanentes ou exaustão de retries;
 - persistência durável das leituras aceites, assessments e snapshots;
 - escrita de telemetria operacional em InfluxDB;

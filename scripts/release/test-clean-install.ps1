@@ -137,7 +137,11 @@ $requiredPaths = @(
     "release-evidence-manifest.json",
     "checksums.sha256",
     "evidence/dotnet-dependency-inventory.json",
-    "evidence/npm-dependency-inventory.json"
+    "evidence/npm-dependency-inventory.json",
+    "evidence/sbom.json",
+    "data/manifests/datasets/proenca-a-nova-dataset-plan.json",
+    "data/baseline/areas/proenca-a-nova/area.geojson",
+    "data/manifests/scenarios/proenca-a-nova-scenarios.generated.json"
 )
 
 $missing = @()

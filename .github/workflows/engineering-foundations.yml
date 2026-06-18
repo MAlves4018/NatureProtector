@@ -48,6 +48,9 @@ jobs:
       - name: Restore
         run: dotnet restore .\NatureProtector.sln --configfile NuGet.Config --nologo
 
+      - name: Test workspace scripts
+        run: .\scripts\tests\test-workspace-script.ps1
+
       - name: Audit NuGet dependencies
         run: .\scripts\ci\check-dotnet-audit.ps1 -OutputPath .\artifacts\dotnet-audit.txt
 
@@ -57,6 +60,12 @@ jobs:
       - name: Test with backend coverage
         run: .\scripts\tests\generate-coverage-report.ps1 -NoRestore -NoBuild
 
+      - name: Export test inventory
+        run: .\scripts\tests\export-test-inventory.ps1
+
+      - name: Export coverage gaps
+        run: .\scripts\tests\export-coverage-gaps.ps1
+
       - name: Upload backend test artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
@@ -65,6 +74,7 @@ jobs:
           retention-days: 14
           path: |
             artifacts/coverage/
+            artifacts/validation/
             artifacts/dotnet-audit.txt
 
   backend-docker-integration:
@@ -79,6 +89,7 @@ jobs:
           POSTGRES_DB: natureprotector
           POSTGRES_USER: np
           POSTGRES_PASSWORD: np_dev_pass
+          NP_TEST_INFLUXDB_CONTAINER: np-influxdb-it
         ports:
           - 5433:5432
         options: >-

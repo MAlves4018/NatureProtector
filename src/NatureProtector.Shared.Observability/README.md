@@ -1,19 +1,19 @@
 # NatureProtector.Shared.Observability
 
-This project contains runtime observability wiring for NatureProtector hosts.
+Este projeto concentra o wiring de observabilidade runtime para os hosts do NatureProtector.
 
-## Scope
+## Âmbito
 
-- OpenTelemetry host registration.
-- Console and OTLP exporter registration.
-- ASP.NET Core, HttpClient, runtime and process instrumentation.
-- Shared `ActivitySource`, `Meter` and metric names used by runtime hosts.
-- Logging activity tracking options.
+- Registo de OpenTelemetry nos hosts.
+- Registo de exporters Console e OTLP.
+- Instrumentação ASP.NET Core, HttpClient, runtime e processo.
+- `ActivitySource`, `Meter` e nomes de métricas partilhados pelos hosts runtime.
+- Opções de activity tracking para logging.
 
-## Boundary
+## Fronteira
 
-`NatureProtector.Shared` remains the contracts and messaging boundary. It must not depend on `OpenTelemetry*` packages.
+`NatureProtector.Shared` continua a ser a fronteira de contratos e messaging. Não deve depender de pacotes `OpenTelemetry*`.
 
-The process instrumentation package is still beta in the current package line. The project keeps it isolated here so pure contracts and consumers that only need message contracts do not inherit exporter or instrumentation dependencies.
+O pacote de instrumentação de processo ainda é beta na linha de packages atual. Este projeto mantém-no isolado aqui para que contratos puros e consumidores que só precisam de message contracts não herdem dependências de exporters ou instrumentation.
 
-The smoke tests in `NatureProtector.Shared.Tests` validate startup compatibility with OTLP configuration. They do not prove delivery to a real collector.
+Os smoke tests em `NatureProtector.Shared.Tests` validam compatibilidade de arranque com configuração OTLP. Não provam entrega a um collector real.

@@ -1,41 +1,41 @@
-# Runtime Developer Control
+# Controlo de runtime para desenvolvimento
 
-The developer runtime console is available at:
+A consola local de runtime está disponível em:
 
 ```text
 /dev/runtime
 ```
 
-It is a local development surface for:
+É uma superfície local de desenvolvimento para:
 
-- fixed read-only diagnostics;
-- starting `Simulator.Host` runs through Development-only API endpoints;
-- dry-run and confirmed runtime-state reset;
-- freshness/carry-forward visibility based on persisted projections.
+- diagnósticos fixos e apenas de leitura;
+- arranque de runs do `Simulator.Host` através de endpoints API disponíveis apenas em Development;
+- reset de estado runtime em modo dry-run ou confirmado;
+- visibilidade de freshness/carry-forward baseada em projeções persistidas.
 
-The frontend never sends free-form SQL. Risk and alerts are read from persisted state and are not recalculated in the browser.
+O frontend nunca envia SQL livre. Risco e alertas são lidos a partir de estado persistido e não são recalculados no browser.
 
-## UI v2 technical surfaces
+## Superfícies técnicas da UI v2
 
-M05 adds technical read surfaces under:
+A M05 acrescenta superfícies técnicas em:
 
 ```text
 /ui-v2
 ```
 
-Those surfaces reuse existing runtime contracts for Pipeline/Observability, QA, Evidence, proportional Admin context, P3 experimental context and staging/demo readiness. They do not replace `/dev/runtime` and do not expose runtime reset, runtime diagnostic execution or P3 run execution as controls.
+Essas superfícies reutilizam contratos runtime existentes para Pipeline/Observability, QA, Evidence, contexto Admin proporcional, contexto experimental P3 e readiness de staging/demo. Não substituem `/dev/runtime` e não expõem reset de runtime, execução de diagnósticos runtime ou execução P3 como controlos.
 
-Missing runtime instrumentation is shown explicitly. In particular, UI v2 does not infer broker health from lack of errors and does not invent RabbitMQ backlog, publisher timestamps or full per-event latency.
+Instrumentação runtime ausente é apresentada explicitamente. Em particular, a UI v2 não infere saúde do broker pela ausência de erros e não inventa backlog RabbitMQ, timestamps de publicação ou latência integral por evento.
 
-## Local Launcher
+## Launcher local
 
-Use one command to start the local runtime services:
+Usar um comando para iniciar os serviços locais de runtime:
 
 ```powershell
 .\scripts\dev\start-local-runtime.ps1 -OpenBrowser
 ```
 
-Useful options:
+Opções úteis:
 
 ```powershell
 .\scripts\dev\start-local-runtime.ps1 -SkipBootstrap -OpenBrowser
@@ -43,59 +43,74 @@ Useful options:
 .\scripts\dev\start-local-runtime.ps1 -SkipBootstrap -ForceRestart -OpenBrowser
 ```
 
-Logs are written under:
+Os logs são escritos em:
 
 ```text
-docs/evidence/dev-runtime/<timestamp>-local-runtime/
+docs/evidence/dev-runtime/<timestamp>/
 ```
 
-## Safety
+O launcher compila `Backoffice.Api` e `Prevention.Host` sequencialmente em Release antes de os iniciar com `dotnet run -c Release --no-build --no-restore`. Isto torna o arranque mais determinístico e evita escritas concorrentes nos outputs `obj/` partilhados.
 
-Runtime reset is Development-only, blocks active runs and requires exact confirmation:
+## Segurança operacional
+
+O reset de runtime existe apenas em Development, bloqueia runs ativas e exige confirmação exata:
 
 ```text
 RESET_RUNTIME_STATE
 ```
 
-It clears only runtime tables in `control`, `pipeline` and `projection`. It does not clear areas, sensors, scenarios, configuration versions, datasets, user roles or Docker volumes.
+Limpa apenas tabelas runtime em `control`, `pipeline` e `projection`. Não limpa áreas, sensores, cenários, versões de configuração, datasets, user roles ou volumes Docker.
 
-Before using a confirmed reset for a clean demo, run the reset endpoint with `dryRun=true` and preserve the before/after counts. For external-reproduction preparation, prefer:
+Antes de usar um reset confirmado para uma demo limpa:
 
-1. inspect current runs and runtime counts;
-2. dry-run reset through an authenticated `Sim` or `Admin` identity;
-3. execute the confirmed reset only when a clean runtime state has been explicitly chosen;
-4. create a short rebaseline run with a clear `runLabel`;
-5. validate the selected `run id` through summary, audit and timings endpoints.
+1. inspecionar runs atuais e contagens runtime;
+2. executar dry-run reset através de uma identidade autenticada `Sim` ou `Admin`;
+3. executar o reset confirmado apenas quando o estado runtime limpo tiver sido escolhido explicitamente;
+4. criar uma run curta de rebaseline com `runLabel` claro;
+5. validar o `run id` escolhido através dos endpoints de summary, audit e timings.
 
-Do not use Docker volume deletion as the normal rebaseline path.
+Não usar eliminação de volumes Docker como caminho normal de rebaseline.
 
-## Run Evidence
+## Evidence por run
 
-Runs started from `/dev/runtime` with `collectEvidence=true` write an evidence bundle under:
+Runs iniciadas em `/dev/runtime` com `collectEvidence=true` escrevem um pacote de evidence em:
 
 ```text
 docs/evidence/dev-runtime/<yyyyMMdd-HHmmss>-<runLabel>/
 ```
 
-The bundle includes the request and response JSON, runtime summaries before/after, fixed diagnostic outputs, simulator stdout/stderr logs when captured, `summary.md`, and `post-run-report.md`. Diagnostics are read-only and use persisted runtime data; they do not recalculate risk or alert state.
+O pacote inclui request/response JSON, runtime summaries antes/depois, outputs de diagnósticos fixos, logs stdout/stderr do simulador quando capturados, `summary.md` e `post-run-report.md`. Os diagnósticos são apenas de leitura e usam dados runtime persistidos; não recalculam risco nem alertas.
 
-## Scenario Diagnostics
+## Diagnósticos de cenário
 
-The console includes:
+A consola inclui:
 
-- `Scenario definition details`, to inspect `control.scenario_definitions` parameters and simulator options.
-- `Compare latest B vs C`, to compare the latest persisted `scenario_b` and `scenario_c` runs for the selected area.
+- `Scenario definition details`, para inspecionar parâmetros de `control.scenario_definitions` e opções do simulador.
+- `Compare latest B vs C`, para comparar as últimas runs persistidas `scenario_b` e `scenario_c` da área selecionada.
 
-`scenario_c` is intended for degraded or operational comparison. Running it with `degradationProfile=none` is allowed but shown with a warning because it may behave like a clean scenario. The current technical degradation profile is `missing-readings`, which deterministically omits a subset of published readings without changing scoring, alert policy, RabbitMQ topology or event contracts.
+`scenario_c` destina-se a comparação degradada ou operacional. Executá-lo com `degradationProfile=none` é permitido, mas aparece com aviso porque pode comportar-se como um cenário limpo. O perfil técnico de degradação atual é `missing-readings`, que omite deterministamente uma parte das leituras publicadas sem alterar scoring, política de alertas, topologia RabbitMQ ou contratos de eventos.
 
-## Local readiness workload
+## Workload local de readiness
 
-M06 adds a small local HTTP readiness workload:
+A M06 acrescenta um workload HTTP local pequeno:
 
 ```powershell
 .\scripts\performance\run-local-readiness-workload.ps1
 ```
 
-It measures local API/web status codes and elapsed time for bounded probes, then writes `manifest.json`, `probes.json`, `measurements.csv/json`, `summary.csv/json` and `summary.md`.
+Mede status codes e tempo decorrido de probes API/web bounded, depois escreve `manifest.json`, `probes.json`, `measurements.csv/json`, `summary.csv/json` e `summary.md`.
 
-The script does not run a load test, stress test, broker-depth test or end-to-end event-latency test. Treat its HTTP timings as measured local evidence only. Broker backlog, publisher timestamps and full per-event latency remain not instrumented until a separate runtime observability change adds those signals.
+O script não executa teste de carga, teste de stress, teste de profundidade de broker ou teste de latência integral por evento. Tratar os timings HTTP como evidence local medida. Backlog do broker, timestamps de publicação e latência integral por evento continuam sem instrumentação até existir uma alteração específica de observabilidade runtime.
+
+## Workload de capacidade sistémica
+
+O Bloco I acrescenta um workload sistémico bounded:
+
+```powershell
+.\scripts\performance\run-system-capacity-workload.ps1 -Profile Calibration -UseDevelopmentAdminDefault
+.\scripts\performance\run-system-capacity-workload.ps1 -Profile B0 -UseDevelopmentAdminDefault -CalibrationRunDirectory <calibration-run-directory>
+```
+
+Os perfis `B0`, `B1` e `B2` exigem um artifact anterior de `Calibration`. O script inicia runs através da API runtime existente e observa o caminho API -> Simulator -> RabbitMQ -> Prevention -> PostgreSQL/InfluxDB usando endpoints persistidos de audit/timings e métricas da RabbitMQ Management API. Escreve `environment.json`, `workload.json`, `measurements.csv/json`, `run-failures.json`, `summary.md/json`, `logs/`, `traces/`, `metrics/` e `runs/` em `artifacts/performance/system-*/`.
+
+O workload reporta apenas uma baseline local reprodutível de capacidade. Não prova readiness de produção, capacidade de stress, tolerância a carga externa nem calibração científica. A latência integral publish-to-UI continua sem claim porque o envelope RabbitMQ atual não persiste timestamp de publicação.

@@ -56,7 +56,7 @@ Nesta fase ele já não representa só intenção: fixa a base do plano de contr
 
 - replay assistido e operações de recuperação sobre o schema `pipeline`;
 - histórico operacional rico para consultas agregadas mais avançadas;
-- execução end-to-end do bootstrap contra uma instância PostgreSQL ativa.
+- execução funcional do bootstrap contra uma instância PostgreSQL ativa.
 
 ## O que já ficou ligado
 

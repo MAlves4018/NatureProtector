@@ -186,6 +186,11 @@ public sealed class PostgresUserRolePlaneService : IUserRolePlaneService
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
 
         dbContext.Users.Add(user);
+        dbContext.UserRoles.AddRange(roles.Select(role => new UserRoleRecord
+        {
+            UserId = user.Id,
+            RoleId = role.Id
+        }));
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -568,8 +573,9 @@ public sealed class PostgresUserRolePlaneService : IUserRolePlaneService
                 dbContext.Roles.AsNoTracking(),
                 userRole => userRole.RoleId,
                 role => role.Id,
-                (userRole, role) => new RoleResponse(role.Id, role.Name))
+                (userRole, role) => role)
             .OrderBy(role => role.Name)
+            .Select(role => new RoleResponse(role.Id, role.Name))
             .ToListAsync(cancellationToken);
 
         return roles;

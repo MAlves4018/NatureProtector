@@ -17,14 +17,14 @@ using NatureProtector.Shared.Observability;
 
 using var bootstrapActivity = PostgresBootstrapTelemetry.ActivitySource.StartActivity("natureprotector.bootstrap.program");
 
-var repoRoot = BootstrapProgram.ResolveRepoRoot(AppContext.BaseDirectory);
-var settings = PostgresConnectionSettingsLoader.LoadFromEnvironmentOrDotEnv(repoRoot);
+var contentRoot = BootstrapProgram.ResolveContentRoot(AppContext.BaseDirectory);
+var settings = PostgresConnectionSettingsLoader.LoadFromEnvironmentOrDotEnv(contentRoot);
 
 var optionsBuilder = new DbContextOptionsBuilder<NatureProtectorControlDbContext>();
 optionsBuilder.UseNpgsql(settings.BuildConnectionString());
 
 await using var dbContext = new NatureProtectorControlDbContext(optionsBuilder.Options);
-var bootstrapper = new ControlPlaneBootstrapper(dbContext, repoRoot);
+var bootstrapper = new ControlPlaneBootstrapper(dbContext, contentRoot);
 var summary = await bootstrapper.BootstrapPilotAreaAsync();
 
 Console.WriteLine("NatureProtector.Postgres.Bootstrap");

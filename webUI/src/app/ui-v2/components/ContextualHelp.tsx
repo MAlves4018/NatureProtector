@@ -13,6 +13,7 @@ export function ContextualHelp({ topicId, mode = 'popover' }: { topicId: HelpTop
   const title = localize(locale, topic.title);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
+  const suppressNextFocusOpenRef = useRef(false);
 
   useEffect(() => {
     if (open && mode === 'dialog') {
@@ -22,7 +23,17 @@ export function ContextualHelp({ topicId, mode = 'popover' }: { topicId: HelpTop
 
   const closeDialog = () => {
     setOpen(false);
+    suppressNextFocusOpenRef.current = true;
     triggerRef.current?.focus();
+  };
+
+  const openFromFocus = () => {
+    if (suppressNextFocusOpenRef.current) {
+      suppressNextFocusOpenRef.current = false;
+      return;
+    }
+
+    setOpen(true);
   };
 
   const handleDialogKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -43,7 +54,7 @@ export function ContextualHelp({ topicId, mode = 'popover' }: { topicId: HelpTop
         className="ui-v2-icon-button"
         aria-label={`${title}: ajuda`}
         onClick={() => setOpen(value => !value)}
-        onFocus={() => setOpen(true)}
+        onFocus={openFromFocus}
       >
         <HelpCircle size={16} />
       </button>

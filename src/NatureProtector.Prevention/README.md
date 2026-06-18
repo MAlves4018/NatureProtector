@@ -22,7 +22,7 @@ Este projeto concentra a lógica de prevenção que, idealmente, deve poder sobr
 
 ## Observações importantes sobre o estado atual
 
-- O scoring atual é deliberadamente simples e empírico. Serve para fechar o fluxo end-to-end da demonstração, não para representar ainda um motor de risco final.
+- O scoring atual é deliberadamente simples e empírico. Serve para demonstrar o fluxo integrado da demonstração, não para representar ainda um motor de risco final.
 - O projeto continua a transportar implementações em memória, mas o `Prevention.Host` já pode substituí-las por adapters duráveis em PostgreSQL.
 - As interfaces de persistência já carregam informação suficiente para suportar idempotência operacional e histórico durável no host.
 - O host usa hoje o snapshot de área como fotografia operacional do último assessment conhecido por sensor; o histórico completo continua disponível no repositório de assessments.

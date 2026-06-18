@@ -18,19 +18,52 @@ export function TokenProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = React.useState<User | null>(null);
     const [token, setToken] = React.useState<string | null>(null);
     const [isInitializing, setIsInitializing] = React.useState(true);
+
+    const logout = () => {
+        api.clearAuthToken();
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('token');
+    };
+
+    const applyCurrentUser = (currentUser: User | null) => {
+        if (!currentUser?.id) {
+            logout();
+            return;
+        }
+
+        setUser({
+            id: currentUser.id,
+            username: currentUser.username,
+            fullName: currentUser.fullName,
+            email: currentUser.email,
+            roles: currentUser.roles
+        });
+    };
+
     const checkToken = async () => {
         const storedToken = localStorage.getItem('token');
 
-        if (storedToken) {
-            setToken(storedToken);
-            api.withAuthToken(storedToken);
+        if (!storedToken) {
+            logout();
+            return;
         }
+
+        setToken(storedToken);
+        api.withAuthToken(storedToken);
+        const currentUser = await api.getCurrentUser();
+        applyCurrentUser(currentUser);
     };
 
     useEffect(() => {
         const initialize = async () => {
             try {
-                await checkToken();
+                const storedToken = localStorage.getItem('token');
+                if (storedToken) {
+                    await checkToken();
+                }
+            } catch {
+                logout();
             } finally {
                 setIsInitializing(false);
             }
@@ -60,38 +93,12 @@ export function TokenProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const logout = () => {
-        api.clearAuthToken();
-        setToken(null);
-        setUser(null);
-        localStorage.removeItem('token');
-    };
-
     const refreshToken = async () => {
         await checkToken();
-        const storedToken = localStorage.getItem('token');
-        if (!storedToken) {
-            logout();
-            return;
-        }
-        await api.withAuthToken(storedToken).getCurrentUser().then(user => {
-            if (!user) {
-                logout();
-                return;
-            }
-            if (!user.id) {
-                logout();
-                return;
-            }
-            const currentUser: User = {
-                id: user.id,
-                username: user.username,
-                fullName: user.fullName,
-                email: user.email,
-                roles: user.roles
-            };
-            setUser(currentUser)
-        }).catch((e) => {
+    };
+
+    const refreshTokenWithLogout = async () => {
+        await refreshToken().catch((e) => {
             if (e instanceof Error && e.message !== "No auth token set") {
                 logout();
             }
@@ -99,7 +106,7 @@ export function TokenProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <TokenContext.Provider value={{ user, token, login, setToken, logout, refreshToken }}>
+        <TokenContext.Provider value={{ user, token, login, setToken, logout, refreshToken: refreshTokenWithLogout }}>
             {isInitializing ? null : children}
         </TokenContext.Provider>
     );

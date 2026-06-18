@@ -99,6 +99,31 @@ test.describe('UI v2 authenticated role flows', () => {
     expect(api.requests.some(request => request.path === '/control/runtime/observability/rabbitmq')).toBe(true);
     expect(api.requests.some(request => request.path === '/control/runtime/runs')).toBe(false);
   });
+
+  for (const profile of ['Admin', 'Sim', 'Pipeline'] as const) {
+    test(`${profile} login survives browser reload with the same role surface`, async ({ page }) => {
+      await installUiV2ApiFixture(page, { profile });
+
+      await signIn(page, profile);
+      await expect(page.getByText(`Perfil ativo: ${profile}`)).toBeVisible();
+
+      await page.reload();
+
+      await expect(page.getByText(`Perfil ativo: ${profile}`)).toBeVisible();
+      await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).toBe(`${profile.toLowerCase()}-token`);
+      await expect(page.getByRole('link', { name: /entrar/i })).toHaveCount(0);
+
+      if (profile === 'Admin') {
+        await expect(page.getByRole('button', { name: /^Administracao$/i })).toBeVisible();
+      } else if (profile === 'Sim') {
+        await expect(page.getByRole('button', { name: /^Simulacao$/i })).toBeVisible();
+        await expect(page.getByRole('button', { name: /^Pipeline$/i })).toHaveCount(0);
+      } else {
+        await expect(page.getByRole('button', { name: /^Pipeline$/i })).toBeVisible();
+        await expect(page.getByRole('button', { name: /^Simulacao$/i })).toHaveCount(0);
+      }
+    });
+  }
 });
 
 test.describe('UI v2 authentication and API failure states', () => {
@@ -122,6 +147,17 @@ test.describe('UI v2 authentication and API failure states', () => {
 
     await expect(page.getByRole('link', { name: /entrar/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Pipeline$/i })).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).toBeNull();
+  });
+
+  test('invalid stored token is removed before exposing authenticated UI v2 surfaces', async ({ page }) => {
+    await installUiV2ApiFixture(page, { profile: 'Admin' });
+    await page.addInitScript(() => localStorage.setItem('token', 'invalid-token'));
+
+    await page.goto('/ui-v2?area=proenca-a-nova');
+
+    await expect(page.getByRole('link', { name: /entrar/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Administracao$/i })).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).toBeNull();
   });
 

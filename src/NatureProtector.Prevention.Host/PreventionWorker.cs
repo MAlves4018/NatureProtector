@@ -262,7 +262,7 @@ public sealed class PreventionWorker(
 
             if (!ackSent)
             {
-                channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: false);
+                channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: true);
             }
         }
     }

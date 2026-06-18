@@ -1,38 +1,38 @@
-# M06 - Delivery capacity, simulation and cutover readiness
+# M06 - Capacidade de entrega, simulação e readiness de cutover
 
-Date: 2026-06-14
+Data: 2026-06-14
 
-This document records the local technical readiness pass executed in M06. It is a delivery handoff for the current NatureProtector prototype, not a production cutover decision and not scientific validation of wildfire prediction.
+Este documento regista a passagem local de readiness técnica executada na M06. É um handoff de entrega para o protótipo atual do NatureProtector, não uma decisão de cutover de produção e não validação científica de previsão de incêndio.
 
-## Scope
+## Âmbito
 
-M06 measured and documented:
+A M06 mediu e documentou:
 
-- local clone-to-run readiness using existing setup/runtime scripts;
-- local API/web availability and response time probes;
-- short simulator workloads for nominal, missing-readings and value-degradation profiles;
-- browser journeys for logged-out and local Development Admin states;
-- dependency/security findings;
-- validation commands for backend and frontend gates.
+- readiness local clone-to-run usando scripts existentes de setup/runtime;
+- disponibilidade API/web local e probes de tempo de resposta;
+- workloads curtos do simulador para perfis nominal, missing-readings e value-degradation;
+- jornadas browser para estados logged-out e Admin local em Development;
+- findings de dependências/segurança;
+- comandos de validação para gates backend e frontend.
 
-M06 did not:
+A M06 não:
 
-- remove or replace the beta UI;
-- deploy to production or execute cutover;
-- contact stakeholders or collect consent;
-- integrate P3 into scoring/runtime;
-- change RabbitMQ contracts, event names, API projections, database schema, migrations, scoring, alert semantics, roles or JWT claims;
-- perform a stress test, external load test or scientific calibration.
+- removeu ou substituiu a UI beta;
+- fez deployment para produção nem executou cutover;
+- contactou stakeholders nem recolheu consentimento;
+- integrou P3 em scoring/runtime;
+- alterou contratos RabbitMQ, nomes de eventos, projeções API, schema de base de dados, migrations, scoring, semântica de alertas, roles ou JWT claims;
+- executou teste de carga/stress externo nem calibração científica.
 
-## Evidence pack
+## Pacote de evidence
 
-Primary mission evidence is under:
+A evidence principal da missão está em:
 
 ```text
 NatureProtector.brain/control/M06-DELIVERY-CAPACITY-SIMULATION-AND-CUTOVER-READINESS/
 ```
 
-Repository evidence added by M06 is under:
+A evidence acrescentada no repositório pela M06 está em:
 
 ```text
 docs/evidence/m06-readiness/specs/
@@ -41,34 +41,34 @@ docs/evidence/runs/20260614-131314-scenario_c-m06-missing-readings-scenario-c/
 docs/evidence/runs/20260614-131340-scenario_b-m06-noise-scenario-b/
 ```
 
-Key local observations:
+Observações locais principais:
 
-| Area | Evidence | Result | Classification |
+| Área | Evidence | Resultado | Classificação |
 | --- | --- | --- | --- |
-| Prerequisites | `Test-LocalPrerequisites.ps1` | 0 failures, 0 warnings | Measured locally |
-| Infrastructure baseline | `Test-LocalBaseline.ps1 -InfrastructureOnly` | PostgreSQL, RabbitMQ, InfluxDB, Grafana OK | Measured locally |
-| Full baseline | `Test-LocalBaseline.ps1 -Full` | One known `401` on an authenticated endpoint; webUI OK | Observed local limitation |
-| API/web probes | `run-local-readiness-workload.ps1` | 55/55 expected HTTP statuses | Measured locally |
-| Simulations | three M06 run specs | 3 runs completed | Measured locally |
-| Browser | in-app browser | logged-out workspace and Admin workspace/UI v2 observed | Observed locally |
-| Backend tests | `dotnet test .\NatureProtector.sln --nologo -v minimal -m:1` | 1182/1182 passed | Measured locally |
-| Frontend tests | `npm test` | 30/30 passed | Measured locally |
-| Frontend coverage | `npm run test:coverage` | `app/ui-v2` line coverage 84.28%; global webUI 31.71% | Measured locally |
-| Frontend build | `npm run build` | passed | Measured locally |
-| Dependency audit | `npm audit --audit-level=high --json` | 3 high Vite/esbuild-chain findings | Measured locally |
-| NuGet audit | `dotnet list package --vulnerable --include-transitive` | M06 measured an OpenTelemetry exporter advisory; E2 on 2026-06-16 reports no vulnerable NuGet packages | Measured locally |
+| Pré-requisitos | `Test-LocalPrerequisites.ps1` | 0 falhas, 0 warnings | Medido localmente |
+| Baseline de infraestrutura | `Test-LocalBaseline.ps1 -InfrastructureOnly` | PostgreSQL, RabbitMQ, InfluxDB, Grafana OK | Medido localmente |
+| Baseline completa | `Test-LocalBaseline.ps1 -Full` | Um `401` conhecido num endpoint autenticado; webUI OK | Limitação local observada |
+| Probes API/web | `run-local-readiness-workload.ps1` | 55/55 status HTTP esperados | Medido localmente |
+| Simulações | três run specs M06 | 3 runs concluídas | Medido localmente |
+| Browser | in-app browser | workspace logged-out e workspace/UI v2 Admin observados | Observado localmente |
+| Testes backend | `dotnet test .\NatureProtector.sln --nologo -v minimal -m:1` | 1182/1182 passaram | Medido localmente |
+| Testes frontend | `npm test` | 30/30 passaram | Medido localmente |
+| Coverage frontend | `npm run test:coverage` | `app/ui-v2` line coverage 84.28%; webUI global 31.71% | Medido localmente |
+| Build frontend | `npm run build` | passou | Medido localmente |
+| Auditoria de dependências | `npm audit --audit-level=high --json` | 3 findings high na cadeia Vite/esbuild | Medido localmente |
+| Auditoria NuGet | `dotnet list package --vulnerable --include-transitive` | A M06 mediu um advisory do exporter OpenTelemetry; a E2 de 2026-06-16 reporta zero pacotes NuGet vulneráveis | Medido localmente |
 
-## Local readiness workload
+## Workload local de readiness
 
-M06 added:
+A M06 acrescentou:
 
 ```powershell
 .\scripts\performance\run-local-readiness-workload.ps1
 ```
 
-The script measures local HTTP status and elapsed time for bounded API/web probes. It writes `manifest.json`, `probes.json`, `measurements.csv/json`, `summary.csv/json` and `summary.md`.
+O script mede status HTTP local e tempo decorrido em probes API/web bounded. Escreve `manifest.json`, `probes.json`, `measurements.csv/json`, `summary.csv/json` e `summary.md`.
 
-Example run:
+Exemplo de execução:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\performance\run-local-readiness-workload.ps1 `
@@ -78,145 +78,145 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\performance\run-lo
   -TimeoutSeconds 15
 ```
 
-M06 measured 55 attempts with 55 expected statuses. Selected p95 values:
+A M06 mediu 55 tentativas com 55 status esperados. Valores p95 selecionados:
 
-| Probe | Status | P95 ms | Classification |
+| Probe | Status | P95 ms | Classificação |
 | --- | ---: | ---: | --- |
-| API health | 200 | 44.83 | Measured locally |
-| Areas list | 200 | 15.87 | Measured locally |
-| Area detail | 200 | 33.53 | Measured locally |
-| Grid cells, `take=25` | 200 | 74.64 | Measured locally |
-| Sensor nodes | 200 | 27.72 | Measured locally |
-| Active alerts | 200 | 24.18 | Measured locally |
-| Scenario auth guard | 401 | 4.73 | Observed access control |
-| Operational-state auth guard | 401 | 2.67 | Observed access control |
-| Runtime summary auth guard | 401 | 2.60 | Observed access control |
-| web root | 200 | 3.56 | Measured locally |
-| `/ui-v2` | 200 | 4.80 | Measured locally |
+| API health | 200 | 44.83 | Medido localmente |
+| Areas list | 200 | 15.87 | Medido localmente |
+| Area detail | 200 | 33.53 | Medido localmente |
+| Grid cells, `take=25` | 200 | 74.64 | Medido localmente |
+| Sensor nodes | 200 | 27.72 | Medido localmente |
+| Active alerts | 200 | 24.18 | Medido localmente |
+| Scenario auth guard | 401 | 4.73 | Controlo de acesso observado |
+| Operational-state auth guard | 401 | 2.67 | Controlo de acesso observado |
+| Runtime summary auth guard | 401 | 2.60 | Controlo de acesso observado |
+| web root | 200 | 3.56 | Medido localmente |
+| `/ui-v2` | 200 | 4.80 | Medido localmente |
 
-These are local workstation measurements. They are not a load test and do not define production SLOs.
+Estas são medições de uma workstation local. Não são teste de carga e não definem SLOs de produção.
 
-## Simulation evidence
+## Evidence de simulação
 
-M06 ran three short simulations without reset or cleanup:
+A M06 executou três simulações curtas sem reset nem cleanup:
 
-| Run label | Scenario | Profile | Run id | Status | Risk assessments | Notes |
+| Run label | Cenário | Perfil | Run id | Estado | Risk assessments | Notas |
 | --- | --- | --- | --- | --- | ---: | --- |
-| `m06-nominal-scenario-b` | `scenario_b` | `none` | `ceb20860-ed0a-4554-ac43-70d3a6596f70` | Completed | 18 | Nominal short run |
-| `m06-missing-readings-scenario-c` | `scenario_c` | `missing-readings` | `93a397e9-87b3-4730-9e58-a44554c70072` | Completed | 14 | Observation coverage gap; not pipeline failure |
-| `m06-noise-scenario-b` | `scenario_b` | `noise` | `467ddba8-80f9-4874-9949-1ac5c376d94e` | Completed | 18 | Value-degradation profile |
+| `m06-nominal-scenario-b` | `scenario_b` | `none` | `ceb20860-ed0a-4554-ac43-70d3a6596f70` | Completed | 18 | Run curta nominal |
+| `m06-missing-readings-scenario-c` | `scenario_c` | `missing-readings` | `93a397e9-87b3-4730-9e58-a44554c70072` | Completed | 14 | Gap de observation coverage; não é pipeline failure |
+| `m06-noise-scenario-b` | `scenario_b` | `noise` | `467ddba8-80f9-4874-9949-1ac5c376d94e` | Completed | 18 | Perfil value-degradation |
 
-Resolved profiles were confirmed from `control.simulation_runs.MetadataJson`. The `missing-readings` run produced fewer risk assessments than the nominal run. This is an observation-gap effect and must not be described as rejected/quarantined processing failure.
+Os perfis resolvidos foram confirmados a partir de `control.simulation_runs.MetadataJson`. A run `missing-readings` produziu menos risk assessments do que a run nominal. Isto é um efeito de observation gap e não deve ser descrito como falha de processamento rejected/quarantined.
 
-## Capacity interpretation
+## Interpretação de capacidade
 
-Measured:
+Medido:
 
-- local API/web probes completed within the recorded p95 values above;
-- three short simulator runs completed with 6 sensors, 3 cycles and 1-second intervals;
-- backend and frontend automated gates passed on the local machine.
+- os probes API/web locais terminaram dentro dos valores p95 registados acima;
+- três runs curtas do simulador terminaram com 6 sensores, 3 ciclos e intervalos de 1 segundo;
+- gates automatizadas backend e frontend passaram na máquina local.
 
-Estimated:
+Estimado:
 
-- the local baseline is suitable for a controlled technical demo using small runs similar to the M06 specs or the existing 6-sensor smoke profiles;
-- the local machine can present the API/webUI and process short simulator runs for demonstration.
+- a baseline local é adequada para uma demo técnica controlada com runs pequenas semelhantes às specs M06 ou aos perfis smoke existentes de 6 sensores;
+- a máquina local consegue apresentar API/webUI e processar runs curtas do simulador para demonstração.
 
-Not instrumented:
+Sem instrumentação:
 
-- broker queue depth as an API/UI metric;
-- per-event publisher timestamp;
-- full end-to-end event latency from simulator publish through UI projection;
-- sustained throughput, saturation point, concurrency ceiling and production SLOs.
+- profundidade da fila do broker como métrica API/UI;
+- timestamp de publicação por evento;
+- latência integral por evento desde a publicação do simulador até à projeção na UI;
+- throughput sustentado, ponto de saturação, teto de concorrência e SLOs de produção.
 
-Not validated:
+Não validado:
 
-- production deployment;
-- external users/stakeholders;
-- scientific calibration;
-- civil-protection/official alerting use.
+- deployment de produção;
+- utilizadores/stakeholders externos;
+- calibração científica;
+- uso por proteção civil ou alertas oficiais.
 
-## UI and profile journeys
+## Jornadas UI e perfis
 
-Observed browser journeys:
+Jornadas browser observadas:
 
-- logged-out user can open the app, select `proenca-a-nova`, enter the workspace and see public data plus explicit `Not available` states for protected runtime data;
-- Development Admin can sign in locally, open the workspace, see the latest M06 run and runtime summary, and open `/ui-v2`;
-- `/ui-v2` shows the academic/non-operational boundary, technical pipeline, QA, evidence, Admin and P3 experimental surfaces.
+- utilizador logged-out consegue abrir a app, selecionar `proenca-a-nova`, entrar no workspace e ver dados públicos com estados explícitos `Not available` para dados runtime protegidos;
+- Development Admin consegue iniciar sessão localmente, abrir o workspace, ver a última run M06 e runtime summary, e abrir `/ui-v2`;
+- `/ui-v2` mostra a fronteira académica/não operacional, pipeline técnica, QA, evidence, Admin e superfícies experimentais P3.
 
-Not available:
+Não disponível:
 
-- real browser journeys for separate Pipeline and Sim identities. The local database contained only the existing Admin user during M06. Backend authorization tests still cover read/write role behavior, but this is not the same as a real multi-login browser matrix.
+- jornadas browser reais para identidades separadas Pipeline e Sim. A base de dados local continha apenas o utilizador Admin existente durante a M06. Os testes backend de autorização continuam a cobrir comportamento read/write por role, mas isso não é igual a uma matriz browser real multi-login.
 
-## Dependency and security readiness
+## Readiness de dependências e segurança
 
-Open findings:
+Findings abertos:
 
-- `npm audit --audit-level=high --json`: 3 high findings through `@vitejs/plugin-react`, `vite` and `esbuild`. The available npm fix path reports semver-major changes; M06 did not apply `npm audit fix --force`.
-- `dotnet list package --vulnerable --include-transitive`: no vulnerable NuGet packages in the E2 validation on 2026-06-16. M06 previously recorded an `OpenTelemetry.Exporter.OpenTelemetryProtocol 1.10.0` moderate advisory before the package update.
-- `.env` and `.env.example` contain non-empty development secret values. M06 recorded only redacted classifications and did not print values.
+- `npm audit --audit-level=high --json`: 3 findings high através de `@vitejs/plugin-react`, `vite` e `esbuild`. O caminho de fix npm disponível reporta mudanças semver-major; a M06 não aplicou `npm audit fix --force`.
+- `dotnet list package --vulnerable --include-transitive`: zero pacotes NuGet vulneráveis na validação E2 de 2026-06-16. A M06 tinha registado antes um advisory moderate em `OpenTelemetry.Exporter.OpenTelemetryProtocol 1.10.0`, antes da atualização do package.
+- `.env` e `.env.example` contêm valores não vazios de development secrets. A M06 registou apenas classificações redigidas e não imprimiu valores.
 
-Minimum before any external sharing or stronger delivery claim:
+Mínimo antes de qualquer partilha externa ou claim de entrega mais forte:
 
-- rotate/remove real-looking tracked dev secrets or replace them with documented placeholders;
-- complete a controlled dependency-hardening pass;
-- decide whether a remote CI/service-container gate is required for infrastructure.
+- rodar/remover dev secrets tracked com aparência real ou substituí-los por placeholders documentados;
+- concluir uma passagem controlada de hardening de dependências;
+- decidir se é necessária uma gate CI remota/service-container para infraestrutura.
 
-## Cutover readiness
+## Readiness de cutover
 
-Local technical demo readiness: conditional go.
+Readiness local para demo técnica: go condicional.
 
-Conditions:
+Condições:
 
-- use the local Development baseline only;
-- explicitly state academic prototype/non-operational status;
-- use known M06 or smoke runs;
-- avoid production/civil-protection claims;
-- preserve beta until a separate human cutover decision.
+- usar apenas a baseline local Development;
+- declarar explicitamente o estado académico/protótipo não operacional;
+- usar runs M06 ou smoke conhecidas;
+- evitar claims de produção/proteção civil;
+- preservar a beta até existir uma decisão humana separada de cutover.
 
-Production or external cutover readiness: no-go.
+Readiness de produção ou cutover externo: no-go.
 
-Reasons:
+Razões:
 
-- no production deployment validation;
-- dependency findings remain open;
-- broker backlog and full end-to-end latency are not instrumented;
-- Pipeline/Sim browser identities were not available for real journey validation;
-- stakeholder consent/feedback readiness was not validated;
-- scientific calibration remains out of scope.
+- não existe validação de deployment de produção;
+- findings de dependências continuam abertos;
+- backlog de broker e latência integral por evento não estão instrumentados;
+- identidades browser Pipeline/Sim não estavam disponíveis para validação real de jornada;
+- consentimento/feedback de stakeholders não foi validado;
+- calibração científica continua fora de âmbito.
 
-## Rollback and preservation
+## Rollback e preservação
 
-M06 did not execute a Git branch, commit, tag, reset, restore, clean, pull, push or checkout.
+A M06 não executou branch, commit, tag, reset, restore, clean, pull, push ou checkout Git.
 
-Data preservation decisions:
+Decisões de preservação de dados:
 
-- no volumes were deleted;
-- no database reset was executed;
-- the M04 smoke run was preserved;
-- M06 added new run evidence and database rows for the three short simulations.
+- nenhum volume foi apagado;
+- nenhum reset de base de dados foi executado;
+- a run smoke M04 foi preservada;
+- a M06 acrescentou nova evidence de run e linhas de base de dados para as três simulações curtas.
 
-If a clean demo is required later, use an explicitly authorized reset/rebaseline path. Do not silently delete volumes or runtime evidence.
+Se for necessária uma demo limpa mais tarde, usar um caminho de reset/rebaseline explicitamente autorizado. Não apagar silenciosamente volumes ou runtime evidence.
 
-## Pre-external verification readiness supplement
+## Suplemento pre-external verification readiness
 
-On 2026-06-14, a focused pre-external-readiness pass closed the minimum technical blockers that were directly blocking independent local reproduction preparation. This supplement does not reopen M06 and does not claim external verification has been completed.
+Em 2026-06-14, uma passagem focada de pre-external-readiness fechou os blockers técnicos mínimos que bloqueavam diretamente a preparação de reprodução local independente. Este suplemento não reabre a M06 e não afirma que a verificação externa tenha sido concluída.
 
-Changes validated locally:
+Mudanças validadas localmente:
 
-- `Test-LocalBaseline.ps1 -Full` now uses public `/health` for Backoffice API readiness and treats unauthenticated `GET /api/control/configurations/active` returning `401` as an expected authentication guard. The protected endpoint remains protected by `Sim`, `Pipeline` or `Admin`.
-- `scripts/setup/Ensure-LocalDemoIdentities.ps1` prepares local `Pipeline` and `Sim` identities through the existing Admin user-plane API and existing roles. It requires passwords from parameters or environment variables and does not store secrets in the repository.
-- Direct API journeys were validated: `Pipeline` can log in and read runtime summary but receives `403` on runtime start; `Sim` can log in, read scenarios and start a minimal local run.
-- Reset/rebaseline guidance now prefers authenticated runtime reset dry-run and explicit confirmed runtime reset over Docker volume deletion. No confirmed reset was executed in this pass.
-- Coverage was rerun. Backend aggregate remained `82%` line / `68.1%` branch. UI v2 was brought back above the M06 ratchet with `84.45%` line coverage.
+- `Test-LocalBaseline.ps1 -Full` passou a usar `/health` público para readiness da Backoffice API e a tratar `GET /api/control/configurations/active` não autenticado com `401` como authentication guard esperado. O endpoint protegido continua protegido por `Sim`, `Pipeline` ou `Admin`.
+- `scripts/setup/Ensure-LocalDemoIdentities.ps1` prepara identidades locais `Pipeline` e `Sim` através da Admin user-plane API existente e roles existentes. Exige passwords por parâmetros ou variáveis de ambiente e não grava secrets no repositório.
+- Jornadas API diretas foram validadas: `Pipeline` consegue fazer login e ler runtime summary mas recebe `403` ao iniciar runtime; `Sim` consegue fazer login, ler cenários e iniciar uma run local mínima.
+- A orientação de reset/rebaseline agora prefere dry-run autenticado de runtime reset e reset runtime confirmado explicitamente em vez de eliminação de volume Docker. Nenhum reset confirmado foi executado nesta passagem.
+- Coverage foi regenerada. O agregado backend manteve `82%` line / `68.1%` branch. A UI v2 voltou a ficar acima do ratchet M06 com `84.45%` line coverage.
 
-Known side effects:
+Efeitos laterais conhecidos:
 
-- The `Sim` journey validation created a local minimal run `53f5ab53-c39f-4274-9665-934140a98291`.
-- Local `pipeline.local` and `sim.local` users were created in the current PostgreSQL database for reproduction preparation.
-- App/runtime logs and validation evidence were generated locally.
+- A validação da jornada `Sim` criou a run local mínima `53f5ab53-c39f-4274-9665-934140a98291`.
+- Utilizadores locais `pipeline.local` e `sim.local` foram criados na base de dados PostgreSQL atual para preparação de reprodução.
+- Logs app/runtime e validation evidence foram gerados localmente.
 
-Residual boundaries:
+Fronteiras residuais:
 
-- This is still local technical readiness, not production cutover, not stakeholder validation and not scientific calibration.
-- Dependency/security findings from M06 remain open.
-- Secrets hygiene for `.env`/`.env.example` remains a separate external-sharing blocker unless explicitly resolved before publication.
+- Isto continua a ser readiness técnica local, não cutover de produção, não validação de stakeholders e não calibração científica.
+- Findings de dependências/segurança da M06 continuam abertos.
+- A higiene de secrets em `.env`/`.env.example` continua a ser um blocker separado para partilha externa, salvo resolução explícita antes de publicação.

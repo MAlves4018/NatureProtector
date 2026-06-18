@@ -4,7 +4,9 @@ param(
     [string]$GitleaksVersion = "8.28.0",
     [string]$HistoryLogOptions = "--all",
     [switch]$SkipInstall,
-    [switch]$IncludeUntracked
+    [switch]$IncludeUntracked,
+    [switch]$SkipGitBackedScans,
+    [long]$MaxSnapshotFileBytes = 1048576
 )
 
 $ErrorActionPreference = "Stop"
@@ -99,10 +101,6 @@ function Get-GitleaksPath {
         return $path
     }
 
-    if ($SkipInstall) {
-        throw "Gitleaks was not found on PATH and -SkipInstall was set."
-    }
-
     $installRoot = Join-Path $repoRoot "artifacts\tools\gitleaks-$GitleaksVersion"
     if (Test-Path -LiteralPath $installRoot -PathType Container) {
         $existing = Get-ChildItem -LiteralPath $installRoot -Recurse -File |
@@ -112,6 +110,10 @@ function Get-GitleaksPath {
         if ($existing) {
             return $existing.FullName
         }
+    }
+
+    if ($SkipInstall) {
+        throw "Gitleaks was not found on PATH or under artifacts\tools and -SkipInstall was set."
     }
 
     return Install-Gitleaks -Version $GitleaksVersion -InstallRoot $installRoot
@@ -162,6 +164,115 @@ function Get-GitLines {
     }
 
     return @($output | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
+function Get-RelativePath {
+    param(
+        [string]$BasePath,
+        [string]$Path
+    )
+
+    $baseFullPath = [System.IO.Path]::GetFullPath($BasePath)
+    if (-not $baseFullPath.EndsWith([System.IO.Path]::DirectorySeparatorChar.ToString(), [System.StringComparison]::Ordinal)) {
+        $baseFullPath += [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    $baseUri = [System.Uri]::new($baseFullPath)
+    $pathUri = [System.Uri]::new([System.IO.Path]::GetFullPath($Path))
+    $relativeUri = $baseUri.MakeRelativeUri($pathUri)
+
+    return [System.Uri]::UnescapeDataString($relativeUri.ToString()).Replace('/', [System.IO.Path]::DirectorySeparatorChar)
+}
+
+function Get-RepositorySnapshotPaths {
+    if (-not $SkipGitBackedScans) {
+        $pathArguments = @("ls-files")
+        if ($IncludeUntracked) {
+            $pathArguments += @("--cached", "--modified", "--others", "--exclude-standard")
+        }
+
+        return @(
+            Get-GitLines -Arguments $pathArguments |
+                Where-Object { $_ -notlike "graphify-out/*" } |
+                Sort-Object -Unique
+        )
+    }
+
+    $excludedRoots = @(
+        ".git",
+        "artifacts",
+        "data",
+        "docs/architecture/images",
+        "docs/evidence",
+        "docs/doxygen",
+        "docs/planning",
+        "docs/report",
+        "docs/structurizr",
+        "graphify-out",
+        "webUI/node_modules",
+        "webUI/dist",
+        "webUI/coverage",
+        "webUI/test-results",
+        "webUI/playwright-report"
+    )
+    $excludedExtensions = @(
+        ".dll",
+        ".exe",
+        ".gif",
+        ".gpkg",
+        ".jpeg",
+        ".jpg",
+        ".log",
+        ".parquet",
+        ".pdb",
+        ".pdf",
+        ".png",
+        ".trx",
+        ".webp",
+        ".zip"
+    )
+
+    return @(
+        Get-ChildItem -LiteralPath $repoRoot -Recurse -File -Force -ErrorAction SilentlyContinue |
+            Where-Object {
+                $relative = Get-RelativePath $repoRoot $_.FullName
+                $normalized = $relative -replace '\\', '/'
+                $include = $true
+
+                if ($normalized.Equals(".env", [System.StringComparison]::OrdinalIgnoreCase) -or
+                    $normalized.EndsWith("/.env", [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $include = $false
+                }
+
+                if ($normalized -match '(^|/)(bin|obj)/') {
+                    $include = $false
+                }
+
+                if ($include -and $_.Length -gt $MaxSnapshotFileBytes) {
+                    $include = $false
+                }
+
+                if ($include -and $excludedExtensions -contains $_.Extension.ToLowerInvariant()) {
+                    $include = $false
+                }
+
+                if ($include) {
+                    foreach ($excludedRoot in $excludedRoots) {
+                        if ($normalized.Equals($excludedRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+                            $normalized.StartsWith("$excludedRoot/", [System.StringComparison]::OrdinalIgnoreCase)) {
+                            $include = $false
+                            break
+                        }
+                    }
+                }
+
+                $include
+            } |
+            ForEach-Object {
+                (Get-RelativePath $repoRoot $_.FullName) -replace '\\', '/'
+            } |
+            Sort-Object -Unique
+    )
 }
 
 function Copy-RepositorySnapshot {
@@ -237,34 +348,35 @@ $workingTreeReport = Join-Path $outputRoot "gitleaks-working-tree.json"
 
 $scans = New-Object System.Collections.Generic.List[object]
 
-$historyArguments = @(
-    "git",
-    "--log-opts", $HistoryLogOptions,
-    "--report-path", $historyReport
-) + $commonArgs + @($repoRoot)
+if ($SkipGitBackedScans) {
+    "[]" | Set-Content -Encoding utf8 -Path $historyReport
+    "[]" | Set-Content -Encoding utf8 -Path $stagedReport
+    $scans.Add([ordered]@{ name = "history"; status = "skipped"; report = $historyReport; reason = "SkipGitBackedScans" })
+    $scans.Add([ordered]@{ name = "staged"; status = "skipped"; report = $stagedReport; reason = "SkipGitBackedScans" })
+}
+else {
+    $historyArguments = @(
+        "git",
+        "--log-opts", $HistoryLogOptions,
+        "--report-path", $historyReport
+    ) + $commonArgs + @($repoRoot)
 
-$historyStatus = Invoke-Gitleaks -Name "Gitleaks history scan" -ReportPath $historyReport -Arguments $historyArguments
-$scans.Add([ordered]@{ name = "history"; status = $historyStatus; report = $historyReport; logOptions = $HistoryLogOptions })
+    $historyStatus = Invoke-Gitleaks -Name "Gitleaks history scan" -ReportPath $historyReport -Arguments $historyArguments
+    $scans.Add([ordered]@{ name = "history"; status = $historyStatus; report = $historyReport; logOptions = $HistoryLogOptions })
 
-$stagedArguments = @(
-    "git",
-    "--staged",
-    "--report-path", $stagedReport
-) + $commonArgs + @($repoRoot)
+    $stagedArguments = @(
+        "git",
+        "--staged",
+        "--report-path", $stagedReport
+    ) + $commonArgs + @($repoRoot)
 
-$stagedStatus = Invoke-Gitleaks -Name "Gitleaks staged scan" -ReportPath $stagedReport -Arguments $stagedArguments
-$scans.Add([ordered]@{ name = "staged"; status = $stagedStatus; report = $stagedReport })
+    $stagedStatus = Invoke-Gitleaks -Name "Gitleaks staged scan" -ReportPath $stagedReport -Arguments $stagedArguments
+    $scans.Add([ordered]@{ name = "staged"; status = $stagedStatus; report = $stagedReport })
+}
 
 $snapshotRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("np-secret-scan-" + [System.Guid]::NewGuid().ToString("N"))
 try {
-    $pathArguments = @("ls-files")
-    if ($IncludeUntracked) {
-        $pathArguments += @("--cached", "--modified", "--others", "--exclude-standard")
-    }
-
-    $paths = Get-GitLines -Arguments $pathArguments |
-        Where-Object { $_ -notlike "graphify-out/*" } |
-        Sort-Object -Unique
+    $paths = Get-RepositorySnapshotPaths
 
     Copy-RepositorySnapshot -DestinationRoot $snapshotRoot -RelativePaths $paths
 
@@ -281,7 +393,14 @@ finally {
 }
 
 Write-Host "Running high-signal regex canary scan..."
-& (Join-Path $PSScriptRoot "check-secret-canaries.ps1") -RepositoryRoot $repoRoot
+$canaryArguments = @{
+    RepositoryRoot = $repoRoot
+}
+if ($SkipGitBackedScans) {
+    $canaryArguments.NoGit = $true
+    $canaryArguments.MaxFileSizeBytes = $MaxSnapshotFileBytes
+}
+& (Join-Path $PSScriptRoot "check-secret-canaries.ps1") @canaryArguments
 if ($LASTEXITCODE -ne 0) {
     throw "Secret canary scan failed with exit code $LASTEXITCODE."
 }

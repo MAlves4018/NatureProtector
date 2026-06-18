@@ -253,10 +253,17 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
         CancellationToken cancellationToken)
     {
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var latestRun = await dbContext.SimulationRuns
+        var runs = await dbContext.SimulationRuns
             .AsNoTracking()
-            .OrderByDescending(entity => entity.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+            .Select(entity => new
+            {
+                entity.Status,
+                entity.CreatedAt,
+                entity.StartedAt,
+                entity.EndedAt
+            })
+            .ToListAsync(cancellationToken);
+        var latestRun = runs.OrderByDescending(entity => entity.CreatedAt).FirstOrDefault();
         if (latestRun is null)
         {
             return Component(

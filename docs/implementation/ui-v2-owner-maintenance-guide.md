@@ -1,102 +1,102 @@
-# UI v2 Owner Maintenance Guide
+# Guia de manutenção da UI v2 para o owner
 
-Last updated: 2026-06-16
+Última atualização: 2026-06-16
 
-## Scope
+## Âmbito
 
-This guide documents the recovered UI v2 maintenance contract after `UI-STRUCTURAL-RECOVERY-002`.
+Este guia documenta o contrato de manutenção recuperado da UI v2 após `UI-STRUCTURAL-RECOVERY-002`.
 
-UI v2 remains isolated at `/ui-v2`. The beta routes remain preserved. This pass did not change RabbitMQ contracts, public API projections, database schema, migrations, scoring, alert semantics, roles, JWT claims, P3 runtime integration, reset/rebaseline behavior, production cutover or observability infrastructure.
+A UI v2 continua isolada em `/ui-v2`. As rotas beta continuam preservadas. Esta passagem não alterou contratos RabbitMQ, projeções API públicas, schema da base de dados, migrations, scoring, semântica de alertas, roles, JWT claims, integração runtime P3, comportamento reset/rebaseline, cutover de produção ou infraestrutura de observabilidade.
 
-## Product Surface Matrix
+## Matriz de superfície de produto
 
-| Profile | Visible UI v2 areas | Hidden by design |
+| Perfil | Áreas visíveis da UI v2 | Oculto por desenho |
 | --- | --- | --- |
-| Public / signed out | Product landing, area selector, Data Status, help, login link | Risk score, pipeline, simulation, runs, QA, evidence, P3, admin |
-| Pipeline | Overview, risk/data, runs, pipeline, quality/evidence, data status, help | Simulation execution, P3, admin |
-| Sim | Overview, risk/data, runs, scenarios, simulation, requested/resolved review, data status, help | Pipeline/quality/evidence internals, P3, admin |
-| Admin | All UI v2 surfaces | No destructive reset action is exposed |
-| Unknown role | Demo and help only | All operational/technical surfaces |
+| Público / signed out | Product landing, seletor de área, Data Status, ajuda, link de login | Risk score, pipeline, simulação, runs, QA, evidence, P3, admin |
+| Pipeline | Overview, risk/data, runs, pipeline, quality/evidence, data status, ajuda | Execução de simulação, P3, admin |
+| Sim | Overview, risk/data, runs, cenários, simulação, revisão requested/resolved, data status, ajuda | Internals pipeline/quality/evidence, P3, admin |
+| Admin | Todas as superfícies UI v2 | Nenhuma ação destrutiva de reset é exposta |
+| Role desconhecida | Demo e ajuda apenas | Todas as superfícies operacionais/técnicas |
 
-Backend authorization remains the security boundary. The frontend profile matrix is a product/UX constraint and must not be treated as a replacement for API authorization.
+A autorização backend continua a ser a fronteira de segurança. A matriz de perfis frontend é uma restrição de produto/UX e não deve ser tratada como substituto da autorização API.
 
-## Current Structure
+## Estrutura atual
 
-Primary files:
+Ficheiros principais:
 
-- `webUI/src/app/ui-v2/UiV2App.tsx`: small shell/provider composition, theme bridge, skip link, header, navigation and page selection.
-- `webUI/src/app/ui-v2/state/UiV2Context.tsx`: frontend orchestration and existing API reads/writes.
-- `webUI/src/app/ui-v2/navigation/pageRegistry.ts`: task-based page registry derived from capabilities.
-- `webUI/src/app/ui-v2/navigation/UiV2Navigation.tsx`: grouped navigation renderer.
-- `webUI/src/app/ui-v2/components/`: reusable UI v2 components such as area selection, Data Status, technical details, contextual help and beta parity links.
-- `webUI/src/app/ui-v2/pages/`: public, overview, risk/data, runs, simulation, pipeline, quality/evidence, admin and P3 page modules.
-- `webUI/src/app/ui-v2/content/`: technical label mapping, help topic registry, beta parity inventory and related content.
-- `webUI/src/app/ui-v2/theme/ui-v2.css`: UI v2 light/dark visual system.
-- `webUI/src/app/ui-v2/capabilities.ts`: role-to-capability matrix.
-- `webUI/src/app/ui-v2/i18n.ts`: PT/EN copy.
-- `webUI/src/app/ui-v2/coreContext.ts`: area/scenario/run/simulation read-model adapters.
-- `webUI/src/app/ui-v2/outputContext.ts`: contextual risk read model.
-- `webUI/src/app/ui-v2/technicalSurfaces.ts`: pipeline, QA, evidence, admin, P3 and readiness read models.
-- `webUI/src/app/ui-v2/*.test.ts*`: focused regression coverage.
+- `webUI/src/app/ui-v2/UiV2App.tsx`: shell pequeno/composição de provider, theme bridge, skip link, header, navegação e seleção de página.
+- `webUI/src/app/ui-v2/state/UiV2Context.tsx`: orquestração frontend e leituras/escritas API existentes.
+- `webUI/src/app/ui-v2/navigation/pageRegistry.ts`: page registry orientado a tarefas, derivado de capabilities.
+- `webUI/src/app/ui-v2/navigation/UiV2Navigation.tsx`: renderer de navegação agrupada.
+- `webUI/src/app/ui-v2/components/`: componentes reutilizáveis UI v2, como seleção de área, Data Status, detalhes técnicos, ajuda contextual e links de paridade beta.
+- `webUI/src/app/ui-v2/pages/`: módulos de página public, overview, risk/data, runs, simulation, pipeline, quality/evidence, admin e P3.
+- `webUI/src/app/ui-v2/content/`: mapeamento de labels técnicas, registry de tópicos de ajuda, inventário de paridade beta e conteúdo relacionado.
+- `webUI/src/app/ui-v2/theme/ui-v2.css`: sistema visual light/dark da UI v2.
+- `webUI/src/app/ui-v2/capabilities.ts`: matriz role-to-capability.
+- `webUI/src/app/ui-v2/i18n.ts`: copy PT/EN.
+- `webUI/src/app/ui-v2/coreContext.ts`: adapters read-model de area/scenario/run/simulation.
+- `webUI/src/app/ui-v2/outputContext.ts`: read model contextual de risco.
+- `webUI/src/app/ui-v2/technicalSurfaces.ts`: read models pipeline, QA, evidence, admin, P3 e readiness.
+- `webUI/src/app/ui-v2/*.test.ts*`: coverage focada de regressão.
 
-Known maintenance risk: `UiV2Context.tsx` now carries most frontend orchestration. New features should usually add page/component modules first and only extend the provider when new shared state is required.
+## Regras de manutenção
 
-## Rules for Safe Changes
+1. Não adicionar contratos backend para UI v2 sem alteração de missão explícita.
+2. Não expor reset destrutivo, execução P3 ou execução de diagnósticos a partir da UI v2.
+3. Não tratar dados ausentes como zero ou healthy.
+4. Não apresentar `Blocked` como risk score 0.
+5. Não transformar observabilidade configurada em prova de delivery para collector.
+6. Não promover a fixture Playwright HTTP a prova FullStackE2E.
+7. Não usar a matriz frontend de roles como fronteira de segurança.
+8. Não remover a beta UI sem decisão separada.
 
-- Keep `/ui-v2` isolated until an explicit owner cutover decision exists.
-- Do not remove or reroute beta pages as part of UI v2 maintenance.
-- Add new public content only if it fits project purpose, limitations, area selection, basic data status or login.
-- Do not expose pipeline, QA, evidence, P3, admin or simulation actions to signed-out users.
-- Use controlled option sets for simulator degradation profiles; do not reintroduce free-text degradation profile entry.
-- Keep P3 framed as experimental and not integrated into scoring, alerts, schema or main runtime.
-- Keep candidate weights, thresholds and classifications described as prototype/candidate values, not scientific calibration.
+## Validação esperada
 
-## Validation Contract
-
-For UI v2 changes, run at minimum:
+Para alterações na UI v2:
 
 ```powershell
-cd webUI
+cd .\webUI
 npm run typecheck
-npm test -- src/app/ui-v2
-npm test
-npm test
-npm test
-npm run test:coverage
+npm test -- src/app/ui-v2 src/app/services/api.test.ts
+npm run test:coverage -- src/app/ui-v2 src/app/services/api.test.ts
 npm run build
-npm run test:e2e -- ui-v2-authenticated.spec.ts
-dotnet test tests/NatureProtector.Backoffice.Api.Tests/NatureProtector.Backoffice.Api.Tests.csproj --no-restore
 ```
 
-When changing visibility/profile behavior, run the full frontend suite at least three times and check stderr for React `act(...)` warnings.
+Quando houver alteração de journeys browser ou capability gating:
 
-For browser-auth changes, `webUI/e2e/ui-v2-authenticated.spec.ts` is the focused regression suite. It exercises the built `/ui-v2` bundle with an HTTP fixture for Anonymous/Admin/Sim/Pipeline journeys, degraded runtime summary states and authenticated evidence download. It does not replace backend authorization/JWT tests. For accessibility regressions, `webUI/e2e/ui-v2-public.spec.ts` covers axe, skip link keyboard activation, F1 help dialog focus lifecycle, dark mode, mobile viewport and reduced motion. Chromium is the normal local/PR gate; use `NP_PLAYWRIGHT_BROWSER_MATRIX=all` for the Chromium/Firefox/WebKit matrix.
+```powershell
+cd .\webUI
+npm run test:e2e
+```
 
-## Latest Recovery Evidence
+Por defeito, `npm run test:e2e` executa Chromium. Para matriz local completa:
 
-Stored under:
+```powershell
+cd .\webUI
+$env:NP_PLAYWRIGHT_BROWSER_MATRIX='all'
+npm run test:e2e
+Remove-Item Env:\NP_PLAYWRIGHT_BROWSER_MATRIX
+```
 
-`NatureProtector.brain/control/UI-STRUCTURAL-RECOVERY-002/`
+Para alterações em contratos runtime usados pela UI:
 
-Key screenshots:
+```powershell
+dotnet test .\tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj --no-restore --nologo -v minimal -m:1
+```
 
-- `baseline/ui-v2-public-light-before.png`
-- `baseline/ui-v2-public-dark-before.png`
-- `browser-evidence/public-light.png`
-- `browser-evidence/public-data-status.png`
+## Evidence e limites
 
-Final local validation:
+Os testes Playwright autenticados usam fixture HTTP controlada no boundary browser. Validam comportamento de UI, propagação de token, capability gating, regressões de console sensível e regressões de acessibilidade. Não provam uma identity store live externa, não substituem testes backend JWT/autorização e não constituem certificação WCAG.
 
-- `npm run test:e2e` passed on 2026-06-16, 18 Playwright tests against `vite preview`.
-- `npm test` passed three consecutive times, 33 tests each.
-- `npm run typecheck` passed.
-- `npm test -- src/app/ui-v2` passed, 26 tests.
-- `npm run test:coverage` passed; `app/ui-v2` line coverage was `82.56%`.
-- `npm run build` passed.
-- `dotnet test tests/NatureProtector.Backoffice.Api.Tests/NatureProtector.Backoffice.Api.Tests.csproj --no-restore` passed, 92 tests, with the then-known `NU1902`; E2 validation on 2026-06-16 reports no vulnerable NuGet packages.
+As views técnicas mostram explicitamente `Not instrumented`, `Not confirmed`, `No evidence` e `Not available` quando a evidence runtime não existe. Esses estados são parte do contrato de honestidade da UI v2 e não devem ser escondidos com defaults visuais.
 
-## Remaining Owner Decisions
+## Checklist de revisão antes de merge local
 
-- Whether UI v2 public copy should be further simplified for non-technical audiences after owner review.
-- Whether beta-only capabilities should migrate, be substituted, or remain beta-only after the parity links are reviewed.
-- Whether to proceed to observability audit/metrics. This pass did not authorize or implement metrics.
+- A página alterada continua acessível pelo page registry correto.
+- A capability necessária está em `capabilities.ts` e testada.
+- O texto PT/EN está em `i18n.ts` ou no registry de conteúdo adequado.
+- Estados loading/error/empty/unavailable continuam visíveis.
+- Nenhum `console.*` browser contém termos sensíveis de utilizador, sessão, role, token, bearer, authorization, password ou credential.
+- Não há imports diretos de `react-router` fora da camada permitida.
+- Não há `process.env` nem acesso não público a `import.meta.env` no bundle browser.
+- A UI continua a mostrar a fronteira académica/não operacional quando apropriado.

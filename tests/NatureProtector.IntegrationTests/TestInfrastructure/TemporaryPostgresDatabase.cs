@@ -22,6 +22,8 @@ internal sealed class TemporaryPostgresDatabase : IAsyncDisposable
 
     public string DatabaseName { get; }
 
+    public string ConnectionString => _databaseConnectionString;
+
     public static async Task<TemporaryPostgresDatabase> CreateAsync(CancellationToken cancellationToken = default)
     {
         return await CreateAsync(
@@ -92,6 +94,11 @@ internal sealed class TemporaryPostgresDatabase : IAsyncDisposable
     public IDbContextFactory<NatureProtectorControlDbContext> CreateFactory()
     {
         return new TestDbContextFactory(_databaseConnectionString);
+    }
+
+    public async Task DropAsync()
+    {
+        await DropDatabaseIfExistsAsync(_adminConnectionString, DatabaseName);
     }
 
     public async ValueTask DisposeAsync()

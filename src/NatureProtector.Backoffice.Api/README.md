@@ -79,7 +79,8 @@ Quando `BackofficeApi:ControlPlaneEnabled = true`, a API:
 
 - resolve a ligação ao `PostgreSQL` a partir do `.env`;
 - regista `IDbContextFactory<NatureProtectorControlDbContext>`;
-- usa `PostgresControlPlaneService` para consultar os schemas `control` e `projection`.
+- usa `PostgresControlPlaneService` para consultar os schemas `control` e `projection`;
+- quando existe password de bootstrap (`NP_BOOTSTRAP_ADMIN_PASSWORD`, ou `admin123` em Development), garante que o role fixo `Admin` existe antes de atribuir esse role ao utilizador local de desenvolvimento.
 
 Quando `BackofficeApi:ControlPlaneEnabled = false`, a API continua a arrancar, mas devolve indisponibilidade controlada para estes endpoints.
 

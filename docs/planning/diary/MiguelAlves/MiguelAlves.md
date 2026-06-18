@@ -2121,3 +2121,689 @@ Na Fase 7, foi criado `benchmarks/NatureProtector.Benchmarks` com BenchmarkDotNe
 Validacao final local em `15/06/2026`: `dotnet build NatureProtector.sln -c Release --no-restore` passou; `dotnet test NatureProtector.sln -c Release --no-build --no-restore --filter "Category!=DockerIntegration"` passou `1293/1293`; DockerIntegration passou `6/6`; `npm run typecheck`, `npm run test:coverage` (`38/38`), `npm run build`, `npm run audit:ci` e `npm run test:e2e` passaram. `check-dotnet-audit.ps1` reportou zero pacotes NuGet vulneraveis; `check-secret-canaries.ps1` nao encontrou canarios em ficheiros versionados. O release candidate local `validation-local` foi construido e o clean-install estrutural passou. O probe PostgreSQL backup/restore passou em bases temporarias. O benchmark B0 filtrado de serializacao executou `BatchSize` 32/512/4096 e exportou resultados.
 
 Riscos restantes: a validacao GitHub Actions ainda depende da execucao remota pelo owner; `npm audit` continua a listar 3 advisories high de tooling/transitivo (`@vitejs/plugin-react`, `vite`, `esbuild`) tratados pelo gate local como nao runtime e nao bloqueantes; o clean install validado e estrutural e nao substitui arranque completo com credenciais/servicos finais; signing/attestation formal e target de hosted deployment continuam externos. Nada nesta entrada altera a natureza academica/non-operational do NatureProtector nem valida cientificamente os scores candidatos.
+
+---
+
+# Recapitulação Quinzenal
+
+### Período
+
+17 de junho a 30 de junho de 2026
+
+### Objetivo desta entrada
+
+Registar o trabalho de fecho técnico, reforço de qualidade e auditoria do NatureProtector realizado durante a quinzena, distinguindo claramente:
+
+* capacidades implementadas;
+* capacidades efetivamente validadas;
+* evidence produzida;
+* defeitos encontrados e corrigidos;
+* limitações ainda existentes;
+* trabalho que permanece dependente de revisão e decisão do owner.
+
+Durante este período, o trabalho incidiu sobretudo na preparação do projeto para uma fase de estabilização e documentação final, abrangendo workspace local, estratégia de testes, recuperação perante falhas, integração contínua, segurança, reprodutibilidade, package, backup e restore, observabilidade, microbenchmarks, performance sistémica, documentação técnica e organização de artifacts.
+
+Foram mantidas as seguintes restrições:
+
+* não executar operações Git durante as missões Codex;
+* não alterar `.env` ou `.env.example`;
+* não alterar `NatureProtector.brain`;
+* não implementar CD, cloud ou deployment;
+* não alterar contratos, migrations, scoring, alertas, roles ou semântica de domínio sem um defeito demonstrado;
+* não considerar uma capacidade concluída apenas pela existência de código ou de um script;
+* preservar evidence e documentar limitações sem overclaiming.
+
+## Resumo Estruturado
+
+### O que foi feito
+
+1. **Criação de um ponto de entrada canónico para o workspace**
+
+   Foi criado `scripts/workspace.ps1` para centralizar as operações principais de preparação e validação do ambiente:
+
+   * `setup`;
+   * `up`;
+   * `validate`;
+   * `down`;
+   * `reset`.
+
+   O novo fluxo reutiliza os scripts já existentes e acrescenta validações de:
+
+   * PowerShell;
+   * .NET SDK;
+   * Node.js;
+   * npm;
+   * Docker;
+   * Docker Compose;
+   * configuração local;
+   * portas;
+   * espaço em disco;
+   * dependências frontend e backend.
+
+   Foram também introduzidos perfis de validação, incluindo:
+
+   * `Quick`;
+   * `Security`;
+   * `PerformanceSmoke`.
+
+   Os scripts foram ajustados para não criarem ou alterarem automaticamente `.env`, não executarem comandos Git e não continuarem com binários antigos após uma falha de compilação.
+
+2. **Correção e reforço dos scripts de infraestrutura e runtime**
+
+   Foram revistos e alterados os scripts responsáveis por:
+
+   * subida e descida da infraestrutura;
+   * preparação do ambiente;
+   * bootstrap PostgreSQL;
+   * arranque local da API, Prevention e frontend;
+   * release e instalação;
+   * performance;
+   * segurança;
+   * observabilidade.
+
+   O bootstrap PostgreSQL deixou de continuar com uma DLL potencialmente desatualizada depois de um build falhado.
+
+   O launcher local passou a:
+
+   * compilar sequencialmente;
+   * usar configuração Release;
+   * arrancar os serviços com `--no-build`;
+   * reduzir conflitos de escrita concorrente sobre assemblies e diretórios `obj`.
+
+3. **Criação de regressões automatizadas para os scripts**
+
+   Foi criado `scripts/tests/test-workspace-script.ps1`.
+
+   Este script verifica, entre outros aspetos:
+
+   * parsing dos scripts PowerShell;
+   * comportamento de `PlanOnly`;
+   * confirmação obrigatória do reset;
+   * ausência de mutação de `.env`;
+   * ausência de execução Git;
+   * comportamento do bootstrap perante build falhado;
+   * configuração dos perfis de validação;
+   * paths de artifacts;
+   * integração dos scripts nos workflows;
+   * integridade dos hashes de `.env` e `.env.example`.
+
+   As regressões do workspace passaram integralmente na auditoria do owner.
+
+4. **Consolidação da estratégia de testes**
+
+   Foram criados scripts para:
+
+   * exportar o inventário dos testes;
+   * classificar os testes por nível;
+   * exportar gaps de coverage;
+   * executar mutation testing de forma bounded;
+   * guardar evidence estruturada.
+
+   A taxonomia passou a distinguir:
+
+   * unit;
+   * component;
+   * domain;
+   * API;
+   * contract;
+   * architecture;
+   * property-based;
+   * adapter integration;
+   * distributed integration;
+   * process-level integration;
+   * browser integration;
+   * accessibility;
+   * security;
+   * mutation;
+   * microbenchmark;
+   * system performance.
+
+   Foi corrigida a documentação que confundia testes de browser com API simulada com um fluxo full-stack integral.
+
+5. **Reforço dos testes backend**
+
+   Foram acrescentados testes para:
+
+   * `RabbitMqPublishGuarantees`;
+   * fallbacks da Backoffice API;
+   * `RuntimeObservabilityService`;
+   * bootstrap administrativo;
+   * processamento de leases;
+   * redelivery;
+   * recuperação de eventos;
+   * user/role plane com PostgreSQL real;
+   * `ControlledValidationRunner`.
+
+   A validação final registada foi:
+
+   ```text
+   Backend Release sem Docker:
+   1559 passed
+   0 failed
+   0 skipped
+
+   DockerIntegration Release:
+   34 passed
+   0 failed
+   0 skipped
+   ```
+
+6. **Correção de defeitos no user/role plane PostgreSQL**
+
+   A auditoria identificou dois defeitos reais:
+
+   * a criação de um utilizador validava as roles, mas não persistia as relações em `user_roles`;
+   * a consulta das roles projetava para DTO antes da ordenação, gerando uma expressão não traduzível pelo provider Npgsql.
+
+   Foram criados testes PostgreSQL reais e isolados para validar:
+
+   * criação de utilizadores;
+   * password hashing;
+   * login;
+   * múltiplas roles;
+   * duplicados;
+   * entidades inexistentes;
+   * rollback;
+   * ausência de dados parciais;
+   * cleanup da base temporária;
+   * emissão de JWT;
+   * utilização do JWT num endpoint protegido.
+
+7. **Correção da persistência da sessão na UI v2**
+
+   O teste Playwright revelou que, depois de um reload, a aplicação mantinha o token, mas não reidratava o utilizador e as respetivas roles.
+
+   Isto fazia com que uma sessão Admin válida regressasse à superfície pública.
+
+   O `TokenContext` foi corrigido para:
+
+   * recuperar o token persistido;
+   * validar a sessão;
+   * consultar o perfil atual;
+   * reconstruir o utilizador e as roles;
+   * remover sessões inválidas.
+
+   Foram acrescentados testes para:
+
+   * Admin após reload;
+   * Sim após reload;
+   * Pipeline após reload;
+   * token expirado ou inválido.
+
+   O fluxo Admin foi validado repetidamente com Playwright e deixou de apresentar a falha inicial.
+
+8. **Reforço dos testes da UI v2**
+
+   Foram acrescentados testes para:
+
+   * `EmptyState`;
+   * `ContextualHelp`;
+   * foco inicial;
+   * focus trap;
+   * fecho do diálogo;
+   * retorno do foco ao elemento anterior.
+
+   Foi corrigido um defeito em que o diálogo de ajuda reabria imediatamente quando o foco era devolvido ao trigger.
+
+   A validação frontend confirmou:
+
+   ```text
+   Vitest:
+   43 testes inicialmente, posteriormente reforçados com novos casos
+
+   Playwright:
+   suite completa verde após a correção da sessão Admin
+
+   UI v2:
+   aproximadamente 83,7% de line coverage
+   ```
+
+9. **Atualização da coverage backend**
+
+   A coverage final registada foi:
+
+   ```text
+   Backend integral:
+   65,3% line coverage
+   66,1% branch coverage
+
+   Backend focado:
+   97,1% line coverage
+   87,8% branch coverage
+   ```
+
+   Melhorias relevantes:
+
+   ```text
+   RuntimeObservabilityService:
+   73,6%
+
+   ControlledValidationRunner:
+   100%
+   ```
+
+   A coverage integral continua a incluir migrations, bootstrap, factories e infraestrutura cuja validação depende sobretudo de testes de integração.
+
+   O `PostgresUserRolePlaneService` continua a surgir com 0% no relatório não-Docker porque a sua prova é realizada em PostgreSQL real através da suite DockerIntegration, que não é incorporada nesse relatório de coverage.
+
+10. **Reforço da recuperação, retries e quarantine**
+
+    Foi corrigida uma condição de corrida na recuperação de leases:
+
+    * uma tentativa antiga com lease expirada podia terminar mais tarde;
+    * essa tentativa podia sobrescrever o estado de uma tentativa entretanto recuperada;
+    * os inboxes em memória e PostgreSQL passaram a validar o `AttemptId` e a tentativa atual antes de finalizar o evento.
+
+    Foram acrescentados testes para:
+
+    * lease expirada;
+    * tentativa recuperada;
+    * conclusão tardia;
+    * retry;
+    * quarantine;
+    * duplicate delivery;
+    * redelivery;
+    * ausência de efeitos duplicados.
+
+    Foram também executados testes isolados de outages e recuperação com infraestrutura real.
+
+11. **Correção da semântica de ACK/NACK no consumidor**
+
+    Foi identificado e corrigido um risco no processamento RabbitMQ relacionado com a janela entre receção, materialização no inbox e acknowledgement.
+
+    A validação foi reforçada para garantir que:
+
+    * um evento já persistido no inbox pode ser redelivered;
+    * a redelivery não produz efeitos duplicados;
+    * o retry worker recupera o processamento;
+    * o estado durável é usado como oracle;
+    * o backlog é drenado.
+
+12. **Correção dos perfis `Security` e `PerformanceSmoke`**
+
+    A auditoria do owner detetou que os perfis podiam terminar com sucesso sem executarem uma gate material.
+
+    O perfil `Security` passou a executar:
+
+    * auditoria NuGet;
+    * política npm;
+    * secret canaries;
+    * scans permitidos;
+    * testes focados de segurança;
+    * produção de artifacts;
+    * propagação correta de exit codes.
+
+    O perfil `PerformanceSmoke` passou a executar:
+
+    * BenchmarkDotNet através do wrapper bounded;
+    * timeout;
+    * geração de summaries;
+    * criação de artifacts;
+    * propagação de falhas.
+
+13. **Deteção e correção de uma vulnerabilidade SQLite transitiva**
+
+    A nova gate de segurança detetou a dependência vulnerável:
+
+    ```text
+    SQLitePCLRaw.lib.e_sqlite3 2.1.10
+    ```
+
+    A atualização isolada de `Microsoft.EntityFrameworkCore.Sqlite` não eliminava a dependência vulnerável.
+
+    Foi aplicada uma remediação nos três projetos de teste que utilizam SQLite:
+
+    ```text
+    SQLitePCLRaw.bundle_e_sqlite3 3.0.3
+    SourceGear.sqlite3 3.50.4.5
+    ```
+
+    Depois da alteração foram confirmados:
+
+    * restore;
+    * resolução correta nos `project.assets.json`;
+    * ausência do pacote vulnerável;
+    * build Release;
+    * testes SQLite;
+    * auditoria NuGet limpa;
+    * perfil `Security` verde.
+
+14. **Mutation testing**
+
+    Foi criado um wrapper para mutation testing com:
+
+    * timeout;
+    * solução temporária isolada;
+    * seleção de reporters;
+    * manifests;
+    * diagnostics;
+    * artifacts;
+    * classificação explícita.
+
+    Apesar das remediações, o processo Stryker continuou a bloquear depois de testar os mutants selecionados e antes de produzir uma conclusão/reporting fiável.
+
+    O resultado textual parcial não foi aceite como baseline oficial.
+
+    A classificação permanece:
+
+    ```text
+    BLOCKED_AFTER_REMEDIATION_ATTEMPT
+    ```
+
+15. **Reforço da CI**
+
+    O workflow de engenharia foi atualizado para incluir:
+
+    * regressões do workspace;
+    * inventário de testes;
+    * exportação de gaps de coverage;
+    * publicação de artifacts de validação;
+    * melhor diagnóstico de falhas;
+    * gates backend, frontend e integração.
+
+    A implementação local foi validada, mas continuam dependentes do owner:
+
+    * criação do Pull Request;
+    * Dependency Review real;
+    * confirmação remota dos workflows;
+    * branch protection;
+    * configuração de checks obrigatórios.
+
+16. **Reprodutibilidade e package**
+
+    O processo de release local foi reforçado com:
+
+    * versão explícita sem depender de Git;
+    * validação da versão;
+    * manifest;
+    * checksums;
+    * checksum externo;
+    * tamper detection;
+    * inventários de dependências;
+    * SBOM;
+    * propagação de `--no-restore`;
+    * dados necessários para bootstrap.
+
+    O bootstrap publicado foi alterado para não depender da existência de `NatureProtector.sln` e passou a funcionar fora da source tree.
+
+17. **Instalação funcional e restore**
+
+    Foram criados ou reforçados testes para:
+
+    * extração do package para diretório temporário;
+    * validação de checksums;
+    * arranque da API publicada;
+    * health check;
+    * assets frontend;
+    * bootstrap numa base isolada;
+    * idempotência do bootstrap;
+    * backup de dados reais;
+    * restore para uma base temporária;
+    * comparação das tabelas canónicas;
+    * cleanup da base restaurada.
+
+    Continua explicitamente limitada a prova de toda a cadeia:
+
+    ```text
+    Simulator publicado
+    → RabbitMQ
+    → Prevention publicado
+    → PostgreSQL/InfluxDB
+    ```
+
+    exclusivamente a partir dos ficheiros do ZIP.
+
+18. **Observabilidade**
+
+    Foi criada uma prova OTLP local com:
+
+    * OpenTelemetry Collector real e temporário;
+    * exportação de traces para ficheiro;
+    * exportação de métricas para ficheiro;
+    * validação de `service.name`;
+    * API;
+    * Prevention;
+    * Simulator;
+    * cleanup do collector e dos processos.
+
+    Foi também criado um catálogo de telemetria com:
+
+    * métricas;
+    * tipos;
+    * tags;
+    * classificação de cardinalidade;
+    * outputs JSON/CSV/Markdown.
+
+    Foram verificadas dashboards Grafana provisionadas.
+
+    A evidence é local e não representa observabilidade de produção ou delivery remoto.
+
+19. **Microbenchmarks**
+
+    O wrapper BenchmarkDotNet foi reforçado com:
+
+    * perfis B0/B1/B2;
+    * timeout bounded;
+    * filtros;
+    * geração de `summary.json`;
+    * geração de `summary.md`;
+    * preservação de erro, desvio e métricas de GC;
+    * classificação do resultado.
+
+    Foram executadas medições B0 e B1 focadas.
+
+20. **Performance sistémica**
+
+    Foi criado um workload sistémico real para medir:
+
+    ```text
+    Simulator/API
+    → RabbitMQ
+    → Prevention
+    → PostgreSQL
+    → avaliações/projeções
+    ```
+
+    Foram definidos e executados:
+
+    * Calibration;
+    * B0;
+    * B1;
+    * B2.
+
+    O tooling passou a medir:
+
+    * eventos aceites;
+    * avaliações;
+    * falhas;
+    * queue depth;
+    * backlog da fila de ingestão;
+    * separação de filas auxiliares;
+    * tempo de drenagem do backlog;
+    * tempos de observação por perfil;
+    * estado final.
+
+    A conclusão suportada é:
+
+    ```text
+    baseline local reprodutível de capacidade
+    ```
+
+    Não foram estabelecidos SLOs, readiness de produção ou capacidade generalizável para outros ambientes.
+
+21. **Documentação e português de Portugal**
+
+    Foi criado um auditor documental que:
+
+    * analisa documentação Markdown;
+    * deteta mojibake;
+    * deteta UTF-8 inválido;
+    * identifica claims que exigem revisão;
+    * distingue documentos canónicos, históricos e evidence;
+    * produz JSON, CSV e Markdown;
+    * regista ficheiros corrigidos e pontos pendentes.
+
+    Foram corrigidos:
+
+    * encoding;
+    * documentos operacionais em inglês;
+    * claims excessivas;
+    * referências desatualizadas;
+    * distinções entre testes e níveis de prova;
+    * descrições de package, performance e observabilidade.
+
+    O último resultado registado foi:
+
+    ```text
+    Canonical encoding findings: 0
+    Canonical defect findings: 0
+    ```
+
+22. **Higiene de artifacts**
+
+    Foi criado um inventário read-only de artifacts.
+
+    Foram classificados:
+
+    * outputs correntes;
+    * outputs históricos;
+    * diretórios grandes;
+    * outputs reconstruíveis;
+    * possíveis candidatos a secrets pelo nome;
+    * outputs fora da estrutura canónica.
+
+    O `.gitignore` foi reforçado para abranger:
+
+    * Graphify;
+    * Stryker;
+    * BenchmarkDotNet;
+    * coverage;
+    * Playwright;
+    * TestResults;
+    * performance;
+    * release;
+    * validação;
+    * segurança;
+    * recovery.
+
+    Nenhuma evidence útil foi apagada automaticamente.
+
+23. **Auditoria final do owner**
+
+    A revisão do estado Git confirmou alterações distribuídas pelas áreas previstas:
+
+    * workflows;
+    * scripts;
+    * runtime;
+    * bootstrap;
+    * recovery;
+    * segurança;
+    * performance;
+    * observabilidade;
+    * release;
+    * testes;
+    * documentação.
+
+    Foram também confirmados os novos ficheiros esperados:
+
+    * `scripts/workspace.ps1`;
+    * scripts de testes e validação;
+    * scripts de performance;
+    * scripts de observabilidade;
+    * scripts de release;
+    * bootstrap da Backoffice API;
+    * novos testes backend e frontend.
+
+    Não foram identificados no `git status` ficheiros de `.env`, artifacts, logs, `bin`, `obj` ou resultados de testes destinados a commit.
+
+### Resultado principal da quinzena
+
+O NatureProtector passou de um workspace tecnicamente avançado, mas fragmentado e com capacidades nem sempre suficientemente provadas, para um estado de engenharia mais consolidado, reproduzível e auditável.
+
+Os principais resultados foram:
+
+* criação de um comando canónico para o workspace;
+* validação de 1559 testes backend não-Docker em Release;
+* validação de 34 testes DockerIntegration em Release;
+* correção do user/role plane PostgreSQL;
+* correção da persistência da sessão Admin na UI v2;
+* reforço dos testes de recovery e redelivery;
+* eliminação de falsos verdes nos perfis `Security` e `PerformanceSmoke`;
+* deteção e remediação de uma vulnerabilidade SQLite transitiva;
+* subida da coverage backend integral para 65,3% de linhas e 66,1% de branches;
+* manutenção da coverage focada em 97,1% de linhas;
+* validação local de OTLP com collector real;
+* criação de uma baseline local de performance com Calibration/B0/B1/B2;
+* reforço do package, SBOM, bootstrap e restore;
+* correção e uniformização da documentação técnica para português de Portugal;
+* organização e inventário dos artifacts;
+* produção de evidence estruturada para suporte do relatório final.
+
+O projeto não deve, contudo, ser apresentado como totalmente fechado ou pronto para produção.
+
+Permanecem as seguintes limitações:
+
+* Stryker continua bloqueado depois de tentativas de remediação;
+* Graphify continua a exceder o timeout bounded, embora sem bloquear o trabalho;
+* a observabilidade foi validada apenas localmente;
+* a instalação a partir do package ainda não prova toda a cadeia Simulator → RabbitMQ → Prevention exclusivamente a partir do ZIP;
+* a revisão manual da UI v2 será realizada posteriormente;
+* a confirmação remota da CI, Dependency Review e branch protection depende da criação do Pull Request pelo owner;
+* CD, cloud e deployment continuam deliberadamente fora do âmbito.
+
+O estado final desta quinzena pode ser descrito como:
+
+```text
+Workspace e setup:
+PROVED localmente
+
+Testes backend:
+PROVED localmente
+
+DockerIntegration:
+PROVED localmente — 34/34
+
+UI v2 automática:
+PROVED localmente
+
+UI manual:
+PENDENTE POR DECISÃO DO OWNER
+
+Coverage:
+PROVED e atualizada
+
+Mutation testing:
+BLOCKED_AFTER_REMEDIATION_ATTEMPT
+
+Recovery:
+PROVED para os cenários implementados
+
+CI:
+IMPLEMENTED_NOT_PROVED_REMOTELY
+
+Segurança:
+PROVED localmente
+
+Reprodutibilidade:
+PROVED localmente com limites
+
+Instalação funcional:
+PARTIAL
+
+Observabilidade:
+PROVED localmente com limites
+
+Microbenchmarks:
+PROVED como baseline de engenharia
+
+Performance sistémica:
+LOCAL_CAPACITY_BASELINE_REPRODUCIBLE
+
+Documentação:
+PROVED localmente
+
+Artifacts e higiene:
+PROVED localmente
+```
+
+O trabalho seguinte deverá concentrar-se na preparação dos commits, criação do Pull Request, confirmação remota dos workflows e integração desta evidence no relatório final, mantendo as limitações explicitamente documentadas.

@@ -194,6 +194,129 @@ public sealed class DockerRabbitMqConsumerPipelineTests
 
     [Fact]
     [Trait("Category", "DockerIntegration")]
+    public async Task PreventionWorker_PostgresOutageBeforeInboxCommit_RequeuesWithoutAcking_OnIsolatedDatabase()
+    {
+        await using var harness = await ConsumerPipelineHarness.CreateAsync(startWorker: false);
+        var envelope = CreateEnvelope(
+            harness.AreaId,
+            harness.SensorId,
+            harness.Timestamp,
+            harness.SimulationRunId);
+
+        await harness.Publisher.PublishAsync(envelope, CancellationToken.None);
+        await WaitForQueueReadyCountAsync(
+            harness.ConnectionFactory,
+            harness.RabbitMqOptions.IngestionReadingsQueueName,
+            expectedReadyCount: 1);
+
+        await harness.Database.DropAsync();
+        var outageInbox = new StoreFailureSignalInbox(harness.Inbox, envelope.EventId);
+        using var outageWorker = harness.CreateWorker(outageInbox);
+
+        try
+        {
+            await outageWorker.StartAsync(CancellationToken.None);
+            await WaitForConsumerAsync(harness.ConnectionFactory, harness.RabbitMqOptions.IngestionReadingsQueueName);
+            await outageInbox.WaitForStoreFailureAsync();
+        }
+        finally
+        {
+            await outageWorker.StopAsync(CancellationToken.None);
+        }
+
+        await WaitForQueueReadyCountAsync(
+            harness.ConnectionFactory,
+            harness.RabbitMqOptions.IngestionReadingsQueueName,
+            expectedReadyCount: 1);
+        Assert.False(await TemporaryPostgresDatabase.DatabaseExistsAsync(harness.Database.DatabaseName));
+    }
+
+    [Fact]
+    [Trait("Category", "DockerIntegration")]
+    public async Task PreventionWorker_IsolatedRabbitMqVhostDeletion_StopsWithoutTouchingPostgres()
+    {
+        await using var harness = await ConsumerPipelineHarness.CreateAsync();
+
+        await harness.DeleteRabbitMqVirtualHostAsync();
+        Assert.False(await harness.RabbitMqVirtualHostExistsAsync());
+
+        await harness.StopWorkerAsync();
+
+        Assert.True(await TemporaryPostgresDatabase.DatabaseExistsAsync(harness.Database.DatabaseName));
+    }
+
+    [Fact]
+    [Trait("Category", "DockerIntegration")]
+    public async Task PreventionWorker_RediveredStoredInboxEvent_AcksAndRecoversViaRetryWorker_WithoutDuplicateEffects()
+    {
+        await using var harness = await ConsumerPipelineHarness.CreateAsync(startWorker: false);
+        var envelope = CreateEnvelope(
+            harness.AreaId,
+            harness.SensorId,
+            harness.Timestamp,
+            harness.SimulationRunId);
+        var rawBody = JsonEventSerializer.SerializeToUtf8Bytes(envelope);
+
+        var stored = await harness.Inbox.StoreIncomingAsync(
+            envelope,
+            rawBody,
+            "docker-integration-pre-ack-crash",
+            CancellationToken.None);
+
+        Assert.False(stored.IsDuplicate);
+        Assert.True(stored.ShouldProcessNow);
+        Assert.NotNull(stored.Lease);
+
+        var signalingInbox = new DuplicateStoreSignalInbox(harness.Inbox, envelope.EventId);
+        using var redeliveryWorker = harness.CreateWorker(signalingInbox);
+
+        try
+        {
+            await redeliveryWorker.StartAsync(CancellationToken.None);
+            await WaitForConsumerAsync(harness.ConnectionFactory, harness.RabbitMqOptions.IngestionReadingsQueueName);
+
+            await harness.Publisher.PublishAsync(envelope, CancellationToken.None);
+            await signalingInbox.WaitForDuplicateAsync();
+
+            await AssertProcessingLeaseWithoutProjectionEffectsAsync(
+                harness.Database,
+                envelope.EventId,
+                harness.AreaId,
+                harness.GridCellId);
+
+            await MarkProcessingLeaseAsStaleAsync(harness.Database, stored.InboxEventId);
+
+            using var retryWorker = harness.CreateRetryWorker();
+
+            try
+            {
+                await retryWorker.StartAsync(CancellationToken.None);
+                await WaitForRecoveredProcessedEventAsync(
+                    harness.Database,
+                    envelope.EventId,
+                    harness.AreaId,
+                    harness.GridCellId);
+            }
+            finally
+            {
+                await retryWorker.StopAsync(CancellationToken.None);
+            }
+
+            AssertNoResidualIngestionMessage(harness.ConnectionFactory, harness.RabbitMqOptions.IngestionReadingsQueueName);
+            await AssertRecoveredSingleProcessedEffectAsync(
+                harness.Database,
+                envelope.EventId,
+                harness.AreaId,
+                harness.GridCellId);
+        }
+        finally
+        {
+            await redeliveryWorker.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    [Trait("Category", "DockerIntegration")]
     public async Task PreventionWorker_ProcessesSamePayloadWithDifferentEventIds_AsSeparateEvents_OnRealRabbitMqAndPostgres()
     {
         await using var harness = await ConsumerPipelineHarness.CreateAsync();
@@ -626,6 +749,54 @@ public sealed class DockerRabbitMqConsumerPipelineTests
         throw new TimeoutException($"RabbitMQ consumer pipeline did not reach processed durable state. Last state: {lastState}");
     }
 
+    private static async Task WaitForRecoveredProcessedEventAsync(
+        TemporaryPostgresDatabase database,
+        Guid eventId,
+        Guid areaId,
+        Guid gridCellId)
+    {
+        string? lastState = null;
+
+        for (var attempt = 0; attempt < 80; attempt++)
+        {
+            await using var dbContext = database.CreateDbContext();
+            var inboxEvent = await dbContext.InboxEvents.SingleOrDefaultAsync(entity => entity.EventId == eventId);
+            var acceptedReadings = await dbContext.AcceptedReadingLogs.CountAsync(entity => entity.EventId == eventId);
+            var assessments = await dbContext.RiskAssessmentLogs.CountAsync(entity => entity.SourceEventId == eventId);
+            var areaSnapshots = await dbContext.AreaRiskSnapshotLogs.CountAsync(entity => entity.AreaId == areaId);
+            var cellStates = await dbContext.CellOperationalStates.CountAsync(entity => entity.GridCellId == gridCellId);
+            var areaStates = await dbContext.AreaOperationalStates.CountAsync(entity => entity.AreaId == areaId);
+            var attemptOutcomes = inboxEvent is null
+                ? []
+                : await dbContext.ProcessingAttempts
+                    .Where(entity => entity.InboxEventId == inboxEvent.Id)
+                    .OrderBy(entity => entity.AttemptNumber)
+                    .Select(entity => entity.Outcome)
+                    .ToListAsync();
+
+            lastState =
+                $"status={inboxEvent?.Status.ToString() ?? "<missing>"} " +
+                $"attempts=[{string.Join(",", attemptOutcomes)}] " +
+                $"accepted={acceptedReadings} assessments={assessments} snapshots={areaSnapshots} " +
+                $"cellStates={cellStates} areaStates={areaStates}";
+
+            if (inboxEvent?.Status == InboxEventStatus.Processed &&
+                attemptOutcomes.SequenceEqual([ProcessingAttemptOutcome.RetryScheduled, ProcessingAttemptOutcome.Succeeded]) &&
+                acceptedReadings == 1 &&
+                assessments == 1 &&
+                areaSnapshots == 1 &&
+                cellStates == 1 &&
+                areaStates == 1)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+
+        throw new TimeoutException($"RabbitMQ consumer pipeline did not recover a stale durable lease. Last state: {lastState}");
+    }
+
     private static async Task WaitForProcessedEventsAsync(
         TemporaryPostgresDatabase database,
         IReadOnlyCollection<Guid> eventIds,
@@ -815,6 +986,30 @@ public sealed class DockerRabbitMqConsumerPipelineTests
         Assert.False(await dbContext.AreaOperationalStates.AnyAsync(entity => entity.AreaId == areaId));
     }
 
+    private static async Task AssertProcessingLeaseWithoutProjectionEffectsAsync(
+        TemporaryPostgresDatabase database,
+        Guid eventId,
+        Guid areaId,
+        Guid gridCellId)
+    {
+        await using var dbContext = database.CreateDbContext();
+        var inboxEvent = await dbContext.InboxEvents.SingleAsync(entity => entity.EventId == eventId);
+        var attempts = await dbContext.ProcessingAttempts
+            .Where(entity => entity.InboxEventId == inboxEvent.Id)
+            .OrderBy(entity => entity.AttemptNumber)
+            .Select(entity => entity.Outcome)
+            .ToListAsync();
+
+        Assert.Equal(InboxEventStatus.Processing, inboxEvent.Status);
+        Assert.Equal([ProcessingAttemptOutcome.Started], attempts);
+        Assert.Equal(1, inboxEvent.AttemptCount);
+        Assert.Equal(0, await dbContext.AcceptedReadingLogs.CountAsync(entity => entity.EventId == eventId));
+        Assert.Equal(0, await dbContext.RiskAssessmentLogs.CountAsync(entity => entity.SourceEventId == eventId));
+        Assert.Equal(0, await dbContext.AreaRiskSnapshotLogs.CountAsync(entity => entity.AreaId == areaId));
+        Assert.Equal(0, await dbContext.CellOperationalStates.CountAsync(entity => entity.GridCellId == gridCellId));
+        Assert.Equal(0, await dbContext.AreaOperationalStates.CountAsync(entity => entity.AreaId == areaId));
+    }
+
     private static async Task AssertSingleProcessedEffectAsync(
         TemporaryPostgresDatabase database,
         Guid eventId,
@@ -835,6 +1030,30 @@ public sealed class DockerRabbitMqConsumerPipelineTests
         Assert.Equal(1, await dbContext.RiskAssessmentLogs.CountAsync(entity => entity.SourceEventId == eventId));
         Assert.Equal(1, await dbContext.AreaRiskSnapshotLogs.CountAsync(entity => entity.AreaId == areaId));
         Assert.Equal(1, await dbContext.CellOperationalStates.CountAsync(entity => entity.GridCellId == gridCellId));
+    }
+
+    private static async Task AssertRecoveredSingleProcessedEffectAsync(
+        TemporaryPostgresDatabase database,
+        Guid eventId,
+        Guid areaId,
+        Guid gridCellId)
+    {
+        await using var dbContext = database.CreateDbContext();
+        var inboxEvent = await dbContext.InboxEvents.SingleAsync(entity => entity.EventId == eventId);
+        var attempts = await dbContext.ProcessingAttempts
+            .Where(entity => entity.InboxEventId == inboxEvent.Id)
+            .OrderBy(entity => entity.AttemptNumber)
+            .Select(entity => entity.Outcome)
+            .ToListAsync();
+
+        Assert.Equal(InboxEventStatus.Processed, inboxEvent.Status);
+        Assert.Equal([ProcessingAttemptOutcome.RetryScheduled, ProcessingAttemptOutcome.Succeeded], attempts);
+        Assert.Equal(2, inboxEvent.AttemptCount);
+        Assert.Equal(1, await dbContext.AcceptedReadingLogs.CountAsync(entity => entity.EventId == eventId));
+        Assert.Equal(1, await dbContext.RiskAssessmentLogs.CountAsync(entity => entity.SourceEventId == eventId));
+        Assert.Equal(1, await dbContext.AreaRiskSnapshotLogs.CountAsync(entity => entity.AreaId == areaId));
+        Assert.Equal(1, await dbContext.CellOperationalStates.CountAsync(entity => entity.GridCellId == gridCellId));
+        Assert.Equal(1, await dbContext.AreaOperationalStates.CountAsync(entity => entity.AreaId == areaId));
     }
 
     private static async Task AssertProcessedEffectsAsync(
@@ -986,6 +1205,16 @@ public sealed class DockerRabbitMqConsumerPipelineTests
             MetadataJson = "{\"source\":\"docker-rabbitmq-consumer-integration\"}"
         });
 
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task MarkProcessingLeaseAsStaleAsync(
+        TemporaryPostgresDatabase database,
+        Guid inboxEventId)
+    {
+        await using var dbContext = database.CreateDbContext();
+        var inboxEvent = await dbContext.InboxEvents.SingleAsync(entity => entity.Id == inboxEventId);
+        inboxEvent.LastAttemptAt = DateTimeOffset.UtcNow.AddMinutes(-10);
         await dbContext.SaveChangesAsync();
     }
 
@@ -1181,13 +1410,13 @@ public sealed class DockerRabbitMqConsumerPipelineTests
             _workerStarted = false;
         }
 
-        public PreventionWorker CreateWorker()
+        public PreventionWorker CreateWorker(IReadingEventInbox? inbox = null)
         {
             return new PreventionWorker(
                 NullLogger<PreventionWorker>.Instance,
                 Options.Create(RabbitMqOptions),
                 Options.Create(PreventionOptions),
-                Inbox,
+                inbox ?? Inbox,
                 ProcessingService);
         }
 
@@ -1198,6 +1427,16 @@ public sealed class DockerRabbitMqConsumerPipelineTests
                 Options.Create(PreventionOptions),
                 Inbox,
                 ProcessingService);
+        }
+
+        public Task DeleteRabbitMqVirtualHostAsync()
+        {
+            return _virtualHost.DeleteAsync(CancellationToken.None);
+        }
+
+        public Task<bool> RabbitMqVirtualHostExistsAsync()
+        {
+            return _virtualHost.ExistsAsync(CancellationToken.None);
         }
 
         public async ValueTask DisposeAsync()
@@ -1219,5 +1458,171 @@ public sealed class DockerRabbitMqConsumerPipelineTests
             cancellationToken.ThrowIfCancellationRequested();
             throw exception;
         }
+    }
+
+    private sealed class StoreFailureSignalInbox(
+        IReadingEventInbox inner,
+        Guid expectedEventId) : IReadingEventInbox
+    {
+        private readonly TaskCompletionSource<Exception> _storeFailureObserved =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<InboxStoreResult> StoreIncomingAsync(
+            EventEnvelope<SensorReadingProducedPayload> envelope,
+            ReadOnlyMemory<byte> rawBody,
+            string stage,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await inner.StoreIncomingAsync(envelope, rawBody, stage, cancellationToken);
+            }
+            catch (Exception ex) when (envelope.EventId == expectedEventId)
+            {
+                _storeFailureObserved.TrySetResult(ex);
+                throw;
+            }
+        }
+
+        public async Task WaitForStoreFailureAsync()
+        {
+            var completed = await Task.WhenAny(
+                _storeFailureObserved.Task,
+                Task.Delay(TimeSpan.FromSeconds(10)));
+
+            if (completed != _storeFailureObserved.Task)
+            {
+                throw new TimeoutException("The PostgreSQL outage did not reach inbox storage.");
+            }
+
+            await _storeFailureObserved.Task;
+        }
+
+        public Task StoreRejectedAsync(
+            ReadOnlyMemory<byte> rawBody,
+            string rejectionCode,
+            string rejectionReason,
+            RejectedEventMetadata? metadata,
+            CancellationToken cancellationToken) =>
+            inner.StoreRejectedAsync(rawBody, rejectionCode, rejectionReason, metadata, cancellationToken);
+
+        public Task CompleteProcessingAsync(
+            InboxProcessingLease lease,
+            CancellationToken cancellationToken) =>
+            inner.CompleteProcessingAsync(lease, cancellationToken);
+
+        public Task ScheduleRetryAsync(
+            InboxProcessingLease lease,
+            string errorCode,
+            string errorMessage,
+            TimeSpan retryDelay,
+            CancellationToken cancellationToken) =>
+            inner.ScheduleRetryAsync(lease, errorCode, errorMessage, retryDelay, cancellationToken);
+
+        public Task<InboxRetryWorkItem?> TryStartDueRetryAsync(
+            string stage,
+            CancellationToken cancellationToken,
+            TimeSpan? processingLeaseTimeout = null,
+            int? maxProcessingAttempts = null) =>
+            inner.TryStartDueRetryAsync(stage, cancellationToken, processingLeaseTimeout, maxProcessingAttempts);
+
+        public Task QuarantineProcessingAsync(
+            InboxProcessingLease lease,
+            string errorCode,
+            string errorMessage,
+            string quarantineCode,
+            string quarantineReason,
+            string? errorMetadataJson,
+            CancellationToken cancellationToken) =>
+            inner.QuarantineProcessingAsync(
+                lease,
+                errorCode,
+                errorMessage,
+                quarantineCode,
+                quarantineReason,
+                errorMetadataJson,
+                cancellationToken);
+    }
+
+    private sealed class DuplicateStoreSignalInbox(
+        IReadingEventInbox inner,
+        Guid expectedEventId) : IReadingEventInbox
+    {
+        private readonly TaskCompletionSource _duplicateObserved =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<InboxStoreResult> StoreIncomingAsync(
+            EventEnvelope<SensorReadingProducedPayload> envelope,
+            ReadOnlyMemory<byte> rawBody,
+            string stage,
+            CancellationToken cancellationToken)
+        {
+            var result = await inner.StoreIncomingAsync(envelope, rawBody, stage, cancellationToken);
+            if (result.IsDuplicate && envelope.EventId == expectedEventId)
+            {
+                _duplicateObserved.TrySetResult();
+            }
+
+            return result;
+        }
+
+        public async Task WaitForDuplicateAsync()
+        {
+            var completed = await Task.WhenAny(
+                _duplicateObserved.Task,
+                Task.Delay(TimeSpan.FromSeconds(10)));
+
+            if (completed != _duplicateObserved.Task)
+            {
+                throw new TimeoutException("The redelivered inbox event was not observed as a duplicate.");
+            }
+
+            await _duplicateObserved.Task;
+        }
+
+        public Task StoreRejectedAsync(
+            ReadOnlyMemory<byte> rawBody,
+            string rejectionCode,
+            string rejectionReason,
+            RejectedEventMetadata? metadata,
+            CancellationToken cancellationToken) =>
+            inner.StoreRejectedAsync(rawBody, rejectionCode, rejectionReason, metadata, cancellationToken);
+
+        public Task CompleteProcessingAsync(
+            InboxProcessingLease lease,
+            CancellationToken cancellationToken) =>
+            inner.CompleteProcessingAsync(lease, cancellationToken);
+
+        public Task ScheduleRetryAsync(
+            InboxProcessingLease lease,
+            string errorCode,
+            string errorMessage,
+            TimeSpan retryDelay,
+            CancellationToken cancellationToken) =>
+            inner.ScheduleRetryAsync(lease, errorCode, errorMessage, retryDelay, cancellationToken);
+
+        public Task<InboxRetryWorkItem?> TryStartDueRetryAsync(
+            string stage,
+            CancellationToken cancellationToken,
+            TimeSpan? processingLeaseTimeout = null,
+            int? maxProcessingAttempts = null) =>
+            inner.TryStartDueRetryAsync(stage, cancellationToken, processingLeaseTimeout, maxProcessingAttempts);
+
+        public Task QuarantineProcessingAsync(
+            InboxProcessingLease lease,
+            string errorCode,
+            string errorMessage,
+            string quarantineCode,
+            string quarantineReason,
+            string? errorMetadataJson,
+            CancellationToken cancellationToken) =>
+            inner.QuarantineProcessingAsync(
+                lease,
+                errorCode,
+                errorMessage,
+                quarantineCode,
+                quarantineReason,
+                errorMetadataJson,
+                cancellationToken);
     }
 }

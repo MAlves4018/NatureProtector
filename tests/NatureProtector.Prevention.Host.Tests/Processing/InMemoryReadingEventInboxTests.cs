@@ -199,6 +199,76 @@ public sealed class InMemoryReadingEventInboxTests
         Assert.Equal(ProcessingAttemptOutcome.Started, attempts[1].Outcome);
     }
 
+    [Theory]
+    [InlineData("complete")]
+    [InlineData("schedule_retry")]
+    [InlineData("quarantine")]
+    public async Task StaleProcessingLeaseFinalization_AfterRecovery_DoesNotClobberCurrentAttempt(
+        string operation)
+    {
+        var inbox = new InMemoryReadingEventInbox();
+        var envelope = EnvelopeFactory.Create();
+        var stored = await inbox.StoreIncomingAsync(
+            envelope,
+            JsonEventSerializer.SerializeToUtf8Bytes(envelope),
+            "reading_risk_pipeline",
+            CancellationToken.None);
+        SetLastAttemptAt(
+            inbox,
+            stored.InboxEventId,
+            DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(30)));
+
+        var recovered = await inbox.TryStartDueRetryAsync(
+            "reading_risk_pipeline",
+            CancellationToken.None,
+            TimeSpan.FromMinutes(5),
+            maxProcessingAttempts: 3);
+
+        Assert.NotNull(recovered);
+
+        switch (operation)
+        {
+            case "complete":
+                await inbox.CompleteProcessingAsync(stored.Lease!, CancellationToken.None);
+                break;
+            case "schedule_retry":
+                await inbox.ScheduleRetryAsync(
+                    stored.Lease!,
+                    "late_timeout",
+                    "late failure from expired attempt",
+                    TimeSpan.Zero,
+                    CancellationToken.None);
+                break;
+            case "quarantine":
+                await inbox.QuarantineProcessingAsync(
+                    stored.Lease!,
+                    "late_permanent_failure",
+                    "late permanent failure from expired attempt",
+                    "permanent_failure",
+                    "Late expired attempt should not quarantine current processing.",
+                    null,
+                    CancellationToken.None);
+                break;
+            default:
+                throw new InvalidOperationException($"Unsupported operation '{operation}'.");
+        }
+
+        var inboxEvent = Assert.Single(inbox.Events);
+        Assert.Equal(InboxEventStatus.Processing, inboxEvent.Status);
+        Assert.Equal(2, inboxEvent.AttemptCount);
+        Assert.Null(inboxEvent.LastProcessedAt);
+        Assert.Null(inboxEvent.QuarantinedAt);
+        Assert.Null(inboxEvent.LastErrorCode);
+        Assert.Null(inboxEvent.LastErrorMessage);
+
+        var attempts = inbox.Attempts.OrderBy(attempt => attempt.AttemptNumber).ToArray();
+        Assert.Equal(2, attempts.Length);
+        Assert.Equal(ProcessingAttemptOutcome.RetryScheduled, attempts[0].Outcome);
+        Assert.Equal("processing_lease_expired", attempts[0].ErrorCode);
+        Assert.Equal(ProcessingAttemptOutcome.Started, attempts[1].Outcome);
+        Assert.Empty(inbox.Quarantines);
+    }
+
     private static void CorruptEnvelope(
         InMemoryReadingEventInbox inbox,
         Guid inboxEventId,

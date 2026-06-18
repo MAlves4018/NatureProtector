@@ -4,9 +4,8 @@ Runs the guided local onboarding flow for NatureProtector.
 
 .DESCRIPTION
 This script orchestrates local setup without deleting data. It checks
-prerequisites, optionally invokes the opt-in installer, creates `.env` from
-`.env.example` if missing, starts infrastructure, validates it, and optionally
-starts the runtime.
+prerequisites, optionally invokes the opt-in installer, requires an existing
+`.env`, starts infrastructure, validates it, and optionally starts the runtime.
 #>
 
 [CmdletBinding()]
@@ -171,8 +170,7 @@ if ($prereqExitCode -ne 0) {
 
 $dotEnvPath = Join-Path $repoRoot ".env"
 if (-not (Test-Path -LiteralPath $dotEnvPath)) {
-    Copy-Item (Join-Path $repoRoot ".env.example") $dotEnvPath
-    Write-Host "Created .env from .env.example."
+    throw ".env is missing. Create it manually from .env.example, review local values, then rerun this setup script. This script will not create or edit .env."
 }
 
 Assert-InfluxTokenReady $dotEnvPath

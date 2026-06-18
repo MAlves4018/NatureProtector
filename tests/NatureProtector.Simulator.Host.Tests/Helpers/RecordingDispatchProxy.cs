@@ -7,12 +7,28 @@ internal class RecordingDispatchProxy<T> : DispatchProxy
 {
     public Dictionary<string, object?> ReturnValues { get; } = new(StringComparer.Ordinal);
     public Dictionary<string, object?> Properties { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, Action<IReadOnlyList<object?>>> Callbacks { get; } = new(StringComparer.Ordinal);
     public List<InvocationRecord> Invocations { get; } = [];
+    private readonly Dictionary<string, List<Delegate>> _eventHandlers = new(StringComparer.Ordinal);
 
     public static (T Proxy, RecordingDispatchProxy<T> Recorder) CreateProxy()
     {
         var proxy = DispatchProxy.Create<T, RecordingDispatchProxy<T>>();
         return (proxy, (RecordingDispatchProxy<T>)(object)proxy);
+    }
+
+    public void RaiseEvent<TEventArgs>(string eventName, object? sender, TEventArgs args)
+        where TEventArgs : EventArgs
+    {
+        if (!_eventHandlers.TryGetValue(eventName, out var handlers))
+        {
+            return;
+        }
+
+        foreach (var handler in handlers.ToArray())
+        {
+            handler.DynamicInvoke(sender, args);
+        }
     }
 
     protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
@@ -21,10 +37,40 @@ internal class RecordingDispatchProxy<T> : DispatchProxy
 
         var invocationArgs = args?.ToArray() ?? [];
         Invocations.Add(new InvocationRecord(targetMethod.Name, invocationArgs));
+        if (Callbacks.TryGetValue(targetMethod.Name, out var callback))
+        {
+            callback(invocationArgs);
+        }
 
         if (targetMethod.Name.StartsWith("set_", StringComparison.Ordinal))
         {
             Properties[targetMethod.Name[4..]] = invocationArgs[0];
+            return null;
+        }
+
+        if (targetMethod.Name.StartsWith("add_", StringComparison.Ordinal) &&
+            invocationArgs.FirstOrDefault() is Delegate addedHandler)
+        {
+            var eventName = targetMethod.Name[4..];
+            if (!_eventHandlers.TryGetValue(eventName, out var handlers))
+            {
+                handlers = [];
+                _eventHandlers[eventName] = handlers;
+            }
+
+            handlers.Add(addedHandler);
+            return null;
+        }
+
+        if (targetMethod.Name.StartsWith("remove_", StringComparison.Ordinal) &&
+            invocationArgs.FirstOrDefault() is Delegate removedHandler)
+        {
+            var eventName = targetMethod.Name[7..];
+            if (_eventHandlers.TryGetValue(eventName, out var handlers))
+            {
+                handlers.Remove(removedHandler);
+            }
+
             return null;
         }
 

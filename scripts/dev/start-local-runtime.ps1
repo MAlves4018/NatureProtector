@@ -272,6 +272,19 @@ function Wait-HttpReady {
     throw "$Name did not become HTTP-ready at $Url within $TimeoutSeconds seconds. Last error: $lastError"
 }
 
+function Invoke-DotnetProjectBuild {
+    param(
+        [string]$ProjectPath,
+        [string]$Name
+    )
+
+    Write-Host "Building $Name in Release before launch..."
+    & dotnet build $ProjectPath -c Release --no-restore
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Name Release build failed with exit code $LASTEXITCODE."
+    }
+}
+
 function Start-LoggedPowerShell {
     param(
         [string]$Name,
@@ -397,12 +410,17 @@ if (-not (Test-Path $webUiNodeModules)) {
     throw "webUI dependencies were not found at $webUiNodeModules. Run 'cd .\webUI; npm ci; cd ..' before starting the local runtime."
 }
 
+$apiProject = Join-Path $repositoryRoot 'src\NatureProtector.Backoffice.Api\NatureProtector.Backoffice.Api.csproj'
+$preventionProject = Join-Path $repositoryRoot 'src\NatureProtector.Prevention.Host\NatureProtector.Prevention.Host.csproj'
+Invoke-DotnetProjectBuild -ProjectPath $apiProject -Name 'Backoffice API'
+Invoke-DotnetProjectBuild -ProjectPath $preventionProject -Name 'Prevention Host'
+
 $processes = @()
 $processes += Start-LoggedPowerShell `
     -Name 'Backoffice API' `
     -WorkingDirectory $repositoryRoot `
     -Environment $commonEnvironment `
-    -Command 'dotnet run --no-restore --configfile NuGet.Config --project src\NatureProtector.Backoffice.Api\NatureProtector.Backoffice.Api.csproj --no-launch-profile' `
+    -Command 'dotnet run -c Release --no-build --no-restore --project src\NatureProtector.Backoffice.Api\NatureProtector.Backoffice.Api.csproj --no-launch-profile' `
     -LogPath (Join-Path $runRoot 'backoffice-api.log') `
     -ErrorLogPath (Join-Path $runRoot 'backoffice-api.err.log') `
     -Port $ApiPort `
@@ -412,7 +430,7 @@ $processes += Start-LoggedPowerShell `
     -Name 'Prevention Host' `
     -WorkingDirectory $repositoryRoot `
     -Environment $commonEnvironment `
-    -Command 'dotnet run --no-restore --configfile NuGet.Config --project src\NatureProtector.Prevention.Host\NatureProtector.Prevention.Host.csproj' `
+    -Command 'dotnet run -c Release --no-build --no-restore --project src\NatureProtector.Prevention.Host\NatureProtector.Prevention.Host.csproj --no-launch-profile' `
     -LogPath (Join-Path $runRoot 'prevention-host.log') `
     -ErrorLogPath (Join-Path $runRoot 'prevention-host.err.log') `
     -Port $null `

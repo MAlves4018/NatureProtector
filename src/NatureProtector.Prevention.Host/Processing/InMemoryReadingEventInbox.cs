@@ -194,6 +194,13 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
         {
             var now = DateTimeOffset.UtcNow;
             var inboxEvent = _eventsByInboxId[lease.InboxEventId];
+            var attempt = _attemptsById[lease.AttemptId];
+
+            if (!IsCurrentStartedLease(inboxEvent, attempt, lease))
+            {
+                return Task.CompletedTask;
+            }
+
             _eventsByInboxId[lease.InboxEventId] = inboxEvent with
             {
                 Status = InboxEventStatus.Processed,
@@ -207,7 +214,6 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
 
             _eventsByEventId[inboxEvent.EventId] = _eventsByInboxId[lease.InboxEventId];
 
-            var attempt = _attemptsById[lease.AttemptId];
             _attemptsById[lease.AttemptId] = attempt with
             {
                 FinishedAt = now,
@@ -233,6 +239,13 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
         {
             var now = DateTimeOffset.UtcNow;
             var inboxEvent = _eventsByInboxId[lease.InboxEventId];
+            var attempt = _attemptsById[lease.AttemptId];
+
+            if (!IsCurrentStartedLease(inboxEvent, attempt, lease))
+            {
+                return Task.CompletedTask;
+            }
+
             _eventsByInboxId[lease.InboxEventId] = inboxEvent with
             {
                 Status = InboxEventStatus.RetryPending,
@@ -246,7 +259,6 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
 
             _eventsByEventId[inboxEvent.EventId] = _eventsByInboxId[lease.InboxEventId];
 
-            var attempt = _attemptsById[lease.AttemptId];
             _attemptsById[lease.AttemptId] = attempt with
             {
                 FinishedAt = now,
@@ -407,6 +419,13 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
         {
             var now = DateTimeOffset.UtcNow;
             var inboxEvent = _eventsByInboxId[lease.InboxEventId];
+            var attempt = _attemptsById[lease.AttemptId];
+
+            if (!IsCurrentStartedLease(inboxEvent, attempt, lease))
+            {
+                return Task.CompletedTask;
+            }
+
             _eventsByInboxId[lease.InboxEventId] = inboxEvent with
             {
                 Status = InboxEventStatus.Quarantined,
@@ -420,7 +439,6 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
 
             _eventsByEventId[inboxEvent.EventId] = _eventsByInboxId[lease.InboxEventId];
 
-            var attempt = _attemptsById[lease.AttemptId];
             _attemptsById[lease.AttemptId] = attempt with
             {
                 FinishedAt = now,
@@ -440,6 +458,18 @@ public sealed class InMemoryReadingEventInbox : IReadingEventInbox
         }
 
         return Task.CompletedTask;
+    }
+
+    private static bool IsCurrentStartedLease(
+        InMemoryInboxEvent inboxEvent,
+        InMemoryProcessingAttempt attempt,
+        InboxProcessingLease lease)
+    {
+        return inboxEvent.Status == InboxEventStatus.Processing &&
+            inboxEvent.AttemptCount == lease.AttemptNumber &&
+            attempt.InboxEventId == lease.InboxEventId &&
+            attempt.AttemptNumber == lease.AttemptNumber &&
+            attempt.Outcome == ProcessingAttemptOutcome.Started;
     }
 
     private void QuarantineExpiredProcessingLease(

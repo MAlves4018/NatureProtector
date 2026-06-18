@@ -3,7 +3,7 @@
 Levanta a baseline local em Docker Compose.
 
 .DESCRIPTION
-O script muda para a raiz do repositório, garante que existe um `.env` local,
+O script muda para a raiz do repositório, exige que exista um `.env` local,
 prepara o ficheiro local de admin token do InfluxDB 3 e executa
 `docker compose up -d` para arrancar a infraestrutura de apoio.
 
@@ -11,6 +11,11 @@ prepara o ficheiro local de admin token do InfluxDB 3 e executa
 - Deve ser usado antes de correr a API, o simulador ou a pipeline de prevenção
   quando estes dependem dos serviços containerizados.
 #>
+
+[CmdletBinding()]
+param(
+    [switch]$SkipWorkspacePreparation
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -84,6 +89,19 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = (Resolve-Path (Join-Path $ScriptDir "..\..")).Path
 Set-Location $ProjectRoot
 
+$WorkspaceScript = Join-Path $ProjectRoot "scripts\workspace.ps1"
+if (-not $SkipWorkspacePreparation -and (Test-Path -LiteralPath $WorkspaceScript)) {
+    $workspaceOutput = Invoke-CheckedExternalCommand `
+        "powershell" `
+        @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $WorkspaceScript, "setup") `
+        "Workspace setup failed before Docker infrastructure startup." `
+        $ProjectRoot
+
+    if (-not [string]::IsNullOrWhiteSpace($workspaceOutput)) {
+        Write-Host $workspaceOutput
+    }
+}
+
 $ComposeFile = Join-Path $ProjectRoot "docker-compose.yml"
 
 if (-not (Test-Path -LiteralPath $ComposeFile)) {
@@ -95,10 +113,9 @@ Assert-CommandAvailable "docker" "Install Docker Desktop, open it, and re-run sc
 Invoke-CheckedExternalCommand "docker" @("info", "--format", "{{.ServerVersion}}") "Docker engine is not reachable. Start Docker Desktop before running up.ps1." | Out-Null
 Invoke-CheckedExternalCommand "docker" @("compose", "version") "Docker Compose v2 is not available. Install/update Docker Desktop before running up.ps1." | Out-Null
 
-# Cria `.env` a partir do exemplo apenas na primeira execução local.
 if (-not (Test-Path ".env")) {
-    Copy-Item ".env.example" ".env"
-    Write-Host "Created .env from .env.example. Review local values before sharing this machine-specific configuration."
+    Write-Error ".env is missing. Create it manually from .env.example and review machine-specific values before running infra/scripts/up.ps1. This script will not create or edit .env."
+    exit 1
 }
 
 # Prepara o ficheiro local de admin token usado pelo InfluxDB 3 no primeiro arranque

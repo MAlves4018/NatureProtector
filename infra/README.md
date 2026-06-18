@@ -18,7 +18,7 @@ O Compose está definido em [../docker-compose.yml](../docker-compose.yml) e as 
 ## Scripts disponíveis
 
 - [scripts/up.ps1](scripts/up.ps1)
-  - sobe a baseline local e cria `.env` a partir de `.env.example` quando necessário
+  - sobe a baseline local; exige `.env` existente e nao cria nem altera esse ficheiro
 - [scripts/down.ps1](scripts/down.ps1)
   - desce os serviços
 - [scripts/logs.ps1](scripts/logs.ps1)
@@ -31,7 +31,7 @@ O Compose está definido em [../docker-compose.yml](../docker-compose.yml) e as 
 Para levantar a baseline local, devemos executar:
 
 ```powershell
-.\infra\scripts\up.ps1
+.\scripts\workspace.ps1 up
 .\infra\scripts\smoke-test.ps1
 ```
 
@@ -44,7 +44,7 @@ Para observar os logs, devemos executar:
 Para desligar tudo, devemos executar:
 
 ```powershell
-.\infra\scripts\down.ps1
+.\scripts\workspace.ps1 down
 ```
 
 ## O que já está preparado

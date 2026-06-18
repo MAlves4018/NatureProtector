@@ -309,7 +309,12 @@ Write-Host "NatureProtector local prerequisite check"
 Write-Host "Repository root: $repoRoot"
 Write-Host ""
 
-Test-Tool "Git" "git" @("--version") $true
+if (Get-CommandPath "git") {
+    Add-Result "OK" "Git executable" "found on PATH without executing Git" $false
+}
+else {
+    Add-Result "WARN" "Git executable" "git was not found on PATH. This prerequisite script does not execute Git commands." $false
+}
 Test-Tool ".NET SDK" "dotnet" @("--version") $true
 Test-DotNetSdkTarget $repoRoot
 Test-Tool "Docker CLI" "docker" @("--version") $true
@@ -357,7 +362,7 @@ if (Test-Path -LiteralPath $dotEnvPath) {
     }
 }
 else {
-    Add-Result "WARN" ".env" "missing; Setup-LocalEnvironment.ps1 or up.ps1 can create it from .env.example" $false
+    Add-Result "WARN" ".env" "missing; create it manually from .env.example. Local setup scripts will not create or edit .env." $false
 }
 
 $frontendPackage = Join-Path $repoRoot "webUI\package.json"

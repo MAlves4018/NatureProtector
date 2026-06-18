@@ -190,6 +190,12 @@ public sealed class PostgresReadingEventInbox(
         var attempt = await dbContext.ProcessingAttempts
             .SingleAsync(entity => entity.Id == lease.AttemptId, cancellationToken);
 
+        if (!IsCurrentStartedLease(inboxEvent, attempt, lease))
+        {
+            LogIgnoredStaleLease("complete", inboxEvent, attempt, lease);
+            return;
+        }
+
         inboxEvent.Status = InboxEventStatus.Processed;
         inboxEvent.LastAttemptAt = now;
         inboxEvent.LastProcessedAt = now;
@@ -227,6 +233,12 @@ public sealed class PostgresReadingEventInbox(
             .SingleAsync(entity => entity.Id == lease.InboxEventId, cancellationToken);
         var attempt = await dbContext.ProcessingAttempts
             .SingleAsync(entity => entity.Id == lease.AttemptId, cancellationToken);
+
+        if (!IsCurrentStartedLease(inboxEvent, attempt, lease))
+        {
+            LogIgnoredStaleLease("schedule_retry", inboxEvent, attempt, lease);
+            return;
+        }
 
         inboxEvent.Status = InboxEventStatus.RetryPending;
         inboxEvent.LastAttemptAt = now;
@@ -412,6 +424,12 @@ public sealed class PostgresReadingEventInbox(
         var attempt = await dbContext.ProcessingAttempts
             .SingleAsync(entity => entity.Id == lease.AttemptId, cancellationToken);
 
+        if (!IsCurrentStartedLease(inboxEvent, attempt, lease))
+        {
+            LogIgnoredStaleLease("quarantine", inboxEvent, attempt, lease);
+            return;
+        }
+
         inboxEvent.Status = InboxEventStatus.Quarantined;
         inboxEvent.LastAttemptAt = now;
         inboxEvent.LastProcessedAt = null;
@@ -438,6 +456,34 @@ public sealed class PostgresReadingEventInbox(
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private void LogIgnoredStaleLease(
+        string operation,
+        InboxEventRecord inboxEvent,
+        ProcessingAttemptRecord attempt,
+        InboxProcessingLease lease)
+    {
+        logger.LogWarning(
+            "Ignored stale inbox lease finalization. Operation={Operation} InboxEventId={InboxEventId} LeaseAttempt={LeaseAttemptNumber} CurrentAttempt={CurrentAttemptCount} Status={Status} AttemptOutcome={AttemptOutcome}",
+            operation,
+            lease.InboxEventId,
+            lease.AttemptNumber,
+            inboxEvent.AttemptCount,
+            inboxEvent.Status,
+            attempt.Outcome);
+    }
+
+    private static bool IsCurrentStartedLease(
+        InboxEventRecord inboxEvent,
+        ProcessingAttemptRecord attempt,
+        InboxProcessingLease lease)
+    {
+        return inboxEvent.Status == InboxEventStatus.Processing &&
+            inboxEvent.AttemptCount == lease.AttemptNumber &&
+            attempt.InboxEventId == lease.InboxEventId &&
+            attempt.AttemptNumber == lease.AttemptNumber &&
+            attempt.Outcome == ProcessingAttemptOutcome.Started;
     }
 
     private static string MergeQuarantineMetadata(string stage, string? errorMetadataJson)

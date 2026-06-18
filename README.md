@@ -93,16 +93,14 @@ Fluxo resumido:
 
 ```powershell
 Copy-Item .env.example .env
-.\infra\scripts\up.ps1
-.\scripts\postgres\bootstrap-control-plane.ps1
-.\scripts\setup\Test-LocalBaseline.ps1 -InfrastructureOnly
-cd .\webUI
-npm ci
-cd ..
-powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+.\scripts\workspace.ps1 setup
+.\scripts\workspace.ps1 up -StartRuntime -OpenBrowser
+.\scripts\workspace.ps1 validate -Profile Quick
 ```
 
 O `.env.example` inclui o token local/dev de conveniência usado pela baseline académica. O ficheiro `.env` é local e não deve ser versionado. `dotnet ef` fica reservado para validação avançada/desenvolvimento; não é parte do caminho normal clone-to-run.
+
+Os scripts de workspace e infraestrutura nao criam, copiam nem alteram `.env`; crie o ficheiro manualmente a partir de `.env.example` e reveja os valores locais antes de subir a baseline.
 
 Login local em ambiente `Development`:
 

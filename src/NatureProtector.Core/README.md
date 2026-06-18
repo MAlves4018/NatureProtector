@@ -54,4 +54,4 @@ Este projeto contém a linguagem comum do domínio. É aqui que definimos os con
 Este é o projeto mais maduro da solução. A cobertura de testes existente em [../../tests/NatureProtector.Core.Tests](../../tests/NatureProtector.Core.Tests) confirma isso e faz dele a melhor porta de entrada para perceber o vocabulário do sistema.
 
 ## Nota
-Até o simulador, os datasets e o PostgreSQL estarem fechados este módulo pode continuar a sofrer alterações estruturais controladas.
+Até o simulador, os datasets e o PostgreSQL estarem estabilizados este módulo pode continuar a sofrer alterações estruturais controladas.
