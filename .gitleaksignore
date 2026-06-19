@@ -6,3 +6,7 @@ bfb8662544ff11d6b6029f7e0a2ebe4d77b35320:webUI/src/app/ui-v2/theme/ui-v2.css:gen
 74472c7a2819ae13ca76985990ba152d5ca37bf3:src/NatureProtector.Backoffice.Api/NatureProtector.Backoffice.Api.http:jwt:133
 74472c7a2819ae13ca76985990ba152d5ca37bf3:src/NatureProtector.Backoffice.Api/NatureProtector.Backoffice.Api.http:jwt:134
 7fff3bca0992c3bbb9da2c665c5d7b0689bfc76a:.env:generic-api-key:13
+# Synthetic JWT signing material used only by PostgreSQL integration tests.
+# The source fixture was replaced by deterministic runtime-generated test material.
+d9d96a6a5a2b92ae24e87c405958b0f003457b72:tests/NatureProtector.IntegrationTests/UserPlane/PostgresUserRolePlaneServiceTests.cs:generic-api-key:31
+d9d96a6a5a2b92ae24e87c405958b0f003457b72:tests/NatureProtector.IntegrationTests/UserPlane/PostgresUserRolePlaneServiceTests.cs:generic-api-key:282

@@ -110,6 +110,7 @@ jobs:
       NP_TEST_INFLUXDB_TOKEN: local-test-token
       NP_TEST_INFLUXDB_ORGANIZATION: natureprotector
       NP_TEST_INFLUXDB_BUCKET: np_telemetry
+      NP_TEST_INFLUXDB_CONTAINER: np-influxdb-it
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4

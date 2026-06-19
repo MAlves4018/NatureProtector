@@ -28,7 +28,9 @@ public sealed class PostgresUserRolePlaneServiceTests
 {
     private const string Issuer = "NatureProtector.IntegrationTests";
     private const string Audience = "NatureProtector.Backoffice.IntegrationTests";
-    private const string SigningKey = "nature-protector-integration-signing-key-32";
+    // Deterministic synthetic material generated at runtime for integration tests only.
+    private static readonly string SigningKey = new string('K', 64);
+    private static readonly string InvalidSigningKey = new string('W', 64);
 
     [Fact]
     [Trait("Category", "DockerIntegration")]
@@ -279,7 +281,7 @@ public sealed class PostgresUserRolePlaneServiceTests
         foreach (var invalidToken in new[]
         {
             CreateToken(admin.Id, "api-admin", "api-admin@example.test", ["Admin"], expires: DateTime.UtcNow.AddMinutes(-1)),
-            CreateToken(admin.Id, "api-admin", "api-admin@example.test", ["Admin"], signingKey: "wrong-nature-protector-integration-key-32"),
+            CreateToken(admin.Id, "api-admin", "api-admin@example.test", ["Admin"], signingKey: InvalidSigningKey),
             CreateToken(admin.Id, "api-admin", "api-admin@example.test", ["Admin"], issuer: "WrongIssuer"),
             CreateToken(admin.Id, "api-admin", "api-admin@example.test", ["Admin"], audience: "WrongAudience")
         })
@@ -339,10 +341,11 @@ public sealed class PostgresUserRolePlaneServiceTests
         IReadOnlyList<string> roles,
         string issuer = Issuer,
         string audience = Audience,
-        string signingKey = SigningKey,
+        string? signingKey = null,
         DateTime? expires = null)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
+        var resolvedSigningKey = signingKey ?? SigningKey;
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(resolvedSigningKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var claims = new List<Claim>
         {

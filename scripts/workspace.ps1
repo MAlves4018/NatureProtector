@@ -220,6 +220,35 @@ function Test-WorkspacePrerequisites {
         [switch]$RequireDotEnv
     )
 
+    if ($PlanOnly) {
+        Write-WorkspaceLine "PLAN" "Check operating system."
+        Write-WorkspaceLine "PLAN" "Check PowerShell version."
+        Write-WorkspaceLine "PLAN" "Check repository-pinned .NET SDK."
+        Write-WorkspaceLine "PLAN" "Check repository-supported Node.js version."
+        Write-WorkspaceLine "PLAN" "Check npm availability."
+        Write-WorkspaceLine "PLAN" "Git executable: report availability without executing Git."
+        Write-WorkspaceLine "PLAN" "Check .env.example existence."
+
+        if ($RequireDocker) {
+            Write-WorkspaceLine "PLAN" "Check Docker CLI, engine and Docker Compose."
+        }
+        else {
+            Write-WorkspaceLine "PLAN" "Docker checks are optional for this command."
+        }
+
+        if ($RequireDotEnv) {
+            Write-WorkspaceLine "PLAN" "Require manually managed .env without creating or editing it."
+        }
+        else {
+            Write-WorkspaceLine "PLAN" "Report .env state without requiring or modifying it."
+        }
+
+        Write-WorkspaceLine "PLAN" "Check local service port availability."
+        Write-WorkspaceLine "PLAN" "Check disk space and Playwright configuration."
+
+        return @()
+    }
+
     $results = [System.Collections.Generic.List[object]]::new()
 
     if ($IsWindows -or $env:OS -eq "Windows_NT") {
