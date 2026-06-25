@@ -33,7 +33,11 @@ def env_map(path: str, document_index: int = 0) -> dict[str, object]:
 
 
 loader = read("src/NatureProtector.Infrastructure.Postgres/Configuration/PostgresConnectionSettingsLoader.cs")
-required_match = re.search(r"RequiredKeys\s*=\s*\[(.*?)\];", loader, re.DOTALL)
+required_match = re.search(
+    r"ThrowIfRequiredValuesAreMissing\(\s*requireExplicit,\s*dotEnvValues,\s*(.*?)\);",
+    loader,
+    re.DOTALL,
+)
 check(required_match is not None, "postgres-required-keys-not-discovered")
 required_postgres = set(re.findall(r'"(POSTGRES_[A-Z_]+)"', required_match.group(1) if required_match else ""))
 required_postgres.add("POSTGRES_REQUIRE_EXPLICIT")

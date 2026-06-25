@@ -9,6 +9,8 @@ from pathlib import Path
 import yaml
 from jsonschema import Draft202012Validator
 
+from g8_state_evidence import load_required_json, validate_g8_state_document
+
 try:
     import hcl2
 except ImportError:  # pragma: no cover
@@ -103,11 +105,18 @@ json_files = sorted((ROOT / "infra/gcp/production").glob("g8-1-*.json")) + [
 ]
 parsed_json: dict[Path, object] = {}
 for path in json_files:
-    try:
-        parsed_json[path] = json.loads(path.read_text(encoding="utf-8"))
-        check(True, "")
-    except Exception as exc:  # noqa: BLE001
-        check(False, f"json:{path.relative_to(ROOT)}:{exc}")
+    result = load_required_json(path, ROOT)
+    if result.error is not None:
+        check(False, result.error)
+        continue
+
+    parsed_json[path] = result.data
+    check(True, "")
+
+state_path = ROOT / "docs/evidence/g8-1-state.json"
+if state_path in parsed_json:
+    for issue in validate_g8_state_document(parsed_json[state_path], "G8.1"):
+        check(False, issue)
 
 schema_path = ROOT / "infra/gcp/contracts/g8-1-release-manifest.schema.json"
 example_path = ROOT / "infra/gcp/contracts/g8-1-release-manifest.example.json"
