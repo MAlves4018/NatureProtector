@@ -98,6 +98,8 @@ docs/evidence/V3/*
 docs/evidence/controlled-validation/*
 /docs/evidence/diagnostics/
 /docs/evidence/m06-readiness
+!docs/evidence/g8-1-state.json
+!docs/evidence/g8-2-state.json
 #TEMP 
 docs/planning/V0/
 docs/planning/V1/

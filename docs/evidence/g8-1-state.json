@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "phase": "G8.1",
+  "date": "2026-06-20",
+  "status": "G8_1_PRODUCTION_ARCHITECTURE_AND_CD_IMPLEMENTED_STATICALLY",
+  "cloud_provisioned": false,
+  "cn_resources_used": false,
+  "projects_created": false,
+  "project_creation_allowed_before_g10": false,
+  "production_authorized": false,
+  "production_deployed": false,
+  "next_phase": "G8.2_QUALIFICATION_AND_EVIDENCE_INTEGRITY_REMEDIATION",
+  "claim_limit": "CLOUD_NOT_PROVISIONED_AND_PRODUCTION_NO_GO",
+  "static_validation_status": "PASS",
+  "g8_1_static_checks": 265,
+  "g8_regression_checks": 1622,
+  "g7_regression_checks": 360,
+  "release_manifest_images": 11,
+  "frontend_tests_passed": 47,
+  "runtime_validation_executed": false,
+  "terraform_cli_validation_executed": false,
+  "dotnet_validation_executed": false
+}
