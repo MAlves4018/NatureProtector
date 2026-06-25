@@ -1,0 +1,76 @@
+name: G8.2 submit signed governance document
+
+on:
+  workflow_dispatch:
+    inputs:
+      document_type:
+        description: Signed document type
+        required: true
+        type: choice
+        options: [independent-review, authorization-decision]
+      candidate_commit:
+        description: Exact candidate commit
+        required: true
+        type: string
+      document_b64:
+        description: Base64-encoded UTF-8 JSON document
+        required: true
+        type: string
+      signature_b64:
+        description: Base64-encoded detached OpenSSH signature
+        required: true
+        type: string
+      confirmation:
+        description: SUBMIT_G82_SIGNED_GOVERNANCE
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  attestations: write
+
+jobs:
+  submit:
+    if: inputs.confirmation == 'SUBMIT_G82_SIGNED_GOVERNANCE'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ inputs.candidate_commit }}
+      - name: Install validator dependency
+        shell: bash
+        run: python -m pip install -r scripts/cloud/requirements-g82.txt
+      - name: Decode and schema-validate signed payload
+        shell: bash
+        env:
+          DOC_B64: ${{ inputs.document_b64 }}
+          SIG_B64: ${{ inputs.signature_b64 }}
+          DOCUMENT_TYPE: ${{ inputs.document_type }}
+        run: |
+          set -euo pipefail
+          mkdir -p '${{ runner.temp }}/submission'
+          printf '%s' "$DOC_B64" | base64 -d > '${{ runner.temp }}/submission/document.json'
+          printf '%s' "$SIG_B64" | base64 -d > '${{ runner.temp }}/submission/document.json.sig'
+          if [[ "$DOCUMENT_TYPE" == independent-review ]]; then schema=g8-2-independent-review.schema.json; else schema=g8-2-authorization-decision.schema.json; fi
+          python - "$schema" '${{ runner.temp }}/submission/document.json' <<'PY'
+          import json,sys
+          sys.path.insert(0,'scripts/cloud')
+          from g82_common import validate_schema
+          validate_schema(json.load(open(sys.argv[2],encoding='utf-8')),sys.argv[1])
+          PY
+          test -s '${{ runner.temp }}/submission/document.json.sig'
+          printf '%s\n' "$DOCUMENT_TYPE" > '${{ runner.temp }}/submission/document-type.txt'
+          sha256sum '${{ runner.temp }}/submission/document.json' '${{ runner.temp }}/submission/document.json.sig' > '${{ runner.temp }}/submission/checksums.sha256'
+          (cd '${{ runner.temp }}/submission' && zip -qr g82-signed-governance.zip document.json document.json.sig document-type.txt checksums.sha256)
+      - name: Attest signed submission container
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path: ${{ runner.temp }}/submission/g82-signed-governance.zip
+      - name: Upload signed submission
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g82-${{ inputs.document_type }}-submission
+          path: ${{ runner.temp }}/submission/g82-signed-governance.zip
+          retention-days: 365
+          if-no-files-found: error

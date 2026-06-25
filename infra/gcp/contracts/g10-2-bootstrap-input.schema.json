@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://natureprotector.local/schemas/g10-2-bootstrap-input.schema.json",
+  "title": "NatureProtector G10.2 controlled bootstrap input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "repository",
+    "repository_id",
+    "repository_owner_id",
+    "default_branch",
+    "billing_account_id",
+    "platform_project_id",
+    "staging_project_id",
+    "production_project_id",
+    "primary_region",
+    "terraform_state_bucket_name",
+    "evidence_bucket_name",
+    "expected_gcloud_account",
+    "qualification_window",
+    "cost_guardrails",
+    "execution"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "repository": { "const": "MAlves4018/NatureProtector" },
+    "repository_id": { "type": "string", "pattern": "^[1-9][0-9]+$" },
+    "repository_owner_id": { "type": "string", "pattern": "^[1-9][0-9]+$" },
+    "default_branch": { "const": "master" },
+    "billing_account_id": { "const": "0109B8-93144E-B93C1C" },
+    "platform_project_id": { "$ref": "#/$defs/projectId" },
+    "staging_project_id": { "$ref": "#/$defs/projectId" },
+    "production_project_id": { "$ref": "#/$defs/projectId" },
+    "primary_region": { "const": "europe-southwest1" },
+    "terraform_state_bucket_name": { "$ref": "#/$defs/bucketName" },
+    "evidence_bucket_name": { "$ref": "#/$defs/bucketName" },
+    "expected_gcloud_account": { "type": "string", "format": "email" },
+    "qualification_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["starts_at", "ends_at", "teardown_owner"],
+      "properties": {
+        "starts_at": { "type": "string", "format": "date-time" },
+        "ends_at": { "type": "string", "format": "date-time" },
+        "teardown_owner": { "type": "string", "minLength": 3 }
+      }
+    },
+    "cost_guardrails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observed_credit_usd",
+        "minimum_credit_to_preserve_usd",
+        "staging_budget_amount",
+        "budget_currency",
+        "budget_is_hard_cap"
+      ],
+      "properties": {
+        "observed_credit_usd": { "type": "number", "exclusiveMinimum": 0 },
+        "minimum_credit_to_preserve_usd": { "type": "number", "minimum": 0 },
+        "staging_budget_amount": { "type": "number", "exclusiveMinimum": 0 },
+        "budget_currency": { "type": "string", "enum": ["EUR", "USD"] },
+        "budget_is_hard_cap": { "const": false }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "create_projects",
+        "link_billing",
+        "create_state_foundation",
+        "create_delivery_control_plane",
+        "create_data_plane",
+        "create_edge",
+        "materialize_generated_secrets"
+      ],
+      "properties": {
+        "create_projects": { "type": "boolean" },
+        "link_billing": { "type": "boolean" },
+        "create_state_foundation": { "const": false },
+        "create_delivery_control_plane": { "const": false },
+        "create_data_plane": { "const": false },
+        "create_edge": { "const": false },
+        "materialize_generated_secrets": { "const": false }
+      }
+    }
+  },
+  "$defs": {
+    "projectId": {
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 30,
+      "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]$"
+    },
+    "bucketName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9][a-z0-9._-]*[a-z0-9]$"
+    }
+  }
+}

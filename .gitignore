@@ -87,6 +87,7 @@ node_modules/csstype/README.md
 repomix.config.json
 
 # Runtime evidence logs
+docs/evidence/*
 docs/evidence/dev-runtime/*
 docs/evidence/runs/*
 docs/evidence/ml/*
@@ -124,3 +125,6 @@ webUI/npm-audit.policy.json
 __pycache__/
 **/__pycache__/
 *.py[cod]
+
+# Terraform local working directories
+**/.terraform/**

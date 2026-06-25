@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "billing_account_id": "0109B8-93144E-B93C1C",
+  "expected_gcloud_account": "migkxl@gmail.com",
+  "budget_is_hard_cap": false,
+  "thresholds": [
+    0.5,
+    0.75,
+    0.9,
+    1.0
+  ],
+  "budgets": [
+    {
+      "role": "billing",
+      "scope": "billing-account",
+      "display_name": "NatureProtector billing safeguard",
+      "amount": 3.0,
+      "currency": "EUR",
+      "calendar_period": "month"
+    },
+    {
+      "role": "platform",
+      "scope": "project",
+      "project_id": "np-platform-migkxl-202606",
+      "display_name": "NatureProtector platform",
+      "amount": 1.0,
+      "currency": "EUR",
+      "calendar_period": "month"
+    },
+    {
+      "role": "staging",
+      "scope": "project",
+      "project_id": "np-staging-migkxl-202606",
+      "display_name": "NatureProtector staging",
+      "amount": 1.0,
+      "currency": "EUR",
+      "calendar_period": "month"
+    },
+    {
+      "role": "production",
+      "scope": "project",
+      "project_id": "np-production-migkxl-202606",
+      "display_name": "NatureProtector production",
+      "amount": 1.0,
+      "currency": "EUR",
+      "calendar_period": "month"
+    }
+  ],
+  "execution": {
+    "create_budget_alerts": false,
+    "default_iam_recipients_enabled": true,
+    "create_pubsub_notifications": false
+  }
+}

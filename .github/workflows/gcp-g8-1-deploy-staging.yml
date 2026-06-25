@@ -1,0 +1,168 @@
+name: G8.1 deploy verified release to staging
+
+on:
+  workflow_run:
+    workflows: [G8.1 build immutable release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      release_run_id:
+        description: Successful G8.1 release workflow run ID
+        required: true
+        type: string
+      deployment_mode:
+        description: Use services-only-bootstrap only for the first edge bootstrap
+        required: false
+        default: verified
+        type: choice
+        options: [verified, services-only-bootstrap]
+      edge_bootstrap_confirmation:
+        description: For services-only-bootstrap, type BOOTSTRAP_SERVICES_BEFORE_EDGE
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: g8-1-staging
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch)
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Resolve release workflow run
+        id: run
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          AUTO_RUN: ${{ github.event.workflow_run.id }}
+          INPUT_RUN: ${{ inputs.release_run_id }}
+        run: |
+          set -euo pipefail
+          run_id="$AUTO_RUN"; [[ "$EVENT_NAME" == workflow_dispatch ]] && run_id="$INPUT_RUN"
+          [[ "$run_id" =~ ^[0-9]+$ ]]
+          echo "id=$run_id" >> "$GITHUB_OUTPUT"
+      - name: Resolve edge bootstrap mode
+        id: mode
+        shell: bash
+        env:
+          INPUT_MODE: ${{ inputs.deployment_mode }}
+          INPUT_CONFIRMATION: ${{ inputs.edge_bootstrap_confirmation }}
+        run: |
+          set -euo pipefail
+          mode="${INPUT_MODE:-verified}"
+          [[ "$mode" == verified || "$mode" == services-only-bootstrap ]]
+          if [[ "$mode" == services-only-bootstrap ]]; then
+            [[ "$INPUT_CONFIRMATION" == BOOTSTRAP_SERVICES_BEFORE_EDGE ]]
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "confirmation=$INPUT_CONFIRMATION" >> "$GITHUB_OUTPUT"
+      - name: Download immutable release artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: g81-release
+          path: g81-release
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.run.outputs.id }}
+      - name: Validate release workflow provenance
+        id: source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.run.outputs.id }}
+        run: |
+          set -euo pipefail
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID")
+          [[ "$(jq -r .conclusion <<<"$run")" == success ]]
+          [[ "$(jq -r .path <<<"$run")" == '.github/workflows/gcp-g8-1-release.yml' ]]
+          manifest_sha=$(jq -r .source_commit g81-release/release-manifest.json)
+          [[ "$manifest_sha" == "$(jq -r .head_sha <<<"$run")" ]]
+          short_sha="${manifest_sha:0:12}"
+          release_name="git-${short_sha}-r${RUN_ID}"
+          [[ ${#release_name} -le 63 ]]
+          gh attestation verify g81-release/release-manifest.json --repo "$GITHUB_REPOSITORY" > g81-release/manifest-attestation-verification.txt
+          echo "sha=$manifest_sha" >> "$GITHUB_OUTPUT"
+          echo "release_name=$release_name" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact release source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          path: source
+      - name: Validate release manifest with exact source validator
+        run: python3 source/scripts/cloud/Test-G81ReleaseManifest.py g81-release/release-manifest.json
+      - name: Authenticate with staging identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          workload_identity_provider: ${{ vars.GCP_G81_STAGING_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_G81_STAGING_SERVICE_ACCOUNT }}
+      - name: Install gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+        with:
+          version: '>= 552.0.0'
+      - name: Install GKE client components
+        shell: bash
+        run: gcloud components install --quiet gke-gcloud-auth-plugin kubectl
+      - name: Deploy runtime prerequisites and verified staging rollouts
+        shell: pwsh
+        working-directory: source
+        run: >-
+          ./scripts/cloud/Deploy-G81Staging.ps1
+          -ManifestPath ../g81-release/release-manifest.json
+          -PlatformProjectId '${{ vars.GCP_PLATFORM_PROJECT_ID }}'
+          -StagingProjectId '${{ vars.GCP_STAGING_PROJECT_ID }}'
+          -Region '${{ vars.GCP_REGION }}'
+          -ClusterName '${{ vars.GCP_STAGING_CLUSTER_NAME }}'
+          -ReleaseName '${{ steps.source.outputs.release_name }}'
+          -RuntimeNetwork '${{ vars.GCP_STAGING_NETWORK }}'
+          -RuntimeSubnetwork '${{ vars.GCP_STAGING_SUBNETWORK }}'
+          -CloudSqlPrivateIp '${{ vars.GCP_STAGING_CLOUD_SQL_PRIVATE_IP }}'
+          -RabbitMqHost '${{ vars.GCP_STAGING_RABBITMQ_HOST }}'
+          -RabbitMqTlsServerName '${{ vars.GCP_STAGING_RABBITMQ_TLS_SERVER_NAME }}'
+          -OtelEndpoint '${{ vars.GCP_STAGING_OTEL_ENDPOINT }}'
+          -SimulatorServiceAccount '${{ vars.GCP_STAGING_SIMULATOR_SERVICE_ACCOUNT }}'
+          -MigrationServiceAccount '${{ vars.GCP_STAGING_MIGRATION_SERVICE_ACCOUNT }}'
+          -BootstrapServiceAccount '${{ vars.GCP_STAGING_BOOTSTRAP_SERVICE_ACCOUNT }}'
+          -SmokeServiceAccount '${{ vars.GCP_STAGING_SMOKE_SERVICE_ACCOUNT }}'
+          -FrontendOrigin '${{ vars.GCP_STAGING_FUNCTIONAL_SMOKE_ORIGIN }}'
+          -BootstrapAdminUsername '${{ vars.GCP_STAGING_BOOTSTRAP_ADMIN_USERNAME }}'
+          -PostgresAppPasswordSecret '${{ vars.GCP_STAGING_POSTGRES_APP_PASSWORD_SECRET }}'
+          -PostgresAppPasswordVersion '${{ vars.GCP_STAGING_POSTGRES_APP_PASSWORD_VERSION }}'
+          -PostgresMigrationPasswordSecret '${{ vars.GCP_STAGING_POSTGRES_MIGRATION_PASSWORD_SECRET }}'
+          -PostgresMigrationPasswordVersion '${{ vars.GCP_STAGING_POSTGRES_MIGRATION_PASSWORD_VERSION }}'
+          -BootstrapAdminPasswordSecret '${{ vars.GCP_STAGING_BOOTSTRAP_ADMIN_PASSWORD_SECRET }}'
+          -BootstrapAdminPasswordVersion '${{ vars.GCP_STAGING_BOOTSTRAP_ADMIN_PASSWORD_VERSION }}'
+          -RabbitMqUsernameSecret '${{ vars.GCP_STAGING_RABBITMQ_USERNAME_SECRET }}'
+          -RabbitMqUsernameVersion '${{ vars.GCP_STAGING_RABBITMQ_USERNAME_VERSION }}'
+          -RabbitMqPasswordSecret '${{ vars.GCP_STAGING_RABBITMQ_PASSWORD_SECRET }}'
+          -RabbitMqPasswordVersion '${{ vars.GCP_STAGING_RABBITMQ_PASSWORD_VERSION }}'
+          -RabbitMqCaSecret '${{ vars.GCP_STAGING_RABBITMQ_CA_SECRET }}'
+          -RabbitMqCaVersion '${{ vars.GCP_STAGING_RABBITMQ_CA_VERSION }}'
+          -CloudSqlCaSecret '${{ vars.GCP_STAGING_CLOUD_SQL_CA_SECRET }}'
+          -CloudSqlCaVersion '${{ vars.GCP_STAGING_CLOUD_SQL_CA_VERSION }}'
+          -EvidenceDirectory '${{ runner.temp }}/g81-staging-evidence'
+          -DeploymentMode '${{ steps.mode.outputs.mode }}'
+          -EdgeBootstrapConfirmation '${{ steps.mode.outputs.confirmation }}'
+      - name: Attest sealed staging evidence checksums
+        if: success()
+        uses: actions/attest-build-provenance@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path: ${{ runner.temp }}/g81-staging-evidence/checksums.sha256
+      - name: Upload staging evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g81-staging-evidence
+          path: ${{ runner.temp }}/g81-staging-evidence
+          retention-days: 365
+          if-no-files-found: error

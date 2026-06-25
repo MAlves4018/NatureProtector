@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://natureprotector.local/schemas/g8-2-independent-review.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "phase",
+    "qualification_id",
+    "status",
+    "review_id",
+    "reviewer_identity",
+    "executor_identity",
+    "authorizer_identity",
+    "candidate_commit",
+    "candidate_manifest_sha256",
+    "evidence_index_sha256",
+    "final_qualification_verdict_sha256",
+    "archive_receipt_sha256",
+    "started_at",
+    "completed_at",
+    "decision",
+    "findings",
+    "conditions",
+    "signature_namespace",
+    "production_authorized",
+    "production_deployed"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "phase": {
+      "const": "G8.2"
+    },
+    "qualification_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$"
+    },
+    "status": {
+      "enum": [
+        "DRAFT",
+        "SIGNED"
+      ]
+    },
+    "review_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewer_identity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "executor_identity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authorizer_identity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidate_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "candidate_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "evidence_index_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "final_qualification_verdict_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "archive_receipt_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decision": {
+      "enum": [
+        "ACCEPT",
+        "ACCEPT_WITH_CONDITIONS",
+        "REJECT"
+      ]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "severity",
+          "status",
+          "description",
+          "owner",
+          "resolution"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "status": {
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "resolution": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "description",
+          "owner",
+          "due_at",
+          "risk_reduction_only"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "due_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "risk_reduction_only": {
+            "const": true
+          }
+        }
+      }
+    },
+    "signature_namespace": {
+      "const": "natureprotector-g82-independent-review"
+    },
+    "production_authorized": {
+      "const": false
+    },
+    "production_deployed": {
+      "const": false
+    }
+  }
+}

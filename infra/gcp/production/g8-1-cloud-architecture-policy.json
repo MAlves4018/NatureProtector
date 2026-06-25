@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "phase": "G8.1",
+  "project_topology": [
+    "platform",
+    "staging",
+    "production"
+  ],
+  "forbidden_reuse": [
+    "CN billing account",
+    "CN course project",
+    "service-account keys"
+  ],
+  "primary_region": "europe-southwest1",
+  "project_creation": "after_g10_owner_approval",
+  "edge": [
+    "global external application load balancer",
+    "serverless NEGs",
+    "Cloud Armor",
+    "managed TLS"
+  ],
+  "runtime": {
+    "api": "Cloud Run",
+    "frontend": "Cloud Run",
+    "simulator": "Cloud Run Job",
+    "prevention": "GKE Autopilot",
+    "rabbitmq": "RabbitMQ Cluster Operator, three-node quorum",
+    "postgres": "Cloud SQL PostgreSQL regional HA"
+  },
+  "status": "IMPLEMENTED_STATICALLY_NOT_PROVISIONED"
+}

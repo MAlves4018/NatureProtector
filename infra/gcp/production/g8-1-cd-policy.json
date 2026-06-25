@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "build_once_promote_by_digest": true,
+  "source_branch": "master",
+  "required_gates": [
+    "backend build and tests",
+    "frontend typecheck tests build",
+    "DockerIntegration",
+    "IaC validation",
+    "secret scan",
+    "SAST/SCA",
+    "container vulnerability scan",
+    "SBOM",
+    "provenance",
+    "signature"
+  ],
+  "pipelines": [
+    "natureprotector-api",
+    "natureprotector-frontend",
+    "natureprotector-prevention"
+  ],
+  "staging": {
+    "automatic": true,
+    "verification_required": true
+  },
+  "production": {
+    "approval_required": true,
+    "prevent_self_approval": true,
+    "canary_percentages": [
+      5,
+      25,
+      50,
+      100
+    ],
+    "automatic_abort_on_failed_verification": true
+  },
+  "jobs": {
+    "migrations": "expand-contract, one-shot",
+    "bootstrap": "idempotent, one-shot",
+    "simulator": "finite job, no canary"
+  },
+  "rollback": {
+    "application": "previous verified digest",
+    "database": "forward-compatible schema; no automatic down migration"
+  }
+}

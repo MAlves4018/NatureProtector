@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://natureprotector.local/schemas/g10-3-budget-input.schema.json",
+  "title": "NatureProtector G10.3 budget alert input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "billing_account_id",
+    "expected_gcloud_account",
+    "budget_is_hard_cap",
+    "thresholds",
+    "budgets",
+    "execution"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "billing_account_id": {
+      "const": "0109B8-93144E-B93C1C"
+    },
+    "expected_gcloud_account": {
+      "type": "string",
+      "format": "email"
+    },
+    "budget_is_hard_cap": {
+      "const": false
+    },
+    "thresholds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 1
+      }
+    },
+    "budgets": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "scope",
+          "display_name",
+          "amount",
+          "currency",
+          "calendar_period"
+        ],
+        "properties": {
+          "role": {
+            "enum": [
+              "billing",
+              "platform",
+              "staging",
+              "production"
+            ]
+          },
+          "scope": {
+            "enum": [
+              "billing-account",
+              "project"
+            ]
+          },
+          "project_id": {
+            "$ref": "#/$defs/projectId"
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 60
+          },
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "currency": {
+            "enum": [
+              "EUR",
+              "USD"
+            ]
+          },
+          "calendar_period": {
+            "const": "month"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "scope": {
+                  "const": "project"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "project_id"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "project_id"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "create_budget_alerts",
+        "default_iam_recipients_enabled",
+        "create_pubsub_notifications"
+      ],
+      "properties": {
+        "create_budget_alerts": {
+          "type": "boolean"
+        },
+        "default_iam_recipients_enabled": {
+          "const": true
+        },
+        "create_pubsub_notifications": {
+          "const": false
+        }
+      }
+    }
+  },
+  "$defs": {
+    "projectId": {
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 30,
+      "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]$"
+    }
+  }
+}

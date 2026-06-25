@@ -1,0 +1,39 @@
+name: G8.2 qualification integrity policy
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Install validators
+        shell: bash
+        run: |
+          python -m pip install -r scripts/cloud/requirements-g82.txt
+          python -m pip install python-hcl2==7.3.1 PyYAML==6.0.3
+      - name: Static integrity policy
+        shell: bash
+        run: python scripts/cloud/Test-G82Static.py | tee g82-static-policy.json
+      - name: Adversarial chain tests
+        shell: bash
+        run: python scripts/cloud/Test-G82Adversarial.py --repository-root . --output g82-adversarial.json
+      - name: Compile G8.2 Python
+        shell: bash
+        run: python -m compileall -q scripts/cloud
+      - name: Upload policy evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g82-policy-evidence
+          path: |
+            g82-static-policy.json
+            g82-adversarial.json
+          retention-days: 365
+          if-no-files-found: error

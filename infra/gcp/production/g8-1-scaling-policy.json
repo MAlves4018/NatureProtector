@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "cloud_run": {
+    "container_concurrency_candidate": 40,
+    "min_instances_candidate": 2,
+    "max_instances_candidate": 20,
+    "final_values_require_load_test": true
+  },
+  "prevention": {
+    "min_replicas": 3,
+    "max_replicas_candidate": 18,
+    "metrics": [
+      "cpu",
+      "rabbitmq queue depth"
+    ],
+    "scale_down_stabilization_seconds": 600,
+    "controller": "KEDA ScaledObject",
+    "rabbitmq_trigger": {
+      "protocol": "amqps",
+      "queue": "np.ingestion.readings",
+      "mode": "QueueLength",
+      "target_average_queue_length_candidate": 200,
+      "activation_queue_length_candidate": 20,
+      "credentials_source": "synchronized Kubernetes Secrets",
+      "private_ca_required": true
+    },
+    "fallback_replicas": 3,
+    "rollout_strategy": "verified rolling deployment; no percentage canary on shared AMQP queue"
+  },
+  "rabbitmq": {
+    "replicas": 3,
+    "queue_type": "quorum",
+    "overflow": "reject-publish",
+    "delivery_limit": 8
+  },
+  "postgres": {
+    "connection_budget_required": true,
+    "pool_per_api_instance_candidate": 10,
+    "pool_per_prevention_pod_candidate": 12,
+    "managed_pooling_evaluate": true
+  },
+  "status": "TARGETS_NOT_MEASURED"
+}

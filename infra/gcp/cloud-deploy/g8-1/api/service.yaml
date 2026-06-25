@@ -1,0 +1,103 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: natureprotector-api
+  annotations:
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+    run.googleapis.com/invoker-iam-disabled: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "2" # from-param: ${api_min_scale}
+        autoscaling.knative.dev/maxScale: "20" # from-param: ${api_max_scale}
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/network-interfaces: '[]' # from-param: ${runtime_network_interfaces}
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+    spec:
+      serviceAccountName: missing-api-service-account # from-param: ${api_service_account_email}
+      containerConcurrency: 40
+      timeoutSeconds: 300
+      containers:
+        - name: api
+          image: API_IMAGE_BY_DIGEST
+          ports:
+            - containerPort: 8080
+          env:
+            - {name: ASPNETCORE_ENVIRONMENT, value: Production}
+            - {name: BackofficeApi__ControlPlaneEnabled, value: "true"}
+            - {name: POSTGRES_REQUIRE_EXPLICIT, value: "true"}
+            - name: POSTGRES_HOST
+              value: 127.0.0.1 # from-param: ${cloud_sql_private_ip}
+            - {name: POSTGRES_PORT, value: "5432"}
+            - {name: POSTGRES_DB, value: natureprotector}
+            - {name: POSTGRES_USER, value: np_app}
+            - {name: POSTGRES_SSL_MODE, value: VerifyCA}
+            - {name: POSTGRES_ROOT_CERTIFICATE, value: /var/run/secrets/cloudsql/server-ca.pem}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: missing-postgres-secret # from-param: ${postgres_app_password_secret}
+                  key: "0" # from-param: ${postgres_app_password_version}
+            - {name: Jwt__Issuer, value: NatureProtector}
+            - {name: Jwt__Audience, value: NatureProtector.Backoffice}
+            - name: Jwt__SigningKey
+              valueFrom:
+                secretKeyRef:
+                  name: missing-jwt-secret # from-param: ${jwt_signing_key_secret}
+                  key: "0" # from-param: ${jwt_signing_key_version}
+            - {name: RuntimeOrchestration__Mode, value: CloudRunJob}
+            - {name: RuntimeOrchestration__AllowRemoteLaunch, value: "true"}
+            - {name: RuntimeOrchestration__EvidenceMode, value: Disabled}
+            - name: RuntimeOrchestration__CloudRunProjectId
+              value: missing-project # from-param: ${runtime_project_id}
+            - name: RuntimeOrchestration__CloudRunRegion
+              value: europe-southwest1 # from-param: ${runtime_region}
+            - {name: RuntimeOrchestration__CloudRunSimulatorJobName, value: natureprotector-simulator}
+            - {name: RuntimeOrchestration__CloudRunSimulatorContainerName, value: simulator}
+            - {name: RuntimeOrchestration__CloudRunLaunchLeaseSeconds, value: "120"}
+            - {name: RuntimeOrchestration__CloudRunPollIntervalSeconds, value: "3"}
+            - {name: RateLimiting__Enabled, value: "true"}
+            - {name: RateLimiting__TrustNormalizedForwardedFor, value: "true"}
+            - name: RabbitMq__HostName
+              value: missing-rabbitmq-host # from-param: ${rabbitmq_private_host}
+            - {name: RabbitMq__Port, value: "5671"}
+            - {name: RabbitMq__ManagementPort, value: "15671"}
+            - {name: RabbitMq__ManagementScheme, value: https}
+            - {name: RabbitMq__TlsEnabled, value: "true"}
+            - name: RabbitMq__TlsServerName
+              value: missing-rabbitmq-server-name # from-param: ${rabbitmq_tls_server_name}
+            - name: RabbitMq__UserName
+              valueFrom:
+                secretKeyRef:
+                  name: missing-rabbitmq-username # from-param: ${rabbitmq_app_username_secret}
+                  key: "0" # from-param: ${rabbitmq_app_username_version}
+            - name: RabbitMq__Password
+              valueFrom:
+                secretKeyRef:
+                  name: missing-rabbitmq-password # from-param: ${rabbitmq_app_password_secret}
+                  key: "0" # from-param: ${rabbitmq_app_password_version}
+            - {name: RabbitMq__ManagementCertificateAuthorityPath, value: /var/run/secrets/rabbitmq/ca.crt}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://127.0.0.1:4317 # from-param: ${otel_endpoint}
+            - {name: OTEL_EXPORTER_OTLP_PROTOCOL, value: grpc}
+          volumeMounts:
+            - {name: cloud-sql-ca, mountPath: /var/run/secrets/cloudsql, readOnly: true}
+            - {name: rabbitmq-ca, mountPath: /var/run/secrets/rabbitmq, readOnly: true}
+          resources:
+            limits:
+              cpu: "2"
+              memory: 1Gi
+      volumes:
+        - name: rabbitmq-ca
+          secret:
+            secretName: missing-rabbitmq-ca # from-param: ${rabbitmq_ca_secret}
+            items:
+              - key: "0" # from-param: ${rabbitmq_ca_version}
+                path: ca.crt
+        - name: cloud-sql-ca
+          secret:
+            secretName: missing-cloud-sql-ca # from-param: ${cloud_sql_ca_secret}
+            items:
+              - key: "0" # from-param: ${cloud_sql_ca_version}
+                path: server-ca.pem

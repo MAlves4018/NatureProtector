@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: natureprotector-prevention
+  labels:
+    app.kubernetes.io/name: natureprotector-prevention
+    app.kubernetes.io/part-of: natureprotector
+spec:
+  replicas: 3
+  revisionHistoryLimit: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: natureprotector-prevention
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: natureprotector-prevention
+        app.kubernetes.io/part-of: natureprotector
+        np.network/prevention: "true"
+    spec:
+      serviceAccountName: natureprotector-prevention
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 90
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: natureprotector-prevention
+      containers:
+        - name: prevention
+          image: PREVENTION_IMAGE_BY_DIGEST
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - {name: ASPNETCORE_ENVIRONMENT, value: Production}
+            - {name: ASPNETCORE_URLS, value: http://0.0.0.0:8080}
+            - {name: RabbitMq__HostName, value: natureprotector-rabbitmq}
+            - {name: RabbitMq__Port, value: "5671"}
+            - {name: RabbitMq__TlsEnabled, value: "true"}
+            - name: RabbitMq__TlsServerName
+              value: missing-rabbitmq-server-name # from-param: ${rabbitmq_tls_server_name}
+            - {name: RabbitMq__UserName, valueFrom: {secretKeyRef: {name: np-runtime-secrets, key: rabbitmq-username}}}
+            - {name: RabbitMq__Password, valueFrom: {secretKeyRef: {name: np-runtime-secrets, key: rabbitmq-password}}}
+            - {name: POSTGRES_REQUIRE_EXPLICIT, value: "true"}
+            - name: POSTGRES_HOST
+              value: missing-cloud-sql-private-ip # from-param: ${cloud_sql_private_ip}
+            - {name: POSTGRES_PORT, value: "5432"}
+            - {name: POSTGRES_DB, value: natureprotector}
+            - {name: POSTGRES_USER, value: np_app}
+            - {name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: np-runtime-secrets, key: postgres-app-password}}}
+            - {name: POSTGRES_SSL_MODE, value: VerifyCA}
+            - {name: POSTGRES_ROOT_CERTIFICATE, value: /var/run/secrets/cloudsql/server-ca.pem}
+            # InfluxDB remains a supported local adapter. The first cloud profile
+            # selects the existing NoOp implementation explicitly until a cloud
+            # time-series provider, retention policy and cost envelope are approved.
+            - {name: InfluxDb__Enabled, value: "false"}
+            - {name: InfluxDb__FailPipelineOnWriteError, value: "false"}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: http://natureprotector-otel:4317}
+            - {name: OTEL_EXPORTER_OTLP_PROTOCOL, value: grpc}
+            - {name: SSL_CERT_FILE, value: /var/run/secrets/rabbitmq/ca.crt}
+          volumeMounts:
+            - {name: rabbitmq-ca, mountPath: /var/run/secrets/rabbitmq, readOnly: true}
+            - {name: cloud-sql-ca, mountPath: /var/run/secrets/cloudsql, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+          startupProbe:
+            httpGet: {path: /health/live, port: http}
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet: {path: /health/ready, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /health/live, port: http}
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 500m, memory: 768Mi}
+            limits: {cpu: "2", memory: 2Gi}
+      volumes:
+        - name: rabbitmq-ca
+          secret: {secretName: np-rabbitmq-ca}
+        - name: cloud-sql-ca
+          secret: {secretName: np-cloud-sql-ca}
+        - name: tmp
+          emptyDir: {sizeLimit: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: natureprotector-prevention
+spec:
+  selector:
+    app.kubernetes.io/name: natureprotector-prevention
+  ports:
+    - {name: http, port: 80, targetPort: http}

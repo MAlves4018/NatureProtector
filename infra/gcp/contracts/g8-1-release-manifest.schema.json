@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://natureprotector.example/contracts/g8-1-release-manifest.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "repository",
+    "source_commit",
+    "build_run_id",
+    "generated_at",
+    "images",
+    "quality_gates",
+    "delivery",
+    "production_authorized",
+    "production_deployed"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "repository": {
+      "const": "MAlves4018/NatureProtector"
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "build_run_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "images": {
+      "type": "object",
+      "minProperties": 11,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "reference",
+          "digest",
+          "signature_verified",
+          "high",
+          "critical"
+        ],
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "signature_verified": {
+            "const": true
+          },
+          "high": {
+            "const": 0
+          },
+          "critical": {
+            "const": 0
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "quality_gates": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "run_id",
+          "conclusion"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "integer"
+          },
+          "conclusion": {
+            "const": "success"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "required": [
+        "platform_project",
+        "region",
+        "pipelines"
+      ],
+      "properties": {
+        "platform_project": {
+          "type": "string"
+        },
+        "region": {
+          "const": "europe-southwest1"
+        },
+        "pipelines": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "natureprotector-api",
+              "natureprotector-frontend",
+              "natureprotector-prevention"
+            ]
+          },
+          "minItems": 3,
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "production_authorized": {
+      "const": false
+    },
+    "production_deployed": {
+      "const": false
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

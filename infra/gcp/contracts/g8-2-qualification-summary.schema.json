@@ -1,0 +1,368 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://natureprotector.local/schemas/g8-2-qualification-summary.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "phase",
+    "qualification_id",
+    "source_commit",
+    "candidate_manifest_sha256",
+    "generated_at",
+    "action_records",
+    "pilot_runs",
+    "soak",
+    "runtime",
+    "dr",
+    "security",
+    "cost",
+    "operability",
+    "production_authorized",
+    "production_deployed"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "phase": {
+      "const": "G8.2"
+    },
+    "qualification_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$"
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "candidate_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "action_records": {
+      "type": "array",
+      "minItems": 13,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "workflow_run_id",
+          "sha256",
+          "relative_path"
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "pilot-1",
+              "pilot-2",
+              "pilot-3",
+              "soak-start",
+              "soak-observe",
+              "soak-finish",
+              "capacity",
+              "security-rotation",
+              "incident-drill",
+              "collect-audit",
+              "cost-observation",
+              "second-operator",
+              "rollback-drill",
+              "teardown-rehearsal"
+            ]
+          },
+          "workflow_run_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "relative_path": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "pilot_runs": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "profile",
+          "execution_id",
+          "simulation_run_id",
+          "started_at",
+          "finished_at",
+          "status"
+        ],
+        "properties": {
+          "profile": {
+            "enum": [
+              "pilot-1",
+              "pilot-2",
+              "pilot-3"
+            ]
+          },
+          "execution_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "simulation_run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "const": "passed"
+          }
+        }
+      }
+    },
+    "soak": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "started_at",
+        "finished_at",
+        "continuous_hours",
+        "maximum_gap_minutes",
+        "sample_count"
+      ],
+      "properties": {
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finished_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "continuous_hours": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maximum_gap_minutes": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sample_count": {
+          "type": "integer",
+          "minimum": 2
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability_ratio",
+        "processing_success_ratio",
+        "p95_seconds",
+        "p99_seconds",
+        "confirmed_message_loss",
+        "headroom_multiplier",
+        "produced_events",
+        "processed_events",
+        "failed_events"
+      ],
+      "properties": {
+        "availability_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "processing_success_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "p95_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p99_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "confirmed_message_loss": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "headroom_multiplier": {
+          "type": "number",
+          "minimum": 0
+        },
+        "produced_events": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "processed_events": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed_events": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "dr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "regional_failover_seconds",
+        "pitr_rpo_seconds",
+        "pitr_restore_seconds",
+        "cross_region_promotion_passed",
+        "return_to_primary_passed"
+      ],
+      "properties": {
+        "regional_failover_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "pitr_rpo_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "pitr_restore_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cross_region_promotion_passed": {
+          "type": "boolean"
+        },
+        "return_to_primary_passed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "open_high_findings",
+        "open_critical_findings",
+        "data_access_audit_logs_enabled",
+        "artifact_attestations_verified",
+        "credential_rotation_passed",
+        "certificate_rotation_passed"
+      ],
+      "properties": {
+        "open_high_findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "open_critical_findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "data_access_audit_logs_enabled": {
+          "type": "boolean"
+        },
+        "artifact_attestations_verified": {
+          "type": "boolean"
+        },
+        "credential_rotation_passed": {
+          "type": "boolean"
+        },
+        "certificate_rotation_passed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_days",
+        "observed_cost_eur",
+        "forecast_monthly_eur",
+        "approved_monthly_eur",
+        "monthly_cost_approved"
+      ],
+      "properties": {
+        "observation_days": {
+          "type": "number",
+          "minimum": 0
+        },
+        "observed_cost_eur": {
+          "type": "number",
+          "minimum": 0
+        },
+        "forecast_monthly_eur": {
+          "type": "number",
+          "minimum": 0
+        },
+        "approved_monthly_eur": {
+          "type": "number",
+          "minimum": 0
+        },
+        "monthly_cost_approved": {
+          "type": "boolean"
+        }
+      }
+    },
+    "operability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "second_operator_identity",
+        "second_operator_runbook",
+        "incident_drill",
+        "rollback_proved",
+        "cleanup_rehearsal_proved",
+        "resources_remaining",
+        "environment_recreated"
+      ],
+      "properties": {
+        "second_operator_identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "second_operator_runbook": {
+          "const": "passed"
+        },
+        "incident_drill": {
+          "const": "passed"
+        },
+        "rollback_proved": {
+          "type": "boolean"
+        },
+        "cleanup_rehearsal_proved": {
+          "type": "boolean"
+        },
+        "resources_remaining": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "environment_recreated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "production_authorized": {
+      "const": false
+    },
+    "production_deployed": {
+      "const": false
+    }
+  }
+}

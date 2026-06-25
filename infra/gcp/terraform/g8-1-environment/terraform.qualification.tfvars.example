@@ -1,0 +1,31 @@
+# Non-production, ephemeral qualification profile for the staging project.
+# This file is never production evidence and must be paired with a cost estimate
+# and a same-session teardown rehearsal before create_data_plane=true.
+project_id             = "np-staging-REPLACE"
+environment            = "staging"
+platform_project_id    = "np-platform-REPLACE"
+region                 = "europe-southwest1"
+network_cidr           = "10.20.0.0/24"
+pods_cidr              = "10.21.0.0/16"
+services_cidr          = "10.22.0.0/20"
+cluster_name           = "np-staging"
+database_instance_name = "np-staging-postgres"
+
+# Confirm a currently supported low-cost PostgreSQL tier with:
+# gcloud sql tiers list --filter="region:europe-southwest1" --project=<PROJECT_ID>
+database_tier             = "REPLACE_WITH_SUPPORTED_LOW_COST_POSTGRES_TIER"
+database_disk_size_gb      = 10
+database_availability_type = "ZONAL"
+database_disk_type         = "PD_HDD"
+database_backup_enabled    = false
+database_pitr_enabled      = false
+database_retained_backups  = 1
+deletion_protection        = false
+
+cloud_deploy_worker_machine_type = "e2-standard-4"
+cloud_deploy_worker_disk_size_gb = 100
+
+create_data_plane            = false
+create_edge                  = false
+materialize_generated_secrets = false
+# owner_creation_confirmation = "OWNER_APPROVES_NEW_NON_CN_GCP_PROJECTS_AFTER_G10"

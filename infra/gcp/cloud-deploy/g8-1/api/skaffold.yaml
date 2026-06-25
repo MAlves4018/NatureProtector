@@ -1,0 +1,19 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: natureprotector-api
+manifests:
+  rawYaml:
+    - service.yaml
+deploy:
+  cloudrun: {}
+verify:
+  - name: natureprotector-api-health
+    container:
+      name: smoke
+      image: SMOKE_IMAGE_BY_DIGEST
+      command: ["/bin/sh", "-c"]
+      args: ["test -n '$CLOUD_RUN_SERVICE_URLS' && url=\"${CLOUD_RUN_SERVICE_URLS%%,*}\" && curl -fsS \"$url/health/live\" >/dev/null"]
+profiles:
+  - name: staging
+  - name: production

@@ -1,0 +1,161 @@
+name: G8.1 build immutable release
+
+on:
+  workflow_run:
+    workflows: [G8.1 cloud production policy]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact master SHA to build
+        required: true
+        type: string
+      policy_run_id:
+        description: Successful G8.1 policy run for the same SHA
+        required: true
+        type: string
+      existing_images_json:
+        description: Compact JSON evidence for the 11 already qualified image digests to sign without rebuilding
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: g8-1-release-${{ github.event.workflow_run.head_sha || inputs.source_sha }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Resolve exact source and policy run
+        id: source
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+          INPUT_SHA: ${{ inputs.source_sha }}
+          INPUT_POLICY_RUN_ID: ${{ inputs.policy_run_id }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            sha="$INPUT_SHA"; policy_run="$INPUT_POLICY_RUN_ID"
+          else
+            sha="$WORKFLOW_SHA"; policy_run="$WORKFLOW_RUN_ID"
+          fi
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$policy_run" =~ ^[0-9]+$ ]]
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "policy_run_id=$policy_run" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+      - name: Require same-SHA Engineering, Security and policy gates
+        id: gates
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          POLICY_RUN_ID: ${{ steps.source.outputs.policy_run_id }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          wait_for_gate() {
+            local workflow="$1" name="$2" key="$3" value=""
+            for attempt in $(seq 1 90); do
+              value=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" --commit "$SOURCE_SHA" --limit 50 \
+                --json databaseId,headSha,headBranch,status,conclusion,event \
+                | jq -r --arg sha "$SOURCE_SHA" --arg branch "$DEFAULT_BRANCH" \
+                  '[.[] | select(.headSha==$sha and .headBranch==$branch and .status=="completed" and .conclusion=="success" and (.event=="push" or .event=="workflow_dispatch"))] | sort_by(.databaseId) | last.databaseId // empty')
+              if [[ "$value" =~ ^[0-9]+$ ]]; then
+                echo "${key}_run_id=$value" >> "$GITHUB_OUTPUT"
+                return 0
+              fi
+              echo "Waiting for $name on $SOURCE_SHA (attempt $attempt/90)..."
+              sleep 30
+            done
+            echo "$name did not complete successfully for $SOURCE_SHA on $DEFAULT_BRANCH" >&2
+            return 1
+          }
+          wait_for_gate engineering-foundations.yml 'Engineering foundations' engineering
+          wait_for_gate security.yml 'Security' security
+          policy=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$POLICY_RUN_ID" --jq '{id:.id,head_sha:.head_sha,head_branch:.head_branch,conclusion:.conclusion,path:.path}')
+          [[ "$(jq -r .head_sha <<<"$policy")" == "$SOURCE_SHA" ]]
+          [[ "$(jq -r .head_branch <<<"$policy")" == "$DEFAULT_BRANCH" ]]
+          [[ "$(jq -r .conclusion <<<"$policy")" == success ]]
+          [[ "$(jq -r .path <<<"$policy")" == '.github/workflows/gcp-g8-1-production-policy.yml' ]]
+      - name: Authenticate with release identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          workload_identity_provider: ${{ vars.GCP_G81_RELEASE_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_G81_RELEASE_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+          export_environment_variables: true
+      - name: Install gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+        with:
+          version: '>= 552.0.0'
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6
+        with:
+          cosign-release: v3.0.6
+      - name: Configure immutable registry build
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.existing_images_json == '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud auth configure-docker '${{ vars.GCP_REGION }}-docker.pkg.dev' --quiet
+          docker buildx create --name natureprotector-g81 --driver docker-container --use
+      - name: Build once, scan, attest, sign and create release manifest
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.existing_images_json == '' }}
+        shell: bash
+        env:
+          GITHUB_SHA: ${{ steps.source.outputs.sha }}
+          GCP_PLATFORM_PROJECT_ID: ${{ vars.GCP_PLATFORM_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
+          ENGINEERING_RUN_ID: ${{ steps.gates.outputs.engineering_run_id }}
+          SECURITY_RUN_ID: ${{ steps.gates.outputs.security_run_id }}
+          POLICY_RUN_ID: ${{ steps.source.outputs.policy_run_id }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: ./scripts/cloud/Build-G81Release.sh
+      - name: Sign existing qualified image digests and create release manifest
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.existing_images_json != '' }}
+        shell: bash
+        env:
+          GITHUB_SHA: ${{ steps.source.outputs.sha }}
+          GCP_PLATFORM_PROJECT_ID: ${{ vars.GCP_PLATFORM_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
+          ENGINEERING_RUN_ID: ${{ steps.gates.outputs.engineering_run_id }}
+          SECURITY_RUN_ID: ${{ steps.gates.outputs.security_run_id }}
+          POLICY_RUN_ID: ${{ steps.source.outputs.policy_run_id }}
+          EXISTING_IMAGES_JSON: ${{ inputs.existing_images_json }}
+        run: |
+          set -euo pipefail
+          gcloud auth configure-docker '${{ vars.GCP_REGION }}-docker.pkg.dev' --quiet
+          printf '%s' "$EXISTING_IMAGES_JSON" > "$RUNNER_TEMP/g81-existing-images.json"
+          jq -e . "$RUNNER_TEMP/g81-existing-images.json" >/dev/null
+          G81_IMAGES_EVIDENCE="$RUNNER_TEMP/g81-existing-images.json" bash ./scripts/cloud/Sign-G81ExistingRelease.sh
+      - name: Attest release manifest
+        uses: actions/attest-build-provenance@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path: g81-release/release-manifest.json
+      - name: Upload immutable release evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g81-release
+          path: g81-release
+          retention-days: 365
+          if-no-files-found: error

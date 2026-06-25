@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "phase": "G9",
+  "repository": "MAlves4018/NatureProtector",
+  "active_workflows": [
+    "engineering-foundations.yml",
+    "release-candidate.yml",
+    "security.yml",
+    "gcp-g8-1-production-policy.yml",
+    "gcp-g8-1-release.yml",
+    "gcp-g8-1-deploy-staging.yml",
+    "gcp-g8-1-promote-production.yml",
+    "gcp-g8-1-teardown.yml",
+    "gcp-g8-2-policy.yml",
+    "gcp-g8-2-runtime-probe.yml",
+    "gcp-g8-2-runtime-qualification.yml",
+    "gcp-g8-2-submit-signed-governance.yml",
+    "gcp-g8-2-independent-review.yml",
+    "gcp-g8-2-authorization-request.yml",
+    "gcp-g8-2-authorization-verification.yml",
+    "gcp-g9-convergence-policy.yml"
+  ],
+  "terraform_roots": [
+    "g8-1-state-bootstrap",
+    "g8-1-platform",
+    "g8-1-environment"
+  ],
+  "kubernetes_root": "g8-1",
+  "cloud_deploy_root": "g8-1",
+  "release_contract_prefix": "g8-1-",
+  "qualification_contract_prefix": "g8-2-",
+  "cloud_provisioned": false,
+  "production_authorized": false,
+  "production_deployed": false
+}

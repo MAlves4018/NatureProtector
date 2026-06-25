@@ -1,0 +1,204 @@
+name: G8.2 runtime qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Ingest one probe or finalize a complete qualification
+        required: true
+        type: choice
+        options: [ingest, finalize]
+      action:
+        description: Action expected for ingest
+        required: false
+        type: string
+      qualification_id:
+        description: Stable qualification identifier
+        required: true
+        type: string
+      candidate_commit:
+        description: Exact candidate commit
+        required: true
+        type: string
+      release_run_id:
+        description: Successful immutable release run
+        required: true
+        type: string
+      probe_run_id:
+        description: Probe workflow run to ingest
+        required: false
+        type: string
+      action_run_ids:
+        description: Comma-separated successful ingest run IDs for finalize
+        required: false
+        type: string
+      confirmation:
+        description: INGEST_G82_ACTION or FINALIZE_G82_QUALIFICATION
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: read
+  artifact-metadata: read
+
+concurrency:
+  group: g82-qualification-${{ inputs.qualification_id }}-${{ inputs.mode }}
+  cancel-in-progress: false
+
+jobs:
+  qualify:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Validate dispatch boundary
+        shell: bash
+        env:
+          MODE: ${{ inputs.mode }}
+          ACTION: ${{ inputs.action }}
+          COMMIT: ${{ inputs.candidate_commit }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          if [[ "$MODE" == ingest ]]; then
+            [[ "$CONFIRMATION" == INGEST_G82_ACTION ]]
+            [[ -n "$ACTION" && "${{ inputs.probe_run_id }}" =~ ^[1-9][0-9]*$ ]]
+          else
+            [[ "$CONFIRMATION" == FINALIZE_G82_QUALIFICATION ]]
+            [[ -n '${{ inputs.action_run_ids }}' ]]
+          fi
+      - name: Checkout exact candidate
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ inputs.candidate_commit }}
+      - name: Install bounded validator dependency
+        shell: bash
+        run: python -m pip install -r scripts/cloud/requirements-g82.txt
+      - name: Resolve immutable release manifest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p '${{ runner.temp }}/release'
+          scripts/cloud/Verify-G82WorkflowRun.sh '${{ inputs.release_run_id }}' '.github/workflows/gcp-g8-1-release.yml' '${{ inputs.candidate_commit }}' '${{ github.event.repository.default_branch }}' '${{ github.repository }}' '${{ runner.temp }}/release/run-metadata.json'
+          gh run download '${{ inputs.release_run_id }}' --repo '${{ github.repository }}' --name g81-release --dir '${{ runner.temp }}/release/artifact'
+          manifest=$(find '${{ runner.temp }}/release/artifact' -name release-manifest.json -type f -print -quit); test -n "$manifest"
+          cp "$manifest" '${{ runner.temp }}/release/release-manifest.json'
+          gh attestation verify '${{ runner.temp }}/release/release-manifest.json' --repo '${{ github.repository }}' --signer-workflow '${{ github.repository }}/.github/workflows/gcp-g8-1-release.yml' --source-digest '${{ inputs.candidate_commit }}' --source-ref 'refs/heads/${{ github.event.repository.default_branch }}'
+      - name: Validate and ingest attested probe
+        if: inputs.mode == 'ingest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p '${{ runner.temp }}/ingest/download' '${{ runner.temp }}/ingest/evidence'
+          scripts/cloud/Verify-G82WorkflowRun.sh '${{ inputs.probe_run_id }}' '.github/workflows/gcp-g8-2-runtime-probe.yml' '${{ inputs.candidate_commit }}' '${{ github.event.repository.default_branch }}' '${{ github.repository }}' '${{ runner.temp }}/ingest/probe-run-metadata.json'
+          gh run download '${{ inputs.probe_run_id }}' --repo '${{ github.repository }}' --name 'g82-probe-${{ inputs.qualification_id }}-${{ inputs.action }}' --dir '${{ runner.temp }}/ingest/download'
+          sha256sum -c '${{ runner.temp }}/ingest/download/g82-probe-bundle.zip.sha256'
+          gh attestation verify '${{ runner.temp }}/ingest/download/g82-probe-bundle.zip' --repo '${{ github.repository }}' --signer-workflow '${{ github.repository }}/.github/workflows/gcp-g8-2-runtime-probe.yml' --source-digest '${{ inputs.candidate_commit }}' --source-ref 'refs/heads/${{ github.event.repository.default_branch }}'
+          unzip -q '${{ runner.temp }}/ingest/download/g82-probe-bundle.zip' -d '${{ runner.temp }}/ingest'
+          cp -a '${{ runner.temp }}/ingest/evidence/.' '${{ runner.temp }}/ingest/action/'
+          cp '${{ runner.temp }}/ingest/probe-run-metadata.json' '${{ runner.temp }}/ingest/action/probe-run-metadata.json'
+          python scripts/cloud/New-G82ActionRecord.py --action '${{ inputs.action }}' --qualification-id '${{ inputs.qualification_id }}' --source-commit '${{ inputs.candidate_commit }}' --candidate-manifest '${{ runner.temp }}/release/release-manifest.json' --repository '${{ github.repository }}' --repository-id '${{ github.event.repository.id }}' --workflow-run-id '${{ github.run_id }}' --workflow-run-attempt '${{ github.run_attempt }}' --actor '${{ github.actor }}' --measurement '${{ runner.temp }}/ingest/action/measurement.json' --evidence-root '${{ runner.temp }}/ingest/action' --producer-script scripts/cloud/New-G82ProbeMeasurement.py --producer-algorithm trusted-probe-derived-v2 --output '${{ runner.temp }}/ingest/action/action-record.json'
+          (cd '${{ runner.temp }}/ingest' && zip -qr g82-action-bundle.zip action)
+          sha256sum '${{ runner.temp }}/ingest/g82-action-bundle.zip' > '${{ runner.temp }}/ingest/g82-action-bundle.zip.sha256'
+      - name: Download and validate all action records
+        if: inputs.mode == 'finalize'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_IDS: ${{ inputs.action_run_ids }}
+        run: |
+          set -euo pipefail
+          mkdir -p '${{ runner.temp }}/final/actions' '${{ runner.temp }}/final/evidence'
+          IFS=',' read -ra ids <<< "$RUN_IDS"
+          declare -A seen
+          for id in "${ids[@]}"; do
+            id="$(xargs <<<"$id")"; [[ "$id" =~ ^[1-9][0-9]*$ ]]; [[ -z "${seen[$id]:-}" ]]; seen[$id]=1
+            dir='${{ runner.temp }}/final/actions/'"$id"; mkdir -p "$dir/download"
+            scripts/cloud/Verify-G82WorkflowRun.sh "$id" '.github/workflows/gcp-g8-2-runtime-qualification.yml' '${{ inputs.candidate_commit }}' '${{ github.event.repository.default_branch }}' '${{ github.repository }}' "$dir/run-metadata.json"
+            gh run download "$id" --repo '${{ github.repository }}' --name 'g82-action-bundle' --dir "$dir/download"
+            sha256sum -c "$dir/download/g82-action-bundle.zip.sha256"
+            gh attestation verify "$dir/download/g82-action-bundle.zip" --repo '${{ github.repository }}' --signer-workflow '${{ github.repository }}/.github/workflows/gcp-g8-2-runtime-qualification.yml' --source-digest '${{ inputs.candidate_commit }}' --source-ref 'refs/heads/${{ github.event.repository.default_branch }}'
+            unzip -q "$dir/download/g82-action-bundle.zip" -d "$dir"
+            cp "$dir/run-metadata.json" "$dir/action/qualification-run-metadata.json"
+          done
+          python scripts/cloud/Aggregate-G82Qualification.py --actions-root '${{ runner.temp }}/final/actions' --candidate-manifest '${{ runner.temp }}/release/release-manifest.json' --qualification-id '${{ inputs.qualification_id }}' --source-commit '${{ inputs.candidate_commit }}' --output '${{ runner.temp }}/final/qualification-summary.json'
+          cp -a '${{ runner.temp }}/final/actions' '${{ runner.temp }}/final/evidence/actions'
+          cp '${{ runner.temp }}/release/release-manifest.json' '${{ runner.temp }}/final/evidence/candidate-manifest.json'
+          cp '${{ runner.temp }}/release/run-metadata.json' '${{ runner.temp }}/final/evidence/release-run-metadata.json'
+          cp '${{ runner.temp }}/final/qualification-summary.json' '${{ runner.temp }}/final/evidence/qualification-summary.json'
+          manifest_sha=$(sha256sum '${{ runner.temp }}/release/release-manifest.json' | cut -d' ' -f1)
+          python scripts/cloud/New-G82EvidenceIndex.py --root '${{ runner.temp }}/final/evidence' --output '${{ runner.temp }}/final/evidence-index.json' --qualification-id '${{ inputs.qualification_id }}' --source-commit '${{ inputs.candidate_commit }}' --candidate-manifest-sha256 "$manifest_sha" --root-label g82-qualification-evidence
+          python scripts/cloud/Verify-G82EvidenceIndex.py --root '${{ runner.temp }}/final/evidence' --index '${{ runner.temp }}/final/evidence-index.json' --output '${{ runner.temp }}/final/evidence-index-verification.json'
+          python scripts/cloud/Test-G82QualificationEvidence.py --stage pre-archive --summary '${{ runner.temp }}/final/qualification-summary.json' --evidence-index '${{ runner.temp }}/final/evidence-index.json' --candidate-manifest '${{ runner.temp }}/release/release-manifest.json' --output '${{ runner.temp }}/final/pre-archive-verdict.json'
+          (cd '${{ runner.temp }}/final' && zip -qr g82-pre-archive-bundle.zip evidence qualification-summary.json evidence-index.json evidence-index-verification.json pre-archive-verdict.json)
+          sha256sum '${{ runner.temp }}/final/g82-pre-archive-bundle.zip' > '${{ runner.temp }}/final/g82-pre-archive-bundle.zip.sha256'
+      - name: Attest ingested action bundle
+        if: inputs.mode == 'ingest'
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path: ${{ runner.temp }}/ingest/g82-action-bundle.zip
+      - name: Authenticate archive identity
+        if: inputs.mode == 'finalize'
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          workload_identity_provider: ${{ vars.GCP_G82_QUALIFICATION_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_G82_QUALIFICATION_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+          export_environment_variables: true
+      - name: Install gcloud for owner-managed archive
+        if: inputs.mode == 'finalize'
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+        with:
+          version: '>= 552.0.0'
+      - name: Archive pre-qualified evidence and create final verdict
+        if: inputs.mode == 'finalize'
+        shell: pwsh
+        run: |
+          ./scripts/cloud/Archive-G82Evidence.ps1 -Bucket '${{ vars.GCP_G82_EVIDENCE_BUCKET }}' -QualificationId '${{ inputs.qualification_id }}' -BundlePath '${{ runner.temp }}/final/g82-pre-archive-bundle.zip' -EvidenceIndexPath '${{ runner.temp }}/final/evidence-index.json' -QualificationSummaryPath '${{ runner.temp }}/final/qualification-summary.json' -PreArchiveVerdictPath '${{ runner.temp }}/final/pre-archive-verdict.json' -CandidateManifestPath '${{ runner.temp }}/release/release-manifest.json' -OutputPath '${{ runner.temp }}/final/archive-receipt.json' -Confirmation ARCHIVE_G82_PREQUALIFICATION_EVIDENCE
+          python scripts/cloud/Test-G82QualificationEvidence.py --stage final --summary '${{ runner.temp }}/final/qualification-summary.json' --evidence-index '${{ runner.temp }}/final/evidence-index.json' --candidate-manifest '${{ runner.temp }}/release/release-manifest.json' --pre-archive-verdict '${{ runner.temp }}/final/pre-archive-verdict.json' --archive-receipt '${{ runner.temp }}/final/archive-receipt.json' --output '${{ runner.temp }}/final/final-verdict.json'
+          python scripts/cloud/New-G82ReviewPacket.py --qualification-bundle '${{ runner.temp }}/final/g82-pre-archive-bundle.zip' --final-verdict '${{ runner.temp }}/final/final-verdict.json' --evidence-index '${{ runner.temp }}/final/evidence-index.json' --candidate-manifest '${{ runner.temp }}/release/release-manifest.json' --archive-receipt '${{ runner.temp }}/final/archive-receipt.json' --output-directory '${{ runner.temp }}/final/review-packet'
+          Compress-Archive -Path '${{ runner.temp }}/final/review-packet/*' -DestinationPath '${{ runner.temp }}/final/g82-review-packet.zip'
+      - name: Attest pre-archive and review artifacts
+        if: inputs.mode == 'finalize'
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path: |
+            ${{ runner.temp }}/final/g82-pre-archive-bundle.zip
+            ${{ runner.temp }}/final/g82-review-packet.zip
+      - name: Upload ingested action
+        if: inputs.mode == 'ingest'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g82-action-bundle
+          path: |
+            ${{ runner.temp }}/ingest/g82-action-bundle.zip
+            ${{ runner.temp }}/ingest/g82-action-bundle.zip.sha256
+          retention-days: 365
+          if-no-files-found: error
+      - name: Upload sealed qualification and review packet
+        if: inputs.mode == 'finalize'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g82-final-qualification
+          path: |
+            ${{ runner.temp }}/final/g82-pre-archive-bundle.zip
+            ${{ runner.temp }}/final/g82-pre-archive-bundle.zip.sha256
+            ${{ runner.temp }}/final/qualification-summary.json
+            ${{ runner.temp }}/final/evidence-index.json
+            ${{ runner.temp }}/final/evidence-index-verification.json
+            ${{ runner.temp }}/final/pre-archive-verdict.json
+            ${{ runner.temp }}/final/archive-receipt.json
+            ${{ runner.temp }}/final/final-verdict.json
+            ${{ runner.temp }}/final/g82-review-packet.zip
+            ${{ runner.temp }}/release/release-manifest.json
+          retention-days: 365
+          if-no-files-found: error

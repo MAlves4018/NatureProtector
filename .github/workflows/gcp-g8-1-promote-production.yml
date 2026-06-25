@@ -1,0 +1,148 @@
+name: G8.1 promote verified release to production
+
+on:
+  workflow_dispatch:
+    inputs:
+      staging_run_id:
+        description: Successful G8.1 staging workflow run ID
+        required: true
+        type: string
+      release_name:
+        description: Cloud Deploy release name used in staging
+        required: true
+        type: string
+      confirmation:
+        description: Type PROMOTE_VERIFIED_RELEASE_TO_PRODUCTION
+        required: true
+        type: string
+      first_release_confirmation:
+        description: For the first production release only, type I_ACCEPT_FIRST_RELEASE_HAS_NO_CANARY_BASELINE
+        required: false
+        default: ''
+        type: string
+      deployment_mode:
+        description: Use services-only-bootstrap only for the first edge bootstrap
+        required: false
+        default: verified
+        type: choice
+        options: [verified, services-only-bootstrap]
+      edge_bootstrap_confirmation:
+        description: For services-only-bootstrap, type BOOTSTRAP_SERVICES_BEFORE_EDGE
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: g8-1-production
+  cancel-in-progress: false
+
+jobs:
+  production:
+    if: inputs.confirmation == 'PROMOTE_VERIFIED_RELEASE_TO_PRODUCTION'
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Download exact staging evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: g81-staging-evidence
+          path: g81-staging-evidence
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.staging_run_id }}
+      - name: Validate staging workflow authority
+        id: source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.staging_run_id }}
+        run: |
+          set -euo pipefail
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID")
+          [[ "$(jq -r .conclusion <<<"$run")" == success ]]
+          [[ "$(jq -r .path <<<"$run")" == '.github/workflows/gcp-g8-1-deploy-staging.yml' ]]
+          sha=$(jq -r .source_commit g81-staging-evidence/release-manifest.json)
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          gh attestation verify g81-staging-evidence/checksums.sha256 --repo "$GITHUB_REPOSITORY" > g81-staging-evidence/checksums-attestation-verification.txt
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact release source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          path: source
+      - name: Validate manifest with exact-source validator
+        run: python3 source/scripts/cloud/Test-G81ReleaseManifest.py g81-staging-evidence/release-manifest.json
+      - name: Authenticate with production identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          workload_identity_provider: ${{ vars.GCP_G81_PRODUCTION_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_G81_PRODUCTION_SERVICE_ACCOUNT }}
+      - name: Install gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+        with:
+          version: '>= 552.0.0'
+      - name: Install GKE client components
+        shell: bash
+        run: gcloud components install --quiet gke-gcloud-auth-plugin kubectl
+      - name: Prepare production prerequisites and promote identical digests
+        shell: pwsh
+        working-directory: source
+        run: >-
+          ./scripts/cloud/Promote-G81Production.ps1
+          -ManifestPath ../g81-staging-evidence/release-manifest.json
+          -StagingEvidenceDirectory ../g81-staging-evidence
+          -PlatformProjectId '${{ vars.GCP_PLATFORM_PROJECT_ID }}'
+          -ProductionProjectId '${{ vars.GCP_PRODUCTION_PROJECT_ID }}'
+          -Region '${{ vars.GCP_REGION }}'
+          -ClusterName '${{ vars.GCP_PRODUCTION_CLUSTER_NAME }}'
+          -ReleaseName '${{ inputs.release_name }}'
+          -RuntimeNetwork '${{ vars.GCP_PRODUCTION_NETWORK }}'
+          -RuntimeSubnetwork '${{ vars.GCP_PRODUCTION_SUBNETWORK }}'
+          -CloudSqlPrivateIp '${{ vars.GCP_PRODUCTION_CLOUD_SQL_PRIVATE_IP }}'
+          -RabbitMqHost '${{ vars.GCP_PRODUCTION_RABBITMQ_HOST }}'
+          -RabbitMqTlsServerName '${{ vars.GCP_PRODUCTION_RABBITMQ_TLS_SERVER_NAME }}'
+          -OtelEndpoint '${{ vars.GCP_PRODUCTION_OTEL_ENDPOINT }}'
+          -SimulatorServiceAccount '${{ vars.GCP_PRODUCTION_SIMULATOR_SERVICE_ACCOUNT }}'
+          -MigrationServiceAccount '${{ vars.GCP_PRODUCTION_MIGRATION_SERVICE_ACCOUNT }}'
+          -BootstrapServiceAccount '${{ vars.GCP_PRODUCTION_BOOTSTRAP_SERVICE_ACCOUNT }}'
+          -SmokeServiceAccount '${{ vars.GCP_PRODUCTION_SMOKE_SERVICE_ACCOUNT }}'
+          -FrontendOrigin '${{ vars.GCP_PRODUCTION_FUNCTIONAL_SMOKE_ORIGIN }}'
+          -BootstrapAdminUsername '${{ vars.GCP_PRODUCTION_BOOTSTRAP_ADMIN_USERNAME }}'
+          -PostgresAppPasswordSecret '${{ vars.GCP_PRODUCTION_POSTGRES_APP_PASSWORD_SECRET }}'
+          -PostgresAppPasswordVersion '${{ vars.GCP_PRODUCTION_POSTGRES_APP_PASSWORD_VERSION }}'
+          -PostgresMigrationPasswordSecret '${{ vars.GCP_PRODUCTION_POSTGRES_MIGRATION_PASSWORD_SECRET }}'
+          -PostgresMigrationPasswordVersion '${{ vars.GCP_PRODUCTION_POSTGRES_MIGRATION_PASSWORD_VERSION }}'
+          -BootstrapAdminPasswordSecret '${{ vars.GCP_PRODUCTION_BOOTSTRAP_ADMIN_PASSWORD_SECRET }}'
+          -BootstrapAdminPasswordVersion '${{ vars.GCP_PRODUCTION_BOOTSTRAP_ADMIN_PASSWORD_VERSION }}'
+          -RabbitMqUsernameSecret '${{ vars.GCP_PRODUCTION_RABBITMQ_USERNAME_SECRET }}'
+          -RabbitMqUsernameVersion '${{ vars.GCP_PRODUCTION_RABBITMQ_USERNAME_VERSION }}'
+          -RabbitMqPasswordSecret '${{ vars.GCP_PRODUCTION_RABBITMQ_PASSWORD_SECRET }}'
+          -RabbitMqPasswordVersion '${{ vars.GCP_PRODUCTION_RABBITMQ_PASSWORD_VERSION }}'
+          -RabbitMqCaSecret '${{ vars.GCP_PRODUCTION_RABBITMQ_CA_SECRET }}'
+          -RabbitMqCaVersion '${{ vars.GCP_PRODUCTION_RABBITMQ_CA_VERSION }}'
+          -CloudSqlCaSecret '${{ vars.GCP_PRODUCTION_CLOUD_SQL_CA_SECRET }}'
+          -CloudSqlCaVersion '${{ vars.GCP_PRODUCTION_CLOUD_SQL_CA_VERSION }}'
+          -EvidenceDirectory '${{ runner.temp }}/g81-production-evidence'
+          -Confirmation '${{ inputs.confirmation }}'
+          -FirstReleaseConfirmation '${{ inputs.first_release_confirmation }}'
+          -DeploymentMode '${{ inputs.deployment_mode }}'
+          -EdgeBootstrapConfirmation '${{ inputs.edge_bootstrap_confirmation }}'
+      - name: Attest sealed production evidence checksums
+        if: success()
+        uses: actions/attest-build-provenance@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path: ${{ runner.temp }}/g81-production-evidence/checksums.sha256
+      - name: Upload production rollout evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g81-production-evidence
+          path: ${{ runner.temp }}/g81-production-evidence
+          retention-days: 365
+          if-no-files-found: error

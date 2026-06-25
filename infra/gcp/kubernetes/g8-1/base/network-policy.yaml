@@ -1,0 +1,74 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: prevention-runtime}
+spec:
+  podSelector: {matchLabels: {np.network/prevention: "true"}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      ports: [{protocol: TCP, port: 8080}]
+  egress:
+    - to: [{podSelector: {matchLabels: {np.network/rabbitmq: "true"}}}]
+      ports: [{protocol: TCP, port: 5671}]
+    - to: [{podSelector: {matchLabels: {np.network/otel: "true"}}}]
+      ports: [{protocol: TCP, port: 4317}]
+    - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - ipBlock:
+            cidr: 127.0.0.1/32 # from-param: ${cloud_sql_private_cidr}
+      ports: [{protocol: TCP, port: 5432}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: rabbitmq-runtime}
+spec:
+  podSelector: {matchLabels: {np.network/rabbitmq: "true"}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {np.network/rabbitmq: "true"}}}]
+      ports: [{protocol: TCP, port: 4369}, {protocol: TCP, port: 25672}]
+    - from: [{podSelector: {matchLabels: {np.network/prevention: "true"}}}]
+      ports: [{protocol: TCP, port: 5671}]
+    - from:
+        - ipBlock:
+            cidr: 127.0.0.1/32 # from-param: ${runtime_subnet_cidr}
+      ports: [{protocol: TCP, port: 5671}, {protocol: TCP, port: 15671}]
+    - from: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: rabbitmq-system}}}]
+      ports: [{protocol: TCP, port: 15671}]
+    - from: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: keda}}}]
+      ports: [{protocol: TCP, port: 5671}]
+  egress:
+    - to: [{podSelector: {matchLabels: {np.network/rabbitmq: "true"}}}]
+      ports: [{protocol: TCP, port: 4369}, {protocol: TCP, port: 25672}]
+    - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: otel-runtime}
+spec:
+  podSelector: {matchLabels: {np.network/otel: "true"}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {np.network/prevention: "true"}}
+      ports: [{protocol: TCP, port: 4317}, {protocol: TCP, port: 4318}]
+    - from:
+        - ipBlock:
+            cidr: 127.0.0.1/32 # from-param: ${runtime_subnet_cidr}
+      ports: [{protocol: TCP, port: 4317}, {protocol: TCP, port: 4318}]
+  egress:
+    - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to: [{ipBlock: {cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]}}]
+      ports: [{protocol: TCP, port: 443}]

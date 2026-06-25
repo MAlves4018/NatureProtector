@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://natureprotector.local/schemas/g8-2-final-verdict.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "phase",
+    "qualification_id",
+    "generated_at",
+    "status",
+    "checks",
+    "source_commit",
+    "candidate_manifest_sha256",
+    "evidence_index_sha256",
+    "qualification_summary_sha256",
+    "pre_archive_verdict_sha256",
+    "archive_receipt_sha256",
+    "production_authorized",
+    "production_deployed"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "phase": {
+      "const": "G8.2"
+    },
+    "qualification_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": [
+        "G82_FINAL_QUALIFICATION_PASSED",
+        "G82_BLOCKED_PENDING_ARCHIVE"
+      ]
+    },
+    "checks": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "candidate_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "evidence_index_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "qualification_summary_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "pre_archive_verdict_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "archive_receipt_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "production_authorized": {
+      "const": false
+    },
+    "production_deployed": {
+      "const": false
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "schema_version": 2,
+  "phase": "G8.2",
+  "status": "runtime_execution_required",
+  "required_actions": [
+    "pilot-1",
+    "pilot-2",
+    "pilot-3",
+    "soak-start",
+    "soak-finish",
+    "capacity",
+    "security-rotation",
+    "incident-drill",
+    "collect-audit",
+    "cost-observation",
+    "second-operator",
+    "rollback-drill",
+    "teardown-rehearsal"
+  ],
+  "pilots": {
+    "count": 3,
+    "distinct_utc_dates": true,
+    "unique_execution_ids": true,
+    "unique_simulation_run_ids": true
+  },
+  "soak": {
+    "minimum_continuous_hours": 72,
+    "maximum_unaccounted_gap_minutes": 5
+  },
+  "runtime": {
+    "availability_ratio_min": 0.999,
+    "processing_success_ratio_min": 0.995,
+    "p95_seconds_max": 30,
+    "p99_seconds_max": 60,
+    "confirmed_message_loss_max": 0,
+    "headroom_multiplier_min": 2.0
+  },
+  "dr": {
+    "regional_failover_seconds_max": 180,
+    "pitr_rpo_seconds_max": 300,
+    "pitr_restore_seconds_max": 3600,
+    "cross_region_required": true,
+    "return_to_primary_required": true
+  },
+  "security": {
+    "open_critical_max": 0,
+    "open_high_max": 0,
+    "data_access_audit_logs_required": true,
+    "artifact_attestations_required": true,
+    "credential_rotation_required": true,
+    "certificate_rotation_required": true
+  },
+  "cost": {
+    "observation_days_min": 7,
+    "monthly_forecast_required": true,
+    "approval_required": true
+  },
+  "operability": {
+    "second_operator_required": true,
+    "incident_drill_required": true,
+    "rollback_required": true,
+    "staging_teardown_rehearsal_required": true,
+    "environment_recreation_required": true
+  },
+  "archive": {
+    "minimum_retention_days": 365,
+    "versioning_required": true,
+    "public_access_prevention_required": true,
+    "minimum_objects": 4
+  },
+  "production_authorized": false,
+  "production_deployed": false
+}
