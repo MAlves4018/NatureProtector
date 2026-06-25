@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "repository": "MAlves4018/NatureProtector",
+  "repository_id": "REPLACE_NUMERIC_REPOSITORY_ID",
+  "repository_owner_id": "REPLACE_NUMERIC_OWNER_ID",
+  "default_branch": "master",
+  "billing_account_id": "0109B8-93144E-B93C1C",
+  "platform_project_id": "np-platform-migkxl-202606",
+  "staging_project_id": "np-staging-migkxl-202606",
+  "production_project_id": "np-production-migkxl-202606",
+  "primary_region": "europe-southwest1",
+  "terraform_state_bucket_name": "np-tfstate-migkxl-202606",
+  "evidence_bucket_name": "np-evidence-migkxl-202606",
+  "expected_gcloud_account": "migkxl@gmail.com",
+  "qualification_window": {
+    "starts_at": "2026-06-25T09:00:00+01:00",
+    "ends_at": "2026-06-25T18:00:00+01:00",
+    "teardown_owner": "Miguel Alves"
+  },
+  "cost_guardrails": {
+    "observed_credit_usd": 15.64,
+    "minimum_credit_to_preserve_usd": 8.0,
+    "staging_budget_amount": 1.0,
+    "budget_currency": "EUR",
+    "budget_is_hard_cap": false
+  },
+  "execution": {
+    "create_projects": false,
+    "link_billing": false,
+    "create_state_foundation": false,
+    "create_delivery_control_plane": false,
+    "create_data_plane": false,
+    "create_edge": false,
+    "materialize_generated_secrets": false
+  }
+}

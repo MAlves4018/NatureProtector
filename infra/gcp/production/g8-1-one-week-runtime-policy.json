@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "target_runtime_days": 7,
+  "minimum_soak_hours": 72,
+  "required_drills": [
+    "API restart",
+    "Prevention restart",
+    "RabbitMQ pod loss",
+    "Cloud SQL failover",
+    "PITR restore",
+    "secret rotation",
+    "certificate rotation",
+    "bad release rollback",
+    "backlog drain",
+    "full teardown and reconstruction"
+  ],
+  "cost_evidence": {
+    "observed_days": 7,
+    "monthly_projection_required": true,
+    "sensitivity_analysis_required": true
+  },
+  "claim_limit": "PRODUCTION_READY_AND_ONE_WEEK_RUNTIME_QUALIFIED; never LONG_TERM_PRODUCTION_PROVEN"
+}

@@ -1,0 +1,55 @@
+name: G8.2 authorization verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_commit: {description: Exact candidate commit, required: true, type: string}
+      qualification_run_id: {description: Successful G8.2 finalization run, required: true, type: string}
+      review_verification_run_id: {description: Accepted independent review run, required: true, type: string}
+      authorization_request_run_id: {description: Authorization request run, required: true, type: string}
+      authorization_submission_run_id: {description: Signed authorization decision submission run, required: true, type: string}
+      confirmation: {description: VERIFY_G82_PRODUCTION_AUTHORIZATION, required: true, type: string}
+
+permissions: {contents: read, actions: read, attestations: read, attestations: write}
+
+jobs:
+  verify:
+    if: inputs.confirmation == 'VERIFY_G82_PRODUCTION_AUTHORIZATION'
+    environment: production-authorization
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with: {ref: '${{ inputs.candidate_commit }}'}
+      - shell: bash
+        run: python -m pip install -r scripts/cloud/requirements-g82.txt
+      - name: Validate source runs and verify signed authorization
+        shell: bash
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          root='${{ runner.temp }}/g82-auth'; mkdir -p "$root"/{qualification,review,request,decision,output}
+          scripts/cloud/Verify-G82WorkflowRun.sh '${{ inputs.qualification_run_id }}' '.github/workflows/gcp-g8-2-runtime-qualification.yml' '${{ inputs.candidate_commit }}' '${{ github.event.repository.default_branch }}' '${{ github.repository }}' "$root/qualification/run.json"
+          scripts/cloud/Verify-G82WorkflowRun.sh '${{ inputs.review_verification_run_id }}' '.github/workflows/gcp-g8-2-independent-review.yml' '${{ inputs.candidate_commit }}' '${{ github.event.repository.default_branch }}' '${{ github.repository }}' "$root/review/run.json"
+          scripts/cloud/Verify-G82WorkflowRun.sh '${{ inputs.authorization_request_run_id }}' '.github/workflows/gcp-g8-2-authorization-request.yml' '${{ inputs.candidate_commit }}' '${{ github.event.repository.default_branch }}' '${{ github.repository }}' "$root/request/run.json"
+          scripts/cloud/Verify-G82WorkflowRun.sh '${{ inputs.authorization_submission_run_id }}' '.github/workflows/gcp-g8-2-submit-signed-governance.yml' '${{ inputs.candidate_commit }}' '${{ github.event.repository.default_branch }}' '${{ github.repository }}' "$root/decision/run.json"
+          gh run download '${{ inputs.qualification_run_id }}' --repo '${{ github.repository }}' --name g82-final-qualification --dir "$root/qualification/artifact"
+          gh run download '${{ inputs.review_verification_run_id }}' --repo '${{ github.repository }}' --name g82-independent-review-verdict --dir "$root/review/artifact"
+          gh run download '${{ inputs.authorization_request_run_id }}' --repo '${{ github.repository }}' --name g82-authorization-request --dir "$root/request/artifact"
+          gh run download '${{ inputs.authorization_submission_run_id }}' --repo '${{ github.repository }}' --name g82-authorization-decision-submission --dir "$root/decision/artifact"
+          gh attestation verify "$root/qualification/artifact/g82-review-packet.zip" --repo '${{ github.repository }}' --signer-workflow '${{ github.repository }}/.github/workflows/gcp-g8-2-runtime-qualification.yml' --source-digest '${{ inputs.candidate_commit }}' --source-ref 'refs/heads/${{ github.event.repository.default_branch }}'
+          gh attestation verify "$root/request/artifact/authorization-request.json" --repo '${{ github.repository }}' --signer-workflow '${{ github.repository }}/.github/workflows/gcp-g8-2-authorization-request.yml' --source-digest '${{ inputs.candidate_commit }}' --source-ref 'refs/heads/${{ github.event.repository.default_branch }}'
+          gh attestation verify "$root/decision/artifact/g82-signed-governance.zip" --repo '${{ github.repository }}' --signer-workflow '${{ github.repository }}/.github/workflows/gcp-g8-2-submit-signed-governance.yml' --source-digest '${{ inputs.candidate_commit }}' --source-ref 'refs/heads/${{ github.event.repository.default_branch }}'
+          unzip -q "$root/qualification/artifact/g82-review-packet.zip" -d "$root/qualification/packet"
+          unzip -q "$root/decision/artifact/g82-signed-governance.zip" -d "$root/decision/submission"
+          [[ "$(cat "$root/decision/submission/document-type.txt")" == authorization-decision ]]
+          printf '%s' '${{ vars.G82_AUTHORIZATION_ALLOWED_SIGNERS_B64 }}' | base64 -d > "$root/decision/allowed_signers"
+          python scripts/cloud/Test-G82Authorization.py --request "$root/request/artifact/authorization-request.json" --decision "$root/decision/submission/document.json" --signature "$root/decision/submission/document.json.sig" --allowed-signers "$root/decision/allowed_signers" --final-verdict "$root/qualification/packet/final-verdict.json" --evidence-index "$root/qualification/packet/evidence-index.json" --archive-receipt "$root/qualification/packet/archive-receipt.json" --independent-review "$root/review/artifact/independent-review.json" --independent-review-verdict "$root/review/artifact/independent-review-verdict.json" --candidate-manifest "$root/qualification/packet/candidate-manifest.json" --output "$root/output/authorization-verification.json"
+          sha256sum "$root/output/authorization-verification.json" > "$root/output/authorization-verification.json.sha256"
+      - uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        with: {subject-path: '${{ runner.temp }}/g82-auth/output/authorization-verification.json'}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g82-authorization-verification
+          path: ${{ runner.temp }}/g82-auth/output
+          retention-days: 365
+          if-no-files-found: error

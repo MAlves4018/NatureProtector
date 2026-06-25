@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "repository": "MAlves4018/NatureProtector",
+  "source_commit": "0000000000000000000000000000000000000000",
+  "build_run_id": 1,
+  "generated_at": "2026-06-20T00:00:00Z",
+  "images": {
+    "backoffice-api": {
+      "reference": "europe-southwest1-docker.pkg.dev/PROJECT/natureprotector/backoffice-api@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "signature_verified": true,
+      "high": 0,
+      "critical": 0
+    },
+    "prevention": {
+      "reference": "europe-southwest1-docker.pkg.dev/PROJECT/natureprotector/prevention@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "signature_verified": true,
+      "high": 0,
+      "critical": 0
+    },
+    "simulator": {
+      "reference": "europe-southwest1-docker.pkg.dev/PROJECT/natureprotector/simulator@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "signature_verified": true,
+      "high": 0,
+      "critical": 0
+    },
+    "postgres-migrations": {
+      "reference": "europe-southwest1-docker.pkg.dev/PROJECT/natureprotector/postgres-migrations@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "signature_verified": true,
+      "high": 0,
+      "critical": 0
+    },
+    "postgres-bootstrap": {
+      "reference": "europe-southwest1-docker.pkg.dev/PROJECT/natureprotector/postgres-bootstrap@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "signature_verified": true,
+      "high": 0,
+      "critical": 0
+    },
+    "frontend": {
+      "reference": "europe-southwest1-docker.pkg.dev/PROJECT/natureprotector/frontend@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "signature_verified": true,
+      "high": 0,
+      "critical": 0
+    },
+    "functional-smoke": {
+      "reference": "europe-southwest1-docker.pkg.dev/PROJECT/natureprotector/functional-smoke@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "signature_verified": true,
+      "high": 0,
+      "critical": 0
+    },
+    "rabbitmq": {
+      "reference": "europe-southwest1-docker.pkg.dev/PROJECT/natureprotector/rabbitmq@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "signature_verified": true,
+      "high": 0,
+      "critical": 0
+    },
+    "otel-collector": {
+      "reference": "europe-southwest1-docker.pkg.dev/PROJECT/natureprotector/otel-collector@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "signature_verified": true,
+      "high": 0,
+      "critical": 0
+    },
+    "distributed-probe": {
+      "reference": "europe-southwest1-docker.pkg.dev/PROJECT/natureprotector/distributed-probe@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "signature_verified": true,
+      "high": 0,
+      "critical": 0
+    },
+    "cloud-deploy-verifier": {
+      "reference": "europe-southwest1-docker.pkg.dev/PROJECT/natureprotector/cloud-deploy-verifier@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "signature_verified": true,
+      "high": 0,
+      "critical": 0,
+      "sbom_verified": true,
+      "provenance_verified": true
+    }
+  },
+  "quality_gates": [
+    {
+      "name": "Engineering foundations",
+      "run_id": 1,
+      "conclusion": "success"
+    },
+    {
+      "name": "Security",
+      "run_id": 2,
+      "conclusion": "success"
+    },
+    {
+      "name": "G8.1 cloud production policy",
+      "run_id": 3,
+      "conclusion": "success"
+    }
+  ],
+  "delivery": {
+    "platform_project": "PROJECT",
+    "region": "europe-southwest1",
+    "pipelines": [
+      "natureprotector-api",
+      "natureprotector-frontend",
+      "natureprotector-prevention"
+    ]
+  },
+  "production_authorized": false,
+  "production_deployed": false
+}

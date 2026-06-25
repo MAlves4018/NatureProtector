@@ -1,0 +1,78 @@
+name: G8.1 controlled one-week environment teardown
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to remove
+        required: true
+        type: choice
+        options: [staging, production]
+      project_id:
+        description: Exact non-CN GCP project ID
+        required: true
+        type: string
+      evidence_run_id:
+        description: Workflow run containing final runtime evidence
+        required: true
+        type: string
+      confirmation:
+        description: DESTROY_NATUREPROTECTOR_<ENV>_AFTER_EVIDENCE_EXPORT
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: g8-1-teardown-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  teardown:
+    environment: production-operations
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Download final runtime evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: g81-final-runtime-evidence
+          path: g81-final-runtime-evidence
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.evidence_run_id }}
+      - name: Authenticate with operations identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          workload_identity_provider: ${{ vars.GCP_G81_OPERATIONS_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_G81_OPERATIONS_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+        with:
+          version: '>= 552.0.0'
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
+        with:
+          terraform_version: 1.15.6
+          terraform_wrapper: false
+      - name: Remove environment only after evidence checks
+        shell: pwsh
+        run: >-
+          ./scripts/cloud/Remove-G81WeekEnvironment.ps1
+          -Environment '${{ inputs.environment }}'
+          -ProjectId '${{ inputs.project_id }}'
+          -Region '${{ vars.GCP_REGION }}'
+          -TerraformRoot 'infra/gcp/terraform/g8-1-environment'
+          -TerraformStateBucket '${{ vars.GCP_TERRAFORM_STATE_BUCKET }}'
+          -TerraformStatePrefix 'environments/${{ inputs.environment }}/g8-1'
+          -EvidenceDirectory g81-final-runtime-evidence
+          -Confirmation '${{ inputs.confirmation }}'
+      - name: Preserve teardown receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g81-teardown-receipt-${{ inputs.environment }}
+          path: g81-final-runtime-evidence/teardown-receipt.json
+          retention-days: 365
+          if-no-files-found: error

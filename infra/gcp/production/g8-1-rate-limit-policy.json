@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "layers": [
+    "Cloud Armor",
+    "ASP.NET Core per-instance",
+    "domain quotas",
+    "resource capacity limits"
+  ],
+  "edge": {
+    "login": {
+      "count": 20,
+      "interval_seconds": 60,
+      "ban_seconds": 900
+    },
+    "simulation_launch": {
+      "count": 12,
+      "interval_seconds": 300
+    },
+    "general_api": {
+      "count": 600,
+      "interval_seconds": 60
+    }
+  },
+  "application_policies": [
+    "anonymous-read",
+    "authenticated-read",
+    "authentication",
+    "mutation",
+    "simulation-launch",
+    "expensive-read",
+    "administration",
+    "technical"
+  ],
+  "response": {
+    "status": 429,
+    "retry_after_required": true
+  },
+  "validation": "load-test-before-final-tuning"
+}

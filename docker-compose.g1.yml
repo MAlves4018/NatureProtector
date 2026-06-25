@@ -1,0 +1,170 @@
+services:
+  postgres:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  rabbitmq:
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  postgres-migrations:
+    build:
+      context: .
+      dockerfile: src/NatureProtector.Postgres.Migrations/Dockerfile
+    profiles: ["bootstrap"]
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_MIGRATION_USER: ${POSTGRES_USER}
+      POSTGRES_MIGRATION_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-np_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is required for migrations}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: "no"
+
+  postgres-bootstrap:
+    build:
+      context: .
+      dockerfile: src/NatureProtector.Postgres.Bootstrap/Dockerfile
+    profiles: ["bootstrap"]
+    environment:
+      POSTGRES_REQUIRE_EXPLICIT: "true"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_APP_USER:-np_app}
+      POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is required for bootstrap}
+      NP_BOOTSTRAP_ADMIN_PASSWORD: ${NP_G1_BOOTSTRAP_ADMIN_PASSWORD:?NP_G1_BOOTSTRAP_ADMIN_PASSWORD is required for bootstrap}
+    depends_on:
+      postgres-migrations:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: "no"
+
+  backoffice-api:
+    build:
+      context: .
+      dockerfile: src/NatureProtector.Backoffice.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      BackofficeApi__ControlPlaneEnabled: "true"
+      RuntimeOrchestration__Mode: Disabled
+      RuntimeOrchestration__EvidenceMode: Disabled
+      POSTGRES_REQUIRE_EXPLICIT: "true"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_APP_USER:-np_app}
+      POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is required for backoffice-api}
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__Port: 5672
+      RabbitMq__UserName: ${RABBITMQ_DEFAULT_USER}
+      RabbitMq__Password: ${RABBITMQ_DEFAULT_PASS}
+      RabbitMq__ObservabilityRawEnabled: "false"
+      Jwt__Issuer: NatureProtector
+      Jwt__Audience: NatureProtector.Backoffice
+      Jwt__SigningKey: ${NP_G1_JWT_SIGNING_KEY:?NP_G1_JWT_SIGNING_KEY is required for the local G1 container run}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${BACKOFFICE_API_PORT:-5254}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+
+  prevention:
+    build:
+      context: .
+      dockerfile: src/NatureProtector.Prevention.Host/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      POSTGRES_REQUIRE_EXPLICIT: "true"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_APP_USER:-np_app}
+      POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is required for prevention}
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__Port: 5672
+      RabbitMq__UserName: ${RABBITMQ_DEFAULT_USER}
+      RabbitMq__Password: ${RABBITMQ_DEFAULT_PASS}
+      RabbitMq__ObservabilityRawEnabled: "false"
+      InfluxDb__Url: http://influxdb:8181
+      InfluxDb__Token: ${INFLUXDB_TOKEN}
+      InfluxDb__Organization: ${INFLUXDB_ORGANIZATION:-natureprotector}
+      InfluxDb__Bucket: ${INFLUXDB_BUCKET:-np_telemetry}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      influxdb:
+        condition: service_started
+    ports:
+      - "${PREVENTION_HEALTH_PORT:-5260}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+
+  simulator:
+    build:
+      context: .
+      dockerfile: src/NatureProtector.Simulator.Host/Dockerfile
+    profiles: ["simulator"]
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      POSTGRES_REQUIRE_EXPLICIT: "true"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_APP_USER:-np_app}
+      POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is required for simulator}
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__Port: 5672
+      RabbitMq__UserName: ${RABBITMQ_DEFAULT_USER}
+      RabbitMq__Password: ${RABBITMQ_DEFAULT_PASS}
+      RabbitMq__ObservabilityRawEnabled: "false"
+      Simulator__ControlPlaneEnabled: "true"
+    depends_on:
+      - postgres
+      - rabbitmq
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: "no"
+
+  frontend:
+    environment:
+      BACKOFFICE_API_ORIGIN: http://backoffice-api:8080
+    build:
+      context: .
+      dockerfile: webUI/Dockerfile
+    depends_on:
+      - backoffice-api
+    ports:
+      - "${WEBUI_PORT:-5173}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    restart: unless-stopped

@@ -1,0 +1,73 @@
+name: G8.1 cloud production policy
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/gcp-g8-1-*.yml'
+      - 'infra/gcp/**'
+      - 'scripts/cloud/**'
+      - 'src/NatureProtector.Backoffice.Api/**'
+      - 'tests/NatureProtector.Backoffice.Api.Tests/**'
+      - 'docs/**g8-1**'
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: g8-1-production-policy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Install policy parsers
+        shell: bash
+        run: python3 -m pip install --disable-pip-version-check --no-cache-dir -r scripts/cloud/requirements-validation.txt
+      - name: Run G8.1 static policy
+        run: python3 scripts/cloud/Test-G81Static.py
+      - name: Validate local/cloud configuration contract
+        run: python3 scripts/cloud/Test-LocalCloudConfigurationContract.py
+      - name: Validate release-manifest contract
+        run: python3 scripts/cloud/Test-G81ReleaseManifest.py infra/gcp/contracts/g8-1-release-manifest.example.json
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
+        with:
+          terraform_version: 1.15.6
+          terraform_wrapper: false
+      - name: Validate state-bootstrap Terraform without backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          terraform -chdir=infra/gcp/terraform/g8-1-state-bootstrap fmt -check -recursive
+          terraform -chdir=infra/gcp/terraform/g8-1-state-bootstrap init -backend=false -input=false
+          terraform -chdir=infra/gcp/terraform/g8-1-state-bootstrap validate
+      - name: Validate platform Terraform without backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          terraform -chdir=infra/gcp/terraform/g8-1-platform fmt -check -recursive
+          terraform -chdir=infra/gcp/terraform/g8-1-platform init -backend=false -input=false
+          terraform -chdir=infra/gcp/terraform/g8-1-platform validate
+      - name: Validate environment Terraform without backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          terraform -chdir=infra/gcp/terraform/g8-1-environment fmt -check -recursive
+          terraform -chdir=infra/gcp/terraform/g8-1-environment init -backend=false -input=false
+          terraform -chdir=infra/gcp/terraform/g8-1-environment validate
+      - name: Assert no CN resource identifiers enter G8.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE 'cn[0-9]{4}|course[-_ ]?project|course[-_ ]?billing' \
+            infra/gcp/terraform/g8-1-* infra/gcp/kubernetes/g8-1 infra/gcp/cloud-deploy/g8-1; then
+            echo 'CN resource identifier detected in G8.1 scope' >&2
+            exit 1
+          fi

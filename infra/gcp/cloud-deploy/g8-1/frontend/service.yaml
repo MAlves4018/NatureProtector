@@ -1,0 +1,30 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: natureprotector-frontend
+  annotations:
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+    run.googleapis.com/invoker-iam-disabled: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "2" # from-param: ${frontend_min_scale}
+        autoscaling.knative.dev/maxScale: "20" # from-param: ${frontend_max_scale}
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      serviceAccountName: missing-frontend-service-account # from-param: ${frontend_service_account_email}
+      containerConcurrency: 40
+      timeoutSeconds: 300
+      containers:
+        - name: frontend
+          image: FRONTEND_IMAGE_BY_DIGEST
+          ports:
+            - containerPort: 8080
+          env:
+            - name: BACKOFFICE_API_ORIGIN
+              value: https://example.invalid # from-param: ${api_internal_origin}
+          resources:
+            limits:
+              cpu: "2"
+              memory: 1Gi

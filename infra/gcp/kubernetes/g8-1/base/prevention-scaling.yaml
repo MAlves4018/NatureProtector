@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: np-keda-rabbitmq-connection
+  labels:
+    app.kubernetes.io/name: natureprotector-prevention-scaling
+    app.kubernetes.io/part-of: natureprotector
+stringData:
+  host: amqps://natureprotector-rabbitmq:5671/
+  tls: enable
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: natureprotector-rabbitmq
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: np-keda-rabbitmq-connection
+      key: host
+    - parameter: username
+      name: np-rabbitmq-app-credentials
+      key: username
+    - parameter: password
+      name: np-rabbitmq-app-credentials
+      key: password
+    - parameter: tls
+      name: np-keda-rabbitmq-connection
+      key: tls
+    - parameter: ca
+      name: np-rabbitmq-ca
+      key: ca.crt
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: natureprotector-prevention
+  labels:
+    app.kubernetes.io/name: natureprotector-prevention
+    app.kubernetes.io/part-of: natureprotector
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: natureprotector-prevention
+    envSourceContainerName: prevention
+  pollingInterval: 15
+  cooldownPeriod: 600
+  minReplicaCount: 3
+  maxReplicaCount: 18
+  fallback:
+    failureThreshold: 3
+    replicas: 3
+  advanced:
+    restoreToOriginalReplicaCount: true
+    horizontalPodAutoscalerConfig:
+      name: natureprotector-prevention-keda
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 30
+          selectPolicy: Max
+          policies:
+            - {type: Percent, value: 100, periodSeconds: 60}
+            - {type: Pods, value: 4, periodSeconds: 60}
+        scaleDown:
+          stabilizationWindowSeconds: 600
+          selectPolicy: Min
+          policies:
+            - {type: Percent, value: 25, periodSeconds: 120}
+  triggers:
+    - type: rabbitmq
+      name: ingestion-queue-depth
+      metricType: AverageValue
+      metadata:
+        protocol: amqp
+        queueName: np.ingestion.readings
+        mode: QueueLength
+        value: "200"
+        activationValue: "20"
+      authenticationRef:
+        name: natureprotector-rabbitmq
+    - type: cpu
+      name: prevention-cpu
+      metricType: Utilization
+      metadata:
+        value: "65"

@@ -1,0 +1,36 @@
+apiVersion: rabbitmq.com/v1beta1
+kind: User
+metadata:
+  name: natureprotector-app
+spec:
+  tags: []
+  rabbitmqClusterReference: {name: natureprotector-rabbitmq}
+  importCredentialsSecret: {name: np-rabbitmq-app-credentials}
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Permission
+metadata:
+  name: natureprotector-app
+spec:
+  vhost: "/"
+  user: "np_app"
+  permissions:
+    configure: '^np\.'
+    write: '^np\.'
+    read: '^np\.'
+  rabbitmqClusterReference: {name: natureprotector-rabbitmq}
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Policy
+metadata:
+  name: natureprotector-quorum-policy
+spec:
+  name: natureprotector-quorum
+  pattern: '^np\.'
+  applyTo: queues
+  definition:
+    overflow: reject-publish
+    max-length-bytes: 1073741824
+    delivery-limit: 8
+  priority: 10
+  rabbitmqClusterReference: {name: natureprotector-rabbitmq}

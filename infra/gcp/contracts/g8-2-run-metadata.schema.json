@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://natureprotector.local/schemas/g8-2-run-metadata.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "phase",
+    "run_id",
+    "run_attempt",
+    "repository",
+    "workflow_path",
+    "head_sha",
+    "head_branch",
+    "event",
+    "status",
+    "conclusion",
+    "actor",
+    "created_at",
+    "updated_at",
+    "validated"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "phase": {
+      "const": "G8.2"
+    },
+    "run_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "run_attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "repository": {
+      "const": "MAlves4018/NatureProtector"
+    },
+    "workflow_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "head_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "head_branch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "const": "completed"
+    },
+    "conclusion": {
+      "const": "success"
+    },
+    "actor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "validated": {
+      "const": true
+    }
+  }
+}

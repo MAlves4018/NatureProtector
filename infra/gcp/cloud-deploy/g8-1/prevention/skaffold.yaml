@@ -1,0 +1,40 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: natureprotector-prevention
+manifests:
+  kustomize:
+    paths:
+      - ../../../kubernetes/g8-1/overlays/staging
+deploy:
+  kubectl: {}
+verify:
+  - name: prevention-rollout
+    container:
+      name: kubectl
+      image: CLOUDSDK_IMAGE_BY_DIGEST
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          set -eu
+          for secret in np-runtime-secrets np-rabbitmq-app-credentials np-rabbitmq-ca np-cloud-sql-ca; do
+            deadline=$((SECONDS + 600))
+            until kubectl get secret "$secret" >/dev/null 2>&1; do
+              if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "Required secret $secret was not materialized within 10 minutes" >&2
+                exit 1
+              fi
+              sleep 5
+            done
+          done
+          kubectl wait --for=condition=Ready scaledobject/natureprotector-prevention --timeout=10m
+          kubectl rollout status deployment/natureprotector-prevention --timeout=10m
+profiles:
+  - name: staging
+    manifests:
+      kustomize:
+        paths: ["../../../kubernetes/g8-1/overlays/staging"]
+  - name: production
+    manifests:
+      kustomize:
+        paths: ["../../../kubernetes/g8-1/overlays/production"]

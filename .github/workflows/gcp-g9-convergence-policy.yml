@@ -1,0 +1,52 @@
+name: G9 repository convergence policy
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: g9-convergence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  convergence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Install validators
+        shell: bash
+        run: python -m pip install --disable-pip-version-check --no-cache-dir -r scripts/cloud/requirements-validation.txt
+      - name: Validate convergence
+        run: python scripts/cloud/Test-G9Convergence.py | tee g9-convergence.json
+      - name: Validate project bootstrap safety
+        run: python scripts/cloud/Test-G102Static.py | tee g102-static.json
+      - name: Validate owner bootstrap and budget safety
+        run: python scripts/cloud/Test-G103Static.py | tee g103-static.json
+      - name: Validate production architecture
+        run: python scripts/cloud/Test-G81Static.py | tee g81-static.json
+      - name: Validate local/cloud configuration contract
+        run: python scripts/cloud/Test-LocalCloudConfigurationContract.py | tee local-cloud-configuration-contract.json
+      - name: Validate qualification integrity
+        run: python scripts/cloud/Test-G82Static.py | tee g82-static.json
+      - name: Run adversarial qualification tests
+        run: python scripts/cloud/Test-G82Adversarial.py --repository-root . --output g82-adversarial.json
+      - name: Upload convergence evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g9-convergence-evidence
+          path: |
+            g9-convergence.json
+            g102-static.json
+            g103-static.json
+            g81-static.json
+            local-cloud-configuration-contract.json
+            g82-static.json
+            g82-adversarial.json
+          retention-days: 365
+          if-no-files-found: error

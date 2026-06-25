@@ -1,0 +1,65 @@
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqCluster
+metadata:
+  name: natureprotector-rabbitmq
+  labels:
+    app.kubernetes.io/name: natureprotector-rabbitmq
+    app.kubernetes.io/part-of: natureprotector
+spec:
+  replicas: 3
+  image: RABBITMQ_IMAGE_BY_DIGEST
+  persistence:
+    storageClassName: premium-rwo
+    storage: 50Gi
+  resources:
+    requests: {cpu: "1", memory: 2Gi}
+    limits: {cpu: "2", memory: 4Gi}
+  service:
+    type: LoadBalancer
+    annotations:
+      networking.gke.io/load-balancer-type: Internal
+  tls:
+    secretName: np-rabbitmq-server-tls
+    caSecretName: np-rabbitmq-ca
+    disableNonTLSListeners: true
+  rabbitmq:
+    additionalConfig: |
+      cluster_partition_handling = pause_minority
+      queue_leader_locator = balanced
+      default_queue_type = quorum
+      quorum_queue.initial_cluster_size = 3
+      disk_free_limit.absolute = 5GB
+      vm_memory_high_watermark.relative = 0.6
+      management.tcp.port = none
+      management.ssl.port = 15671
+      consumer_timeout = 900000
+  override:
+    service:
+      spec:
+        externalTrafficPolicy: Local
+        loadBalancerIP: 127.0.0.1 # from-param: ${rabbitmq_load_balancer_ip}
+    statefulSet:
+      spec:
+        template:
+          metadata:
+            labels:
+              np.network/rabbitmq: "true"
+          spec:
+            terminationGracePeriodSeconds: 120
+            topologySpreadConstraints:
+              - maxSkew: 1
+                topologyKey: topology.kubernetes.io/zone
+                whenUnsatisfiable: DoNotSchedule
+                labelSelector:
+                  matchLabels:
+                    np.network/rabbitmq: "true"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: natureprotector-rabbitmq
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: natureprotector-rabbitmq

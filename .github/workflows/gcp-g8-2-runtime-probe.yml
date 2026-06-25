@@ -1,0 +1,129 @@
+name: G8.2 runtime probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Bounded runtime evidence action
+        required: true
+        type: choice
+        options: [pilot-1, pilot-2, pilot-3, soak-start, soak-observe, soak-finish, capacity, security-rotation, incident-drill, collect-audit, cost-observation, second-operator, rollback-drill, teardown-rehearsal]
+      qualification_id:
+        description: Stable qualification identifier
+        required: true
+        type: string
+      candidate_commit:
+        description: Exact 40-character candidate commit
+        required: true
+        type: string
+      release_run_id:
+        description: Successful G8.1 immutable release run for the same commit
+        required: true
+        type: string
+      confirmation:
+        description: Exact RUN_G82_<ACTION> confirmation
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: g82-probe-${{ inputs.qualification_id }}-${{ inputs.action }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Validate dispatch boundary
+        shell: bash
+        env:
+          COMMIT: ${{ inputs.candidate_commit }}
+          ACTION: ${{ inputs.action }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          QUALIFICATION_ID: ${{ inputs.qualification_id }}
+        run: |
+          set -euo pipefail
+          [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$QUALIFICATION_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$ ]]
+          expected="RUN_G82_$(tr '[:lower:]-' '[:upper:]_' <<<"$ACTION")"
+          [[ "$CONFIRMATION" == "$expected" ]]
+      - name: Checkout exact candidate
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ inputs.candidate_commit }}
+      - name: Install bounded validator dependency
+        shell: bash
+        run: python -m pip install -r scripts/cloud/requirements-g82.txt
+      - name: Validate immutable release run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p '${{ runner.temp }}/release'
+          scripts/cloud/Verify-G82WorkflowRun.sh '${{ inputs.release_run_id }}' '.github/workflows/gcp-g8-1-release.yml' '${{ inputs.candidate_commit }}' '${{ github.event.repository.default_branch }}' '${{ github.repository }}' '${{ runner.temp }}/release/release-run-metadata.json'
+          gh run download '${{ inputs.release_run_id }}' --repo '${{ github.repository }}' --name g81-release --dir '${{ runner.temp }}/release/artifact'
+          manifest=$(find '${{ runner.temp }}/release/artifact' -name release-manifest.json -type f -print -quit)
+          test -n "$manifest"
+          cp "$manifest" '${{ runner.temp }}/release/release-manifest.json'
+          gh attestation verify '${{ runner.temp }}/release/release-manifest.json' \
+            --repo '${{ github.repository }}' \
+            --signer-workflow '${{ github.repository }}/.github/workflows/gcp-g8-1-release.yml' \
+            --source-digest '${{ inputs.candidate_commit }}' \
+            --source-ref 'refs/heads/${{ github.event.repository.default_branch }}'
+          python scripts/cloud/Test-G81ReleaseManifest.py '${{ runner.temp }}/release/release-manifest.json'
+      - name: Authenticate probe identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          workload_identity_provider: ${{ vars.GCP_G82_PROBE_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_G82_PROBE_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+          export_environment_variables: true
+      - name: Install cloud tooling
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+        with:
+          version: '>= 552.0.0'
+          install_components: gke-gcloud-auth-plugin
+      - name: Collect bounded raw runtime evidence
+        shell: pwsh
+        run: |
+          ./scripts/cloud/Invoke-G82RuntimeProbe.ps1 `
+            -Action '${{ inputs.action }}' `
+            -QualificationId '${{ inputs.qualification_id }}' `
+            -SourceCommit '${{ inputs.candidate_commit }}' `
+            -EvidenceDirectory '${{ runner.temp }}/probe/evidence' `
+            -Confirmation '${{ inputs.confirmation }}' `
+            -ProjectId '${{ vars.GCP_STAGING_PROJECT_ID }}' `
+            -Region '${{ vars.GCP_REGION }}' `
+            -ClusterName '${{ vars.GCP_G81_STAGING_CLUSTER_NAME }}' `
+            -CloudSqlInstance '${{ vars.GCP_G81_STAGING_CLOUD_SQL_INSTANCE }}' `
+            -SecurityCenterParent '${{ vars.GCP_G82_SCC_PARENT }}'
+      - name: Seal probe artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp '${{ runner.temp }}/release/release-manifest.json' '${{ runner.temp }}/probe/evidence/candidate-manifest.json'
+          cp '${{ runner.temp }}/release/release-run-metadata.json' '${{ runner.temp }}/probe/evidence/release-run-metadata.json'
+          (cd '${{ runner.temp }}/probe' && zip -qr g82-probe-bundle.zip evidence)
+          sha256sum '${{ runner.temp }}/probe/g82-probe-bundle.zip' > '${{ runner.temp }}/probe/g82-probe-bundle.zip.sha256'
+      - name: Attest exact probe bundle
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path: ${{ runner.temp }}/probe/g82-probe-bundle.zip
+      - name: Upload bounded probe artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g82-probe-${{ inputs.qualification_id }}-${{ inputs.action }}
+          path: |
+            ${{ runner.temp }}/probe/g82-probe-bundle.zip
+            ${{ runner.temp }}/probe/g82-probe-bundle.zip.sha256
+          retention-days: 365
+          if-no-files-found: error

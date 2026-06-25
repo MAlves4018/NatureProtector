@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://natureprotector.local/schemas/g8-2-authorization-verification.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "phase",
+    "qualification_id",
+    "status",
+    "checks",
+    "authorization_request_sha256",
+    "authorization_decision_sha256",
+    "authorizer_identity",
+    "scope",
+    "expires_at",
+    "production_authorized",
+    "production_deployed",
+    "next_phase_required"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "phase": {
+      "const": "G8.2"
+    },
+    "qualification_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$"
+    },
+    "status": {
+      "enum": [
+        "G82_PRODUCTION_AUTHORIZATION_VERIFIED",
+        "G82_BLOCKED_PENDING_SIGNED_AUTHORIZATION"
+      ]
+    },
+    "checks": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "authorization_request_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authorization_decision_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authorizer_identity": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": "string"
+    },
+    "production_authorized": {
+      "type": "boolean"
+    },
+    "production_deployed": {
+      "const": false
+    },
+    "next_phase_required": {
+      "const": "controlled-production-launch"
+    }
+  }
+}

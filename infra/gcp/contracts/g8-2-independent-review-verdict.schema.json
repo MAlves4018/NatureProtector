@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://natureprotector.local/schemas/g8-2-independent-review-verdict.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "phase",
+    "qualification_id",
+    "status",
+    "checks",
+    "review_sha256",
+    "reviewer_identity",
+    "decision",
+    "candidate_manifest_sha256",
+    "final_qualification_verdict_sha256",
+    "archive_receipt_sha256",
+    "production_authorized",
+    "production_deployed"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "phase": {
+      "const": "G8.2"
+    },
+    "qualification_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$"
+    },
+    "status": {
+      "enum": [
+        "G82_INDEPENDENT_REVIEW_ACCEPTED",
+        "G82_BLOCKED_PENDING_INDEPENDENT_REVIEW"
+      ]
+    },
+    "checks": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "review_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reviewer_identity": {
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "ACCEPT",
+        "ACCEPT_WITH_CONDITIONS",
+        "REJECT"
+      ]
+    },
+    "candidate_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "final_qualification_verdict_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "archive_receipt_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "production_authorized": {
+      "const": false
+    },
+    "production_deployed": {
+      "const": false
+    }
+  }
+}

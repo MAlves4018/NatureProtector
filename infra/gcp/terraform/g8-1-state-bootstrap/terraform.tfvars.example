@@ -1,0 +1,4 @@
+platform_project_id      = "np-platform-REPLACE"
+state_bucket_name        = "np-tfstate-REPLACE"
+create_state_foundation  = false
+# owner_creation_confirmation = "OWNER_APPROVES_NEW_NON_CN_GCP_PROJECTS_AFTER_G10"
