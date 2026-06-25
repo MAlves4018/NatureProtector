@@ -117,6 +117,8 @@ for base in [ROOT / '.github/workflows', ROOT / 'infra/gcp', ROOT / 'scripts/clo
     for path in base.rglob('*'):
         if not path.is_file():
             continue
+        if '.terraform' in path.parts or path.suffix.lower() in {'.exe', '.dll', '.pdb', '.pyc'}:
+            continue
         if path.name.startswith('Test-'):
             continue
         deployable.append(path)
@@ -128,18 +130,11 @@ for path in deployable:
     for forbidden in ['cn2526-t4-g04', 'cn2526-t4-g04-billacc']:
         check(forbidden not in lowered, f'academic-runtime-identifier:{relative}:{forbidden}')
 
-approved_billing_paths = {
-    'infra/gcp/contracts/g10-2-bootstrap-input.schema.json',
-    'infra/gcp/contracts/g10-2-bootstrap-input.example.json',
-    'infra/gcp/contracts/g10-3-budget-input.schema.json',
-    'infra/gcp/contracts/g10-3-budget-input.example.json',
-    'scripts/cloud/Invoke-G102OwnerGate.ps1',
-}
+billing_id_pattern = re.compile(r'(?i)(?<!<)[0-9a-f]{6}-[0-9a-f]{6}-[0-9a-f]{6}(?!>)')
 for path in deployable:
     relative = path.relative_to(ROOT).as_posix()
     content = path.read_text(encoding='utf-8', errors='ignore')
-    if '0109B8-93144E-B93C1C'.lower() in content.lower():
-        check(relative in approved_billing_paths, f'academic-billing-id-outside-approved-contract:{relative}')
+    check(billing_id_pattern.search(content) is None, f'concrete-billing-id:{relative}')
 
 # The local baseline and sensitive domain boundaries remain present.
 for item in [

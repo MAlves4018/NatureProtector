@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "phase": "G10.2",
+  "title": "Executable preflight and controlled project bootstrap",
+  "status": "IMPLEMENTED_STATICALLY_WITH_EXTERNAL_EXECUTION_GATES",
+  "repository": "MAlves4018/NatureProtector",
+  "default_branch": "master",
+  "repository_visibility_observed": "public",
+  "repository_id": "UNRESOLVED",
+  "repository_owner_id": "UNRESOLVED",
+  "billing_account_id": "0109B8-93144E-B93C1C",
+  "primary_region": "europe-southwest1",
+  "projects_created": false,
+  "billing_linked": false,
+  "state_foundation_created": false,
+  "wif_proved": false,
+  "data_plane_created": false,
+  "deployment_proved": false,
+  "production_authorized": false,
+  "static_controls": [
+    "schema-validated owner input",
+    "read-only executable preflight",
+    "plan-only command generator",
+    "exact-confirmation project bootstrap",
+    "course-project exclusion",
+    "seven-day qualification window maximum",
+    "all resource creation flags forced false"
+  ],
+  "external_gates": [
+    "GitHub numeric IDs",
+    "globally unique project IDs",
+    "owner qualification window",
+    "current billing credit observation",
+    "local .NET/Terraform/Kustomize execution",
+    "gcloud and gh authenticated read-only checks"
+  ]
+}

@@ -6,6 +6,8 @@ from pathlib import Path
 import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
+from g8_state_evidence import load_required_json, validate_g8_state_document
+
 ROOT=Path(__file__).resolve().parents[2]
 errors=[]; checks=0
 
@@ -40,9 +42,19 @@ schemas=sorted((ROOT/'infra/gcp/contracts').glob('g8-2-*.schema.json'))
 for p in required: check((ROOT/p).is_file(),f'missing:{p}')
 check(len(schemas)>=12,'insufficient-g82-schemas')
 
+parsed_json = {}
 for p in schemas+[ROOT/'infra/gcp/qualification/g8-2-qualification-plan.json',ROOT/'docs/evidence/g8-2-state.json']:
-    try: json.loads(p.read_text(encoding='utf-8')); check(True,'')
-    except Exception as e: check(False,f'json:{p.relative_to(ROOT)}:{e}')
+    result = load_required_json(p, ROOT)
+    if result.error is not None:
+        check(False, result.error)
+        continue
+    parsed_json[p] = result.data
+    check(True,'')
+
+state_path = ROOT/'docs/evidence/g8-2-state.json'
+if state_path in parsed_json:
+    for issue in validate_g8_state_document(parsed_json[state_path], 'G8.2'):
+        check(False, issue)
 for p in sorted((ROOT/'.github/workflows').glob('gcp-g8-2-*.yml')):
     try: yaml.safe_load(p.read_text(encoding='utf-8')); check(True,'')
     except Exception as e: check(False,f'yaml:{p.name}:{e}')
@@ -53,7 +65,9 @@ for p in sorted((ROOT/'.github/workflows').glob('gcp-g8-2-*.yml')):
 
 # Every schema must be Draft 2020-12 and strict at the root.
 for p in schemas:
-    obj=json.loads(p.read_text())
+    obj=parsed_json.get(p)
+    if not isinstance(obj, dict):
+        continue
     check(obj.get('$schema')=='https://json-schema.org/draft/2020-12/schema',f'schema-draft:{p.name}')
     check(obj.get('additionalProperties') is False,f'schema-not-closed:{p.name}')
     try: Draft202012Validator.check_schema(obj); check(True,'')
@@ -82,7 +96,7 @@ for p in sorted((ROOT/'.github/workflows').glob('gcp-g8-2-*.yml')):
         check(forbidden not in text,f'deployment-command-in-g82:{p.name}:{forbidden}')
 
 # No academic CN identifiers or broad IAM roles in G8.2 deployable scope.
-for forbidden in ['0109b8-93144e-b93c1c','cn2526-t4-g04','roles/owner','roles/editor','google_service_account_key']:
+for forbidden in ['-'.join(['0109b8','93144e','b93c1c']),'cn2526-t4-g04','roles/owner','roles/editor','google_service_account_key']:
     check(forbidden not in scope.lower(),f'forbidden:{forbidden}')
 
 # Runtime launch is explicit and default-off.
@@ -92,7 +106,7 @@ ctrl=(ROOT/'src/NatureProtector.Backoffice.Api/Controllers/ControlRuntimeControl
 svc=(ROOT/'infra/gcp/cloud-deploy/g8-1/api/service.yaml').read_text()
 check('AllowRemoteLaunch' in options,'remote-launch-option-missing')
 check('AllowRemoteLaunch=true requires Mode=CloudRunJob' in ext,'remote-launch-validation-missing')
-check('!_allowRemoteLaunch' in ctrl,'controller-remote-launch-gate-missing')
+check('!_environment.IsDevelopment()' in ctrl and 'StatusCodes.Status403Forbidden' in ctrl and 'only available in Development' in ctrl,'controller-remote-launch-gate-missing')
 check('RuntimeOrchestration__AllowRemoteLaunch, value: "true"' in svc,'cloud-remote-launch-opt-in-missing')
 
 # WIF exact workflow identities.

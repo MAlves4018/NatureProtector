@@ -1,0 +1,17 @@
+{
+  "phase": "G9",
+  "status": "G9_REPOSITORY_CONVERGENCE_IMPLEMENTED",
+  "classification": "INTEGRATION_CANDIDATE",
+  "repository": "MAlves4018/NatureProtector",
+  "baseline_source": "owner-provided NatureProtector-master (3)(4).zip",
+  "active_cloud_generations": [
+    "G8.1",
+    "G8.2"
+  ],
+  "cloud_provisioned": false,
+  "production_authorized": false,
+  "production_deployed": false,
+  "projects_created": false,
+  "cn_resources_allowed": false,
+  "next_phase": "G10 Codex Integration Handoff and Owner Validation Gate"
+}

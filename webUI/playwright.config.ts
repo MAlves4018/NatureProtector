@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const fullBrowserMatrix = process.env.NP_PLAYWRIGHT_BROWSER_MATRIX === 'all';
+const webServerPort = process.env.NP_PLAYWRIGHT_PORT ?? '4173';
+const webServerUrl = `http://127.0.0.1:${webServerPort}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -17,14 +19,14 @@ export default defineConfig({
     ['junit', { outputFile: 'test-results/playwright-junit.xml' }],
   ],
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: webServerUrl,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: process.env.CI ? 'retain-on-failure' : 'off',
   },
   webServer: {
-    command: 'npm run build && npm run preview -- --host 127.0.0.1 --port 4173',
-    url: 'http://127.0.0.1:4173/ui-v2',
+    command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${webServerPort}`,
+    url: `${webServerUrl}/ui-v2`,
     reuseExistingServer: false,
     timeout: 120_000,
   },

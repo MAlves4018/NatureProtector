@@ -47,6 +47,7 @@ builder.Services.Configure<BackofficeApiOptions>(
     builder.Configuration.GetSection(BackofficeApiOptions.SectionName));
 builder.Services.Configure<JwtAuthenticationOptions>(
     builder.Configuration.GetSection(JwtAuthenticationOptions.SectionName));
+builder.Services.AddNatureProtectorApiRateLimiting(builder.Configuration);
 
 var jwtOptions = builder.Configuration
     .GetSection(JwtAuthenticationOptions.SectionName)
@@ -159,9 +160,11 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/live");
 app.MapControllers();
 
 app.Run();

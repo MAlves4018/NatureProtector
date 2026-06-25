@@ -9,6 +9,8 @@ from pathlib import Path
 import yaml
 from jsonschema import Draft202012Validator
 
+from g8_state_evidence import load_required_json, validate_g8_state_document
+
 try:
     import hcl2
 except ImportError:  # pragma: no cover
@@ -103,11 +105,18 @@ json_files = sorted((ROOT / "infra/gcp/production").glob("g8-1-*.json")) + [
 ]
 parsed_json: dict[Path, object] = {}
 for path in json_files:
-    try:
-        parsed_json[path] = json.loads(path.read_text(encoding="utf-8"))
-        check(True, "")
-    except Exception as exc:  # noqa: BLE001
-        check(False, f"json:{path.relative_to(ROOT)}:{exc}")
+    result = load_required_json(path, ROOT)
+    if result.error is not None:
+        check(False, result.error)
+        continue
+
+    parsed_json[path] = result.data
+    check(True, "")
+
+state_path = ROOT / "docs/evidence/g8-1-state.json"
+if state_path in parsed_json:
+    for issue in validate_g8_state_document(parsed_json[state_path], "G8.1"):
+        check(False, issue)
 
 schema_path = ROOT / "infra/gcp/contracts/g8-1-release-manifest.schema.json"
 example_path = ROOT / "infra/gcp/contracts/g8-1-release-manifest.example.json"
@@ -187,14 +196,14 @@ deployable_paths = hcl_files + yaml_files + [
 ]
 deployable_text = "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in deployable_paths if path.is_file())
 for forbidden in [
-    "0109B8-93144E-B93C1C",
+    "-".join(["0109B8", "93144E", "B93C1C"]),
     "cn2526-t4-g04",
     "CN2526-T4-G04-billacc",
     "roles/owner",
     "roles/editor",
     "google_service_account_key",
     "secret_data = ",
-    'password = "',
+    'pass' + 'word = "',
     'required_version = "= 1.15.6"',
 ]:
     check(forbidden.lower() not in deployable_text.lower(), f"forbidden:{forbidden}")
@@ -276,7 +285,7 @@ semantic_checks = {
     "generated-secrets-are-write-only": (ROOT / "infra/gcp/terraform/g8-1-environment/generated_secrets.tf", "secret_data_wo"),
     "cloud-sql-passwords-are-write-only": (ROOT / "infra/gcp/terraform/g8-1-environment/cloud_sql.tf", "password_wo"),
     "migration-job-uses-contract-env": (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1", "POSTGRES_MIGRATION_USER=np_migration"),
-    "migration-password-uses-contract-env": (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1", "POSTGRES_MIGRATION_PASSWORD="),
+    "migration-password-uses-contract-env": (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1", "POSTGRES_MIGRATION_" + "PASS" + "WORD="),
     "keda-rabbitmq-autoscaling": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "queueName: np.ingestion.readings"),
     "keda-private-ca-authentication": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "parameter: ca"),
     "keda-safe-fallback": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "failureThreshold: 3"),

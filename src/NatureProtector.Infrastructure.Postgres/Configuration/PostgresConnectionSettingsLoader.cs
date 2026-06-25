@@ -21,13 +21,24 @@ public static class PostgresConnectionSettingsLoader
     public static PostgresControlPlaneConnectionSettings LoadFromEnvironmentOrDotEnv(string basePath)
     {
         var dotEnvValues = LoadDotEnvValues(basePath);
+        var requireExplicit = GetBooleanValue("POSTGRES_REQUIRE_EXPLICIT", dotEnvValues);
+        ThrowIfRequiredValuesAreMissing(
+            requireExplicit,
+            dotEnvValues,
+            "POSTGRES_HOST",
+            "POSTGRES_PORT",
+            "POSTGRES_DB",
+            "POSTGRES_USER",
+            "POSTGRES_PASSWORD");
 
         return new PostgresControlPlaneConnectionSettings(
-            GetValue("POSTGRES_HOST", dotEnvValues, "localhost"),
-            GetIntValue("POSTGRES_PORT", dotEnvValues, 5432),
-            GetValue("POSTGRES_DB", dotEnvValues, "natureprotector"),
-            GetValue("POSTGRES_USER", dotEnvValues, "np"),
-            GetValue("POSTGRES_PASSWORD", dotEnvValues, "np_dev_pass"));
+            GetValue("POSTGRES_HOST", dotEnvValues, "localhost", requireExplicit),
+            GetPortValue("POSTGRES_PORT", dotEnvValues, 5432, requireExplicit),
+            GetValue("POSTGRES_DB", dotEnvValues, "natureprotector", requireExplicit),
+            GetValue("POSTGRES_USER", dotEnvValues, "np", requireExplicit),
+            GetValue("POSTGRES_PASSWORD", dotEnvValues, "np_dev_pass", requireExplicit),
+            GetOptionalValue("POSTGRES_SSL_MODE", dotEnvValues),
+            GetOptionalValue("POSTGRES_ROOT_CERTIFICATE", dotEnvValues));
     }
 
     /// <summary>
@@ -87,18 +98,77 @@ public static class PostgresConnectionSettingsLoader
     /// <summary>
     /// Resolve uma chave com prioridade para variáveis de ambiente.
     /// </summary>
-    private static string GetValue(string key, IReadOnlyDictionary<string, string> dotEnvValues, string fallback)
+    private static string GetValue(
+        string key,
+        IReadOnlyDictionary<string, string> dotEnvValues,
+        string fallback,
+        bool required)
     {
-        return Environment.GetEnvironmentVariable(key)
-            ?? (dotEnvValues.TryGetValue(key, out var fromDotEnv) ? fromDotEnv : fallback);
+        var value = GetOptionalValue(key, dotEnvValues);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        if (required)
+        {
+            throw new InvalidOperationException($"PostgreSQL configuration key '{key}' is required when POSTGRES_REQUIRE_EXPLICIT=true.");
+        }
+
+        return fallback;
     }
 
     /// <summary>
     /// Resolve um inteiro com fallback seguro quando a configuração é inválida.
     /// </summary>
-    private static int GetIntValue(string key, IReadOnlyDictionary<string, string> dotEnvValues, int fallback)
+    private static int GetPortValue(
+        string key,
+        IReadOnlyDictionary<string, string> dotEnvValues,
+        int fallback,
+        bool required)
     {
-        var raw = GetValue(key, dotEnvValues, fallback.ToString());
-        return int.TryParse(raw, out var parsed) ? parsed : fallback;
+        var raw = GetValue(key, dotEnvValues, fallback.ToString(), required);
+        if (int.TryParse(raw, out var parsed) && parsed is >= 1 and <= 65535)
+        {
+            return parsed;
+        }
+
+        throw new InvalidOperationException($"PostgreSQL configuration key '{key}' must be an integer between 1 and 65535.");
+    }
+
+    private static string? GetOptionalValue(string key, IReadOnlyDictionary<string, string> dotEnvValues)
+    {
+        var value = Environment.GetEnvironmentVariable(key)
+            ?? (dotEnvValues.TryGetValue(key, out var fromDotEnv) ? fromDotEnv : null);
+
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static void ThrowIfRequiredValuesAreMissing(
+        bool required,
+        IReadOnlyDictionary<string, string> dotEnvValues,
+        params string[] keys)
+    {
+        if (!required)
+        {
+            return;
+        }
+
+        var missing = keys
+            .Where(key => string.IsNullOrWhiteSpace(GetOptionalValue(key, dotEnvValues)))
+            .ToArray();
+        if (missing.Length > 0)
+        {
+            throw new InvalidOperationException(
+                "PostgreSQL explicit configuration is missing required keys: " +
+                string.Join(", ", missing) +
+                ".");
+        }
+    }
+
+    private static bool GetBooleanValue(string key, IReadOnlyDictionary<string, string> dotEnvValues)
+    {
+        var value = GetOptionalValue(key, dotEnvValues);
+        return bool.TryParse(value, out var parsed) && parsed;
     }
 }

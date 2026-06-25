@@ -18,15 +18,15 @@ public static class ApiRateLimitingExtensions
             .Validate(options => options.IsValid(), "Every rate-limit policy must define a positive permit limit and window.")
             .ValidateOnStart();
 
-        var configured = configuration
-            .GetSection(ApiRateLimitingOptions.SectionName)
-            .Get<ApiRateLimitingOptions>() ?? new ApiRateLimitingOptions();
-
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
             {
+                var configured = context.RequestServices
+                    .GetRequiredService<IOptions<ApiRateLimitingOptions>>()
+                    .Value;
+
                 if (!configured.Enabled || IsUnrestrictedHealthEndpoint(context))
                 {
                     return RateLimitPartition.GetNoLimiter("unrestricted-health");
