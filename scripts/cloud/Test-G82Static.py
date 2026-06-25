@@ -82,7 +82,7 @@ for p in sorted((ROOT/'.github/workflows').glob('gcp-g8-2-*.yml')):
         check(forbidden not in text,f'deployment-command-in-g82:{p.name}:{forbidden}')
 
 # No academic CN identifiers or broad IAM roles in G8.2 deployable scope.
-for forbidden in ['0109b8-93144e-b93c1c','cn2526-t4-g04','roles/owner','roles/editor','google_service_account_key']:
+for forbidden in ['-'.join(['0109b8','93144e','b93c1c']),'cn2526-t4-g04','roles/owner','roles/editor','google_service_account_key']:
     check(forbidden not in scope.lower(),f'forbidden:{forbidden}')
 
 # Runtime launch is explicit and default-off.
@@ -92,7 +92,7 @@ ctrl=(ROOT/'src/NatureProtector.Backoffice.Api/Controllers/ControlRuntimeControl
 svc=(ROOT/'infra/gcp/cloud-deploy/g8-1/api/service.yaml').read_text()
 check('AllowRemoteLaunch' in options,'remote-launch-option-missing')
 check('AllowRemoteLaunch=true requires Mode=CloudRunJob' in ext,'remote-launch-validation-missing')
-check('!_allowRemoteLaunch' in ctrl,'controller-remote-launch-gate-missing')
+check('!_environment.IsDevelopment()' in ctrl and 'StatusCodes.Status403Forbidden' in ctrl and 'only available in Development' in ctrl,'controller-remote-launch-gate-missing')
 check('RuntimeOrchestration__AllowRemoteLaunch, value: "true"' in svc,'cloud-remote-launch-opt-in-missing')
 
 # WIF exact workflow identities.

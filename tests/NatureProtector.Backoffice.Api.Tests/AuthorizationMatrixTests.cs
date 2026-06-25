@@ -14,6 +14,7 @@ public sealed class AuthorizationMatrixTests
     private static readonly EndpointPolicy[] EndpointPolicies =
     [
         Anonymous("GET", "/health", "/health"),
+        Anonymous("GET", "/health/live", "/health/live"),
         Anonymous("GET", "/openapi/{documentName}.json", "/openapi/v1.json"),
 
         Anonymous("GET", "/api/control/areas", "/api/control/areas"),

@@ -56,6 +56,20 @@ $state = [ordered]@{
     status = "RUNNING"
 }
 
+function Get-OwnerGateMaskedBillingAccountId {
+    param([AllowEmptyString()][string]$BillingAccountId)
+
+    if ([string]::IsNullOrWhiteSpace($BillingAccountId)) {
+        return $null
+    }
+
+    if ($BillingAccountId.Length -lt 6) {
+        return '***'
+    }
+
+    return "******-******-$($BillingAccountId.Substring($BillingAccountId.Length - 6))"
+}
+
 function Add-Check {
     param(
         [Parameter(Mandatory)][string]$Name,
@@ -383,10 +397,15 @@ function Invoke-ProjectBootstrapWhatIf {
     $summaryPath = Join-Path $whatIfDir "project-bootstrap-summary.json"
     if (-not (Test-Path -LiteralPath $summaryPath)) { throw "Project bootstrap WhatIf summary was not produced." }
     $summary = Get-Content -Raw -LiteralPath $summaryPath | ConvertFrom-Json
+    $inputDocument = Get-Content -Raw -LiteralPath $whatIfInput | ConvertFrom-Json
     if ($summary.status -ne "WHAT_IF_PASS" -or $summary.mode -ne "WHAT_IF" -or $summary.cloud_mutations_requested -ne $false -or $summary.data_plane_created -ne $false) {
         throw "Project bootstrap WhatIf summary does not satisfy the owner gate."
     }
-    $expectedProjects = @("np-platform-migkxl-20260624", "np-staging-migkxl-20260624", "np-production-migkxl-20260624")
+    $expectedProjects = @(
+        [string]$inputDocument.platform_project_id,
+        [string]$inputDocument.staging_project_id,
+        [string]$inputDocument.production_project_id
+    )
     $plannedProjects = @($summary.projects | ForEach-Object { $_.project_id })
     foreach ($project in $expectedProjects) {
         if ($project -notin $plannedProjects) { throw "Expected project missing from WhatIf: $project" }
@@ -394,8 +413,8 @@ function Invoke-ProjectBootstrapWhatIf {
     $gate = [ordered]@{
         status = "PASS"
         projects_to_create = $expectedProjects
-        billing_account = "0109B8-93144E-B93C1C"
-        expected_gcloud_account = "migkxl@gmail.com"
+        billing_account = Get-OwnerGateMaskedBillingAccountId ([string]$inputDocument.billing_account_id)
+        expected_gcloud_account = [string]$inputDocument.expected_gcloud_account
         data_plane_resources_to_create = 0
         estimated_persistent_runtime_cost = 0
         resources_to_create = [ordered]@{

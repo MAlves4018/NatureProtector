@@ -1,0 +1,25 @@
+# Administrative setup, identity and CI/CD control plane.
+artifactregistry.googleapis.com
+billingbudgets.googleapis.com
+binaryauthorization.googleapis.com
+cloudbuild.googleapis.com
+clouddeploy.googleapis.com
+cloudresourcemanager.googleapis.com
+containeranalysis.googleapis.com
+iam.googleapis.com
+iamcredentials.googleapis.com
+ondemandscanning.googleapis.com
+serviceusage.googleapis.com
+sts.googleapis.com
+
+# Staging runtime APIs used by the existing G8.1 Terraform architecture.
+cloudtrace.googleapis.com
+compute.googleapis.com
+container.googleapis.com
+dns.googleapis.com
+logging.googleapis.com
+monitoring.googleapis.com
+run.googleapis.com
+secretmanager.googleapis.com
+servicenetworking.googleapis.com
+sqladmin.googleapis.com

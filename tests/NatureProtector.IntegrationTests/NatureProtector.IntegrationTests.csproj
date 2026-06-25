@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\NatureProtector.Infrastructure.Influx\NatureProtector.Infrastructure.Influx.csproj" />
     <ProjectReference Include="..\..\src\NatureProtector.Infrastructure.Postgres\NatureProtector.Infrastructure.Postgres.csproj" />
     <ProjectReference Include="..\..\src\NatureProtector.Postgres.Bootstrap\NatureProtector.Postgres.Bootstrap.csproj" />
+    <ProjectReference Include="..\..\src\NatureProtector.Postgres.Migrations\NatureProtector.Postgres.Migrations.csproj" />
     <ProjectReference Include="..\..\src\NatureProtector.Prevention.Host\NatureProtector.Prevention.Host.csproj" />
     <ProjectReference Include="..\..\src\NatureProtector.Shared\NatureProtector.Shared.csproj" />
     <ProjectReference Include="..\..\src\NatureProtector.Simulator.Host\NatureProtector.Simulator.Host.csproj" />

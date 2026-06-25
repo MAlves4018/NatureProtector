@@ -1,0 +1,14 @@
+# APIs base do plano de controlo NatureProtector.
+# Ativar uma API não cria automaticamente recursos de runtime.
+# Reveja esta lista quando a arquitetura real do repositório for reconciliada.
+
+serviceusage.googleapis.com
+cloudresourcemanager.googleapis.com
+cloudbilling.googleapis.com
+billingbudgets.googleapis.com
+iam.googleapis.com
+iamcredentials.googleapis.com
+sts.googleapis.com
+artifactregistry.googleapis.com
+logging.googleapis.com
+monitoring.googleapis.com

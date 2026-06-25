@@ -28,7 +28,10 @@
     "repository_id": { "type": "string", "pattern": "^[1-9][0-9]+$" },
     "repository_owner_id": { "type": "string", "pattern": "^[1-9][0-9]+$" },
     "default_branch": { "const": "master" },
-    "billing_account_id": { "const": "0109B8-93144E-B93C1C" },
+    "billing_account_id": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{6}-[0-9A-Fa-f]{6}-[0-9A-Fa-f]{6}$"
+    },
     "platform_project_id": { "$ref": "#/$defs/projectId" },
     "staging_project_id": { "$ref": "#/$defs/projectId" },
     "production_project_id": { "$ref": "#/$defs/projectId" },

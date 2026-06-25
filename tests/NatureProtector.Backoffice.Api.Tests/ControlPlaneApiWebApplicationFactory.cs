@@ -23,6 +23,7 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
     private readonly bool _authenticated;
     private readonly IReadOnlyList<string> _roles;
     private readonly IRuntimeObservabilityService? _runtimeObservabilityService;
+    private readonly IReadOnlyDictionary<string, string?> _configurationOverrides;
 
     public ControlPlaneApiWebApplicationFactory(
         bool controlPlaneAvailable = true,
@@ -30,7 +31,8 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
         string environmentName = "Development",
         IReadOnlyList<string>? roles = null,
         bool authenticated = true,
-        IRuntimeObservabilityService? runtimeObservabilityService = null)
+        IRuntimeObservabilityService? runtimeObservabilityService = null,
+        IReadOnlyDictionary<string, string?>? configurationOverrides = null)
     {
         _controlPlaneAvailable = controlPlaneAvailable;
         _availabilityMessage = availabilityMessage;
@@ -38,6 +40,7 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
         _authenticated = authenticated;
         _roles = roles is { Count: > 0 } ? roles : [RoleRecord.Admin];
         _runtimeObservabilityService = runtimeObservabilityService;
+        _configurationOverrides = configurationOverrides ?? new Dictionary<string, string?>();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -46,10 +49,16 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
         builder.UseSetting("BackofficeApi:ControlPlaneEnabled", "false");
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
         {
-            configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            var values = new Dictionary<string, string?>
             {
                 ["BackofficeApi:ControlPlaneEnabled"] = "false"
-            });
+            };
+            foreach (var pair in _configurationOverrides)
+            {
+                values[pair.Key] = pair.Value;
+            }
+
+            configurationBuilder.AddInMemoryCollection(values);
         });
 
         builder.ConfigureServices(services =>

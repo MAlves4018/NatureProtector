@@ -128,3 +128,7 @@ __pycache__/
 
 # Terraform local working directories
 **/.terraform/**
+artifacts/cloud-setup/
+**/*.tfplan
+**/.terraform/
+**/.terraform.lock.hcl.backup

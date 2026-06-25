@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "billing_account_id": "0109B8-93144E-B93C1C",
-  "expected_gcloud_account": "migkxl@gmail.com",
+  "billing_account_id": "REPLACE_BILLING_ACCOUNT_ID",
+  "expected_gcloud_account": "owner@example.com",
   "budget_is_hard_cap": false,
   "thresholds": [
     0.5,

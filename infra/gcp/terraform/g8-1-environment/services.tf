@@ -2,7 +2,6 @@ locals {
   required_services = toset([
     "artifactregistry.googleapis.com",
     "binaryauthorization.googleapis.com",
-    "cloudasset.googleapis.com",
     "cloudbuild.googleapis.com",
     "cloudtrace.googleapis.com",
     "compute.googleapis.com",
@@ -12,7 +11,6 @@ locals {
     "iam.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
-    "networkmanagement.googleapis.com",
     "run.googleapis.com",
     "secretmanager.googleapis.com",
     "servicenetworking.googleapis.com",

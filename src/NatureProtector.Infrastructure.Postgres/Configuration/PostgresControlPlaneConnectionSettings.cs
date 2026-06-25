@@ -7,7 +7,9 @@ public sealed record PostgresControlPlaneConnectionSettings(
     int Port,
     string Database,
     string Username,
-    string Password)
+    string Password,
+    string? SslModeName = null,
+    string? RootCertificate = null)
 {
     public string BuildConnectionString()
     {
@@ -20,6 +22,16 @@ public sealed record PostgresControlPlaneConnectionSettings(
             Password = Password,
             IncludeErrorDetail = true
         };
+
+        if (!string.IsNullOrWhiteSpace(SslModeName))
+        {
+            builder.SslMode = Enum.Parse<SslMode>(SslModeName, ignoreCase: true);
+        }
+
+        if (!string.IsNullOrWhiteSpace(RootCertificate))
+        {
+            builder.RootCertificate = RootCertificate;
+        }
 
         return builder.ConnectionString;
     }

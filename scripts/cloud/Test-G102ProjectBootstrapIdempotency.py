@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/cloud/Invoke-G102ProjectBootstrap.ps1"
 CONFIRMATION = "CREATE_EMPTY_NATUREPROTECTOR_PROJECTS_AND_LINK_APPROVED_BILLING"
-BILLING_ACCOUNT = "0109B8-93144E-B93C1C"
+BILLING_ACCOUNT = "-".join(["ABCDEF", "123456", "7890AB"])
 
 
 def write_input(path: Path) -> None:

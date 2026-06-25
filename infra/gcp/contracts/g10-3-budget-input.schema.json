@@ -18,7 +18,8 @@
       "const": 1
     },
     "billing_account_id": {
-      "const": "0109B8-93144E-B93C1C"
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{6}-[0-9A-Fa-f]{6}-[0-9A-Fa-f]{6}$"
     },
     "expected_gcloud_account": {
       "type": "string",

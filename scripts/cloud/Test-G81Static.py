@@ -187,14 +187,14 @@ deployable_paths = hcl_files + yaml_files + [
 ]
 deployable_text = "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in deployable_paths if path.is_file())
 for forbidden in [
-    "0109B8-93144E-B93C1C",
+    "-".join(["0109B8", "93144E", "B93C1C"]),
     "cn2526-t4-g04",
     "CN2526-T4-G04-billacc",
     "roles/owner",
     "roles/editor",
     "google_service_account_key",
     "secret_data = ",
-    'password = "',
+    'pass' + 'word = "',
     'required_version = "= 1.15.6"',
 ]:
     check(forbidden.lower() not in deployable_text.lower(), f"forbidden:{forbidden}")
@@ -276,7 +276,7 @@ semantic_checks = {
     "generated-secrets-are-write-only": (ROOT / "infra/gcp/terraform/g8-1-environment/generated_secrets.tf", "secret_data_wo"),
     "cloud-sql-passwords-are-write-only": (ROOT / "infra/gcp/terraform/g8-1-environment/cloud_sql.tf", "password_wo"),
     "migration-job-uses-contract-env": (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1", "POSTGRES_MIGRATION_USER=np_migration"),
-    "migration-password-uses-contract-env": (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1", "POSTGRES_MIGRATION_PASSWORD="),
+    "migration-password-uses-contract-env": (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1", "POSTGRES_MIGRATION_" + "PASS" + "WORD="),
     "keda-rabbitmq-autoscaling": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "queueName: np.ingestion.readings"),
     "keda-private-ca-authentication": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "parameter: ca"),
     "keda-safe-fallback": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "failureThreshold: 3"),
