@@ -98,8 +98,21 @@ docs/evidence/V3/*
 docs/evidence/controlled-validation/*
 /docs/evidence/diagnostics/
 /docs/evidence/m06-readiness
+
+# G8 contracts
 !docs/evidence/g8-1-state.json
 !docs/evidence/g8-2-state.json
+!docs/evidence/g8-1-source-references.md
+!docs/evidence/g8-1-implementation-evidence-2026-06-20.md
+
+# G9 contracts
+!docs/evidence/g9-conflict-register.md
+!docs/evidence/g9-convergence-state.json
+
+# G10 contracts
+!docs/evidence/g10-2-phase3-state.json
+!docs/evidence/g10-3-phase4-state.json
+
 #TEMP 
 docs/planning/V0/
 docs/planning/V1/
