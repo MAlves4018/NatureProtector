@@ -11,24 +11,42 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - uses: ./.github/actions/setup-toolchain
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup project toolchain
+        uses: ./.github/actions/setup-toolchain
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
+        with:
+          terraform_wrapper: false
+
+      - name: Verify Terraform installation
+        shell: bash
+        run: terraform version
+
       - name: Normalized inventory
         shell: pwsh
         run: ./scripts/np.ps1 inventory
+
       - name: Normalized validation
         shell: pwsh
         run: ./scripts/np.ps1 validate
+
       - name: Backend tests
         shell: pwsh
         run: |
           dotnet restore NatureProtector.sln
           dotnet build NatureProtector.sln -c Release --no-restore
           dotnet test NatureProtector.sln -c Release --no-build --filter "Category!=DockerIntegration" --logger "trx;LogFilePrefix=standard-cd" --results-directory ./TestResults
+
       - name: Start Docker integration infrastructure
         shell: pwsh
         run: ./scripts/ci/Start-DockerIntegrationServices.ps1
+
       - name: Run Docker integration tests
         shell: pwsh
         env:
@@ -47,48 +65,97 @@ jobs:
           NP_TEST_INFLUXDB_ORGANIZATION: natureprotector
           NP_TEST_INFLUXDB_BUCKET: np_telemetry
           NP_TEST_INFLUXDB_CONTAINER: np-influxdb-it
-        run: dotnet test ./tests/NatureProtector.IntegrationTests/NatureProtector.IntegrationTests.csproj -c Release --no-restore --no-build --nologo -v minimal --filter "Category=DockerIntegration" --logger "trx;LogFilePrefix=standard-cd-docker-integration" --results-directory ./TestResults
+        run: >
+          dotnet test
+          ./tests/NatureProtector.IntegrationTests/NatureProtector.IntegrationTests.csproj
+          -c Release
+          --no-restore
+          --no-build
+          --nologo
+          -v minimal
+          --filter "Category=DockerIntegration"
+          --logger "trx;LogFilePrefix=standard-cd-docker-integration"
+          --results-directory ./TestResults
+
       - name: Collect Docker integration diagnostics
         if: always()
         shell: bash
         run: |
           set +e
+
           mkdir -p TestResults/docker-integration
-          docker compose --project-name np-standard-cd-it --file .github/docker/standard-cd-integration.compose.yml ps > TestResults/docker-integration/docker-compose-ps.txt 2>&1
-          docker compose --project-name np-standard-cd-it --file .github/docker/standard-cd-integration.compose.yml logs --no-color > TestResults/docker-integration/docker-compose-logs.txt 2>&1
-          docker compose --project-name np-standard-cd-it --file .github/docker/standard-cd-integration.compose.yml down -v --remove-orphans > TestResults/docker-integration/docker-compose-down.txt 2>&1
+
+          docker compose \
+            --project-name np-standard-cd-it \
+            --file .github/docker/standard-cd-integration.compose.yml \
+            ps \
+            > TestResults/docker-integration/docker-compose-ps.txt 2>&1
+
+          docker compose \
+            --project-name np-standard-cd-it \
+            --file .github/docker/standard-cd-integration.compose.yml \
+            logs --no-color \
+            > TestResults/docker-integration/docker-compose-logs.txt 2>&1
+
+          docker compose \
+            --project-name np-standard-cd-it \
+            --file .github/docker/standard-cd-integration.compose.yml \
+            down -v --remove-orphans \
+            > TestResults/docker-integration/docker-compose-down.txt 2>&1
+
       - name: Upload backend test artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: standard-cd-backend-test-artifacts
           retention-days: 14
           path: TestResults/
+
       - name: Frontend typecheck and lint
         working-directory: webUI
         shell: bash
         run: |
           set -euo pipefail
+
           npm ci
           npm run typecheck
           npm run lint
+
       - name: Terraform static validation
         shell: bash
         run: |
           set -euo pipefail
-          for root in infra/gcp/terraform/g8-1-state-bootstrap infra/gcp/terraform/g8-1-platform infra/gcp/terraform/g8-1-environment; do
+
+          for root in \
+            infra/gcp/terraform/g8-1-state-bootstrap \
+            infra/gcp/terraform/g8-1-platform \
+            infra/gcp/terraform/g8-1-environment
+          do
             terraform -chdir="$root" fmt -check -recursive
             terraform -chdir="$root" init -backend=false -input=false
             terraform -chdir="$root" validate
           done
+
       - name: Kustomize staging render
         shell: bash
         run: |
           set -euo pipefail
+
           if command -v kustomize >/dev/null 2>&1; then
-            kustomize build infra/gcp/kubernetes/g8-1/overlays/staging >/tmp/staging.yaml
+            kustomize build \
+              infra/gcp/kubernetes/g8-1/overlays/staging \
+              > /tmp/staging.yaml
           else
-            kubectl kustomize infra/gcp/kubernetes/g8-1/overlays/staging >/tmp/staging.yaml
+            kubectl kustomize \
+              infra/gcp/kubernetes/g8-1/overlays/staging \
+              > /tmp/staging.yaml
           fi
-          grep -q 'deployment-profile: qualification' /tmp/staging.yaml
-          grep -q 'claim-level: non-production-qualification' /tmp/staging.yaml
+
+          grep -q \
+            'deployment-profile: qualification' \
+            /tmp/staging.yaml
+
+          grep -q \
+            'claim-level: non-production-qualification' \
+            /tmp/staging.yaml
+
