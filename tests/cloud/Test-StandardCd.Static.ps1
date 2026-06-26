@@ -105,11 +105,15 @@ foreach ($token in @(
     "gcloud auth configure-docker",
     "docker buildx create",
     "COSIGN_CERTIFICATE_IDENTITY",
-    '${{ github.workflow_ref }}'
+    '.github/workflows/_release.yml@${{ github.ref }}'
 )) {
     if ($releaseWorkflow -notlike "*$token*") {
         Add-Failure "_release.yml missing release authority token: $token"
     }
+}
+
+if ($releaseWorkflow -match 'COSIGN_CERTIFICATE_IDENTITY:.*github\.workflow_ref') {
+    Add-Failure "_release.yml must use the reusable workflow certificate identity, not the caller workflow."
 }
 
 $releaseScript = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot "scripts/cloud/Build-G81Release.sh")
