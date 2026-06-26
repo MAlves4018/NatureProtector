@@ -1,0 +1,73 @@
+name: WIF read-only probe
+
+run-name: WIF read-only probe by @${{ github.actor }}
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: wif-read-only-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: WIF read-only probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Guard required configuration
+        shell: bash
+        env:
+          EXPECTED_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+          RELEASE_SERVICE_ACCOUNT: ${{ vars.RELEASE_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+
+          test "$EXPECTED_PROJECT_ID" = "natureprotector-500518"
+          test -n "$WIF_PROVIDER"
+          test -n "$RELEASE_SERVICE_ACCOUNT"
+
+          echo "WIF_CONFIGURATION_PRESENT"
+
+      - name: Authenticate through GitHub OIDC and WIF
+        uses: ./.github/actions/cloud-auth
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.RELEASE_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          version: ">= 416.0.0"
+
+      - name: Prove temporary credentials
+        shell: bash
+        env:
+          EXPECTED_SERVICE_ACCOUNT: ${{ vars.RELEASE_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+
+          ACTIVE_ACCOUNT="$(
+            gcloud auth list \
+              --filter="status:ACTIVE" \
+              --format="value(account)" |
+            head -n 1
+          )"
+
+          test "$ACTIVE_ACCOUNT" = "$EXPECTED_SERVICE_ACCOUNT"
+
+          gcloud auth print-access-token >/dev/null
+
+          echo "WIF_EXECUTION_PROVED"
+          echo "WIF_EXECUTION_PROVED" >> "$GITHUB_STEP_SUMMARY"

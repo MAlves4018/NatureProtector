@@ -13,3 +13,15 @@ permissions:
 jobs:
   validate:
     uses: ./.github/workflows/_validate.yml
+
+  admission:
+    name: CI admission
+    needs: validate
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require successful validation
+        shell: bash
+        run: |
+          test "${{ needs.validate.result }}" = "success"
+          echo "CI_ADMISSION_PASSED"
