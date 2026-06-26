@@ -97,8 +97,17 @@ for token in [
     'database_pitr_enabled      = false',
     'create_data_plane            = false',
     'create_edge                  = false',
+    'workflow_deployer_service_account = "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"',
+    'cloud_deploy_execution_service_account = "np-deploy-staging@natureprotector-500518.iam.gserviceaccount.com"',
 ]:
     check(token in qualification_tfvars, f"qualification-tfvars-missing:{token}")
+
+qualification_tfvars_compact = "".join(qualification_tfvars.split())
+check(
+    'platform_project_id="natureprotector-500518"'
+    in qualification_tfvars_compact,
+    "qualification-tfvars-invalid:platform_project_id",
+)
 
 cloud_sql = read("infra/gcp/terraform/g8-1-environment/cloud_sql.tf")
 for token in [

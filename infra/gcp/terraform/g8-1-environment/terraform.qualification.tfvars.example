@@ -3,7 +3,7 @@
 # and a same-session teardown rehearsal before create_data_plane=true.
 project_id             = "np-staging-REPLACE"
 environment            = "staging"
-platform_project_id    = "np-platform-REPLACE"
+platform_project_id    = "natureprotector-500518"
 region                 = "europe-southwest1"
 network_cidr           = "10.20.0.0/24"
 pods_cidr              = "10.21.0.0/16"
@@ -29,3 +29,7 @@ create_data_plane            = false
 create_edge                  = false
 materialize_generated_secrets = false
 # owner_creation_confirmation = "OWNER_APPROVES_NEW_NON_CN_GCP_PROJECTS_AFTER_G10"
+
+workflow_deployer_service_account = "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"
+
+cloud_deploy_execution_service_account = "np-deploy-staging@natureprotector-500518.iam.gserviceaccount.com"

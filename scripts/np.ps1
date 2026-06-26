@@ -294,13 +294,249 @@ try {
                 "plan" {
                     $tfRoot = Join-Path $RepoRoot $config.terraform.environment_root
                     $tfVars = if ($TfVarsPath) { $TfVarsPath } else { Get-OptionValue $Command "-TfVarsPath" $config.qualification_tfvars }
-                    $details = @{ terraform_root=$config.terraform.environment_root; tfvars=$tfVars; ttl_hours=$config.default_ttl_hours; budget_envelope_eur_month=$config.budget_envelope_eur_month }
-                    if ($WhatIfPreference) { Complete-Result -Operation "staging-plan" -Config $config -Status "whatif" -ExitCode $Exit.Success -EvidencePath $evidence -NextAction "staging-open" -Details $details }
-                    foreach ($args in @(@("fmt","-check","-recursive"), @("init","-backend=false","-input=false"), @("validate"))) {
-                        $code = Invoke-External "terraform" @("-chdir=$tfRoot") + $args $RepoRoot
-                        if ($code -ne 0) { Complete-Result -Operation "staging-plan" -Config $config -Status "failed" -ExitCode $Exit.TechnicalFailure -EvidencePath $evidence -Details $details }
+
+                    $tfVarsCandidate = if ([System.IO.Path]::IsPathRooted($tfVars)) {
+                        $tfVars
                     }
-                    Complete-Result -Operation "staging-plan" -Config $config -Status "passed" -ExitCode $Exit.Success -EvidencePath $evidence -NextAction "staging-open" -Details $details
+                    else {
+                        Join-Path $RepoRoot $tfVars
+                    }
+
+                    if (-not (Test-Path -LiteralPath $tfVarsCandidate)) {
+                        Complete-Result `
+                            -Operation "staging-plan" `
+                            -Config $config `
+                            -Status "blocked" `
+                            -ExitCode $Exit.MissingPrecondition `
+                            -EvidencePath $evidence `
+                            -Details @{ missing_tfvars=$tfVarsCandidate }
+                    }
+
+                    $tfVarsResolved = (Resolve-Path -LiteralPath $tfVarsCandidate).Path
+                    $planPath = Join-Path $evidence "staging.tfplan"
+                    $planTextPath = Join-Path $evidence "staging-plan.txt"
+                    $tfDataDir = Join-Path $evidence "terraform-data"
+                    $tfSourceRoot = $tfRoot
+                    $tfPlanRoot = Join-Path $evidence "terraform-workspace"
+
+                    Remove-Item -LiteralPath $tfPlanRoot -Recurse -Force -ErrorAction SilentlyContinue
+                    Remove-Item -LiteralPath $tfDataDir -Recurse -Force -ErrorAction SilentlyContinue
+
+                    New-Item -ItemType Directory -Path $tfPlanRoot -Force | Out-Null
+                    New-Item -ItemType Directory -Path $tfDataDir -Force | Out-Null
+
+                    $terraformSourceFiles = @(
+                        Get-ChildItem -LiteralPath $tfSourceRoot -File |
+                            Where-Object {
+                                $_.Name -like "*.tf" -or
+                                $_.Name -like "*.tf.json" -or
+                                $_.Name -eq ".terraform.lock.hcl"
+                            }
+                    )
+
+                    if ($terraformSourceFiles.Count -eq 0) {
+                        Complete-Result `
+                            -Operation "staging-plan" `
+                            -Config $config `
+                            -Status "failed" `
+                            -ExitCode $Exit.TechnicalFailure `
+                            -EvidencePath $evidence `
+                            -Details @{ reason="terraform-source-files-not-found"; source_root=$tfSourceRoot }
+                    }
+
+                    foreach ($sourceFile in $terraformSourceFiles) {
+                        Copy-Item `
+                            -LiteralPath $sourceFile.FullName `
+                            -Destination $tfPlanRoot `
+                            -Force
+                    }
+
+                    $versionsPath = Join-Path $tfPlanRoot "versions.tf"
+
+                    if (-not (Test-Path -LiteralPath $versionsPath)) {
+                        Complete-Result `
+                            -Operation "staging-plan" `
+                            -Config $config `
+                            -Status "failed" `
+                            -ExitCode $Exit.TechnicalFailure `
+                            -EvidencePath $evidence `
+                            -Details @{ reason="temporary-versions-file-not-found"; path=$versionsPath }
+                    }
+
+                    $versionsText = Get-Content -Raw -LiteralPath $versionsPath
+                    $backendPattern = '(?m)^\s*backend\s+"gcs"\s*\{\s*\}\s*$'
+                    $backendMatches = [regex]::Matches($versionsText, $backendPattern)
+
+                    if ($backendMatches.Count -ne 1) {
+                        Complete-Result `
+                            -Operation "staging-plan" `
+                            -Config $config `
+                            -Status "failed" `
+                            -ExitCode $Exit.TechnicalFailure `
+                            -EvidencePath $evidence `
+                            -Details @{
+                                reason="unexpected-gcs-backend-block-count"
+                                count=$backendMatches.Count
+                            }
+                    }
+
+                    $localVersionsText = [regex]::Replace(
+                        $versionsText,
+                        $backendPattern,
+                        "",
+                        1
+                    )
+
+                    Set-Content `
+                        -LiteralPath $versionsPath `
+                        -Value $localVersionsText `
+                        -Encoding utf8
+
+                    $tfRoot = $tfPlanRoot
+
+                    $details = [ordered]@{
+                        terraform_root             = $config.terraform.environment_root
+                        terraform_source_root      = $tfSourceRoot
+                        terraform_plan_root        = $tfPlanRoot
+                        tfvars                     = $tfVarsResolved
+                        plan_path                  = $planPath
+                        plan_text_path             = $planTextPath
+                        terraform_data_dir         = $tfDataDir
+                        backend_mode               = "isolated-local"
+                        refresh                    = $false
+                        lock                       = $false
+                        apply_eligible             = $false
+                        ttl_hours                  = $config.default_ttl_hours
+                        budget_envelope_eur_month  = $config.budget_envelope_eur_month
+                        terraform_apply_executed   = $false
+                    }
+
+                    if ($WhatIfPreference) {
+                        Complete-Result `
+                            -Operation "staging-plan" `
+                            -Config $config `
+                            -Status "whatif" `
+                            -ExitCode $Exit.Success `
+                            -EvidencePath $evidence `
+                            -NextAction "staging-open" `
+                            -Details $details
+                    }
+
+                    $previousTfDataDir = $env:TF_DATA_DIR
+
+                    try {
+                        $env:TF_DATA_DIR = $tfDataDir
+
+                        $staticCommands = @(
+                            @("fmt", "-check", "-recursive"),
+                            @("init", "-input=false"),
+                            @("validate")
+                        )
+
+                        foreach ($commandArgs in $staticCommands) {
+                            $terraformArgs = @("-chdir=$tfRoot") + $commandArgs
+                            $code = Invoke-External "terraform" $terraformArgs $RepoRoot
+
+                            if ($code -ne 0) {
+                                Complete-Result `
+                                    -Operation "staging-plan" `
+                                    -Config $config `
+                                    -Status "failed" `
+                                    -ExitCode $Exit.TechnicalFailure `
+                                    -EvidencePath $evidence `
+                                    -Details $details
+                            }
+                        }
+
+                        $planArgs = @(
+                            "-chdir=$tfRoot",
+                            "plan",
+                            "-refresh=false",
+                            "-input=false",
+                            "-lock=false",
+                            "-out=$planPath",
+                            "-var-file=$tfVarsResolved"
+                        )
+
+                        Remove-Item -LiteralPath $planPath -Force -ErrorAction SilentlyContinue
+                        Remove-Item -LiteralPath $planTextPath -Force -ErrorAction SilentlyContinue
+
+                        $code = Invoke-External "terraform" $planArgs $RepoRoot
+
+                        if ($code -ne 0) {
+                            Remove-Item -LiteralPath $planPath -Force -ErrorAction SilentlyContinue
+                            Remove-Item -LiteralPath $planTextPath -Force -ErrorAction SilentlyContinue
+                            Complete-Result `
+                                -Operation "staging-plan" `
+                                -Config $config `
+                                -Status "failed" `
+                                -ExitCode $Exit.TechnicalFailure `
+                                -EvidencePath $evidence `
+                                -Details $details
+                        }
+
+                        if (-not (Test-Path -LiteralPath $planPath)) {
+                            Complete-Result `
+                                -Operation "staging-plan" `
+                                -Config $config `
+                                -Status "failed" `
+                                -ExitCode $Exit.TechnicalFailure `
+                                -EvidencePath $evidence `
+                                -Details ($details + @{
+                                    reason="terraform-plan-file-not-created"
+                                })
+                        }
+
+                        $showOutput = & terraform "-chdir=$tfRoot" "show" "-no-color" $planPath 2>&1
+                        $showExitCode = $LASTEXITCODE
+
+                        $showOutput |
+                            Set-Content -LiteralPath $planTextPath -Encoding utf8
+
+                        if ($showExitCode -ne 0) {
+                            Remove-Item -LiteralPath $planPath -Force -ErrorAction SilentlyContinue
+                            Remove-Item -LiteralPath $planTextPath -Force -ErrorAction SilentlyContinue
+
+                            Complete-Result `
+                                -Operation "staging-plan" `
+                                -Config $config `
+                                -Status "failed" `
+                                -ExitCode $Exit.TechnicalFailure `
+                                -EvidencePath $evidence `
+                                -Details $details
+                        }
+                    }
+                    finally {
+                        if ($null -eq $previousTfDataDir) {
+                            Remove-Item Env:TF_DATA_DIR -ErrorAction SilentlyContinue
+                        }
+                        else {
+                            $env:TF_DATA_DIR = $previousTfDataDir
+                        }
+                    }
+
+                    $details["plan_sha256"] = (
+                        Get-FileHash -LiteralPath $planPath -Algorithm SHA256
+                    ).Hash.ToLowerInvariant()
+
+                    $details["discarded_plan_path"] = $planPath
+
+                    Remove-Item `
+                        -LiteralPath $planPath `
+                        -Force `
+                        -ErrorAction Stop
+
+                    $details["plan_path"] = $null
+                    $details["binary_plan_retained"] = $false
+
+                    Complete-Result `
+                        -Operation "staging-plan" `
+                        -Config $config `
+                        -Status "passed" `
+                        -ExitCode $Exit.Success `
+                        -EvidencePath $evidence `
+                        -NextAction "staging-open" `
+                        -Details $details
                 }
                 "open" {
                     $ttl = Resolve-TtlHours -Default $config.default_ttl_hours
