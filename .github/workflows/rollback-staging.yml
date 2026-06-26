@@ -1,0 +1,28 @@
+name: Rollback staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Release ID to restore
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: ./.github/actions/setup-toolchain
+      - uses: ./.github/actions/cloud-auth
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+      - name: Rollback staging
+        shell: pwsh
+        run: ./scripts/np.ps1 staging rollback -ReleaseId '${{ inputs.release_id }}'

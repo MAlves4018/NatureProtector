@@ -1,0 +1,31 @@
+name: Collect NatureProtector evidence
+description: Upload operation evidence without secrets.
+inputs:
+  evidence_path:
+    required: true
+    description: Evidence directory to upload.
+  artifact_name:
+    required: true
+    description: Artifact name.
+runs:
+  using: composite
+  steps:
+    - name: Check evidence path
+      shell: bash
+      run: |
+        set -euo pipefail
+        billing_pattern='[0-9A-F]{6}-[0-9A-F]{6}-[0-9A-F]{6}'
+        private_key_pattern='-----BEGIN .*PRIVATE '"KEY-----"
+        service_account_pattern='"type"[[:space:]]*:[[:space:]]*"service_'"account"
+        test -d '${{ inputs.evidence_path }}'
+        if grep -RniE "(${billing_pattern}|ya29\\.|${private_key_pattern}|${service_account_pattern})" '${{ inputs.evidence_path }}'; then
+          echo 'Sensitive evidence content detected' >&2
+          exit 1
+        fi
+    - name: Upload evidence
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: ${{ inputs.evidence_path }}
+        retention-days: 365
+        if-no-files-found: error

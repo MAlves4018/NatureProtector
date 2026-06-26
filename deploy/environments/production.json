@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/environment.schema.json",
+  "schema_version": 1,
+  "environment": "production",
+  "project_id": "natureprotector-500518",
+  "region": "europe-southwest1",
+  "deployable": false,
+  "locked_reason": "Production is outside the STANDARD_CLOUD_CD_STAGING mission scope.",
+  "default_ttl_hours": 0,
+  "budget_envelope_eur_month": 20,
+  "namespace": "natureprotector-production",
+  "terraform_state_prefix": "environments/production/g8-1",
+  "kustomize_overlay": "infra/gcp/kubernetes/g8-1/overlays/production",
+  "session_state": "deploy/state/production-session.json",
+  "guards": {
+    "production_allowed": false,
+    "allow_deployment": false,
+    "allow_apply": false
+  }
+}

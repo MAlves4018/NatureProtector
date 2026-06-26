@@ -1,0 +1,26 @@
+name: Resolve NatureProtector release
+description: Resolve and validate a G8.1 release manifest as the digest authority.
+inputs:
+  manifest_path:
+    required: true
+    description: Path to release-manifest.json.
+runs:
+  using: composite
+  steps:
+    - name: Verify manifest
+      shell: pwsh
+      run: |
+        ./scripts/np.ps1 release verify -ManifestPath '${{ inputs.manifest_path }}'
+    - name: Reject mutable image tags
+      shell: bash
+      run: |
+        set -euo pipefail
+        python - <<'PY'
+        import json
+        from pathlib import Path
+        manifest = json.loads(Path('${{ inputs.manifest_path }}').read_text(encoding='utf-8'))
+        for name, image in manifest.get('images', {}).items():
+            reference = image.get('reference', '')
+            if '@sha256:' not in reference:
+                raise SystemExit(f'{name} is not pinned by digest')
+        PY

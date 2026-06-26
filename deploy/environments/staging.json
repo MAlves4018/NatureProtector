@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/environment.schema.json",
+  "schema_version": 1,
+  "environment": "staging",
+  "project_id": "natureprotector-500518",
+  "region": "europe-southwest1",
+  "deployable": true,
+  "default_ttl_hours": 4,
+  "budget_envelope_eur_month": 20,
+  "namespace": "natureprotector-staging",
+  "terraform_state_prefix": "environments/staging/g8-1",
+  "kustomize_overlay": "infra/gcp/kubernetes/g8-1/overlays/staging",
+  "qualification_tfvars": "infra/gcp/terraform/g8-1-environment/terraform.qualification.tfvars.example",
+  "session_state": "deploy/state/staging-session.json",
+  "required_variables": [
+    "GCP_PROJECT_ID",
+    "GCP_REGION",
+    "ARTIFACT_REPOSITORY",
+    "WIF_PROVIDER",
+    "RELEASE_SERVICE_ACCOUNT",
+    "DEPLOY_SERVICE_ACCOUNT",
+    "TF_STATE_BUCKET",
+    "STAGING_NAMESPACE",
+    "STAGING_DEFAULT_TTL_HOURS"
+  ],
+  "guards": {
+    "production_allowed": false,
+    "max_nodes": 1,
+    "max_replicas": 1,
+    "allow_second_region": false,
+    "allow_high_availability": false
+  }
+}

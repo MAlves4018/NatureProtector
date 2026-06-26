@@ -1,0 +1,51 @@
+name: _release
+
+on:
+  workflow_call:
+    outputs:
+      manifest_path:
+        value: ${{ jobs.release.outputs.manifest_path }}
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      manifest_path: ${{ steps.manifest.outputs.path }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: ./.github/actions/setup-toolchain
+      - uses: ./.github/actions/cloud-auth
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.RELEASE_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+      - name: Build signed release
+        shell: pwsh
+        env:
+          GCP_PLATFORM_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_ARTIFACT_REPOSITORY: ${{ vars.ARTIFACT_REPOSITORY }}
+          ENGINEERING_RUN_ID: ${{ github.run_id }}
+          SECURITY_RUN_ID: ${{ github.run_id }}
+          POLICY_RUN_ID: ${{ github.run_id }}
+        run: ./scripts/np.ps1 release build
+      - name: Verify release manifest
+        id: manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f g81-release/release-manifest.json
+          echo "path=g81-release/release-manifest.json" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/resolve-release
+        with:
+          manifest_path: g81-release/release-manifest.json
+      - uses: ./.github/actions/collect-evidence
+        with:
+          evidence_path: g81-release
+          artifact_name: standard-cd-release

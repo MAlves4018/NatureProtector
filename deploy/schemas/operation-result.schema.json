@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NatureProtector deployment operation result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "operation",
+    "status",
+    "project_id",
+    "region",
+    "started_at",
+    "completed_at",
+    "exit_code",
+    "cloud_mutation"
+  ],
+  "properties": {
+    "operation": { "type": "string" },
+    "status": { "type": "string", "enum": ["passed", "failed", "blocked", "needs-human", "whatif"] },
+    "project_id": { "type": "string", "pattern": "^natureprotector-500518$" },
+    "region": { "type": "string", "const": "europe-southwest1" },
+    "environment": { "type": ["string", "null"], "enum": ["staging", "production", null] },
+    "started_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "duration_seconds": { "type": "number" },
+    "exit_code": { "type": "integer", "minimum": 0, "maximum": 5 },
+    "cloud_mutation": { "type": "boolean" },
+    "evidence_path": { "type": ["string", "null"] },
+    "next_action": { "type": ["string", "null"] },
+    "details": { "type": "object", "additionalProperties": true }
+  }
+}

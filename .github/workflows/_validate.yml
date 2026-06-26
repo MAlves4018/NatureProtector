@@ -1,0 +1,56 @@
+name: _validate
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: ./.github/actions/setup-toolchain
+      - name: Normalized inventory
+        shell: pwsh
+        run: ./scripts/np.ps1 inventory
+      - name: Normalized validation
+        shell: pwsh
+        run: ./scripts/np.ps1 validate
+      - name: Backend tests
+        shell: pwsh
+        run: |
+          dotnet restore NatureProtector.sln
+          dotnet build NatureProtector.sln -c Release --no-restore
+          dotnet test NatureProtector.sln -c Release --no-build --logger "trx;LogFileName=standard-cd.trx"
+      - name: Frontend typecheck and lint
+        working-directory: webUI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run typecheck
+          npm run lint
+      - name: Terraform static validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          for root in infra/gcp/terraform/g8-1-state-bootstrap infra/gcp/terraform/g8-1-platform infra/gcp/terraform/g8-1-environment; do
+            terraform -chdir="$root" fmt -check -recursive
+            terraform -chdir="$root" init -backend=false -input=false
+            terraform -chdir="$root" validate
+          done
+      - name: Kustomize staging render
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v kustomize >/dev/null 2>&1; then
+            kustomize build infra/gcp/kubernetes/g8-1/overlays/staging >/tmp/staging.yaml
+          else
+            kubectl kustomize infra/gcp/kubernetes/g8-1/overlays/staging >/tmp/staging.yaml
+          fi
+          grep -q 'deployment-profile: qualification' /tmp/staging.yaml
+          grep -q 'claim-level: non-production-qualification' /tmp/staging.yaml

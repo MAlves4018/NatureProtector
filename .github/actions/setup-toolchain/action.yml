@@ -1,0 +1,21 @@
+name: Setup NatureProtector toolchain
+description: Install local validation dependencies used by the normalized deployment scripts.
+runs:
+  using: composite
+  steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d
+      with:
+        global-json-file: global.json
+    - name: Setup Node
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version-file: webUI/package.json
+        cache: npm
+        cache-dependency-path: webUI/package-lock.json
+    - name: Install Python validation dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        python -m pip install --disable-pip-version-check --no-cache-dir -r scripts/cloud/requirements-validation.txt
+        python -m pip install --disable-pip-version-check --no-cache-dir -r scripts/cloud/requirements-g82.txt

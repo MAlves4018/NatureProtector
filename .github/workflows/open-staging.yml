@@ -1,0 +1,33 @@
+name: Open staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      ttl_hours:
+        description: Staging TTL in hours
+        required: true
+        default: "4"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  open:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: ./.github/actions/setup-toolchain
+      - uses: ./.github/actions/cloud-auth
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+      - name: Plan staging
+        shell: pwsh
+        run: ./scripts/np.ps1 staging plan
+      - name: Open staging session
+        shell: pwsh
+        run: ./scripts/np.ps1 staging open -TtlHours '${{ inputs.ttl_hours }}' -NonInteractive

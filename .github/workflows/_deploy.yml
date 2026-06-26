@@ -1,0 +1,39 @@
+name: _deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      manifest_path:
+        required: true
+        type: string
+      release_id:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: ./.github/actions/setup-toolchain
+      - uses: ./.github/actions/cloud-auth
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+      - uses: ./.github/actions/resolve-release
+        with:
+          manifest_path: ${{ inputs.manifest_path }}
+      - name: Deploy by digest authority
+        shell: pwsh
+        run: ./scripts/np.ps1 staging deploy -ManifestPath '${{ inputs.manifest_path }}' -ReleaseId '${{ inputs.release_id }}'
