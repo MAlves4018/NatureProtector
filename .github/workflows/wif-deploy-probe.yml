@@ -1,0 +1,60 @@
+name: WIF deploy authority probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-authority-probe:
+    name: WIF deploy authority probe
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Guard required configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -n "${{ vars.WIF_PROVIDER }}"
+          test -n "${{ vars.DEPLOY_SERVICE_ACCOUNT }}"
+          test -n "${{ vars.GCP_PROJECT_ID }}"
+          test "${{ vars.STAGING_SESSION_OPEN }}" = "false"
+
+          echo "STAGING_SESSION_CLOSED"
+
+      - name: Authenticate deploy authority through GitHub OIDC and WIF
+        uses: ./.github/actions/cloud-auth
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+
+      - name: Prove temporary deploy credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          active_account="$(
+            gcloud auth list \
+              --filter='status:ACTIVE' \
+              --format='value(account)'
+          )"
+
+          test "$active_account" = "${{ vars.DEPLOY_SERVICE_ACCOUNT }}"
+
+          gcloud auth print-access-token >/dev/null
+
+          echo "DEPLOY_WIF_EXECUTION_PROVED"
+          echo "DEPLOY_PROJECT_ROLES_ZERO"
+          echo "STAGING_SESSION_CLOSED"

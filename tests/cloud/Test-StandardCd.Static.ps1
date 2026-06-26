@@ -116,6 +116,33 @@ if ($releaseWorkflow -match 'COSIGN_CERTIFICATE_IDENTITY:.*github\.workflow_ref'
     Add-Failure "_release.yml must use the reusable workflow certificate identity, not the caller workflow."
 }
 
+$deployProbePath = Join-Path $RepoRoot ".github/workflows/wif-deploy-probe.yml"
+
+if (-not (Test-Path -LiteralPath $deployProbePath)) {
+    Add-Failure "Missing .github/workflows/wif-deploy-probe.yml"
+}
+else {
+    $deployProbe = Get-Content -Raw -LiteralPath $deployProbePath
+
+    foreach ($token in @(
+        "workflow_dispatch",
+        "environment: staging",
+        "id-token: write",
+        "vars.WIF_PROVIDER",
+        "vars.DEPLOY_SERVICE_ACCOUNT",
+        "STAGING_SESSION_CLOSED",
+        "DEPLOY_WIF_EXECUTION_PROVED"
+    )) {
+        if ($deployProbe -notlike "*$token*") {
+            Add-Failure "wif-deploy-probe.yml missing token: $token"
+        }
+    }
+
+    if ($deployProbe -match 'terraform\s+apply|staging\s+deploy') {
+        Add-Failure "wif-deploy-probe.yml must not deploy or execute terraform apply."
+    }
+}
+
 $releaseScript = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot "scripts/cloud/Build-G81Release.sh")
 
 foreach ($token in @(
