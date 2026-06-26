@@ -35,10 +35,12 @@ function Invoke-ExpectExit([string]$Name, [int]$ExpectedExitCode, [scriptblock]$
     ".github/workflows/_release.yml",
     ".github/workflows/_deploy.yml",
     ".github/workflows/_qualify.yml",
+    ".github/docker/standard-cd-integration.compose.yml",
     ".github/actions/setup-toolchain/action.yml",
     ".github/actions/cloud-auth/action.yml",
     ".github/actions/resolve-release/action.yml",
-    ".github/actions/collect-evidence/action.yml"
+    ".github/actions/collect-evidence/action.yml",
+    "scripts/ci/Start-DockerIntegrationServices.ps1"
 ) | ForEach-Object { Require-File $_ }
 
 $staging = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot "deploy/environments/staging.json") | ConvertFrom-Json
@@ -52,6 +54,47 @@ foreach ($token in @("Remove-SecretText", "BILLING_ENV_SET", "natureprotector-50
     if ($np -notmatch [regex]::Escape($token)) { Add-Failure "np.ps1 missing token: $token" }
 }
 if ($np -match '(?i)[0-9A-F]{6}-[0-9A-F]{6}-[0-9A-F]{6}') { Add-Failure "np.ps1 contains concrete Billing Account ID." }
+
+$validateWorkflow = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot ".github/workflows/_validate.yml")
+foreach ($token in @(
+    '--filter "Category!=DockerIntegration"',
+    "Start-DockerIntegrationServices.ps1",
+    '--filter "Category=DockerIntegration"',
+    "NP_TEST_POSTGRES_HOST: 127.0.0.1",
+    'NP_TEST_POSTGRES_PORT: "5433"',
+    "NP_TEST_RABBITMQ_MANAGEMENT_URL: http://127.0.0.1:15672",
+    "NP_TEST_RABBITMQ_CONTAINER: np-rabbitmq-it",
+    "NP_TEST_INFLUXDB_CONTAINER: np-influxdb-it",
+    "if: always()",
+    "docker compose --project-name np-standard-cd-it",
+    "down -v --remove-orphans"
+)) {
+    if ($validateWorkflow -notlike "*$token*") { Add-Failure "_validate.yml missing Docker integration orchestration token: $token" }
+}
+
+$compose = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot ".github/docker/standard-cd-integration.compose.yml")
+foreach ($token in @(
+    "np-postgres-it",
+    "5433:5432",
+    "np-rabbitmq-it",
+    "5672:5672",
+    "15672:15672",
+    "np-influxdb-it",
+    "8181:8181"
+)) {
+    if ($compose -notlike "*$token*") { Add-Failure "standard-cd-integration.compose.yml missing token: $token" }
+}
+
+$startScript = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot "scripts/ci/Start-DockerIntegrationServices.ps1")
+foreach ($token in @(
+    "pg_isready",
+    "rabbitmq-diagnostics",
+    "rabbitmqctl",
+    "influxdb3 create database",
+    "influxdb3 query"
+)) {
+    if ($startScript -notlike "*$token*") { Add-Failure "Start-DockerIntegrationServices.ps1 missing readiness token: $token" }
+}
 
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("np-hook-test-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null

@@ -10,7 +10,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: ./.github/actions/setup-toolchain
@@ -25,7 +25,45 @@ jobs:
         run: |
           dotnet restore NatureProtector.sln
           dotnet build NatureProtector.sln -c Release --no-restore
-          dotnet test NatureProtector.sln -c Release --no-build --logger "trx;LogFileName=standard-cd.trx"
+          dotnet test NatureProtector.sln -c Release --no-build --filter "Category!=DockerIntegration" --logger "trx;LogFilePrefix=standard-cd" --results-directory ./TestResults
+      - name: Start Docker integration infrastructure
+        shell: pwsh
+        run: ./scripts/ci/Start-DockerIntegrationServices.ps1
+      - name: Run Docker integration tests
+        shell: pwsh
+        env:
+          NP_TEST_POSTGRES_HOST: 127.0.0.1
+          NP_TEST_POSTGRES_PORT: "5433"
+          NP_TEST_POSTGRES_USER: np
+          NP_TEST_POSTGRES_PASSWORD: np_dev_pass
+          NP_TEST_RABBITMQ_HOST: 127.0.0.1
+          NP_TEST_RABBITMQ_PORT: "5672"
+          NP_TEST_RABBITMQ_MANAGEMENT_URL: http://127.0.0.1:15672
+          NP_TEST_RABBITMQ_CONTAINER: np-rabbitmq-it
+          NP_TEST_RABBITMQ_USER: np
+          NP_TEST_RABBITMQ_PASSWORD: np_dev_pass
+          NP_TEST_INFLUXDB_URL: http://127.0.0.1:8181
+          NP_TEST_INFLUXDB_TOKEN: local-test-token
+          NP_TEST_INFLUXDB_ORGANIZATION: natureprotector
+          NP_TEST_INFLUXDB_BUCKET: np_telemetry
+          NP_TEST_INFLUXDB_CONTAINER: np-influxdb-it
+        run: dotnet test ./tests/NatureProtector.IntegrationTests/NatureProtector.IntegrationTests.csproj -c Release --no-restore --no-build --nologo -v minimal --filter "Category=DockerIntegration" --logger "trx;LogFilePrefix=standard-cd-docker-integration" --results-directory ./TestResults
+      - name: Collect Docker integration diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p TestResults/docker-integration
+          docker compose --project-name np-standard-cd-it --file .github/docker/standard-cd-integration.compose.yml ps > TestResults/docker-integration/docker-compose-ps.txt 2>&1
+          docker compose --project-name np-standard-cd-it --file .github/docker/standard-cd-integration.compose.yml logs --no-color > TestResults/docker-integration/docker-compose-logs.txt 2>&1
+          docker compose --project-name np-standard-cd-it --file .github/docker/standard-cd-integration.compose.yml down -v --remove-orphans > TestResults/docker-integration/docker-compose-down.txt 2>&1
+      - name: Upload backend test artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: standard-cd-backend-test-artifacts
+          retention-days: 14
+          path: TestResults/
       - name: Frontend typecheck and lint
         working-directory: webUI
         shell: bash
