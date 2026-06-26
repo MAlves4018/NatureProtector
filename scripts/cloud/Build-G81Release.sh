@@ -10,6 +10,7 @@ set -euo pipefail
 : "${ENGINEERING_RUN_ID:?}"
 : "${SECURITY_RUN_ID:?}"
 : "${POLICY_RUN_ID:?}"
+: "${COSIGN_CERTIFICATE_IDENTITY:?}"
 
 [[ "$GCP_REGION" == "europe-southwest1" ]] || { echo "Unexpected region" >&2; exit 1; }
 [[ "$GITHUB_REPOSITORY" == "MAlves4018/NatureProtector" ]] || { echo "Unexpected repository" >&2; exit 1; }
@@ -19,7 +20,7 @@ out="${G81_RELEASE_DIR:-g81-release}"
 mkdir -p "$out"
 registry="${GCP_REGION}-docker.pkg.dev/${GCP_PLATFORM_PROJECT_ID}/${GCP_ARTIFACT_REPOSITORY}"
 tag="git-${GITHUB_SHA}-run-${GITHUB_RUN_ID}"
-identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/gcp-g8-1-release.yml@refs/heads/master"
+identity="$COSIGN_CERTIFICATE_IDENTITY"
 
 declare -A dockerfiles=(
   [backoffice-api]="src/NatureProtector.Backoffice.Api/Dockerfile"

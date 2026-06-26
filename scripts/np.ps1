@@ -274,7 +274,7 @@ try {
         "release" {
             if ($noun -eq "build") {
                 if ($WhatIfPreference) { Complete-Result -Operation "release-build" -Config $config -Status "whatif" -ExitCode $Exit.Success -EvidencePath $evidence -NextAction "release-verify" -Details @{ script=$config.release.build_script } }
-                $requiredEnv = @("GCP_PLATFORM_PROJECT_ID", "GCP_REGION", "GCP_ARTIFACT_REPOSITORY", "GITHUB_REPOSITORY", "GITHUB_SHA", "GITHUB_RUN_ID", "ENGINEERING_RUN_ID", "SECURITY_RUN_ID", "POLICY_RUN_ID")
+                $requiredEnv = @("GCP_PLATFORM_PROJECT_ID", "GCP_REGION", "GCP_ARTIFACT_REPOSITORY", "GITHUB_REPOSITORY", "GITHUB_SHA", "GITHUB_RUN_ID", "ENGINEERING_RUN_ID", "SECURITY_RUN_ID", "POLICY_RUN_ID", "COSIGN_CERTIFICATE_IDENTITY")
                 $missing = @($requiredEnv | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
                 if ($missing.Count -gt 0) { Complete-Result -Operation "release-build" -Config $config -Status "blocked" -ExitCode $Exit.MissingPrecondition -EvidencePath $evidence -Details @{ missing_env=$missing } }
                 $code = Invoke-External "bash" @($config.release.build_script) $RepoRoot

@@ -97,6 +97,40 @@ foreach ($entry in @(
     }
 }
 
+$releaseWorkflow = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot ".github/workflows/_release.yml")
+
+foreach ($token in @(
+    "setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db",
+    "cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+    "gcloud auth configure-docker",
+    "docker buildx create",
+    "COSIGN_CERTIFICATE_IDENTITY",
+    '${{ github.workflow_ref }}'
+)) {
+    if ($releaseWorkflow -notlike "*$token*") {
+        Add-Failure "_release.yml missing release authority token: $token"
+    }
+}
+
+$releaseScript = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot "scripts/cloud/Build-G81Release.sh")
+
+foreach ($token in @(
+    ': "${COSIGN_CERTIFICATE_IDENTITY:?}"',
+    'identity="$COSIGN_CERTIFICATE_IDENTITY"'
+)) {
+    if ($releaseScript -notlike "*$token*") {
+        Add-Failure "Build-G81Release.sh missing identity token: $token"
+    }
+}
+
+if ($releaseScript -match "gcp-g8-1-release.yml") {
+    Add-Failure "Build-G81Release.sh must not trust the legacy G8.1 workflow identity."
+}
+
+if ($np -notlike "*COSIGN_CERTIFICATE_IDENTITY*") {
+    Add-Failure "np.ps1 must require COSIGN_CERTIFICATE_IDENTITY."
+}
+
 $compose = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot ".github/docker/standard-cd-integration.compose.yml")
 foreach ($token in @(
     "np-postgres-it",
