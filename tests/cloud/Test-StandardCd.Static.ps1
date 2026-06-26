@@ -56,6 +56,8 @@ foreach ($token in @("Remove-SecretText", "BILLING_ENV_SET", "natureprotector-50
 if ($np -match '(?i)[0-9A-F]{6}-[0-9A-F]{6}-[0-9A-F]{6}') { Add-Failure "np.ps1 contains concrete Billing Account ID." }
 
 $validateWorkflow = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot ".github/workflows/_validate.yml")
+$validateWorkflowNormalized = ($validateWorkflow -replace '\s+', ' ').Trim()
+
 foreach ($token in @(
     '--filter "Category!=DockerIntegration"',
     "Start-DockerIntegrationServices.ps1",
@@ -66,10 +68,33 @@ foreach ($token in @(
     "NP_TEST_RABBITMQ_CONTAINER: np-rabbitmq-it",
     "NP_TEST_INFLUXDB_CONTAINER: np-influxdb-it",
     "if: always()",
-    "docker compose --project-name np-standard-cd-it",
+    "docker compose",
+    "--project-name np-standard-cd-it",
     "down -v --remove-orphans"
 )) {
-    if ($validateWorkflow -notlike "*$token*") { Add-Failure "_validate.yml missing Docker integration orchestration token: $token" }
+    if ($validateWorkflowNormalized -notlike "*$token*") { Add-Failure "_validate.yml missing Docker integration orchestration token: $token" }
+}
+
+$legacyReleaseWorkflow = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot ".github/workflows/gcp-g8-1-release.yml")
+$legacyDeployWorkflow = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot ".github/workflows/gcp-g8-1-deploy-staging.yml")
+
+foreach ($entry in @(
+    @{
+        Name = "gcp-g8-1-release.yml"
+        Content = $legacyReleaseWorkflow
+    },
+    @{
+        Name = "gcp-g8-1-deploy-staging.yml"
+        Content = $legacyDeployWorkflow
+    }
+)) {
+    if ($entry["Content"] -notmatch '(?m)^\s*workflow_dispatch:\s*$') {
+        Add-Failure "$($entry["Name"]) must preserve workflow_dispatch."
+    }
+
+    if ($entry["Content"] -match '(?m)^\s*workflow_run:\s*$') {
+        Add-Failure "$($entry["Name"]) must remain manual-only and must not contain workflow_run."
+    }
 }
 
 $compose = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot ".github/docker/standard-cd-integration.compose.yml")

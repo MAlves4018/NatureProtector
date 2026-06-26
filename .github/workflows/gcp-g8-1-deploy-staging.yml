@@ -1,9 +1,6 @@
 name: G8.1 deploy verified release to staging
 
 on:
-  workflow_run:
-    workflows: [G8.1 build immutable release]
-    types: [completed]
   workflow_dispatch:
     inputs:
       release_run_id:

@@ -1,9 +1,6 @@
 name: G8.1 build immutable release
 
 on:
-  workflow_run:
-    workflows: [G8.1 cloud production policy]
-    types: [completed]
   workflow_dispatch:
     inputs:
       source_sha:
