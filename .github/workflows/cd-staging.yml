@@ -25,7 +25,7 @@ jobs:
       manifest_path: ${{ needs.release.outputs.manifest_path }}
       release_id: np-${{ github.sha }}-${{ github.run_id }}
   qualify:
-    needs: deploy
+    needs: [release, deploy]
     if: vars.STAGING_SESSION_OPEN == 'true'
     uses: ./.github/workflows/_qualify.yml
     with:
