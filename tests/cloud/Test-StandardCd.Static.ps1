@@ -143,6 +143,39 @@ else {
     }
 }
 
+$npScriptPath = Join-Path $RepoRoot "scripts/np.ps1"
+$npScriptText = Get-Content -Raw -LiteralPath $npScriptPath
+
+foreach ($token in @(
+    "staging.tfplan",
+    "staging-plan.txt",
+    "terraform-data",
+    "terraform-workspace",
+    "TF_DATA_DIR",
+    "backend_mode",
+    "isolated-local",
+    "apply_eligible",
+    "unexpected-gcs-backend-block-count",
+    "terraform-plan-file-not-created",
+    "discarded_plan_path",
+    "binary_plan_retained",
+    "Remove-Item -LiteralPath `$planPath",
+    "Remove-Item -LiteralPath `$planTextPath",
+    '"plan"',
+    '"-refresh=false"',
+    '"-input=false"',
+    '"-lock=false"',
+    '"-out=$planPath"',
+    '"-var-file=$tfVarsResolved"',
+    '"show"',
+    '"-no-color"',
+    "terraform_apply_executed"
+)) {
+    if ($npScriptText -notlike "*$token*") {
+        Add-Failure "scripts/np.ps1 missing real staging-plan token: $token"
+    }
+}
+
 $releaseScript = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot "scripts/cloud/Build-G81Release.sh")
 
 foreach ($token in @(
