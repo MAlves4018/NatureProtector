@@ -53,7 +53,7 @@ jobs:
           ENGINEERING_RUN_ID: ${{ github.run_id }}
           SECURITY_RUN_ID: ${{ github.run_id }}
           POLICY_RUN_ID: ${{ github.run_id }}
-          COSIGN_CERTIFICATE_IDENTITY: "${{ github.server_url }}/${{ github.workflow_ref }}"
+          COSIGN_CERTIFICATE_IDENTITY: "${{ github.server_url }}/${{ github.repository }}/.github/workflows/_release.yml@${{ github.ref }}"
         run: ./scripts/np.ps1 release build
       - name: Verify release manifest
         id: manifest
