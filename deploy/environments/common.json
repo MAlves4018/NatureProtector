@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/environment.schema.json",
+  "schema_version": 1,
+  "project_id": "natureprotector-500518",
+  "region": "europe-southwest1",
+  "artifact_repository": "natureprotector",
+  "terraform": {
+    "state_bootstrap_root": "infra/gcp/terraform/g8-1-state-bootstrap",
+    "platform_root": "infra/gcp/terraform/g8-1-platform",
+    "environment_root": "infra/gcp/terraform/g8-1-environment"
+  },
+  "kustomize": {
+    "base": "infra/gcp/kubernetes/g8-1/base"
+  },
+  "release": {
+    "manifest_schema": "infra/gcp/contracts/g8-1-release-manifest.schema.json",
+    "build_script": "scripts/cloud/Build-G81Release.sh",
+    "verify_script": "scripts/cloud/Test-G81ReleaseManifest.py"
+  },
+  "evidence": {
+    "default_root": "../NatureProtector-Standard-CD-Result-local"
+  }
+}

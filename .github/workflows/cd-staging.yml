@@ -1,0 +1,42 @@
+name: CD staging
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  validate:
+    uses: ./.github/workflows/_validate.yml
+  release:
+    needs: validate
+    uses: ./.github/workflows/_release.yml
+  deploy:
+    needs: release
+    if: vars.STAGING_SESSION_OPEN == 'true'
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: staging
+      manifest_path: ${{ needs.release.outputs.manifest_path }}
+      release_id: np-${{ github.sha }}-${{ github.run_id }}
+  qualify:
+    needs: deploy
+    if: vars.STAGING_SESSION_OPEN == 'true'
+    uses: ./.github/workflows/_qualify.yml
+    with:
+      environment: staging
+      manifest_path: ${{ needs.release.outputs.manifest_path }}
+  staging-closed:
+    needs: release
+    if: vars.STAGING_SESSION_OPEN != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report signed release without deployment
+        run: |
+          echo "SIGNED_RELEASE_CREATED"
+          echo "STAGING_SESSION_CLOSED"

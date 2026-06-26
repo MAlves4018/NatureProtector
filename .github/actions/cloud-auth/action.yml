@@ -1,0 +1,27 @@
+name: NatureProtector cloud auth
+description: Authenticate to Google Cloud through GitHub OIDC/WIF without persistent keys.
+inputs:
+  workload_identity_provider:
+    required: true
+    description: Workload identity provider resource name.
+  service_account:
+    required: true
+    description: Service account email authorized for this workflow.
+  project_id:
+    required: true
+    description: Expected GCP project.
+runs:
+  using: composite
+  steps:
+    - name: Guard project
+      shell: bash
+      run: |
+        set -euo pipefail
+        test "${{ inputs.project_id }}" = "natureprotector-500518"
+    - name: Authenticate with WIF
+      uses: google-github-actions/auth@b7593ed2efd1c1617e1b0254da33b86225adb2a5
+      with:
+        workload_identity_provider: ${{ inputs.workload_identity_provider }}
+        service_account: ${{ inputs.service_account }}
+        create_credentials_file: true
+        export_environment_variables: true

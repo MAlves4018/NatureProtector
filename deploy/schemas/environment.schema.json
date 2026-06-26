@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NatureProtector deployment environment",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "project_id", "region"],
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "environment": { "type": "string", "enum": ["staging", "production"] },
+    "project_id": { "type": "string", "pattern": "^natureprotector-500518$" },
+    "region": { "type": "string", "const": "europe-southwest1" },
+    "deployable": { "type": "boolean" },
+    "default_ttl_hours": { "type": "integer", "minimum": 0, "maximum": 24 },
+    "budget_envelope_eur_month": { "type": "number", "maximum": 20 },
+    "terraform_state_prefix": { "type": "string" },
+    "kustomize_overlay": { "type": "string" },
+    "session_state": { "type": "string" },
+    "required_variables": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Z0-9_]+$" },
+      "uniqueItems": true
+    }
+  }
+}
