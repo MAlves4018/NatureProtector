@@ -30,17 +30,17 @@ jobs:
       - name: Install policy parsers
         shell: bash
         run: python3 -m pip install --disable-pip-version-check --no-cache-dir -r scripts/cloud/requirements-validation.txt
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
+        with:
+          terraform_version: 1.15.6
+          terraform_wrapper: false
       - name: Run G8.1 static policy
         run: python3 scripts/cloud/Test-G81Static.py
       - name: Validate local/cloud configuration contract
         run: python3 scripts/cloud/Test-LocalCloudConfigurationContract.py
       - name: Validate release-manifest contract
         run: python3 scripts/cloud/Test-G81ReleaseManifest.py infra/gcp/contracts/g8-1-release-manifest.example.json
-      - name: Install Terraform
-        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
-        with:
-          terraform_version: 1.15.6
-          terraform_wrapper: false
       - name: Validate state-bootstrap Terraform without backend
         shell: bash
         run: |

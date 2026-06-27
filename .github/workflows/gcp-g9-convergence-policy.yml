@@ -28,6 +28,11 @@ jobs:
         run: python scripts/cloud/Test-G102Static.py | tee g102-static.json
       - name: Validate owner bootstrap and budget safety
         run: python scripts/cloud/Test-G103Static.py | tee g103-static.json
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
+        with:
+          terraform_version: 1.15.6
+          terraform_wrapper: false
       - name: Validate production architecture
         run: python scripts/cloud/Test-G81Static.py | tee g81-static.json
       - name: Validate local/cloud configuration contract
