@@ -73,6 +73,8 @@ resource "google_service_account_iam_member" "gke_workload_identity" {
   service_account_id = google_service_account.runtime[each.key].name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[${local.namespace}/${each.value}]"
+
+  depends_on = [google_container_cluster.main]
 }
 
 resource "google_project_iam_member" "cloud_deploy_environment_roles" {

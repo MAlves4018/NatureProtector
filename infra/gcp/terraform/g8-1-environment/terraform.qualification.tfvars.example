@@ -14,6 +14,7 @@ database_instance_name = "np-staging-postgres"
 # Confirm a currently supported low-cost PostgreSQL tier with:
 # gcloud sql tiers list --filter="region:europe-southwest1" --project=<PROJECT_ID>
 database_tier             = "REPLACE_WITH_SUPPORTED_LOW_COST_POSTGRES_TIER"
+database_edition = "ENTERPRISE"
 database_disk_size_gb      = 10
 database_availability_type = "ZONAL"
 database_disk_type         = "PD_HDD"

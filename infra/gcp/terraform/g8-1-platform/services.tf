@@ -35,3 +35,15 @@ resource "google_project_service" "platform" {
   service            = each.value
   disable_on_destroy = false
 }
+
+resource "google_project_service_identity" "cloud_deploy" {
+  provider = google-beta
+  count    = var.create_delivery_control_plane ? 1 : 0
+  project  = var.platform_project_id
+  service  = "clouddeploy.googleapis.com"
+
+  depends_on = [
+    google_project_service.platform["clouddeploy.googleapis.com"],
+  ]
+
+}

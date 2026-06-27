@@ -10,7 +10,10 @@ resource "google_container_cluster" "main" {
 
   release_channel { channel = "REGULAR" }
   workload_identity_config { workload_pool = "${var.project_id}.svc.id.goog" }
-  private_cluster_config { enable_private_nodes = true }
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = true
+  }
   control_plane_endpoints_config {
     dns_endpoint_config {
       allow_external_traffic    = true

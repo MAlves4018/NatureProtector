@@ -4,6 +4,12 @@ provider "google" {
   default_labels = local.labels
 }
 
+provider "google-beta" {
+  project = var.platform_project_id
+  region  = var.region
+}
+
+
 locals {
   labels = {
     system      = "natureprotector"

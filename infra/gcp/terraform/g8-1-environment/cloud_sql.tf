@@ -8,6 +8,7 @@ resource "google_sql_database_instance" "primary" {
 
   settings {
     tier                        = var.database_tier
+    edition                     = var.database_edition
     availability_type           = var.database_availability_type
     deletion_protection_enabled = var.deletion_protection
     disk_type                   = var.database_disk_type

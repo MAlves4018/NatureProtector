@@ -5,6 +5,7 @@ pods_cidr              = "10.48.0.0/14"
 services_cidr          = "10.44.0.0/20"
 cluster_name           = "np-staging"
 database_instance_name = "np-staging-postgres"
+database_edition = "ENTERPRISE"
 create_data_plane      = false
 create_edge            = false
 materialize_generated_secrets = false
