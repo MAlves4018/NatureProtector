@@ -40,3 +40,15 @@ stage. It is not a Terraform backend and it must never contain state files.
 The bucket has uniform bucket-level access, public-access prevention,
 versioning and a 365-day retention policy. `np-cd-deploy` receives
 bucket-scoped object administration and metadata-view permissions only.
+
+## Current staging baseline
+
+The canonical staging baseline has completed stage 1 and now keeps stage 2
+enabled in `terraform.staging.tfvars`. The Cloud Deploy targets and pipelines
+are therefore part of the persistent platform state rather than an ad-hoc
+operator override.
+
+The deploy-parameter maps contain only non-secret resource references and
+enabled Secret Manager version identifiers. Secret payloads are never stored
+in Terraform variables or in the repository. Parameter coverage is enforced by
+`scripts/cloud/Test-StandardPlatformConfiguration.py`.

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -191,12 +192,108 @@ for required in [
         'iam.gserviceaccount.com"'
     ),
     "create_delivery_control_plane = true",
-    "create_delivery_pipelines     = false",
+    "create_delivery_pipelines     = true",
 ]:
     check(
         required in tfvars_text,
         f"missing-platform-tfvars-token:{required}",
     )
+
+
+RUN_PARAMETER_KEYS = {
+    "api_internal_origin",
+    "api_max_scale",
+    "api_min_scale",
+    "api_service_account_email",
+    "cloud_sql_ca_secret",
+    "cloud_sql_ca_version",
+    "cloud_sql_private_ip",
+    "frontend_max_scale",
+    "frontend_min_scale",
+    "frontend_service_account_email",
+    "jwt_signing_key_secret",
+    "jwt_signing_key_version",
+    "otel_endpoint",
+    "postgres_app_password_secret",
+    "postgres_app_password_version",
+    "rabbitmq_app_password_secret",
+    "rabbitmq_app_password_version",
+    "rabbitmq_app_username_secret",
+    "rabbitmq_app_username_version",
+    "rabbitmq_ca_secret",
+    "rabbitmq_ca_version",
+    "rabbitmq_private_host",
+    "rabbitmq_tls_server_name",
+    "runtime_network_interfaces",
+    "runtime_project_id",
+    "runtime_region",
+}
+
+GKE_PARAMETER_KEYS = {
+    "cloud_sql_ca_secret_resources",
+    "cloud_sql_private_cidr",
+    "cloud_sql_private_ip",
+    "otel_gsa",
+    "otel_load_balancer_ip",
+    "prevention_gsa",
+    "rabbitmq_load_balancer_ip",
+    "rabbitmq_tls_secret_resources",
+    "rabbitmq_tls_server_name",
+    "runtime_secret_resources",
+    "runtime_subnet_cidr",
+    "secret_sync_gsa",
+}
+
+
+def parameter_keys(block_name: str, end_marker: str | None = None) -> set[str]:
+    marker = f"{block_name} = {{"
+    check(marker in tfvars_text, f"missing-parameter-map:{block_name}")
+    if marker not in tfvars_text:
+        return set()
+
+    block = tfvars_text.split(marker, 1)[1]
+    if end_marker is not None and end_marker in block:
+        block = block.split(end_marker, 1)[0]
+
+    return set(
+        re.findall(
+            r"(?m)^\s{2}([a-z0-9_]+)\s*=",
+            block,
+        )
+    )
+
+
+run_parameter_keys = parameter_keys(
+    "staging_run_deploy_parameters",
+    "staging_gke_deploy_parameters = {",
+)
+gke_parameter_keys = parameter_keys(
+    "staging_gke_deploy_parameters",
+)
+
+check(
+    run_parameter_keys == RUN_PARAMETER_KEYS,
+    "run-parameter-contract-mismatch:"
+    f"missing={sorted(RUN_PARAMETER_KEYS - run_parameter_keys)}:"
+    f"unexpected={sorted(run_parameter_keys - RUN_PARAMETER_KEYS)}",
+)
+check(
+    gke_parameter_keys == GKE_PARAMETER_KEYS,
+    "gke-parameter-contract-mismatch:"
+    f"missing={sorted(GKE_PARAMETER_KEYS - gke_parameter_keys)}:"
+    f"unexpected={sorted(gke_parameter_keys - GKE_PARAMETER_KEYS)}",
+)
+
+for forbidden_secret_material in [
+    "BEGIN PRIVATE KEY",
+    "BEGIN RSA PRIVATE KEY",
+    "BEGIN CERTIFICATE",
+]:
+    check(
+        forbidden_secret_material not in tfvars_text,
+        f"secret-material-in-platform-tfvars:{forbidden_secret_material}",
+    )
+
 
 check(
     "REPLACE_WITH" not in tfvars_text,
@@ -222,6 +319,9 @@ result = {
     "terraform_apply_executed": False,
     "production_authorized": False,
     "production_deployed": False,
+    "delivery_pipelines_enabled": True,
+    "run_parameter_count": len(run_parameter_keys),
+    "gke_parameter_count": len(gke_parameter_keys),
 }
 
 print(json.dumps(result, indent=2))
