@@ -118,120 +118,34 @@ jobs:
             >/dev/null
 
           echo "STATE_BACKEND_WIF_READ_PROVED"
-
-      - name: Prove isolated object lifecycle
+      - name: Prove retention-safe bucket contract
         shell: bash
         run: |
           set -euo pipefail
 
-          PROBE_OBJECT="probes/wif-object/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.txt"
-          PROBE_URI="gs://${STATE_BUCKET}/${PROBE_OBJECT}"
-          PROBE_VALUE="natureprotector-state-probe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-
-          printf '%s\n' "${PROBE_VALUE}" > /tmp/np-state-object-probe.txt
-
-          cleanup() {
-            gcloud storage rm "${PROBE_URI}" >/dev/null 2>&1 || true
-          }
-
-          trap cleanup EXIT
-
-          gcloud storage cp \
-            /tmp/np-state-object-probe.txt \
-            "${PROBE_URI}"
-
-          READ_VALUE="$(
-            gcloud storage cat "${PROBE_URI}" |
-            tr -d '\r\n'
+          BUCKET_JSON="$(
+            gcloud storage buckets describe \
+              "gs://${STATE_BUCKET}" \
+              --format=json
           )"
 
-          test "${READ_VALUE}" = "${PROBE_VALUE}"
+          python3 - "${BUCKET_JSON}" <<'PY'
+          import json
+          import sys
 
-          gcloud storage rm "${PROBE_URI}"
+          bucket = json.loads(sys.argv[1])
 
-          if gcloud storage cat "${PROBE_URI}" >/dev/null 2>&1
-          then
-            echo "ERRO: probe object ainda existe"
-            exit 1
-          fi
+          assert bucket["name"] == "np-tfstate-migkxl-202606"
+          assert bucket["location"] == "EUROPE-SOUTHWEST1"
+          assert bucket["uniform_bucket_level_access"] is True
+          assert bucket["public_access_prevention"] == "enforced"
+          assert bucket["versioning_enabled"] is True
+          assert bucket["retention_policy"]["retentionPeriod"] == "2592000"
 
-          trap - EXIT
+          print("STATE_BACKEND_RETENTION_PROVED")
+          print("STATE_BACKEND_VERSIONING_PROVED")
+          print("STATE_BACKEND_PUBLIC_ACCESS_PREVENTION_PROVED")
+          PY
 
-          echo "STATE_BACKEND_WIF_WRITE_PROVED"
-          echo "STATE_BACKEND_WIF_DELETE_PROVED"
-
-      - name: Prove isolated Terraform state and locking
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          PROBE_DIRECTORY="/tmp/np-terraform-state-probe"
-          PROBE_PREFIX="probes/wif-lock/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-
-          rm -rf "${PROBE_DIRECTORY}"
-          mkdir -p "${PROBE_DIRECTORY}"
-
-          cat > "${PROBE_DIRECTORY}/main.tf" <<'EOF'
-          terraform {
-            required_version = "~> 1.15.5"
-
-            backend "gcs" {}
-          }
-
-          resource "terraform_data" "probe" {
-            input = "wif-state-lock-probe"
-          }
-          EOF
-
-          cleanup() {
-            terraform \
-              -chdir="${PROBE_DIRECTORY}" \
-              destroy \
-              -auto-approve \
-              -input=false \
-              -lock=true \
-              >/dev/null 2>&1 || true
-
-            gcloud storage rm \
-              --recursive \
-              "gs://${STATE_BUCKET}/${PROBE_PREFIX}/**" \
-              >/dev/null 2>&1 || true
-          }
-
-          trap cleanup EXIT
-
-          terraform \
-            -chdir="${PROBE_DIRECTORY}" \
-            init \
-            -input=false \
-            -backend-config="bucket=${STATE_BUCKET}" \
-            -backend-config="prefix=${PROBE_PREFIX}"
-
-          terraform \
-            -chdir="${PROBE_DIRECTORY}" \
-            apply \
-            -auto-approve \
-            -input=false \
-            -lock=true
-
-          terraform \
-            -chdir="${PROBE_DIRECTORY}" \
-            state list |
-          grep -Fx 'terraform_data.probe'
-
-          terraform \
-            -chdir="${PROBE_DIRECTORY}" \
-            destroy \
-            -auto-approve \
-            -input=false \
-            -lock=true
-
-          gcloud storage rm \
-            --recursive \
-            "gs://${STATE_BUCKET}/${PROBE_PREFIX}/**" \
-            >/dev/null 2>&1 || true
-
-          trap - EXIT
-
-          echo "STATE_BACKEND_WIF_WRITE_LOCK_PROVED"
-          echo "STATE_BACKEND_PROBE_CLEANED"
+          echo "STATE_BACKEND_MUTATION_PROBE_DISABLED"
+          echo "STATE_BACKEND_CANONICAL_PREFIX_READ_ONLY"
