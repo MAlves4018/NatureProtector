@@ -7,7 +7,13 @@
   "terraform": {
     "state_bootstrap_root": "infra/gcp/terraform/g8-1-state-bootstrap",
     "platform_root": "infra/gcp/terraform/g8-1-platform",
-    "environment_root": "infra/gcp/terraform/g8-1-environment"
+    "environment_root": "infra/gcp/terraform/g8-1-environment",
+    "backend": {
+      "type": "gcs",
+      "bucket_variable": "TF_STATE_BUCKET",
+      "state_bootstrap_prefix": "state-bootstrap/g8-1",
+      "platform_prefix": "platform/g8-1"
+    }
   },
   "kustomize": {
     "base": "infra/gcp/kubernetes/g8-1/base"

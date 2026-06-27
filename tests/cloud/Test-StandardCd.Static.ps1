@@ -176,6 +176,66 @@ foreach ($token in @(
     }
 }
 
+$commonEnvironmentPath = Join-Path $RepoRoot "deploy/environments/common.json"
+$stagingEnvironmentPath = Join-Path $RepoRoot "deploy/environments/staging.json"
+$backendGeneratorPath = Join-Path $RepoRoot "scripts/cloud/New-CanonicalTerraformBackendFiles.ps1"
+$deployWorkflowPath = Join-Path $RepoRoot ".github/workflows/_deploy.yml"
+
+$commonEnvironment = Get-Content -Raw -LiteralPath $commonEnvironmentPath | ConvertFrom-Json
+$stagingEnvironment = Get-Content -Raw -LiteralPath $stagingEnvironmentPath | ConvertFrom-Json
+
+if ($commonEnvironment.terraform.backend.type -ne "gcs") {
+    Add-Failure "Canonical Terraform backend type must be gcs"
+}
+
+if ($commonEnvironment.terraform.backend.bucket_variable -ne "TF_STATE_BUCKET") {
+    Add-Failure "Canonical Terraform backend must use TF_STATE_BUCKET"
+}
+
+if ($commonEnvironment.terraform.backend.state_bootstrap_prefix -ne "state-bootstrap/g8-1") {
+    Add-Failure "Unexpected state-bootstrap backend prefix"
+}
+
+if ($commonEnvironment.terraform.backend.platform_prefix -ne "platform/g8-1") {
+    Add-Failure "Unexpected platform backend prefix"
+}
+
+if ($stagingEnvironment.terraform_state_prefix -ne "environments/staging/g8-1") {
+    Add-Failure "Unexpected staging backend prefix"
+}
+
+if (-not (Test-Path -LiteralPath $backendGeneratorPath)) {
+    Add-Failure "Missing canonical Terraform backend generator"
+}
+else {
+    $backendGeneratorText = Get-Content -Raw -LiteralPath $backendGeneratorPath
+
+    foreach ($token in @(
+        "TF_STATE_BUCKET",
+        "state-bootstrap.gcs.tfbackend",
+        "platform.gcs.tfbackend",
+        "canonical-terraform-backend-files",
+        "cloud_mutation",
+        "terraform_apply_executed"
+    )) {
+        if ($backendGeneratorText -notlike "*$token*") {
+            Add-Failure "Backend generator missing token: $token"
+        }
+    }
+}
+
+$deployWorkflowText = Get-Content -Raw -LiteralPath $deployWorkflowPath
+
+foreach ($token in @(
+    "TF_STATE_BUCKET",
+    "New-CanonicalTerraformBackendFiles.ps1",
+    "runner.temp"
+)) {
+    if ($deployWorkflowText -notlike "*$token*") {
+        Add-Failure "_deploy.yml missing canonical backend token: $token"
+    }
+}
+
 $releaseScript = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot "scripts/cloud/Build-G81Release.sh")
 
 foreach ($token in @(
