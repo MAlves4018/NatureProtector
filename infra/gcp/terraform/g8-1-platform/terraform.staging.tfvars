@@ -1,5 +1,10 @@
 # Persistent staging delivery foundation.
 # Authorization is supplied only through TF_VAR_owner_creation_confirmation.
+#
+# Stage 2 is active: the environment, private worker pool, Cloud SQL, GKE,
+# runtime identities and owner-managed TLS versions have been proved.
+# Values below are non-secret resource references resolved from the canonical
+# environment Terraform state and the enabled Secret Manager version contract.
 
 platform_project_id = "natureprotector-500518"
 staging_project_id  = "natureprotector-500518"
@@ -18,13 +23,70 @@ staging_gke_node_service_account = "np-staging-gke-nodes@natureprotector-500518.
 deploy_service_account_email = "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"
 
 create_delivery_control_plane = true
-create_delivery_pipelines     = false
+create_delivery_pipelines     = true
 
 staging_run_deploy_parameters = {
-  environment = "staging"
+  api_internal_origin            = "https://natureprotector-api-22505444922.europe-southwest1.run.app"
+  api_max_scale                  = "2"
+  api_min_scale                  = "0"
+  api_service_account_email      = "np-staging-api@natureprotector-500518.iam.gserviceaccount.com"
+  cloud_sql_ca_secret            = "np-staging-cloud-sql-server-ca"
+  cloud_sql_ca_version           = "1"
+  cloud_sql_private_ip           = "10.196.1.3"
+  frontend_max_scale             = "2"
+  frontend_min_scale             = "0"
+  frontend_service_account_email = "np-staging-frontend@natureprotector-500518.iam.gserviceaccount.com"
+  jwt_signing_key_secret         = "np-staging-jwt-signing-key"
+  jwt_signing_key_version        = "1"
+  otel_endpoint                  = "http://otel.staging.natureprotector.internal:4317"
+  postgres_app_password_secret   = "np-staging-postgres-app-password"
+  postgres_app_password_version  = "1"
+  rabbitmq_app_password_secret   = "np-staging-rabbitmq-app-password"
+  rabbitmq_app_password_version  = "1"
+  rabbitmq_app_username_secret   = "np-staging-rabbitmq-app-username"
+  rabbitmq_app_username_version  = "1"
+  rabbitmq_ca_secret             = "np-staging-rabbitmq-ca-certificate"
+  rabbitmq_ca_version            = "1"
+  rabbitmq_private_host          = "rabbitmq.staging.natureprotector.internal"
+  rabbitmq_tls_server_name       = "rabbitmq.staging.natureprotector.internal"
+  runtime_network_interfaces     = "[{\"network\":\"np-staging\",\"subnetwork\":\"np-staging-europe-southwest1\"}]"
+  runtime_project_id             = "natureprotector-500518"
+  runtime_region                 = "europe-southwest1"
 }
 
 staging_gke_deploy_parameters = {
-  environment = "staging"
-  namespace   = "natureprotector-staging"
+  cloud_sql_ca_secret_resources = <<-EOT
+    - resourceName: "projects/natureprotector-500518/secrets/np-staging-cloud-sql-server-ca/versions/1"
+      path: "server-ca.pem"
+  EOT
+
+  cloud_sql_private_cidr    = "10.196.1.3/32"
+  cloud_sql_private_ip      = "10.196.1.3"
+  otel_gsa                  = "np-staging-otel@natureprotector-500518.iam.gserviceaccount.com"
+  otel_load_balancer_ip     = "10.20.0.2"
+  prevention_gsa            = "np-staging-prevention@natureprotector-500518.iam.gserviceaccount.com"
+  rabbitmq_load_balancer_ip = "10.20.0.3"
+
+  rabbitmq_tls_secret_resources = <<-EOT
+    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-certificate/versions/1"
+      path: "tls.crt"
+    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-private-key/versions/1"
+      path: "tls.key"
+    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-ca-certificate/versions/1"
+      path: "ca.crt"
+  EOT
+
+  rabbitmq_tls_server_name = "rabbitmq.staging.natureprotector.internal"
+
+  runtime_secret_resources = <<-EOT
+    - resourceName: "projects/natureprotector-500518/secrets/np-staging-postgres-app-password/versions/1"
+      path: "postgres-app-password"
+    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-app-username/versions/1"
+      path: "rabbitmq-username"
+    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-app-password/versions/1"
+      path: "rabbitmq-password"
+  EOT
+
+  runtime_subnet_cidr = "10.20.0.0/24"
+  secret_sync_gsa     = "np-staging-secret-sync@natureprotector-500518.iam.gserviceaccount.com"
 }
