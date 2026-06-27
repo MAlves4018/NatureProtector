@@ -3,22 +3,105 @@
   "title": "NatureProtector deployment environment",
   "type": "object",
   "additionalProperties": true,
-  "required": ["schema_version", "project_id", "region"],
+  "required": [
+    "schema_version",
+    "project_id",
+    "region"
+  ],
   "properties": {
-    "schema_version": { "type": "integer", "minimum": 1 },
-    "environment": { "type": "string", "enum": ["staging", "production"] },
-    "project_id": { "type": "string", "pattern": "^natureprotector-500518$" },
-    "region": { "type": "string", "const": "europe-southwest1" },
-    "deployable": { "type": "boolean" },
-    "default_ttl_hours": { "type": "integer", "minimum": 0, "maximum": 24 },
-    "budget_envelope_eur_month": { "type": "number", "maximum": 20 },
-    "terraform_state_prefix": { "type": "string" },
-    "kustomize_overlay": { "type": "string" },
-    "session_state": { "type": "string" },
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "staging",
+        "production"
+      ]
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^natureprotector-500518$"
+    },
+    "region": {
+      "type": "string",
+      "const": "europe-southwest1"
+    },
+    "deployable": {
+      "type": "boolean"
+    },
+    "default_ttl_hours": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 24
+    },
+    "budget_envelope_eur_month": {
+      "type": "number",
+      "maximum": 20
+    },
+    "terraform_state_prefix": {
+      "type": "string",
+      "pattern": "^environments/(staging|production)/g8-1$"
+    },
+    "kustomize_overlay": {
+      "type": "string"
+    },
+    "session_state": {
+      "type": "string"
+    },
     "required_variables": {
       "type": "array",
-      "items": { "type": "string", "pattern": "^[A-Z0-9_]+$" },
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z0-9_]+$"
+      },
       "uniqueItems": true
+    },
+    "terraform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state_bootstrap_root",
+        "platform_root",
+        "environment_root",
+        "backend"
+      ],
+      "properties": {
+        "state_bootstrap_root": {
+          "const": "infra/gcp/terraform/g8-1-state-bootstrap"
+        },
+        "platform_root": {
+          "const": "infra/gcp/terraform/g8-1-platform"
+        },
+        "environment_root": {
+          "const": "infra/gcp/terraform/g8-1-environment"
+        },
+        "backend": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "bucket_variable",
+            "state_bootstrap_prefix",
+            "platform_prefix"
+          ],
+          "properties": {
+            "type": {
+              "const": "gcs"
+            },
+            "bucket_variable": {
+              "const": "TF_STATE_BUCKET"
+            },
+            "state_bootstrap_prefix": {
+              "const": "state-bootstrap/g8-1"
+            },
+            "platform_prefix": {
+              "const": "platform/g8-1"
+            }
+          }
+        }
+      }
     }
   }
 }
