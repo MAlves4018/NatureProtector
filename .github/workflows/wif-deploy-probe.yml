@@ -58,3 +58,180 @@ jobs:
           echo "DEPLOY_WIF_EXECUTION_PROVED"
           echo "DEPLOY_PROJECT_ROLES_ZERO"
           echo "STAGING_SESSION_CLOSED"
+
+  state-backend-probe:
+    name: State backend WIF probe
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      DEPLOY_SERVICE_ACCOUNT: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+    steps:
+      - name: Authenticate deploy identity
+        id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          create_credentials_file: true
+          export_environment_variables: true
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
+        with:
+          terraform_version: 1.15.6
+          terraform_wrapper: false
+
+      - name: Prove federated identity
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ACTIVE_ACCOUNT="$(
+            gcloud auth list \
+              --filter='status:ACTIVE' \
+              --format='value(account)'
+          )"
+
+          echo "ACTIVE_ACCOUNT=${ACTIVE_ACCOUNT}"
+
+          test "${ACTIVE_ACCOUNT}" = "${DEPLOY_SERVICE_ACCOUNT}"
+
+          echo "DEPLOY_WIF_EXECUTION_PROVED"
+
+      - name: Prove canonical state read access
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gcloud storage cat \
+            "gs://${STATE_BUCKET}/state-bootstrap/g8-1/default.tfstate" \
+            >/dev/null
+
+          echo "STATE_BACKEND_WIF_READ_PROVED"
+
+      - name: Prove isolated object lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PROBE_OBJECT="probes/wif-object/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.txt"
+          PROBE_URI="gs://${STATE_BUCKET}/${PROBE_OBJECT}"
+          PROBE_VALUE="natureprotector-state-probe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+          printf '%s\n' "${PROBE_VALUE}" > /tmp/np-state-object-probe.txt
+
+          cleanup() {
+            gcloud storage rm "${PROBE_URI}" >/dev/null 2>&1 || true
+          }
+
+          trap cleanup EXIT
+
+          gcloud storage cp \
+            /tmp/np-state-object-probe.txt \
+            "${PROBE_URI}"
+
+          READ_VALUE="$(
+            gcloud storage cat "${PROBE_URI}" |
+            tr -d '\r\n'
+          )"
+
+          test "${READ_VALUE}" = "${PROBE_VALUE}"
+
+          gcloud storage rm "${PROBE_URI}"
+
+          if gcloud storage cat "${PROBE_URI}" >/dev/null 2>&1
+          then
+            echo "ERRO: probe object ainda existe"
+            exit 1
+          fi
+
+          trap - EXIT
+
+          echo "STATE_BACKEND_WIF_WRITE_PROVED"
+          echo "STATE_BACKEND_WIF_DELETE_PROVED"
+
+      - name: Prove isolated Terraform state and locking
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PROBE_DIRECTORY="/tmp/np-terraform-state-probe"
+          PROBE_PREFIX="probes/wif-lock/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+          rm -rf "${PROBE_DIRECTORY}"
+          mkdir -p "${PROBE_DIRECTORY}"
+
+          cat > "${PROBE_DIRECTORY}/main.tf" <<'EOF'
+          terraform {
+            required_version = "~> 1.15.5"
+
+            backend "gcs" {}
+          }
+
+          resource "terraform_data" "probe" {
+            input = "wif-state-lock-probe"
+          }
+          EOF
+
+          cleanup() {
+            terraform \
+              -chdir="${PROBE_DIRECTORY}" \
+              destroy \
+              -auto-approve \
+              -input=false \
+              -lock=true \
+              >/dev/null 2>&1 || true
+
+            gcloud storage rm \
+              --recursive \
+              "gs://${STATE_BUCKET}/${PROBE_PREFIX}/**" \
+              >/dev/null 2>&1 || true
+          }
+
+          trap cleanup EXIT
+
+          terraform \
+            -chdir="${PROBE_DIRECTORY}" \
+            init \
+            -input=false \
+            -backend-config="bucket=${STATE_BUCKET}" \
+            -backend-config="prefix=${PROBE_PREFIX}"
+
+          terraform \
+            -chdir="${PROBE_DIRECTORY}" \
+            apply \
+            -auto-approve \
+            -input=false \
+            -lock=true
+
+          terraform \
+            -chdir="${PROBE_DIRECTORY}" \
+            state list |
+          grep -Fx 'terraform_data.probe'
+
+          terraform \
+            -chdir="${PROBE_DIRECTORY}" \
+            destroy \
+            -auto-approve \
+            -input=false \
+            -lock=true
+
+          gcloud storage rm \
+            --recursive \
+            "gs://${STATE_BUCKET}/${PROBE_PREFIX}/**" \
+            >/dev/null 2>&1 || true
+
+          trap - EXIT
+
+          echo "STATE_BACKEND_WIF_WRITE_LOCK_PROVED"
+          echo "STATE_BACKEND_PROBE_CLEANED"
