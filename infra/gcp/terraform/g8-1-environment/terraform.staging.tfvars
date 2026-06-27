@@ -14,7 +14,9 @@ cluster_name           = "np-staging"
 runtime_namespace      = "natureprotector-staging"
 database_instance_name = "np-staging-postgres"
 
-database_tier              = "db-f1-micro"
+database_tier = "db-f1-micro"
+
+database_edition           = "ENTERPRISE"
 database_disk_size_gb      = 10
 database_availability_type = "ZONAL"
 database_disk_type         = "PD_HDD"

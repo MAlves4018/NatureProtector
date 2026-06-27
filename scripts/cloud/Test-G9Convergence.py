@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -98,16 +100,49 @@ for path in [
     except Exception as exc:  # noqa: BLE001
         check(False, f'json:{path.relative_to(ROOT)}:{exc}')
 
-hcl_files = sorted((ROOT / 'infra/gcp/terraform').rglob('*.tf'))
-check(hcl2 is not None, 'hcl2-module-missing')
+terraform_hcl_root = ROOT / "infra/gcp/terraform"
+platform_hcl_root = terraform_hcl_root / "g8-1-platform"
+hcl_files = sorted(terraform_hcl_root.rglob("*.tf"))
+secondary_hcl_files = [
+    path
+    for path in hcl_files
+    if platform_hcl_root not in path.parents
+]
+
+check(hcl2 is not None, "hcl2-module-missing")
 if hcl2 is not None:
-    for path in hcl_files:
+    for path in secondary_hcl_files:
         try:
-            with path.open('r', encoding='utf-8') as handle:
+            with path.open("r", encoding="utf-8") as handle:
                 hcl2.load(handle)
-            check(True, '')
+            check(True, "")
         except Exception as exc:  # noqa: BLE001
-            check(False, f'hcl:{path.relative_to(ROOT)}:{exc}')
+            check(False, f"hcl:{path.relative_to(ROOT)}:{exc}")
+
+terraform_cli = shutil.which("terraform")
+check(terraform_cli is not None, "terraform-cli-missing-for-platform-hcl")
+if terraform_cli is not None:
+    terraform_parse = subprocess.run(
+        [
+            terraform_cli,
+            "fmt",
+            "-check",
+            "-recursive",
+            str(platform_hcl_root),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    parser_output = (
+        terraform_parse.stdout + "\n" + terraform_parse.stderr
+    ).strip().replace("\n", " | ")
+    check(
+        terraform_parse.returncode == 0,
+        f"terraform-platform-hcl:{parser_output}",
+    )
+
 
 # The academic billing account may be referenced only by the owner-controlled
 # G10.2 bootstrap contract. The CN project and its runtime identifiers remain

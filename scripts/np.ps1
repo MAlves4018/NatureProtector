@@ -259,7 +259,8 @@ try {
                 @{ name="g103-static"; cmd="python"; args=@("scripts/cloud/Test-G103Static.py") },
                 @{ name="local-cloud-contract"; cmd="python"; args=@("scripts/cloud/Test-LocalCloudConfigurationContract.py") },
                 @{ name="standard-staging-configuration"; cmd="python"; args=@("scripts/cloud/Test-StandardStagingConfiguration.py") },
-                @{ name="standard-platform-configuration"; cmd="python"; args=@("scripts/cloud/Test-StandardPlatformConfiguration.py") }
+                @{ name="standard-platform-configuration"; cmd="python"; args=@("scripts/cloud/Test-StandardPlatformConfiguration.py") },
+                @{ name="environment-remediation-static"; cmd="python"; args=@("scripts/cloud/Test-EnvironmentRemediationStatic.py") }
             )
             $results = @()
             foreach ($item in $commands) {

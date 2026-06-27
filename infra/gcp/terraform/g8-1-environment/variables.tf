@@ -23,6 +23,20 @@ variable "database_tier" {
   type    = string
   default = "db-custom-2-7680"
 }
+variable "database_edition" {
+  type        = string
+  default     = "ENTERPRISE"
+  description = "Cloud SQL edition. Shared-core staging tiers require ENTERPRISE."
+
+  validation {
+    condition = contains(
+      ["ENTERPRISE", "ENTERPRISE_PLUS"],
+      var.database_edition,
+    )
+    error_message = "database_edition must be ENTERPRISE or ENTERPRISE_PLUS."
+  }
+}
+
 variable "database_disk_size_gb" {
   type    = number
   default = 50
