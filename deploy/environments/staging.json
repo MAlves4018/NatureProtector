@@ -21,7 +21,10 @@
     "DEPLOY_SERVICE_ACCOUNT",
     "TF_STATE_BUCKET",
     "STAGING_NAMESPACE",
-    "STAGING_DEFAULT_TTL_HOURS"
+    "STAGING_DEFAULT_TTL_HOURS",
+    "GCP_G81_STAGING_CLUSTER_NAME",
+    "GCP_G81_STAGING_CLOUD_SQL_INSTANCE",
+    "GCP_G82_EVIDENCE_BUCKET"
   ],
   "guards": {
     "production_allowed": false,
@@ -29,5 +32,6 @@
     "max_replicas": 1,
     "allow_second_region": false,
     "allow_high_availability": false
-  }
+  },
+  "staging_tfvars": "infra/gcp/terraform/g8-1-environment/terraform.staging.tfvars"
 }

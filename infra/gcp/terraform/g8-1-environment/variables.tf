@@ -107,9 +107,9 @@ variable "owner_creation_confirmation" {
   sensitive = true
   validation {
     condition = !var.create_data_plane || (
-      var.owner_creation_confirmation == "OWNER_APPROVES_NEW_NON_CN_GCP_PROJECTS_AFTER_G10"
+      var.owner_creation_confirmation == "AUTHORIZE_EPHEMERAL_STAGING_APPLY_MAX_20_EUR_TTL_4H"
     )
-    error_message = "Data-plane creation is forbidden before G10 integration and explicit owner approval."
+    error_message = "Data-plane creation requires the exact ephemeral staging authorization for the 20 EUR and 4 hour envelope."
   }
 }
 variable "platform_project_id" { type = string }

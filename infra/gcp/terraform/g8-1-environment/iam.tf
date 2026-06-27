@@ -75,20 +75,6 @@ resource "google_service_account_iam_member" "gke_workload_identity" {
   member             = "serviceAccount:${var.project_id}.svc.id.goog[${local.namespace}/${each.value}]"
 }
 
-resource "google_project_iam_member" "workflow_environment_roles" {
-  for_each = var.create_data_plane ? toset([
-    "roles/run.admin",
-    "roles/container.admin",
-    "roles/cloudsql.viewer",
-    "roles/secretmanager.viewer",
-    "roles/monitoring.viewer",
-    "roles/logging.viewer"
-  ]) : toset([])
-  project = var.project_id
-  role    = each.value
-  member  = "serviceAccount:${var.workflow_deployer_service_account}"
-}
-
 resource "google_project_iam_member" "cloud_deploy_environment_roles" {
   for_each = var.create_data_plane ? toset([
     "roles/run.developer",

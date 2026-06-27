@@ -109,10 +109,109 @@ check('AllowRemoteLaunch=true requires Mode=CloudRunJob' in ext,'remote-launch-v
 check('!_environment.IsDevelopment()' in ctrl and 'StatusCodes.Status403Forbidden' in ctrl and 'only available in Development' in ctrl,'controller-remote-launch-gate-missing')
 check('RuntimeOrchestration__AllowRemoteLaunch, value: "true"' in svc,'cloud-remote-launch-opt-in-missing')
 
-# WIF exact workflow identities.
-identity=(ROOT/'infra/gcp/terraform/g8-1-platform/identity.tf').read_text()
-for token in ['gcp-g8-2-runtime-probe.yml','gcp-g8-2-runtime-qualification.yml','gha-np-g82-probe','gha-np-g82-qualify']:
-    check(token in identity,f'wif-missing:{token}')
+# G8.2 runtime workflows use the canonical staging WIF boundary.
+probe_workflow = (
+    ROOT / '.github/workflows/gcp-g8-2-runtime-probe.yml'
+).read_text(encoding='utf-8')
+
+qualification_workflow = (
+    ROOT / '.github/workflows/gcp-g8-2-runtime-qualification.yml'
+).read_text(encoding='utf-8')
+
+for workflow_name, workflow_text in [
+    ('gcp-g8-2-runtime-probe.yml', probe_workflow),
+    ('gcp-g8-2-runtime-qualification.yml', qualification_workflow),
+]:
+    check(
+        'environment: staging' in workflow_text,
+        f'wif-environment-missing:{workflow_name}',
+    )
+    check(
+        'id-token: write' in workflow_text,
+        f'wif-id-token-permission-missing:{workflow_name}',
+    )
+    check(
+        'workload_identity_provider: ${{ vars.WIF_PROVIDER }}'
+        in workflow_text,
+        f'wif-provider-missing:{workflow_name}',
+    )
+    check(
+        'service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}'
+        in workflow_text,
+        f'wif-service-account-missing:{workflow_name}',
+    )
+
+check(
+    "-ProjectId '${{ vars.GCP_PROJECT_ID }}'"
+    in probe_workflow,
+    "probe-project-uses-standard-variable",
+)
+check(
+    "GCP_STAGING_PROJECT_ID" not in probe_workflow,
+    "legacy-probe-project-variable",
+)
+for token, message in [
+    (
+        "GCP_G81_STAGING_CLUSTER_NAME",
+        "probe-cluster-variable-missing",
+    ),
+    (
+        "GCP_G81_STAGING_CLOUD_SQL_INSTANCE",
+        "probe-cloud-sql-variable-missing",
+    ),
+    (
+        "GCP_G82_SCC_PARENT",
+        "probe-scc-variable-missing",
+    ),
+    (
+        "if [[ \"$ACTION\" == collect-audit ]]",
+        "probe-scc-action-gate-missing",
+    ),
+]:
+    check(
+        token in probe_workflow,
+        message,
+    )
+
+for token, message in [
+    (
+        "GCP_G82_EVIDENCE_BUCKET",
+        "qualification-evidence-variable-missing",
+    ),
+    (
+        "EVIDENCE_BUCKET: ${{ vars.GCP_G82_EVIDENCE_BUCKET }}",
+        "qualification-evidence-preflight-missing",
+    ),
+]:
+    check(
+        token in qualification_workflow,
+        message,
+    )
+
+for legacy_token in [
+    'GCP_G82_PROBE_WIF_PROVIDER',
+    'GCP_G82_PROBE_SERVICE_ACCOUNT',
+    'GCP_G82_QUALIFICATION_WIF_PROVIDER',
+    'GCP_G82_QUALIFICATION_SERVICE_ACCOUNT',
+]:
+    check(
+        legacy_token not in probe_workflow
+        and legacy_token not in qualification_workflow,
+        f'legacy-g82-wif-variable:{legacy_token}',
+    )
+
+platform_identity = (
+    ROOT / 'infra/gcp/terraform/g8-1-platform/identity.tf'
+).read_text(encoding='utf-8')
+
+for legacy_identity in [
+    'gha-np-g82-probe',
+    'gha-np-g82-qualify',
+]:
+    check(
+        legacy_identity not in platform_identity,
+        f'legacy-g82-wif-identity:{legacy_identity}',
+    )
 
 if errors:
     print(json.dumps({'phase':'G8.2','status':'FAIL','checks_total':checks,'checks_failed':len(errors),'errors':errors},indent=2))

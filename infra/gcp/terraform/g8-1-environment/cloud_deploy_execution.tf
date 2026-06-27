@@ -19,7 +19,6 @@ resource "google_cloudbuild_worker_pool" "cloud_deploy" {
   }
 
   depends_on = [
-    google_project_service.required,
     google_service_networking_connection.private_service_access
   ]
 }

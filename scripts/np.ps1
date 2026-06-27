@@ -257,7 +257,9 @@ try {
                 @{ name="g9-convergence"; cmd="python"; args=@("scripts/cloud/Test-G9Convergence.py") },
                 @{ name="g102-static"; cmd="python"; args=@("scripts/cloud/Test-G102Static.py") },
                 @{ name="g103-static"; cmd="python"; args=@("scripts/cloud/Test-G103Static.py") },
-                @{ name="local-cloud-contract"; cmd="python"; args=@("scripts/cloud/Test-LocalCloudConfigurationContract.py") }
+                @{ name="local-cloud-contract"; cmd="python"; args=@("scripts/cloud/Test-LocalCloudConfigurationContract.py") },
+                @{ name="standard-staging-configuration"; cmd="python"; args=@("scripts/cloud/Test-StandardStagingConfiguration.py") },
+                @{ name="standard-platform-configuration"; cmd="python"; args=@("scripts/cloud/Test-StandardPlatformConfiguration.py") }
             )
             $results = @()
             foreach ($item in $commands) {

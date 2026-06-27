@@ -129,7 +129,17 @@ $GeneratedFiles = @()
 
 foreach ($Name in $Prefixes.Keys) {
     $Prefix = [string]$Prefixes[$Name]
-    $FileName = "$Name.gcs.tfbackend"
+    $FileName = switch ($Name) {
+        "state-bootstrap" {
+            "state-bootstrap.gcs.tfbackend"
+        }
+        "platform" {
+            "platform.gcs.tfbackend"
+        }
+        default {
+            "$Name.gcs.tfbackend"
+        }
+    }
     $FilePath = Join-Path $OutputDirectory $FileName
 
     $Content = @(

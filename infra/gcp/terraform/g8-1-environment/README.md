@@ -8,3 +8,11 @@ The root is disabled by default. Cloud Run service revisions remain owned by Clo
 ## Remote state
 
 Initialise this reusable root against the protected platform GCS bucket with a unique prefix per environment. Never share a prefix between staging and production. The one-week teardown changes this same state; it must not run from a fresh local state.
+
+## State ownership boundary
+
+This root does not manage project-level Google Cloud API enablement or
+project-level IAM bindings for `np-cd-deploy`. Those objects belong exclusively
+to the `g8-1-platform` state. This root owns the staging runtime resources,
+runtime service accounts and resource-level IAM bindings on those accounts.
+Apply the platform control-plane stage before applying this root.

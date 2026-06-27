@@ -28,7 +28,7 @@ cloud_deploy_worker_disk_size_gb = 100
 create_data_plane            = false
 create_edge                  = false
 materialize_generated_secrets = false
-# owner_creation_confirmation = "OWNER_APPROVES_NEW_NON_CN_GCP_PROJECTS_AFTER_G10"
+# owner_creation_confirmation = "AUTHORIZE_EPHEMERAL_STAGING_APPLY_MAX_20_EUR_TTL_4H"
 
 workflow_deployer_service_account = "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"
 

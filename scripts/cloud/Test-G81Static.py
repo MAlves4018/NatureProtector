@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -134,18 +136,56 @@ for path in yaml_files:
     except Exception as exc:  # noqa: BLE001
         check(False, f"yaml:{path.relative_to(ROOT)}:{exc}")
 
-hcl_files = sorted((ROOT / "infra/gcp/terraform/g8-1-state-bootstrap").glob("*.tf"))
-hcl_files += sorted((ROOT / "infra/gcp/terraform/g8-1-platform").glob("*.tf"))
-hcl_files += sorted((ROOT / "infra/gcp/terraform/g8-1-environment").glob("*.tf"))
+state_bootstrap_hcl_files = sorted(
+    (ROOT / "infra/gcp/terraform/g8-1-state-bootstrap").glob("*.tf")
+)
+platform_hcl_root = ROOT / "infra/gcp/terraform/g8-1-platform"
+platform_hcl_files = sorted(platform_hcl_root.glob("*.tf"))
+environment_hcl_files = sorted(
+    (ROOT / "infra/gcp/terraform/g8-1-environment").glob("*.tf")
+)
+hcl_files = (
+    state_bootstrap_hcl_files
+    + platform_hcl_files
+    + environment_hcl_files
+)
+
+# python-hcl2 remains the lightweight parser for the unchanged Terraform
+# roots. The platform root uses valid Terraform conditional expressions that
+# this secondary parser rejects, so Terraform itself parses that root.
 check(hcl2 is not None, "hcl2-module-missing")
 if hcl2 is not None:
-    for path in hcl_files:
+    for path in state_bootstrap_hcl_files + environment_hcl_files:
         try:
             with path.open("r", encoding="utf-8") as handle:
                 hcl2.load(handle)
             check(True, "")
         except Exception as exc:  # noqa: BLE001
             check(False, f"hcl:{path.relative_to(ROOT)}:{exc}")
+
+terraform_cli = shutil.which("terraform")
+check(terraform_cli is not None, "terraform-cli-missing-for-platform-hcl")
+if terraform_cli is not None:
+    terraform_parse = subprocess.run(
+        [
+            terraform_cli,
+            "fmt",
+            "-check",
+            "-recursive",
+            str(platform_hcl_root),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    parser_output = (
+        terraform_parse.stdout + "\n" + terraform_parse.stderr
+    ).strip().replace("\n", " | ")
+    check(
+        terraform_parse.returncode == 0,
+        f"terraform-platform-hcl:{parser_output}",
+    )
 
 scope_paths = [ROOT / item for item in REQUIRED if (ROOT / item).is_file()]
 scope_paths += hcl_files + yaml_files + json_files
@@ -163,10 +203,10 @@ for token in [
     "kind: PodDisruptionBudget",
     "default_queue_type = quorum",
     "point_in_time_recovery_enabled",
-    "automatic_traffic_control = true",
-    "percentages = [5, 25, 50]",
-    "require_approval = true",
-    "attribute.workflow_ref",
+    "single-project-staging-only",
+    "np-deploy-staging",
+    "np-releases",
+    "AUTHORIZE_EPHEMERAL_STAGING_APPLY_MAX_20_EUR_TTL_4H",
     "Status429TooManyRequests",
     "CloudRunJob",
     "roles/run.jobsExecutorWithOverrides",
@@ -268,10 +308,10 @@ semantic_checks = {
     "cross-project-runtime-image-pull": (ROOT / "infra/gcp/terraform/g8-1-platform/artifact_registry.tf", "google_artifact_registry_repository_iam_member\" \"runtime_readers"),
     "cloud-run-service-agent-registry-reader": (ROOT / "infra/gcp/terraform/g8-1-platform/artifact_registry.tf", "serverless-robot-prod.iam.gserviceaccount.com"),
     "non-circular-platform-bootstrap": (ROOT / "infra/gcp/terraform/g8-1-platform/variables.tf", "create_delivery_pipelines"),
-    "workflow-service-account-binding-is-exact": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", "/attribute.workflow_id/${each.key}"),
-    "workflow-short-safe-attribute": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", "\"attribute.workflow_id\" = \"\'${each.key}\'\""),
-    "workflow-ref-condition-is-exact": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", "assertion.workflow_ref == '${var.repository}/.github/workflows/${each.value.workflow}@refs/heads/${var.default_branch}'"),
-    "release-provider-does-not-map-missing-environment": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", 'each.value.environment == "" ? {}'),
+    "platform-staging-execution-identity": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", 'account_id   = "np-deploy-staging"'),
+    "platform-reuses-existing-deploy-identity": (ROOT / "infra/gcp/terraform/g8-1-platform/variables.tf", "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"),
+    "platform-reuses-existing-artifact-repository": (ROOT / "infra/gcp/terraform/g8-1-platform/artifact_registry.tf", 'data "google_artifact_registry_repository" "images"'),
+    "platform-is-single-project-staging-only": (ROOT / "infra/gcp/terraform/g8-1-platform/outputs.tf", 'value = "single-project-staging-only"'),
     "edge-requires-domain": (ROOT / "infra/gcp/terraform/g8-1-environment/variables.tf", "At least one managed certificate domain is required"),
     "production-requires-alert-channel": (ROOT / "infra/gcp/terraform/g8-1-environment/variables.tf", "Production requires at least one Monitoring notification channel"),
     "g81-smoke-identity": (ROOT / "infra/gcp/smoke/smoke.sh", "g81-smoke-"),
@@ -295,7 +335,8 @@ semantic_checks = {
     "staging-installs-cluster-dependencies": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Install-G81ClusterDependencies.ps1"),
     "production-installs-cluster-dependencies": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Install-G81ClusterDependencies.ps1"),
     "cluster-bootstrap-uses-dns-endpoint": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "--dns-endpoint"),
-    "workflow-cluster-bootstrap-role": (ROOT / "infra/gcp/terraform/g8-1-environment/iam.tf", "roles/container.admin"),
+    "workflow-cluster-bootstrap-role": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", "roles/container.admin"),
+    "removed-gke-vulnerability-scanning-disabled": (ROOT / "infra/gcp/terraform/g8-1-environment/gke.tf", 'vulnerability_mode = "VULNERABILITY_DISABLED"'),
     "prevention-postgres-explicit": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "POSTGRES_REQUIRE_EXPLICIT"),
     "prevention-postgres-cloudsql-ip": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "${cloud_sql_private_ip}"),
     "prevention-influx-explicitly-disabled": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "InfluxDb__Enabled"),

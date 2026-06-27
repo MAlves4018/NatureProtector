@@ -1,25 +1,4 @@
-locals {
-  required_services = toset([
-    "artifactregistry.googleapis.com",
-    "binaryauthorization.googleapis.com",
-    "cloudbuild.googleapis.com",
-    "cloudtrace.googleapis.com",
-    "compute.googleapis.com",
-    "dns.googleapis.com",
-    "container.googleapis.com",
-    "containeranalysis.googleapis.com",
-    "iam.googleapis.com",
-    "logging.googleapis.com",
-    "monitoring.googleapis.com",
-    "run.googleapis.com",
-    "secretmanager.googleapis.com",
-    "servicenetworking.googleapis.com",
-    "sqladmin.googleapis.com"
-  ])
-}
-resource "google_project_service" "required" {
-  for_each           = var.create_data_plane ? local.required_services : toset([])
-  project            = var.project_id
-  service            = each.value
-  disable_on_destroy = false
-}
+# Project-level Google Cloud API enablement is owned exclusively by the
+# g8-1-platform Terraform root. Keeping google_project_service resources out
+# of this root prevents the same remote API registration from being managed
+# by both the platform and environment states.

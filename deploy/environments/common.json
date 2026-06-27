@@ -3,7 +3,7 @@
   "schema_version": 1,
   "project_id": "natureprotector-500518",
   "region": "europe-southwest1",
-  "artifact_repository": "natureprotector",
+  "artifact_repository": "np-releases",
   "terraform": {
     "state_bootstrap_root": "infra/gcp/terraform/g8-1-state-bootstrap",
     "platform_root": "infra/gcp/terraform/g8-1-platform",

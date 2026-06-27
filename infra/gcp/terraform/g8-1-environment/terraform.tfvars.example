@@ -10,7 +10,7 @@ create_edge            = false
 materialize_generated_secrets = false
 secret_generation              = 1
 managed_certificate_domains = []
-# owner_creation_confirmation = "OWNER_APPROVES_NEW_NON_CN_GCP_PROJECTS_AFTER_G10"
+# owner_creation_confirmation = "AUTHORIZE_EPHEMERAL_STAGING_APPLY_MAX_20_EUR_TTL_4H"
 
 platform_project_id = "np-platform-REPLACE"
 workflow_deployer_service_account = "gha-np-staging@np-platform-REPLACE.iam.gserviceaccount.com"

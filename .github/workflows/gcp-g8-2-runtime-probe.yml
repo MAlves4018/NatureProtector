@@ -49,10 +49,22 @@ jobs:
           ACTION: ${{ inputs.action }}
           CONFIRMATION: ${{ inputs.confirmation }}
           QUALIFICATION_ID: ${{ inputs.qualification_id }}
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          REGION: ${{ vars.GCP_REGION }}
+          CLUSTER_NAME: ${{ vars.GCP_G81_STAGING_CLUSTER_NAME }}
+          CLOUD_SQL_INSTANCE: ${{ vars.GCP_G81_STAGING_CLOUD_SQL_INSTANCE }}
+          SCC_PARENT: ${{ vars.GCP_G82_SCC_PARENT }}
         run: |
           set -euo pipefail
           [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]]
           [[ "$QUALIFICATION_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$ ]]
+          [[ "$PROJECT_ID" == natureprotector-500518 ]]
+          [[ "$REGION" == europe-southwest1 ]]
+          [[ "$CLUSTER_NAME" == np-staging ]]
+          [[ "$CLOUD_SQL_INSTANCE" == np-staging-postgres ]]
+          if [[ "$ACTION" == collect-audit ]]; then
+            [[ "$SCC_PARENT" =~ ^projects/[0-9]+$ ]]
+          fi
           expected="RUN_G82_$(tr '[:lower:]-' '[:upper:]_' <<<"$ACTION")"
           [[ "$CONFIRMATION" == "$expected" ]]
       - name: Checkout exact candidate
@@ -83,8 +95,8 @@ jobs:
       - name: Authenticate probe identity
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
         with:
-          workload_identity_provider: ${{ vars.GCP_G82_PROBE_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_G82_PROBE_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
           create_credentials_file: true
           export_environment_variables: true
       - name: Install cloud tooling
@@ -101,7 +113,7 @@ jobs:
             -SourceCommit '${{ inputs.candidate_commit }}' `
             -EvidenceDirectory '${{ runner.temp }}/probe/evidence' `
             -Confirmation '${{ inputs.confirmation }}' `
-            -ProjectId '${{ vars.GCP_STAGING_PROJECT_ID }}' `
+            -ProjectId '${{ vars.GCP_PROJECT_ID }}' `
             -Region '${{ vars.GCP_REGION }}' `
             -ClusterName '${{ vars.GCP_G81_STAGING_CLUSTER_NAME }}' `
             -CloudSqlInstance '${{ vars.GCP_G81_STAGING_CLOUD_SQL_INSTANCE }}' `
