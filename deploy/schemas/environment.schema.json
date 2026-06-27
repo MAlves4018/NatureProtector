@@ -102,6 +102,14 @@
           }
         }
       }
+    },
+    "artifact_repository": {
+      "type": "string",
+      "const": "np-releases"
+    },
+    "staging_tfvars": {
+      "type": "string",
+      "const": "infra/gcp/terraform/g8-1-environment/terraform.staging.tfvars"
     }
   }
 }

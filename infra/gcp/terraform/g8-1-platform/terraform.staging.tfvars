@@ -1,3 +1,6 @@
+# Persistent staging delivery foundation.
+# Authorization is supplied only through TF_VAR_owner_creation_confirmation.
+
 platform_project_id = "natureprotector-500518"
 staging_project_id  = "natureprotector-500518"
 region              = "europe-southwest1"
@@ -14,24 +17,14 @@ staging_gke_node_service_account = "np-staging-gke-nodes@natureprotector-500518.
 
 deploy_service_account_email = "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"
 
-create_delivery_control_plane = false
+create_delivery_control_plane = true
 create_delivery_pipelines     = false
 
-# Populate these parameters only when the staging environment has been
-# created and create_delivery_pipelines is changed to true.
-# cloud_sql_private_ip must come from the environment Terraform output.
 staging_run_deploy_parameters = {
-  environment            = "staging"
-  api_min_scale          = "0"
-  api_max_scale          = "2"
-  frontend_min_scale     = "0"
-  frontend_max_scale     = "2"
-  cloud_sql_private_ip   = "REPLACE_AFTER_STAGING_APPLY"
+  environment = "staging"
 }
 
 staging_gke_deploy_parameters = {
   environment = "staging"
   namespace   = "natureprotector-staging"
 }
-
-# Pass through TF_VAR_owner_creation_confirmation instead of committing it.

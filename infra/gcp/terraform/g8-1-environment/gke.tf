@@ -39,8 +39,8 @@ resource "google_container_cluster" "main" {
   }
   binary_authorization { evaluation_mode = "PROJECT_SINGLETON_POLICY_ENFORCE" }
   security_posture_config {
-    mode               = "ENTERPRISE"
-    vulnerability_mode = "VULNERABILITY_ENTERPRISE"
+    mode               = "BASIC"
+    vulnerability_mode = "VULNERABILITY_DISABLED"
   }
   cost_management_config { enabled = true }
 
@@ -51,7 +51,6 @@ resource "google_container_cluster" "main" {
   }
 
   depends_on = [
-    google_project_service.required,
     google_project_iam_member.gke_node_baseline
   ]
 }

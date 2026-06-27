@@ -1,123 +1,142 @@
-variable "platform_project_id" { type = string }
-variable "staging_project_id" { type = string }
-variable "production_project_id" { type = string }
+variable "platform_project_id" {
+  type = string
+
+  validation {
+    condition     = var.platform_project_id == "natureprotector-500518"
+    error_message = "The platform project must be natureprotector-500518."
+  }
+}
+
+variable "staging_project_id" {
+  type = string
+
+  validation {
+    condition     = var.staging_project_id == "natureprotector-500518"
+    error_message = "The staging project must be natureprotector-500518."
+  }
+}
+
 variable "region" {
   type    = string
   default = "europe-southwest1"
+
   validation {
     condition     = var.region == "europe-southwest1"
-    error_message = "The primary NatureProtector region is Madrid (europe-southwest1)."
+    error_message = "The primary region must be europe-southwest1."
   }
 }
-variable "repository" {
-  type    = string
-  default = "MAlves4018/NatureProtector"
-}
-variable "repository_id" { type = string }
-variable "repository_owner_id" { type = string }
-variable "default_branch" {
-  type    = string
-  default = "master"
-}
+
 variable "artifact_repository_id" {
   type    = string
-  default = "natureprotector"
+  default = "np-releases"
+
+  validation {
+    condition     = var.artifact_repository_id == "np-releases"
+    error_message = "The existing immutable repository is np-releases."
+  }
 }
-variable "evidence_bucket_name" { type = string }
-variable "terraform_state_bucket_name" { type = string }
+
+variable "terraform_state_bucket_name" {
+  type = string
+
+  validation {
+    condition     = var.terraform_state_bucket_name == "np-tfstate-migkxl-202606"
+    error_message = "Unexpected Terraform state bucket."
+  }
+}
+
+variable "g82_evidence_bucket_name" {
+  type    = string
+  default = "np-g82-evidence-22505444922"
+
+  validation {
+    condition     = var.g82_evidence_bucket_name == "np-g82-evidence-22505444922"
+    error_message = "Unexpected G8.2 evidence bucket."
+  }
+}
+
 variable "staging_cluster_name" {
   type    = string
   default = "np-staging"
+
+  validation {
+    condition     = var.staging_cluster_name == "np-staging"
+    error_message = "The staging cluster name must be np-staging."
+  }
 }
-variable "production_cluster_name" {
+
+variable "staging_cloud_deploy_worker_pool" {
   type    = string
-  default = "np-production"
+  default = "projects/natureprotector-500518/locations/europe-southwest1/workerPools/np-staging-deploy"
+
+  validation {
+    condition     = var.staging_cloud_deploy_worker_pool == "projects/natureprotector-500518/locations/europe-southwest1/workerPools/np-staging-deploy"
+    error_message = "Unexpected staging Cloud Build worker pool."
+  }
 }
+
+variable "staging_gke_node_service_account" {
+  type    = string
+  default = "np-staging-gke-nodes@natureprotector-500518.iam.gserviceaccount.com"
+
+  validation {
+    condition     = var.staging_gke_node_service_account == "np-staging-gke-nodes@natureprotector-500518.iam.gserviceaccount.com"
+    error_message = "Unexpected staging GKE node service account."
+  }
+}
+
+variable "deploy_service_account_email" {
+  type    = string
+  default = "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"
+
+  validation {
+    condition     = var.deploy_service_account_email == "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"
+    error_message = "Unexpected deploy service account."
+  }
+}
+
 variable "create_delivery_control_plane" {
   type    = bool
   default = false
 }
-variable "create_evidence_storage" {
-  type        = bool
-  default     = false
-  description = "Create only the owner evidence bucket without enabling the delivery control plane."
-}
+
 variable "create_delivery_pipelines" {
-  type        = bool
-  default     = false
-  description = "Second bootstrap phase: create cross-project Artifact Registry grants, Cloud Deploy targets, pipelines and automations after both environment roots exist."
+  type    = bool
+  default = false
+
   validation {
-    condition     = !var.create_delivery_pipelines || var.create_delivery_control_plane
-    error_message = "Delivery pipelines require the platform control plane foundation to be enabled first."
+    condition = (
+      !var.create_delivery_pipelines
+      || var.create_delivery_control_plane
+    )
+    error_message = "Pipelines require the delivery control plane."
   }
 }
+
 variable "owner_creation_confirmation" {
   type      = string
   default   = ""
   sensitive = true
+
   validation {
-    condition = !(var.create_delivery_control_plane || var.create_evidence_storage) || (
-      var.owner_creation_confirmation == "OWNER_APPROVES_NEW_NON_CN_GCP_PROJECTS_AFTER_G10"
+    condition = (
+      (
+        !var.create_delivery_control_plane
+        && !var.create_delivery_pipelines
+      )
+      || var.owner_creation_confirmation
+      == "AUTHORIZE_EPHEMERAL_STAGING_APPLY_MAX_20_EUR_TTL_4H"
     )
-    error_message = "G8.1 resources may only be created in new non-CN projects after G10 and explicit owner approval."
+    error_message = "The exact ephemeral staging authorization is required."
   }
 }
 
 variable "staging_run_deploy_parameters" {
-  type        = map(string)
-  default     = {}
-  description = "Target-specific Cloud Run values for staging. Values are substituted after rendering by Cloud Deploy."
+  type    = map(string)
+  default = {}
 }
-variable "production_run_deploy_parameters" {
-  type        = map(string)
-  default     = {}
-  description = "Target-specific Cloud Run values for production. Values are substituted after rendering by Cloud Deploy."
-}
+
 variable "staging_gke_deploy_parameters" {
-  type        = map(string)
-  default     = {}
-  description = "Target-specific GKE values for staging. Values are substituted after Kustomize rendering by Cloud Deploy."
-}
-variable "production_gke_deploy_parameters" {
-  type        = map(string)
-  default     = {}
-  description = "Target-specific GKE values for production. Values are substituted after Kustomize rendering by Cloud Deploy."
-}
-variable "staging_cloud_deploy_worker_pool" {
-  type        = string
-  default     = ""
-  description = "Full resource name of the staging private Cloud Build worker pool."
-  validation {
-    condition     = !var.create_delivery_pipelines || startswith(var.staging_cloud_deploy_worker_pool, "projects/")
-    error_message = "A staging private Cloud Build worker pool is required when the delivery control plane is enabled."
-  }
-}
-variable "production_cloud_deploy_worker_pool" {
-  type        = string
-  default     = ""
-  description = "Full resource name of the production private Cloud Build worker pool."
-  validation {
-    condition     = !var.create_delivery_pipelines || startswith(var.production_cloud_deploy_worker_pool, "projects/")
-    error_message = "A production private Cloud Build worker pool is required when the delivery control plane is enabled."
-  }
-}
-
-
-variable "staging_gke_node_service_account" {
-  type        = string
-  default     = ""
-  description = "Dedicated GKE Autopilot node service account created by the staging environment root."
-  validation {
-    condition     = !var.create_delivery_pipelines || endswith(var.staging_gke_node_service_account, ".iam.gserviceaccount.com")
-    error_message = "A valid staging GKE node service account is required when the delivery control plane is enabled."
-  }
-}
-variable "production_gke_node_service_account" {
-  type        = string
-  default     = ""
-  description = "Dedicated GKE Autopilot node service account created by the production environment root."
-  validation {
-    condition     = !var.create_delivery_pipelines || endswith(var.production_gke_node_service_account, ".iam.gserviceaccount.com")
-    error_message = "A valid production GKE node service account is required when the delivery control plane is enabled."
-  }
+  type    = map(string)
+  default = {}
 }

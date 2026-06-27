@@ -72,14 +72,110 @@ check(not re.search(r"subprocess|os\.system|Popen\(|run\(", foundation), "founda
 platform_variables = (ROOT / "infra/gcp/terraform/g8-1-platform/variables.tf").read_text(encoding="utf-8")
 platform_services = (ROOT / "infra/gcp/terraform/g8-1-platform/services.tf").read_text(encoding="utf-8")
 platform_evidence = (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf").read_text(encoding="utf-8")
+environment_services = (
+    ROOT / "infra/gcp/terraform/g8-1-environment/services.tf"
+).read_text(encoding="utf-8")
+environment_iam = (
+    ROOT / "infra/gcp/terraform/g8-1-environment/iam.tf"
+).read_text(encoding="utf-8")
 state_services = (ROOT / "infra/gcp/terraform/g8-1-state-bootstrap/services.tf").read_text(encoding="utf-8")
-check('variable "create_evidence_storage"' in platform_variables, "platform:evidence-storage-flag")
-check("var.create_delivery_control_plane || var.create_evidence_storage" in platform_variables, "platform:evidence-storage-confirmation")
-check('"storage.googleapis.com"' in state_services, "state-bootstrap:storage-api")
-check("local.enabled_platform_services" in platform_services, "platform:service-phase-selector")
-check("var.create_delivery_control_plane ? local.platform_services : toset([])" in platform_services, "platform:evidence-storage-no-service-double-ownership")
-check('"storage.googleapis.com"' not in platform_services, "platform:storage-api-not-double-owned")
-check("create_delivery_control_plane || var.create_evidence_storage" in platform_evidence, "platform:evidence-bucket-decoupled")
+# G8.2 qualification evidence is stored in a dedicated platform bucket.
+# The canonical state bucket remains owned by state-bootstrap and the
+# Storage API must not be double-owned by the platform state.
+check(
+    'variable "create_evidence_storage"' not in platform_variables,
+    "platform:separate-evidence-phase-flag-absent",
+)
+check(
+    'variable "g82_evidence_bucket_name"' in platform_variables,
+    "platform:g82-evidence-bucket-input",
+)
+check(
+    '"storage.googleapis.com"' in state_services,
+    "state-bootstrap:storage-api",
+)
+check(
+    "local.enabled_platform_services" in platform_services,
+    "platform:service-phase-selector",
+)
+check(
+    bool(
+        re.search(
+            r"enabled_platform_services\s*=\s*\(\s*"
+            r"var\.create_delivery_control_plane\s*\?\s*"
+            r"local\.platform_services\s*:\s*toset\(\[\]\)\s*\)",
+            platform_services,
+            re.DOTALL,
+        )
+    ),
+    "platform:service-phase-selector-exact",
+)
+check(
+    '"storage.googleapis.com"' not in platform_services,
+    "platform:storage-api-not-double-owned",
+)
+for service in [
+    "binaryauthorization.googleapis.com",
+    "cloudtrace.googleapis.com",
+    "compute.googleapis.com",
+    "container.googleapis.com",
+    "dns.googleapis.com",
+    "run.googleapis.com",
+    "secretmanager.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "sqladmin.googleapis.com",
+]:
+    check(
+        f'"{service}"' in platform_services,
+        f"platform:missing-environment-service:{service}",
+    )
+check(
+    'resource "google_project_service"' not in environment_services,
+    "environment:project-services-must-be-platform-owned",
+)
+check(
+    'resource "google_project_iam_member" "workflow_environment_roles"'
+    not in environment_iam,
+    "environment:workflow-project-roles-must-be-platform-owned",
+)
+for token, message in [
+    (
+        'resource "google_storage_bucket" "g82_evidence"',
+        "platform:g82-evidence-bucket",
+    ),
+    (
+        "var.create_delivery_control_plane ? 1 : 0",
+        "platform:g82-evidence-control-plane-phase",
+    ),
+    (
+        "retention_period = 31536000",
+        "platform:g82-evidence-retention",
+    ),
+    (
+        'public_access_prevention    = "enforced"',
+        "platform:g82-evidence-public-access-prevention",
+    ),
+    (
+        "uniform_bucket_level_access = true",
+        "platform:g82-evidence-uniform-access",
+    ),
+    (
+        "versioning",
+        "platform:g82-evidence-versioning",
+    ),
+    (
+        '"roles/storage.objectAdmin"',
+        "platform:g82-evidence-object-role",
+    ),
+    (
+        '"roles/storage.bucketViewer"',
+        "platform:g82-evidence-metadata-role",
+    ),
+]:
+    check(
+        token in platform_evidence,
+        message,
+    )
 
 result = {
     "phase": "G10.3_STATIC",
