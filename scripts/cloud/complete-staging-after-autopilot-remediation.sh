@@ -8,7 +8,7 @@ PROJECT_ID="natureprotector-500518"
 PROJECT_NUMBER="22505444922"
 REGION="europe-southwest1"
 STATE_BUCKET="np-tfstate-migkxl-202606"
-RELEASE_ARTIFACT="standard-cd-release"
+RELEASE_ARTIFACT="g81-release"
 RELEASE_WORKFLOW_FILE="${NP_G81_RELEASE_WORKFLOW_FILE:-gcp-g8-1-release.yml}"
 GITHUB_REPOSITORY="${NP_GITHUB_REPOSITORY:-MAlves4018/NatureProtector}"
 OWNER_CONFIRMATION="AUTHORIZE_EPHEMERAL_STAGING_APPLY_MAX_20_EUR_TTL_4H"
@@ -681,6 +681,94 @@ cp "$CHECKSUM_PATH" "$RESULT_DIR/artifact/release-checksums.sha256"
 MANIFEST_PATH="$RESULT_DIR/artifact/release-manifest.json"
 mark_checkpoint "02_RELEASE_VALIDATED"
 
+gcloud sql instances describe np-staging-postgres \
+  --project="$PROJECT_ID" \
+  --format=json \
+  > "$RESULT_DIR/gcp/cloud-sql-active-ca.json"
+
+py -3.12 - \
+  "$RESULT_DIR/gcp/cloud-sql-active-ca.json" \
+  "$RESULT_DIR/gcp/cloud-sql-active-ca.pem" \
+  "$RESULT_DIR/gcp/cloud-sql-active-ca-hash.json" <<'PY'
+from pathlib import Path
+import hashlib
+import json
+import sys
+
+instance = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8-sig"))
+cert = instance["serverCaCert"]["cert"].replace("\r\n", "\n").rstrip() + "\n"
+Path(sys.argv[2]).write_text(cert, encoding="utf-8", newline="\n")
+Path(sys.argv[3]).write_text(
+    json.dumps(
+        {
+            "instance": instance.get("name"),
+            "common_name": instance["serverCaCert"].get("commonName"),
+            "sha1_fingerprint": instance["serverCaCert"].get("sha1Fingerprint"),
+            "sha256": hashlib.sha256(cert.encode("utf-8")).hexdigest(),
+            "ssl_mode": instance.get("settings", {})
+            .get("ipConfiguration", {})
+            .get("sslMode"),
+        },
+        indent=2,
+    )
+    + "\n",
+    encoding="utf-8",
+)
+PY
+
+if gcloud secrets versions access latest \
+  --secret=np-staging-cloud-sql-server-ca \
+  --project="$PROJECT_ID" \
+  > "$RESULT_DIR/gcp/cloud-sql-secret-latest-ca.pem"; then
+  set +e
+  py -3.12 - \
+    "$RESULT_DIR/gcp/cloud-sql-active-ca.pem" \
+    "$RESULT_DIR/gcp/cloud-sql-secret-latest-ca.pem" \
+    "$RESULT_DIR/gcp/cloud-sql-ca-sync-precheck.json" <<'PY'
+from pathlib import Path
+import hashlib
+import json
+import sys
+
+def normalized(path: str) -> str:
+    return Path(path).read_text(encoding="utf-8").replace("\r\n", "\n").rstrip() + "\n"
+
+active = normalized(sys.argv[1])
+latest = normalized(sys.argv[2])
+Path(sys.argv[3]).write_text(
+    json.dumps(
+        {
+            "active_sha256": hashlib.sha256(active.encode("utf-8")).hexdigest(),
+            "latest_secret_sha256": hashlib.sha256(latest.encode("utf-8")).hexdigest(),
+            "already_current": active == latest,
+        },
+        indent=2,
+    )
+    + "\n",
+    encoding="utf-8",
+)
+raise SystemExit(0 if active == latest else 10)
+PY
+  ca_compare_exit=$?
+  set -e
+else
+  ca_compare_exit=10
+fi
+
+if [[ "$ca_compare_exit" -eq 0 ]]; then
+  echo "CLOUD_SQL_CA_SECRET_ALREADY_CURRENT"
+elif [[ "$ca_compare_exit" -eq 10 ]]; then
+  gcloud secrets versions add np-staging-cloud-sql-server-ca \
+    --project="$PROJECT_ID" \
+    --data-file="$RESULT_DIR/gcp/cloud-sql-active-ca.pem" \
+    --quiet \
+    > "$RESULT_DIR/gcp/cloud-sql-ca-secret-version-add.txt"
+  echo "CLOUD_SQL_CA_SECRET_VERSION_ADDED"
+else
+  echo "Cloud SQL CA comparison failed with exit $ca_compare_exit" >&2
+  exit "$ca_compare_exit"
+fi
+
 for secret in \
   np-staging-rabbitmq-tls-certificate \
   np-staging-rabbitmq-tls-private-key \
@@ -736,6 +824,10 @@ for name in secret_names:
         for item in raw
         if item.get("state") == "ENABLED"
     )
+    if name == "np-staging-cloud-sql-server-ca":
+        if not versions:
+            raise SystemExit(f"{name}: expected at least one enabled version")
+        continue
     if versions != [1]:
         raise SystemExit(
             f"{name}: expected enabled version [1], got {versions}"
@@ -744,6 +836,21 @@ for name in secret_names:
 accounts = value("runtime_service_accounts")
 secret_ids = value("secret_ids")
 versions = value("generated_secret_versions")
+
+def latest_enabled_secret_version(name):
+    raw = json.loads(
+        (gcp_dir / f"{name}-versions.json").read_text(
+            encoding="utf-8-sig"
+        )
+    )
+    enabled = sorted(
+        int(item["name"].rsplit("/", 1)[-1])
+        for item in raw
+        if item.get("state") == "ENABLED"
+    )
+    if not enabled:
+        raise SystemExit(f"{name}: no enabled secret versions")
+    return str(enabled[-1])
 
 def secret_name(key):
     return secret_ids[key].rsplit("/", 1)[-1]
@@ -773,7 +880,9 @@ values = {
     "RABBITMQ_CA_SECRET": secret_name("rabbitmq-ca-certificate"),
     "RABBITMQ_CA_VERSION": "1",
     "CLOUD_SQL_CA_SECRET": secret_name("cloud-sql-server-ca"),
-    "CLOUD_SQL_CA_VERSION": "1",
+    "CLOUD_SQL_CA_VERSION": latest_enabled_secret_version(
+        "np-staging-cloud-sql-server-ca"
+    ),
 }
 
 out.write_text(
@@ -856,12 +965,27 @@ PY
 OPERATOR_EVIDENCE="$RESULT_DIR/deploy/operator-foundation"
 CLOUD_MUTATION=true
 mark_checkpoint "04A_OPERATOR_FOUNDATION_STARTED"
-bash "$PACKAGE_DIR/install-g81-cluster-dependencies-autopilot.sh" \
-  "$PROJECT_ID" \
-  "$REGION" \
-  "$CLUSTER_NAME" \
-  "$REPO_TOP/infra/gcp/kubernetes/g8-1/operator-lock.json" \
-  "$OPERATOR_EVIDENCE"
+mkdir -p "$OPERATOR_EVIDENCE"
+if kubectl -n cert-manager rollout status deployment/cert-manager --timeout=10s \
+  && kubectl -n cert-manager rollout status deployment/cert-manager-cainjector --timeout=10s \
+  && kubectl -n cert-manager rollout status deployment/cert-manager-webhook --timeout=10s \
+  && kubectl -n rabbitmq-system rollout status deployment/rabbitmq-cluster-operator --timeout=10s \
+  && kubectl -n rabbitmq-system rollout status deployment/messaging-topology-operator --timeout=10s \
+  && kubectl -n keda rollout status deployment/keda-operator --timeout=10s \
+  && kubectl -n keda rollout status deployment/keda-metrics-apiserver --timeout=10s \
+  && kubectl -n keda rollout status deployment/keda-admission --timeout=10s; then
+  echo "OPERATOR_FOUNDATION_ALREADY_READY"
+  kubectl get deploy -n cert-manager -o json > "$OPERATOR_EVIDENCE/cert-manager-deployments.json"
+  kubectl get deploy -n rabbitmq-system -o json > "$OPERATOR_EVIDENCE/rabbitmq-operator-deployments.json"
+  kubectl get deploy -n keda -o json > "$OPERATOR_EVIDENCE/keda-deployments.json"
+else
+  bash "$PACKAGE_DIR/install-g81-cluster-dependencies-autopilot.sh" \
+    "$PROJECT_ID" \
+    "$REGION" \
+    "$CLUSTER_NAME" \
+    "$REPO_TOP/infra/gcp/kubernetes/g8-1/operator-lock.json" \
+    "$OPERATOR_EVIDENCE"
+fi
 
 export NP_G81_OPERATORS_READY=true
 export NP_G81_OPERATOR_EVIDENCE

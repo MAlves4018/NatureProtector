@@ -254,6 +254,13 @@ if autopilot_runner.is_file():
         "autopilot-runner-canonical-script-links-missing",
     )
     check(
+        "OPERATOR_FOUNDATION_ALREADY_READY" in autopilot_runner_text
+        and "rollout status deployment/cert-manager" in autopilot_runner_text
+        and "rollout status deployment/keda-operator" in autopilot_runner_text
+        and "rollout status deployment/rabbitmq-cluster-operator" in autopilot_runner_text,
+        "autopilot-runner-healthy-operator-reuse-missing",
+    )
+    check(
         historical_sha not in autopilot_runner_text,
         "autopilot-runner-historical-head-hardcoded",
     )
@@ -271,6 +278,17 @@ if autopilot_runner.is_file():
         and "gh attestation verify" in autopilot_runner_text
         and "manifest-attestation-verification.txt" in autopilot_runner_text,
         "autopilot-runner-current-head-release-resolution-missing",
+    )
+    check(
+        'RELEASE_ARTIFACT="g81-release"' in autopilot_runner_text
+        and "standard-cd-release" not in autopilot_runner_text,
+        "autopilot-runner-release-artifact-name-mismatch",
+    )
+    check(
+        "CLOUD_SQL_CA_SECRET_VERSION_ADDED" in autopilot_runner_text
+        and "latest_enabled_secret_version" in autopilot_runner_text
+        and '"CLOUD_SQL_CA_VERSION": "1"' not in autopilot_runner_text,
+        "autopilot-runner-cloud-sql-ca-rotation-missing",
     )
     check(
         "NP_EXPECTED_HEAD" in np_script
@@ -304,6 +322,12 @@ check(
     "UseRootCertificate" in postgres_data_source_factory
     and "X509CertificateLoader.LoadCertificateFromFile" in postgres_data_source_factory,
     "postgres-datasource-root-certificate-builder-missing",
+)
+check(
+    "UseSslClientAuthenticationOptionsCallback" in postgres_data_source_factory
+    and "X509ChainTrustMode.CustomRootTrust" in postgres_data_source_factory
+    and "RemoteCertificateValidationCallback" in postgres_data_source_factory,
+    "postgres-datasource-verifyca-custom-root-validation-missing",
 )
 check(
     "AddSingleton<NpgsqlDataSource>" in postgres_service_collection
