@@ -15,6 +15,7 @@ resource "google_clouddeploy_target" "run_staging" {
   execution_configs {
     usages            = ["RENDER", "DEPLOY", "VERIFY"]
     execution_timeout = "3600s"
+    worker_pool       = var.staging_cloud_deploy_worker_pool
 
     private_pool {
       worker_pool = var.staging_cloud_deploy_worker_pool
@@ -48,6 +49,7 @@ resource "google_clouddeploy_target" "gke_staging" {
   execution_configs {
     usages            = ["RENDER", "DEPLOY", "VERIFY"]
     execution_timeout = "3600s"
+    worker_pool       = var.staging_cloud_deploy_worker_pool
 
     private_pool {
       worker_pool = var.staging_cloud_deploy_worker_pool

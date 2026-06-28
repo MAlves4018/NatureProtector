@@ -55,6 +55,16 @@ variable "g82_evidence_bucket_name" {
   }
 }
 
+variable "cloud_build_logs_bucket_name" {
+  type    = string
+  default = "np-cloudbuild-logs-22505444922"
+
+  validation {
+    condition     = var.cloud_build_logs_bucket_name == "np-cloudbuild-logs-22505444922"
+    error_message = "Unexpected Cloud Build logs bucket."
+  }
+}
+
 variable "staging_cluster_name" {
   type    = string
   default = "np-staging"

@@ -60,3 +60,27 @@ resource "google_storage_bucket_iam_member" "g82_evidence_metadata" {
   role   = "roles/storage.bucketViewer"
   member = "serviceAccount:${var.deploy_service_account_email}"
 }
+
+# Cloud Build validates bucket-level access for logsBucket before creating a
+# build with a user-specified service account. Object-only access is not enough.
+data "google_storage_bucket" "cloud_build_logs" {
+  count = var.create_delivery_control_plane ? 1 : 0
+
+  name = var.cloud_build_logs_bucket_name
+}
+
+resource "google_storage_bucket_iam_member" "cloud_build_logs_objects" {
+  count = var.create_delivery_control_plane ? 1 : 0
+
+  bucket = data.google_storage_bucket.cloud_build_logs[0].name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${var.deploy_service_account_email}"
+}
+
+resource "google_storage_bucket_iam_member" "cloud_build_logs_metadata" {
+  count = var.create_delivery_control_plane ? 1 : 0
+
+  bucket = data.google_storage_bucket.cloud_build_logs[0].name
+  role   = "roles/storage.bucketViewer"
+  member = "serviceAccount:${var.deploy_service_account_email}"
+}

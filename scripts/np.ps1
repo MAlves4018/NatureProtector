@@ -121,6 +121,9 @@ function Invoke-External {
         $prefix = if ($python.Count -gt 1) { @($python[1..($python.Count - 1)]) } else { @() }
         return Invoke-NativeCommand $exe @($prefix + $Arguments)
     }
+    if ($Name -eq "bash") {
+        return Invoke-NativeCommand (Resolve-GitTool "bash") $Arguments
+    }
     return Invoke-NativeCommand $Name $Arguments
 }
 
@@ -206,6 +209,42 @@ function Test-Tool {
     param([string]$Name)
     $cmd = Get-Command $Name -ErrorAction SilentlyContinue
     return [ordered]@{ name = $Name; found = [bool]$cmd; path = if ($cmd) { $cmd.Source } else { $null } }
+}
+
+function Resolve-GitTool {
+    param([Parameter(Mandatory)][string]$Name)
+    $candidates = switch ($Name) {
+        "bash" {
+            @(
+                "C:\Program Files\Git\bin\bash.exe",
+                "C:\Program Files\Git\usr\bin\bash.exe"
+            )
+        }
+        "cygpath" {
+            @(
+                "C:\Program Files\Git\usr\bin\cygpath.exe"
+            )
+        }
+        default { @() }
+    }
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+
+    $command = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+    throw "Required Git for Windows tool is unavailable: $Name"
+}
+
+function ConvertTo-BashPath {
+    param([Parameter(Mandatory)][string]$Path)
+    $converted = & (Resolve-GitTool "cygpath") -u $Path
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($converted)) {
+        throw "Unable to convert path for Git Bash: $Path"
+    }
+    return [string]$converted
 }
 
 function Get-Authorities {
@@ -576,13 +615,93 @@ try {
                 default { throw "Unknown staging operation '$noun'." }
             }
         }
+        "cloud" {
+            switch ($noun) {
+                "plan" {
+                    if ($Environment -eq "production") {
+                        Complete-Result -Operation "cloud-plan" -Config $config -Status "blocked" -ExitCode $Exit.PolicyBlocked -EvidencePath $evidence -Details @{ reason="production plan is not implemented in the local lifecycle interface yet" }
+                    }
+                    $Command = @("staging", "plan") + @($Command | Select-Object -Skip 2)
+                    Complete-Result -Operation "cloud-plan" -Config $config -Status "blocked" -ExitCode $Exit.HumanRequired -EvidencePath $evidence -NextAction "pwsh ./scripts/np.ps1 staging plan -Environment staging" -Details @{ delegated_operation="staging plan" }
+                }
+                "up" {
+                    if ($Environment -ne "staging") {
+                        Complete-Result -Operation "cloud-up" -Config $config -Status "blocked" -ExitCode $Exit.PolicyBlocked -EvidencePath $evidence -Details @{ reason="production requires STAGING_DEPLOYMENT_PROVED before cloud up is enabled" }
+                    }
+                    $scriptPath = Join-Path $RepoRoot "scripts/cloud/complete-staging-after-autopilot-remediation.sh"
+                    if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+                        Complete-Result -Operation "cloud-up" -Config $config -Status "blocked" -ExitCode $Exit.MissingPrecondition -EvidencePath $evidence -Details @{ missing_script=$scriptPath }
+                    }
+                    if ($WhatIfPreference -or -not $PSCmdlet.ShouldProcess("staging", "complete Autopilot-aware staging deployment")) {
+                        Complete-Result -Operation "cloud-up" -Config $config -Status "whatif" -ExitCode $Exit.Success -CloudMutation $true -EvidencePath $evidence -Details @{ authority="scripts/cloud/complete-staging-after-autopilot-remediation.sh"; production_deployed=$false }
+                    }
+                    $previousConfirmation = $env:NP_CONFIRM_STAGING_RESUME
+                    $previousExpectedHead = $env:NP_EXPECTED_HEAD
+                    $currentHead = (& git -C $RepoRoot rev-parse HEAD 2>$null)
+                    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($currentHead)) {
+                        Complete-Result -Operation "cloud-up" -Config $config -Status "blocked" -ExitCode $Exit.MissingPrecondition -EvidencePath $evidence -Details @{ reason="current HEAD could not be resolved" }
+                    }
+                    try {
+                        $env:NP_CONFIRM_STAGING_RESUME = "RETIFICAR_CERT_MANAGER_COM_MIRROR_AMD64_LIMPO_E_CONCLUIR_STAGING"
+                        $env:NP_EXPECTED_HEAD = $currentHead.Trim()
+                        $code = Invoke-External "bash" @(
+                            (ConvertTo-BashPath $scriptPath),
+                            (ConvertTo-BashPath $RepoRoot)
+                        ) $RepoRoot
+                    }
+                    finally {
+                        if ($null -eq $previousConfirmation) {
+                            Remove-Item Env:NP_CONFIRM_STAGING_RESUME -ErrorAction SilentlyContinue
+                        }
+                        else {
+                            $env:NP_CONFIRM_STAGING_RESUME = $previousConfirmation
+                        }
+                        if ($null -eq $previousExpectedHead) {
+                            Remove-Item Env:NP_EXPECTED_HEAD -ErrorAction SilentlyContinue
+                        }
+                        else {
+                            $env:NP_EXPECTED_HEAD = $previousExpectedHead
+                        }
+                    }
+                    Complete-Result -Operation "cloud-up" -Config $config -Status ($(if ($code -eq 0) { "passed" } else { "failed" })) -ExitCode ($(if ($code -eq 0) { $Exit.Success } else { $Exit.TechnicalFailure })) -CloudMutation $true -EvidencePath $evidence -NextAction "cloud verify" -Details @{ authority="scripts/cloud/complete-staging-after-autopilot-remediation.sh"; production_deployed=$false }
+                }
+                "verify" {
+                    if ($Environment -ne "staging") {
+                        Complete-Result -Operation "cloud-verify" -Config $config -Status "blocked" -ExitCode $Exit.PolicyBlocked -EvidencePath $evidence -Details @{ reason="production verification requires a proved production deployment first" }
+                    }
+                    Complete-Result -Operation "cloud-verify" -Config $config -Status "blocked" -ExitCode $Exit.HumanRequired -EvidencePath $evidence -NextAction "staging verify with manifest path" -Details @{ delegated_operation="staging verify"; reason="independent cloud verify needs the manifest path or a completed cloud up evidence directory" }
+                }
+                "status" {
+                    $code = Invoke-External "gcloud" @("deploy", "delivery-pipelines", "list", "--project=$($config.project_id)", "--region=$($config.region)", "--format=json") $RepoRoot
+                    Complete-Result -Operation "cloud-status" -Config $config -Status ($(if ($code -eq 0) { "passed" } else { "failed" })) -ExitCode ($(if ($code -eq 0) { $Exit.Success } else { $Exit.TechnicalFailure })) -EvidencePath $evidence -Details @{ command="gcloud deploy delivery-pipelines list"; production_deployed=$false }
+                }
+                "doctor" {
+                    $tools = @("py", "gcloud", "kubectl", "terraform") | ForEach-Object { Test-Tool $_ }
+                    $gitTools = @("bash", "cygpath") | ForEach-Object {
+                        try {
+                            [ordered]@{ name=$_; found=$true; path=(Resolve-GitTool $_) }
+                        }
+                        catch {
+                            [ordered]@{ name=$_; found=$false; path=$null }
+                        }
+                    }
+                    $allTools = @($tools) + @($gitTools)
+                    $missingRequired = @($allTools | Where-Object { -not $_.found })
+                    Complete-Result -Operation "cloud-doctor" -Config $config -Status ($(if ($missingRequired.Count -eq 0) { "passed" } else { "blocked" })) -ExitCode ($(if ($missingRequired.Count -eq 0) { $Exit.Success } else { $Exit.MissingPrecondition })) -EvidencePath $evidence -Details @{ tools=$allTools; authority="scripts/cloud/complete-staging-after-autopilot-remediation.sh" }
+                }
+                "down" {
+                    Complete-Result -Operation "cloud-down" -Config $config -Status "needs-human" -ExitCode $Exit.HumanRequired -CloudMutation $true -EvidencePath $evidence -Details @{ reason="destroy remains gated by explicit destroy plan and DESTROY_STAGING_CONFIRMED/DESTROY_PRODUCTION_CONFIRMED" }
+                }
+                default { throw "Unknown cloud operation '$noun'." }
+            }
+        }
         "evidence" {
             $root = Split-Path -Parent $evidence
             $items = @(Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue | Select-Object Name,FullName,LastWriteTime)
             Complete-Result -Operation "evidence" -Config $config -Status "passed" -ExitCode $Exit.Success -EvidencePath $evidence -Details @{ root=$root; directories=$items }
         }
         "help" {
-            Write-Host "Usage: pwsh ./scripts/np.ps1 <doctor|validate|inventory|release build|release verify|staging plan|staging open|staging deploy|staging verify|staging rollback|staging close|evidence> [options]"
+            Write-Host "Usage: pwsh ./scripts/np.ps1 <doctor|validate|inventory|release build|release verify|staging plan|staging open|staging deploy|staging verify|staging rollback|staging close|cloud plan|cloud up|cloud verify|cloud status|cloud doctor|cloud down|evidence> [options]"
             Complete-Result -Operation "help" -Config $config -Status "passed" -ExitCode $Exit.Success -EvidencePath $evidence
         }
         default { throw "Unknown operation '$verb'." }
