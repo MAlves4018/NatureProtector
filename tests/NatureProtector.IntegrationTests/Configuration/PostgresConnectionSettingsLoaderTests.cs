@@ -93,6 +93,29 @@ public sealed class PostgresConnectionSettingsLoaderTests : IDisposable
     }
 
     [Fact]
+    public void ValidateServerCertificateForCertificateAuthority_AcceptsServerCertificateSignedByConfiguredRoot()
+    {
+        using var root = CreateCertificateAuthority("NatureProtector Trusted Test Root");
+        using var server = CreateServerCertificate(root, "Cloud SQL Server");
+
+        var accepted = PostgresDataSourceFactory.ValidateServerCertificateForCertificateAuthority(server, root);
+
+        Assert.True(accepted);
+    }
+
+    [Fact]
+    public void ValidateServerCertificateForCertificateAuthority_RejectsServerCertificateSignedByDifferentRoot()
+    {
+        using var trustedRoot = CreateCertificateAuthority("NatureProtector Trusted Test Root");
+        using var otherRoot = CreateCertificateAuthority("NatureProtector Other Test Root");
+        using var server = CreateServerCertificate(otherRoot, "Cloud SQL Server");
+
+        var accepted = PostgresDataSourceFactory.ValidateServerCertificateForCertificateAuthority(server, trustedRoot);
+
+        Assert.False(accepted);
+    }
+
+    [Fact]
     public void LoadFromEnvironmentOrDotEnv_WhenStrictPortInvalid_Throws()
     {
         Environment.SetEnvironmentVariable("POSTGRES_REQUIRE_EXPLICIT", "true");
@@ -127,9 +150,18 @@ public sealed class PostgresConnectionSettingsLoaderTests : IDisposable
 
     private static string WriteTemporaryRootCertificate()
     {
+        using var certificate = CreateCertificateAuthority("NatureProtector Test Root");
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.pem");
+        File.WriteAllText(path, certificate.ExportCertificatePem());
+        return path;
+    }
+
+    private static X509Certificate2 CreateCertificateAuthority(string commonName)
+    {
         using var key = RSA.Create(2048);
         var request = new CertificateRequest(
-            "CN=NatureProtector Test Root",
+            $"CN={commonName}",
             key,
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pkcs1);
@@ -137,15 +169,49 @@ public sealed class PostgresConnectionSettingsLoaderTests : IDisposable
         request.CertificateExtensions.Add(
             new X509BasicConstraintsExtension(true, false, 0, true));
         request.CertificateExtensions.Add(
+            new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
+        request.CertificateExtensions.Add(
             new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
 
-        using var certificate = request.CreateSelfSigned(
+        return request.CreateSelfSigned(
             DateTimeOffset.UtcNow.AddMinutes(-1),
             DateTimeOffset.UtcNow.AddDays(1));
+    }
 
-        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.pem");
-        File.WriteAllText(path, certificate.ExportCertificatePem());
-        return path;
+    private static X509Certificate2 CreateServerCertificate(X509Certificate2 issuer,string commonName)
+    {
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest(
+            $"CN={commonName}",
+            key,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+
+        request.CertificateExtensions.Add(
+            new X509BasicConstraintsExtension(false, false, 0, true));
+        request.CertificateExtensions.Add(
+            new X509KeyUsageExtension(
+                X509KeyUsageFlags.DigitalSignature |
+                X509KeyUsageFlags.KeyEncipherment,
+                true));
+        request.CertificateExtensions.Add(
+            new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+
+        var notBefore = DateTimeOffset.UtcNow.AddMinutes(-1);
+        var notAfter = new DateTimeOffset(
+            issuer.NotAfter.ToUniversalTime()).AddMinutes(-1);
+
+        if (notAfter <= notBefore)
+        {
+            throw new InvalidOperationException(
+                "The issuer certificate validity window is too short.");
+        }
+
+        return request.Create(
+            issuer,
+            notBefore,
+            notAfter,
+            Guid.NewGuid().ToByteArray());
     }
 }
 
