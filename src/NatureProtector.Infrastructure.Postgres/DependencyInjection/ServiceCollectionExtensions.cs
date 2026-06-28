@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using NatureProtector.Infrastructure.Postgres.Configuration;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 
@@ -25,10 +26,12 @@ public static class ServiceCollectionExtensions
         string basePath)
     {
         var settings = PostgresConnectionSettingsLoader.LoadFromEnvironmentOrDotEnv(basePath);
-        var connectionString = settings.BuildConnectionString();
+
+        services.AddSingleton<NpgsqlDataSource>(_ => settings.BuildDataSource());
 
         services.AddDbContextFactory<NatureProtectorControlDbContext>(
-            options => options.UseNpgsql(connectionString));
+            (provider, options) => options.UseNpgsql(
+                provider.GetRequiredService<NpgsqlDataSource>()));
 
         return services;
     }

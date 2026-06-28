@@ -127,6 +127,9 @@ for required in [
     '"roles/logging.viewer"',
     'data "google_artifact_registry_repository" "images"',
     'resource "google_storage_bucket" "g82_evidence"',
+    'data "google_storage_bucket" "cloud_build_logs"',
+    "cloud_build_logs_bucket_name",
+    '"np-cloudbuild-logs-22505444922"',
     '"roles/storage.objectAdmin"',
     '"roles/storage.bucketViewer"',
     "retention_period = 31536000",
@@ -177,14 +180,18 @@ check(
 for required in [
     'platform_project_id = "natureprotector-500518"',
     'staging_project_id  = "natureprotector-500518"',
-    'artifact_repository_id      = "np-releases"',
+    'artifact_repository_id       = "np-releases"',
     (
-        'terraform_state_bucket_name = '
+        'terraform_state_bucket_name  = '
         '"np-tfstate-migkxl-202606"'
     ),
     (
-        'g82_evidence_bucket_name    = '
+        'g82_evidence_bucket_name     = '
         '"np-g82-evidence-22505444922"'
+    ),
+    (
+        'cloud_build_logs_bucket_name = '
+        '"np-cloudbuild-logs-22505444922"'
     ),
     (
         'deploy_service_account_email = '

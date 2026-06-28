@@ -1,4 +1,5 @@
 using Npgsql;
+using NatureProtector.Infrastructure.Postgres.Configuration;
 
 namespace NatureProtector.Postgres.Migrations;
 
@@ -13,6 +14,9 @@ public sealed record MigrationSettings(
     string SslModeName,
     string? RootCertificate)
 {
+    public NpgsqlDataSource BuildAdminDataSource()
+        => PostgresDataSourceFactory.Build(BuildAdminConnectionString(), RootCertificate);
+
     public static MigrationSettings LoadFromEnvironment()
     {
         var host = Required("POSTGRES_HOST");

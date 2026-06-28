@@ -92,6 +92,13 @@ Os limites são candidatos. Cloud Armor fornece proteção global por IP no edge
 - Cloud Armor, serverless NEGs, backends, URL map, certificado e HTTPS load balancer;
 - regras de login, lançamento de simulação, API geral, SQLi e XSS.
 
+O runtime PostgreSQL usa o contrato `POSTGRES_*` com `POSTGRES_REQUIRE_EXPLICIT=true`,
+`POSTGRES_SSL_MODE=VerifyCA` e `POSTGRES_ROOT_CERTIFICATE` apontado para o CA
+montado a partir de Secret Manager. A implementação Npgsql constrói um
+`NpgsqlDataSource` e carrega esse CA explicitamente como certificado público,
+preservando a verificação TLS em Cloud SQL sem depender de trust stores globais
+do container.
+
 A criação do edge é faseada porque os serverless NEGs só podem apontar para serviços Cloud Run já existentes. A primeira release usa `services-only-bootstrap`, que cria os serviços e rollouts mas produz `staging_verified=false`/`production_verified=false`. Depois de ativar o edge, a mesma release é repetida idempotentemente em modo `verified`; só então o smoke usa o hostname HTTPS protegido e a evidence pode ficar verde. URLs `run.app` são rejeitadas pelo smoke.
 
 ## Kubernetes

@@ -10,14 +10,14 @@ public sealed class PostgresMigrationRunner(MigrationSettings settings)
 
     public async Task<MigrationRunSummary> RunAsync(CancellationToken cancellationToken = default)
     {
-        await using var lockConnection = new NpgsqlConnection(settings.BuildAdminConnectionString());
-        await lockConnection.OpenAsync(cancellationToken);
+        await using var dataSource = settings.BuildAdminDataSource();
+        await using var lockConnection = await dataSource.OpenConnectionAsync(cancellationToken);
         await AcquireLockAsync(lockConnection, cancellationToken);
 
         try
         {
             var options = new DbContextOptionsBuilder<NatureProtectorControlDbContext>()
-                .UseNpgsql(settings.BuildAdminConnectionString())
+                .UseNpgsql(dataSource)
                 .Options;
 
             await using var dbContext = new NatureProtectorControlDbContext(options);

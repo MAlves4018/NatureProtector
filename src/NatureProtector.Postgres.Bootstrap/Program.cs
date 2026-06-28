@@ -19,9 +19,10 @@ using var bootstrapActivity = PostgresBootstrapTelemetry.ActivitySource.StartAct
 
 var contentRoot = BootstrapProgram.ResolveContentRoot(AppContext.BaseDirectory);
 var settings = PostgresConnectionSettingsLoader.LoadFromEnvironmentOrDotEnv(contentRoot);
+await using var dataSource = settings.BuildDataSource();
 
 var optionsBuilder = new DbContextOptionsBuilder<NatureProtectorControlDbContext>();
-optionsBuilder.UseNpgsql(settings.BuildConnectionString());
+optionsBuilder.UseNpgsql(dataSource);
 
 await using var dbContext = new NatureProtectorControlDbContext(optionsBuilder.Options);
 var bootstrapper = new ControlPlaneBootstrapper(dbContext, contentRoot);

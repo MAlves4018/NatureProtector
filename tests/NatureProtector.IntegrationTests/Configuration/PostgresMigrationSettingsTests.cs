@@ -1,4 +1,6 @@
 using NatureProtector.Postgres.Migrations;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 namespace NatureProtector.IntegrationTests.Configuration;
 
@@ -53,6 +55,33 @@ public sealed class PostgresMigrationSettingsTests : IDisposable
         Assert.Contains("Root Certificate=/var/run/secrets/cloudsql/server-ca.pem", connectionString, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void BuildAdminDataSource_LoadsConfiguredRootCertificate()
+    {
+        var certificatePath = WriteTemporaryRootCertificate();
+        try
+        {
+            var settings = new MigrationSettings(
+                "10.20.0.2",
+                5432,
+                "natureprotector",
+                "np_migration",
+                "migration-password",
+                "np_app",
+                "app-password",
+                "VerifyCA",
+                certificatePath);
+
+            using var dataSource = settings.BuildAdminDataSource();
+
+            Assert.NotNull(dataSource);
+        }
+        finally
+        {
+            File.Delete(certificatePath);
+        }
+    }
+
     [Theory]
     [InlineData("Admin")]
     [InlineData("np-app")]
@@ -105,5 +134,28 @@ public sealed class PostgresMigrationSettingsTests : IDisposable
         Environment.SetEnvironmentVariable("POSTGRES_APP_PASSWORD", "application-secret");
         Environment.SetEnvironmentVariable("POSTGRES_SSL_MODE", "VerifyCA");
         Environment.SetEnvironmentVariable("POSTGRES_ROOT_CERTIFICATE", "/var/run/secrets/cloudsql/server-ca.pem");
+    }
+
+    private static string WriteTemporaryRootCertificate()
+    {
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest(
+            "CN=NatureProtector Test Root",
+            key,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+
+        request.CertificateExtensions.Add(
+            new X509BasicConstraintsExtension(true, false, 0, true));
+        request.CertificateExtensions.Add(
+            new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+
+        using var certificate = request.CreateSelfSigned(
+            DateTimeOffset.UtcNow.AddMinutes(-1),
+            DateTimeOffset.UtcNow.AddDays(1));
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.pem");
+        File.WriteAllText(path, certificate.ExportCertificatePem());
+        return path;
     }
 }

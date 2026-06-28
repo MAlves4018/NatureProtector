@@ -11,6 +11,9 @@ public sealed record PostgresControlPlaneConnectionSettings(
     string? SslModeName = null,
     string? RootCertificate = null)
 {
+    public NpgsqlDataSource BuildDataSource()
+        => PostgresDataSourceFactory.Build(BuildConnectionString(), RootCertificate);
+
     public string BuildConnectionString()
     {
         var builder = new NpgsqlConnectionStringBuilder

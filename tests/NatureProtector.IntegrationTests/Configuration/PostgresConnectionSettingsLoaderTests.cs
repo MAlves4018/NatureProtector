@@ -1,4 +1,6 @@
 using NatureProtector.Infrastructure.Postgres.Configuration;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 namespace NatureProtector.IntegrationTests.Configuration;
 
@@ -66,6 +68,31 @@ public sealed class PostgresConnectionSettingsLoaderTests : IDisposable
     }
 
     [Fact]
+    public void BuildDataSource_LoadsConfiguredRootCertificate()
+    {
+        var certificatePath = WriteTemporaryRootCertificate();
+        try
+        {
+            var settings = new PostgresControlPlaneConnectionSettings(
+                "10.20.0.10",
+                5432,
+                "natureprotector",
+                "np_app",
+                "password",
+                "VerifyCA",
+                certificatePath);
+
+            using var dataSource = settings.BuildDataSource();
+
+            Assert.NotNull(dataSource);
+        }
+        finally
+        {
+            File.Delete(certificatePath);
+        }
+    }
+
+    [Fact]
     public void LoadFromEnvironmentOrDotEnv_WhenStrictPortInvalid_Throws()
     {
         Environment.SetEnvironmentVariable("POSTGRES_REQUIRE_EXPLICIT", "true");
@@ -96,6 +123,29 @@ public sealed class PostgresConnectionSettingsLoaderTests : IDisposable
         {
             Environment.SetEnvironmentVariable(key, null);
         }
+    }
+
+    private static string WriteTemporaryRootCertificate()
+    {
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest(
+            "CN=NatureProtector Test Root",
+            key,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+
+        request.CertificateExtensions.Add(
+            new X509BasicConstraintsExtension(true, false, 0, true));
+        request.CertificateExtensions.Add(
+            new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+
+        using var certificate = request.CreateSelfSigned(
+            DateTimeOffset.UtcNow.AddMinutes(-1),
+            DateTimeOffset.UtcNow.AddDays(1));
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.pem");
+        File.WriteAllText(path, certificate.ExportCertificatePem());
+        return path;
     }
 }
 
