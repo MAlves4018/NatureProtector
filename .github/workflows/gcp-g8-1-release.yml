@@ -126,7 +126,7 @@ jobs:
           SECURITY_RUN_ID: ${{ steps.gates.outputs.security_run_id }}
           POLICY_RUN_ID: ${{ steps.source.outputs.policy_run_id }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: ./scripts/cloud/Build-G81Release.sh
+        run: bash ./scripts/cloud/Build-G81Release.sh
       - name: Sign existing qualified image digests and create release manifest
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.existing_images_json != '' }}
         shell: bash
