@@ -256,6 +256,46 @@ for workflow in sorted((ROOT / ".github/workflows").glob("gcp-g8-1-*.yml")):
             continue
         check(bool(re.search(r"@[0-9a-f]{40}$", value)), f"unpinned-action:{workflow.name}:{value}")
 
+release_workflow = ROOT / ".github/workflows/gcp-g8-1-release.yml"
+action_pin_lock_path = ROOT / "scripts/cloud/g81-release-action-pins.json"
+try:
+    action_pin_lock = json.loads(action_pin_lock_path.read_text(encoding="utf-8"))
+except (OSError, json.JSONDecodeError) as exc:
+    action_pin_lock = {}
+    check(False, f"action-pin-lock:{action_pin_lock_path.relative_to(ROOT)}:{exc}")
+
+release_action_pins = action_pin_lock.get("pins", [])
+check(action_pin_lock.get("scope") == ".github/workflows/gcp-g8-1-release.yml", "action-pin-lock-scope")
+check(action_pin_lock.get("validation_source") == "GitHub REST API", "action-pin-lock-validation-source")
+locked_release_pins = {
+    (pin.get("repository"), pin.get("sha")): pin
+    for pin in release_action_pins
+    if isinstance(pin, dict)
+}
+for pin in release_action_pins:
+    repository = pin.get("repository") if isinstance(pin, dict) else None
+    sha = pin.get("sha") if isinstance(pin, dict) else None
+    check(bool(re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", str(repository))), f"action-pin-lock-repository:{repository}")
+    check(bool(re.fullmatch(r"[0-9a-f]{40}", str(sha))), f"action-pin-lock-sha:{repository}@{sha}")
+    check(bool(pin.get("resolved_by")) if isinstance(pin, dict) else False, f"action-pin-lock-resolution:{repository}@{sha}")
+
+release_text = release_workflow.read_text(encoding="utf-8")
+check("actions/attest-build-provenance@59d89421af93a897026c735860bf21b6eb4f7b26" not in release_text, "release-invalid-attest-build-provenance-pin")
+for match in re.finditer(r"uses:\s*([^\s#]+)", release_text):
+    value = match.group(1)
+    if value.startswith("./"):
+        continue
+    action_match = re.fullmatch(r"([^@]+)@([0-9a-f]{40})", value)
+    check(action_match is not None, f"release-action-pin-format:{value}")
+    if action_match is None:
+        continue
+    repository, sha = action_match.groups()
+    check((repository, sha) in locked_release_pins, f"unresolved-release-action-pin:{value}")
+
+attest_pin = locked_release_pins.get(("actions/attest-build-provenance", "0f67c3f4856b2e3261c31976d6725780e5e4c373"), {})
+check(attest_pin.get("tag") == "v4.1.1", "attest-build-provenance-version-comment-lock")
+check("actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1" in release_text, "attest-build-provenance-version-comment")
+
 for example in [
     ROOT / "infra/gcp/terraform/g8-1-state-bootstrap/terraform.tfvars.example",
     ROOT / "infra/gcp/terraform/g8-1-platform/terraform.tfvars.example",

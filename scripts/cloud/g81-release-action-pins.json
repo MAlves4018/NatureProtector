@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "scope": ".github/workflows/gcp-g8-1-release.yml",
+  "validation_source": "GitHub REST API",
+  "pins": [
+    {
+      "repository": "actions/checkout",
+      "sha": "34e114876b0b11c390a56381ad16ebd13914f8d5",
+      "resolved_by": "repos/actions/checkout/commits/34e114876b0b11c390a56381ad16ebd13914f8d5"
+    },
+    {
+      "repository": "google-github-actions/auth",
+      "sha": "7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+      "resolved_by": "repos/google-github-actions/auth/commits/7c6bc770dae815cd3e89ee6cdf493a5fab2cc093"
+    },
+    {
+      "repository": "google-github-actions/setup-gcloud",
+      "sha": "aa5489c8933f4cc7a4f7d45035b3b1440c9c10db",
+      "resolved_by": "repos/google-github-actions/setup-gcloud/commits/aa5489c8933f4cc7a4f7d45035b3b1440c9c10db"
+    },
+    {
+      "repository": "sigstore/cosign-installer",
+      "sha": "6f9f17788090df1f26f669e9d70d6ae9567deba6",
+      "resolved_by": "repos/sigstore/cosign-installer/commits/6f9f17788090df1f26f669e9d70d6ae9567deba6"
+    },
+    {
+      "repository": "actions/attest-build-provenance",
+      "sha": "0f67c3f4856b2e3261c31976d6725780e5e4c373",
+      "tag": "v4.1.1",
+      "tag_ref": "refs/tags/v4.1.1",
+      "resolved_by": "repos/actions/attest-build-provenance/git/ref/tags/v4.1.1"
+    },
+    {
+      "repository": "actions/upload-artifact",
+      "sha": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "resolved_by": "repos/actions/upload-artifact/commits/ea165f8d65b6e75b540449e92b4886f43607fa02"
+    }
+  ]
+}

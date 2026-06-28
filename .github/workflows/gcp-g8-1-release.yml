@@ -146,7 +146,7 @@ jobs:
           jq -e . "$RUNNER_TEMP/g81-existing-images.json" >/dev/null
           G81_IMAGES_EVIDENCE="$RUNNER_TEMP/g81-existing-images.json" bash ./scripts/cloud/Sign-G81ExistingRelease.sh
       - name: Attest release manifest
-        uses: actions/attest-build-provenance@59d89421af93a897026c735860bf21b6eb4f7b26
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
           subject-path: g81-release/release-manifest.json
       - name: Upload immutable release evidence
