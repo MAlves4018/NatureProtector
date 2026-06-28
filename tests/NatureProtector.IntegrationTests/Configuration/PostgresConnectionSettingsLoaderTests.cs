@@ -178,7 +178,7 @@ public sealed class PostgresConnectionSettingsLoaderTests : IDisposable
             DateTimeOffset.UtcNow.AddDays(1));
     }
 
-    private static X509Certificate2 CreateServerCertificate(X509Certificate2 issuer, string commonName)
+    private static X509Certificate2 CreateServerCertificate(X509Certificate2 issuer,string commonName)
     {
         using var key = RSA.Create(2048);
         var request = new CertificateRequest(
@@ -190,14 +190,27 @@ public sealed class PostgresConnectionSettingsLoaderTests : IDisposable
         request.CertificateExtensions.Add(
             new X509BasicConstraintsExtension(false, false, 0, true));
         request.CertificateExtensions.Add(
-            new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, true));
+            new X509KeyUsageExtension(
+                X509KeyUsageFlags.DigitalSignature |
+                X509KeyUsageFlags.KeyEncipherment,
+                true));
         request.CertificateExtensions.Add(
             new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
 
+        var notBefore = DateTimeOffset.UtcNow.AddMinutes(-1);
+        var notAfter = new DateTimeOffset(
+            issuer.NotAfter.ToUniversalTime()).AddMinutes(-1);
+
+        if (notAfter <= notBefore)
+        {
+            throw new InvalidOperationException(
+                "The issuer certificate validity window is too short.");
+        }
+
         return request.Create(
             issuer,
-            DateTimeOffset.UtcNow.AddMinutes(-1),
-            DateTimeOffset.UtcNow.AddDays(1),
+            notBefore,
+            notAfter,
             Guid.NewGuid().ToByteArray());
     }
 }
