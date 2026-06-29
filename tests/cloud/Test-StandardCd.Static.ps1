@@ -227,12 +227,30 @@ else {
 $deployWorkflowText = Get-Content -Raw -LiteralPath $deployWorkflowPath
 
 foreach ($token in @(
+    "actions: read",
+    "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+    "name: standard-cd-release",
+    "path: g81-release",
     "TF_STATE_BUCKET",
     "New-CanonicalTerraformBackendFiles.ps1",
     "runner.temp"
 )) {
     if ($deployWorkflowText -notlike "*$token*") {
         Add-Failure "_deploy.yml missing canonical backend token: $token"
+    }
+}
+
+$qualifyWorkflowText = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot ".github/workflows/_qualify.yml")
+
+foreach ($token in @(
+    "actions: read",
+    "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+    "name: standard-cd-release",
+    "path: g81-release",
+    "staging verify"
+)) {
+    if ($qualifyWorkflowText -notlike "*$token*") {
+        Add-Failure "_qualify.yml missing release artifact token: $token"
     }
 }
 
