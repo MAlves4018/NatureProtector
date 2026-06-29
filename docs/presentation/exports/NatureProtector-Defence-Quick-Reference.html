@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-PT" xml:lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Miguel Alves" />
+  <title>NatureProtector - Refer��ncia R��pida para a Defesa</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="/mnt/data/np_doc_impl/build_outputs/presentation/presentation.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">NatureProtector - Refer��ncia R��pida para a
+Defesa</h1>
+<p class="author">Miguel Alves</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#natureprotector---referência-rápida-para-a-defesa"
+id="toc-natureprotector---referência-rápida-para-a-defesa">NatureProtector
+- Referência Rápida para a Defesa</a>
+<ul>
+<li><a href="#abertura-em-30-segundos"
+id="toc-abertura-em-30-segundos">Abertura em 30 segundos</a></li>
+</ul></li>
+<li><a href="#contexto-e-âmbito" id="toc-contexto-e-âmbito">1. Contexto
+e âmbito</a>
+<ul>
+<li><a href="#dizer" id="toc-dizer">Dizer</a></li>
+<li><a href="#não-dizer" id="toc-não-dizer">Não dizer</a></li>
+</ul></li>
+<li><a href="#arquitetura" id="toc-arquitetura">2. Arquitetura</a>
+<ul>
+<li><a href="#dizer-1" id="toc-dizer-1">Dizer</a></li>
+<li><a href="#pergunta-provável" id="toc-pergunta-provável">Pergunta
+provável</a></li>
+</ul></li>
+<li><a href="#cadeia-runtime" id="toc-cadeia-runtime">3. Cadeia
+runtime</a>
+<ul>
+<li><a href="#dizer-2" id="toc-dizer-2">Dizer</a></li>
+</ul></li>
+<li><a href="#dados-proveniência-e-ciência"
+id="toc-dados-proveniência-e-ciência">4. Dados, proveniência e
+ciência</a>
+<ul>
+<li><a href="#dizer-3" id="toc-dizer-3">Dizer</a></li>
+<li><a href="#limitação-principal"
+id="toc-limitação-principal">Limitação principal</a></li>
+</ul></li>
+<li><a href="#ui-roles-e-operações" id="toc-ui-roles-e-operações">5. UI,
+roles e operações</a>
+<ul>
+<li><a href="#dizer-4" id="toc-dizer-4">Dizer</a></li>
+</ul></li>
+<li><a href="#operations-control-plane"
+id="toc-operations-control-plane">6. Operations Control Plane</a>
+<ul>
+<li><a href="#dizer-5" id="toc-dizer-5">Dizer</a></li>
+</ul></li>
+<li><a href="#qualidade-e-evidence" id="toc-qualidade-e-evidence">7.
+Qualidade e evidence</a>
+<ul>
+<li><a href="#dizer-6" id="toc-dizer-6">Dizer</a></li>
+</ul></li>
+<li><a href="#maturidade-dos-claims" id="toc-maturidade-dos-claims">8.
+Maturidade dos claims</a>
+<ul>
+<li><a href="#memorizar" id="toc-memorizar">Memorizar</a></li>
+</ul></li>
+<li><a href="#cloud-e-deployment" id="toc-cloud-e-deployment">9. Cloud e
+deployment</a>
+<ul>
+<li><a href="#dizer-7" id="toc-dizer-7">Dizer</a></li>
+<li><a href="#estado-atual-autorizado"
+id="toc-estado-atual-autorizado">Estado atual autorizado</a></li>
+</ul></li>
+<li><a href="#guião-da-demo" id="toc-guião-da-demo">10. Guião da
+demo</a>
+<ul>
+<li><a href="#plano-b" id="toc-plano-b">Plano B</a></li>
+</ul></li>
+<li><a href="#dez-respostas-críticas"
+id="toc-dez-respostas-críticas">11. Dez respostas críticas</a></li>
+<li><a href="#fecho" id="toc-fecho">12. Fecho</a></li>
+</ul>
+</nav>
+<h1
+id="natureprotector---referência-rápida-para-a-defesa">NatureProtector -
+Referência Rápida para a Defesa</h1>
+<blockquote>
+<p>Objetivo: permitir rever a narrativa, os diagramas, as frases-âncora
+e as respostas críticas em poucos minutos. Não substituir o compêndio
+nem o relatório.</p>
+</blockquote>
+<h2 id="abertura-em-30-segundos">Abertura em 30 segundos</h2>
+<p>O NatureProtector é uma plataforma académica experimental que simula
+leituras ambientais e as processa numa pipeline auditável. O contributo
+não é um alerta oficial: é a separação explícita entre verdade simulada,
+observação, qualidade, elegibilidade, falha, avaliação candidata,
+evidence e autoridade.</p>
+<p><strong>Frase de transição:</strong> “Vou mostrar primeiro onde o
+sistema está inserido, depois como uma leitura percorre a cadeia e, por
+fim, como provamos sem sobreafirmar.”</p>
+<h1 id="contexto-e-âmbito">1. Contexto e âmbito</h1>
+<figure>
+<img src="../architecture/diagrams/current/render/system-context-a4.png"
+alt="System context" />
+<figcaption aria-hidden="true">System context</figcaption>
+</figure>
+<h2 id="dizer">Dizer</h2>
+<ul>
+<li>Entradas ambientais e territoriais são preparadas com
+proveniência.</li>
+<li>A plataforma simula e processa; autoridades externas mantêm
+autoridade oficial.</li>
+<li>GitHub Actions e GCP são superfícies de engenharia, não fontes
+científicas.</li>
+</ul>
+<h2 id="não-dizer">Não dizer</h2>
+<ul>
+<li>“prevê incêndios”; “alerta real”; “dados live”; “produto
+oficial”.</li>
+</ul>
+<h1 id="arquitetura">2. Arquitetura</h1>
+<figure>
+<img
+src="../architecture/diagrams/current/render/container-architecture-a4.png"
+alt="Container architecture" />
+<figcaption aria-hidden="true">Container architecture</figcaption>
+</figure>
+<h2 id="dizer-1">Dizer</h2>
+<ul>
+<li>Simulator produz eventos controlados.</li>
+<li>RabbitMQ desacopla, mas não é o estado de negócio.</li>
+<li>Prevention + PostgreSQL preservam processamento e projeções.</li>
+<li>API/UI expõem tarefas e contexto.</li>
+</ul>
+<h2 id="pergunta-provável">Pergunta provável</h2>
+<p><strong>Porque não um monólito?</strong> Separação de
+responsabilidades, testabilidade e evolução controlada; o custo é maior
+coordenação e observabilidade.</p>
+<h1 id="cadeia-runtime">3. Cadeia runtime</h1>
+<figure>
+<img
+src="../architecture/diagrams/current/render/runtime-risk-pipeline-a4.png"
+alt="Runtime pipeline" />
+<figcaption aria-hidden="true">Runtime pipeline</figcaption>
+</figure>
+<h2 id="dizer-2">Dizer</h2>
+<ul>
+<li>O ACK e o processamento são fronteiras distintas.</li>
+<li>Qualidade e elegibilidade precedem a interpretação do score.</li>
+<li>Missing nunca é convertido silenciosamente em risco baixo.</li>
+<li>Retry e quarentena preservam falha e diagnóstico.</li>
+</ul>
+<h1 id="dados-proveniência-e-ciência">4. Dados, proveniência e
+ciência</h1>
+<figure>
+<img
+src="../architecture/diagrams/current/render/data-provenance-authority-a4.png"
+alt="Data provenance" />
+<figcaption aria-hidden="true">Data provenance</figcaption>
+</figure>
+<h2 id="dizer-3">Dizer</h2>
+<ul>
+<li>O simulador conhece ground truth experimental; o runtime recebe
+observações.</li>
+<li>Manifests devem preservar fonte, direitos, CRS, tempo, transformação
+e hash.</li>
+<li>FWI, KBDI e proxy português são candidatos, não métodos
+validados/oficiais.</li>
+</ul>
+<h2 id="limitação-principal">Limitação principal</h2>
+<p>Proveniência/reprodução completa, calibração, generalização
+territorial e validação externa ainda não estão fechadas.</p>
+<h1 id="ui-roles-e-operações">5. UI, roles e operações</h1>
+<figure>
+<img
+src="../architecture/diagrams/current/render/roles-ui-journeys-a4.png"
+alt="Roles and journeys" />
+<figcaption aria-hidden="true">Roles and journeys</figcaption>
+</figure>
+<h2 id="dizer-4">Dizer</h2>
+<ul>
+<li>Pipeline lê; Sim executa simulações; QA executa
+quality/evidence.</li>
+<li>Operations atua em staging; ReleaseApprover revê ações
+críticas.</li>
+<li>Admin gere a aplicação, mas não herda automaticamente
+produção/destroy.</li>
+<li>Capabilities são aplicadas no backend.</li>
+</ul>
+<h1 id="operations-control-plane">6. Operations Control Plane</h1>
+<figure>
+<img
+src="../architecture/diagrams/current/render/operations-lifecycle-a4.png"
+alt="Operation lifecycle" />
+<figcaption aria-hidden="true">Operation lifecycle</figcaption>
+</figure>
+<h2 id="dizer-5">Dizer</h2>
+<ul>
+<li>A UI solicita uma operação fechada.</li>
+<li>O backend valida, regista, confirma e pede approval quando
+necessário.</li>
+<li>Um runner especializado executa; artifacts e hashes regressam à
+UI.</li>
+<li>O browser não recebe shell nem credenciais cloud.</li>
+</ul>
+<p><strong>Frase-âncora:</strong> “A UI solicita; o backend autoriza; o
+runner executa; a evidence regressa.”</p>
+<h1 id="qualidade-e-evidence">7. Qualidade e evidence</h1>
+<figure>
+<img
+src="../architecture/diagrams/current/render/quality-evidence-flow-a4.png"
+alt="Quality and evidence" />
+<figcaption aria-hidden="true">Quality and evidence</figcaption>
+</figure>
+<h2 id="dizer-6">Dizer</h2>
+<ul>
+<li>Cada camada de teste responde a uma pergunta diferente.</li>
+<li>Uma execução só suporta o claim do snapshot e ambiente
+identificados.</li>
+<li>Status verde sem artifacts esperados não é proof completa.</li>
+</ul>
+<h1 id="maturidade-dos-claims">8. Maturidade dos claims</h1>
+<figure>
+<img
+src="../architecture/diagrams/current/render/claims-evidence-maturity-a4.png"
+alt="Evidence maturity" />
+<figcaption aria-hidden="true">Evidence maturity</figcaption>
+</figure>
+<h2 id="memorizar">Memorizar</h2>
+<pre class="text"><code>planeado -&gt; implementado -&gt; verificado estaticamente -&gt; executado
+         -&gt; reproduzido -&gt; validado -&gt; autorizado</code></pre>
+<p>Nunca saltar níveis por narrativa.</p>
+<h1 id="cloud-e-deployment">9. Cloud e deployment</h1>
+<figure>
+<img
+src="../architecture/diagrams/current/render/deployment-and-promotion-a4.png"
+alt="Deployment and promotion" />
+<figcaption aria-hidden="true">Deployment and promotion</figcaption>
+</figure>
+<h2 id="dizer-7">Dizer</h2>
+<ul>
+<li>Release imutável por digest.</li>
+<li>Staging deve provar a release exata antes de produção.</li>
+<li>Produção promove; não reconstrói.</li>
+<li>Destroy exige plano imutável, hash, project/state checks e approval
+separado.</li>
+</ul>
+<h2 id="estado-atual-autorizado">Estado atual autorizado</h2>
+<ul>
+<li>implementação cloud/CD presente;</li>
+<li>signed release final não provada pelos artifacts fornecidos;</li>
+<li>staging não provado;</li>
+<li>produção não implantada/provada.</li>
+</ul>
+<h1 id="guião-da-demo">10. Guião da demo</h1>
+<ol type="1">
+<li>Mission Control: mostrar gates.</li>
+<li>Sim: iniciar run curta com seed.</li>
+<li>Pipeline: mostrar lifecycle, tentativa e projeção.</li>
+<li>Degradação: explicar quality/eligibility.</li>
+<li>QA: solicitar suite fechada.</li>
+<li>Evidence Explorer: mostrar snapshot e hash.</li>
+<li>Deployments/Cloud: mostrar bloqueios e
+<code>DeclaredNotObserved</code>.</li>
+<li>Approvals: separação de deveres.</li>
+<li>Fechar com limites e próximo passo.</li>
+</ol>
+<h2 id="plano-b">Plano B</h2>
+<p>Replay/screenshot/evidence package claramente rotulado como
+histórico. Nunca depender exclusivamente de Internet/cloud durante a
+defesa.</p>
+<h1 id="dez-respostas-críticas">11. Dez respostas críticas</h1>
+<ol type="1">
+<li><strong>Inovação?</strong> Integração e auditabilidade, não um novo
+índice oficial.</li>
+<li><strong>Porque simulação?</strong> Repetibilidade, ground truth e
+falhas deliberadas.</li>
+<li><strong>Porque RabbitMQ?</strong> Desacoplamento; inbox preserva o
+estado de negócio.</li>
+<li><strong>Missing?</strong> Coverage/quality/eligibility; não vira
+risco baixo.</li>
+<li><strong>FWI validado?</strong> Não; candidato sujeito a conformidade
+e validação.</li>
+<li><strong>Produção?</strong> Não provada no snapshot final.</li>
+<li><strong>Porque Operations UI?</strong> Tornar operações e proof
+acessíveis sem shell/credenciais no browser.</li>
+<li><strong>Porque Admin separado?</strong> Identidade e infraestrutura
+têm autoridades diferentes.</li>
+<li><strong>Maior limitação?</strong> Dados/métodos e proof
+runtime/cloud final.</li>
+<li><strong>Próximo passo?</strong> Snapshot reproduzível + staging,
+depois avaliação científica externa.</li>
+</ol>
+<h1 id="fecho">12. Fecho</h1>
+<blockquote>
+<p>“O resultado é uma plataforma experimental substancial que torna
+visíveis as fronteiras que sistemas ambientais frequentemente escondem.
+O valor está tanto no que o sistema consegue fazer como na forma
+explícita como impede que implementação, score ou dashboard sejam
+confundidos com validação e autoridade.”</p>
+</blockquote>
+</body>
+</html>

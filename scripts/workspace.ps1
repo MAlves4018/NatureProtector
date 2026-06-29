@@ -29,6 +29,8 @@ param(
     [string]$Confirm
 )
 
+Import-Module (Join-Path $PSScriptRoot 'common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $ProgressRoot = Join-Path $RepoRoot "artifacts\mission-progress"
@@ -144,47 +146,6 @@ function Test-VersionPrefix {
     }
 
     return $false
-}
-
-function Read-DotEnv {
-    param([string]$Path)
-
-    $values = @{}
-    if (-not (Test-Path -LiteralPath $Path)) {
-        return $values
-    }
-
-    foreach ($line in Get-Content -LiteralPath $Path) {
-        $trimmed = $line.Trim()
-        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
-            continue
-        }
-
-        $index = $trimmed.IndexOf("=")
-        if ($index -le 0) {
-            continue
-        }
-
-        $name = $trimmed.Substring(0, $index).Trim()
-        $value = $trimmed.Substring($index + 1).Trim().Trim('"').Trim("'")
-        $values[$name] = $value
-    }
-
-    return $values
-}
-
-function Get-ConfigValue {
-    param(
-        [hashtable]$Values,
-        [string]$Name,
-        [string]$DefaultValue
-    )
-
-    if ($Values.ContainsKey($Name) -and -not [string]::IsNullOrWhiteSpace($Values[$Name])) {
-        return $Values[$Name]
-    }
-
-    return $DefaultValue
 }
 
 function Test-TcpPort {
@@ -347,12 +308,12 @@ function Test-WorkspacePrerequisites {
         Add-PrerequisiteResult $results $status ".env" "Local file is missing. Create it manually from .env.example; this script will not create it." ([bool]$RequireDotEnv)
     }
 
-    $envValues = Read-DotEnv $dotEnvPath
+    $envValues = Read-NpDotEnv -Path $dotEnvPath -QuoteHandling BothTrim
     $ports = @(
-        [pscustomobject]@{ Name = "PostgreSQL"; Port = [int](Get-ConfigValue $envValues "POSTGRES_PORT" "5433") },
-        [pscustomobject]@{ Name = "RabbitMQ"; Port = [int](Get-ConfigValue $envValues "RABBITMQ_PORT" "5672") },
-        [pscustomobject]@{ Name = "RabbitMQ management"; Port = [int](Get-ConfigValue $envValues "RABBITMQ_MANAGEMENT_PORT" "15672") },
-        [pscustomobject]@{ Name = "InfluxDB"; Port = [int](Get-ConfigValue $envValues "INFLUXDB_HTTP_PORT" "8181") }
+        [pscustomobject]@{ Name = "PostgreSQL"; Port = [int](Get-NpConfigValue $envValues "POSTGRES_PORT" "5433") },
+        [pscustomobject]@{ Name = "RabbitMQ"; Port = [int](Get-NpConfigValue $envValues "RABBITMQ_PORT" "5672") },
+        [pscustomobject]@{ Name = "RabbitMQ management"; Port = [int](Get-NpConfigValue $envValues "RABBITMQ_MANAGEMENT_PORT" "15672") },
+        [pscustomobject]@{ Name = "InfluxDB"; Port = [int](Get-NpConfigValue $envValues "INFLUXDB_HTTP_PORT" "8181") }
     )
 
     foreach ($portInfo in $ports) {

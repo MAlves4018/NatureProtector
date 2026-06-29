@@ -1,5 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
-import { installUiV2ApiFixture, type ObservedApiRequest, type RoleProfile, type SummaryFailure, type SummaryState } from './ui-v2-api-fixture';
+import {
+  installUiV2ApiFixture,
+  type ObservedApiRequest,
+  type RoleProfile,
+  type SummaryFailure,
+  type SummaryState,
+} from './ui-v2-api-fixture';
 
 test.describe('UI v2 authenticated role flows', () => {
   test('anonymous users see landing, login, and no protected operations', async ({ page }) => {
@@ -47,8 +53,8 @@ test.describe('UI v2 authenticated role flows', () => {
     await expect(page.getByText('Runtime reset')).toBeVisible();
     await expect(page.getByText('User/role administration')).toBeVisible();
 
-    expect(api.requests.some(request => request.path === '/control/runtime/observability/health')).toBe(true);
-    expect(api.requests.some(request => request.path === '/control/runtime/observability/evidence')).toBe(true);
+    expect(api.requests.some((request) => request.path === '/control/runtime/observability/health')).toBe(true);
+    expect(api.requests.some((request) => request.path === '/control/runtime/observability/evidence')).toBe(true);
     expect(allProtectedRequestsHaveBearer(api.requests)).toBe(true);
   });
 
@@ -67,7 +73,9 @@ test.describe('UI v2 authenticated role flows', () => {
     await page.getByRole('button', { name: /Iniciar simulacao/i }).click();
 
     await expect(page.getByRole('heading', { name: /Contexto de run/i })).toBeVisible();
-    const startRequest = api.requests.find(request => request.method === 'POST' && request.path === '/control/runtime/runs');
+    const startRequest = api.requests.find(
+      (request) => request.method === 'POST' && request.path === '/control/runtime/runs',
+    );
     expect(startRequest?.authorization).toBe('Bearer sim-token');
     expect(startRequest?.postData).toMatchObject({
       areaCode: 'proenca-a-nova',
@@ -96,8 +104,8 @@ test.describe('UI v2 authenticated role flows', () => {
     await expect(page.getByRole('heading', { name: /Auditoria de run/i })).toBeVisible();
     await expect(page.getByText('4 accepted / 1 rejected / 0 quarantined')).toBeVisible();
 
-    expect(api.requests.some(request => request.path === '/control/runtime/observability/rabbitmq')).toBe(true);
-    expect(api.requests.some(request => request.path === '/control/runtime/runs')).toBe(false);
+    expect(api.requests.some((request) => request.path === '/control/runtime/observability/rabbitmq')).toBe(true);
+    expect(api.requests.some((request) => request.path === '/control/runtime/runs')).toBe(false);
   });
 
   for (const profile of ['Admin', 'Sim', 'Pipeline'] as const) {
@@ -110,7 +118,9 @@ test.describe('UI v2 authenticated role flows', () => {
       await page.reload();
 
       await expect(page.getByText(`Perfil ativo: ${profile}`)).toBeVisible();
-      await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).toBe(`${profile.toLowerCase()}-token`);
+      await expect
+        .poll(() => page.evaluate(() => localStorage.getItem('token')))
+        .toBe(`${profile.toLowerCase()}-token`);
       await expect(page.getByRole('link', { name: /entrar/i })).toHaveCount(0);
 
       if (profile === 'Admin') {
@@ -210,8 +220,9 @@ async function signIn(page: Page, profile: RoleProfile) {
   await page.getByRole('link', { name: /entrar/i }).click();
   await page.getByLabel(/Username or email/i).fill(`${profile.toLowerCase()}@natureprotector.test`);
   await page.getByLabel(/Password/i).fill('password');
-  const loginResponse = page.waitForResponse(response =>
-    response.url().includes('/api/users-roles/login') && response.request().method() === 'POST');
+  const loginResponse = page.waitForResponse(
+    (response) => response.url().includes('/api/users-roles/login') && response.request().method() === 'POST',
+  );
   await page.getByRole('button', { name: /^Sign in$/i }).click();
   await expect((await loginResponse).status()).toBe(200);
   await expect(page).toHaveURL(/\/ui-v2/);
@@ -261,9 +272,11 @@ function runtimeFailureMessage(page: Page, failure: SummaryFailure) {
 
 function allProtectedRequestsHaveBearer(requests: ObservedApiRequest[]) {
   return requests
-    .filter(request =>
-      request.path.startsWith('/control/runtime') ||
-      request.path.startsWith('/dev/controlled-validation') ||
-      request.path.startsWith('/control/simulation-runs'))
-    .every(request => request.authorization?.startsWith('Bearer ') ?? false);
+    .filter(
+      (request) =>
+        request.path.startsWith('/control/runtime') ||
+        request.path.startsWith('/dev/controlled-validation') ||
+        request.path.startsWith('/control/simulation-runs'),
+    )
+    .every((request) => request.authorization?.startsWith('Bearer ') ?? false);
 }

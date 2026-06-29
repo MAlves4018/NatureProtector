@@ -11,11 +11,13 @@ public interface IUserRolePlaneService
     Task<UserResponse?> UpdateUserAsync(Guid userId, UserRequest request, CancellationToken cancellationToken);
     Task<bool> DeleteUserAsync(Guid userId, CancellationToken cancellationToken);
     Task<UserResponse?> GetUserAsync(Guid userId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<UserResponse>> ListUsersAsync(CancellationToken cancellationToken);
 
     Task<RoleResponse?> CreateRoleAsync(string roleName, CancellationToken cancellationToken);
     Task<RoleResponse?> UpdateRoleAsync(short roleId, string newRoleName, CancellationToken cancellationToken);
     Task<bool> DeleteRoleAsync(short roleId, CancellationToken cancellationToken);
     Task<RoleResponse?> GetRoleAsync(short roleId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<RoleResponse>> ListRolesAsync(CancellationToken cancellationToken);
 
     Task<UserRoleResponse?> AddRoleToUserAsync(Guid userId, short roleId, CancellationToken cancellationToken);
     Task<UserResponse?> RemoveRoleFromUserAsync(Guid userId, short roleId, CancellationToken cancellationToken);

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "purpose": "MIGRATION_PROOF_ONLY_NOT_CONTINUOUS_POLICY",
+  "source_baseline": "NatureProtector maintainability Phase 5",
+  "workspace_original_sha256": "13fab91aaec4317df997227edac9eb0dadf2b954fcf03516a23fb8ee694d74b5",
+  "workspace_reconstructed_slice_sha256": "517ca76d87d83810045a06cd0bd0e54b9076c345eb63e478b2372dff1af0fa6a",
+  "type_module_sha256": {
+    "webUI/src/app/types/auth.ts": "9f51f80a1891cbefc49e7538a58972cd8d272ed63948d2bf529a1c7d2cfa5c6f",
+    "webUI/src/app/types/geography.ts": "70f7938205db8eb69518789cf9739b5c3a1e6d03d78abb52fc14847a33617c0d",
+    "webUI/src/app/types/runtime.ts": "86b87628faf16242783be464a3ae376608cdc4292523524d03937350ec076138",
+    "webUI/src/app/types/scenario.ts": "8c517e3d46ea92a133c95fcc1e68aa523a26093912f07a9be8da19ed33a8e3e4"
+  }
+}

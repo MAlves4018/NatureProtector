@@ -1,0 +1,7 @@
+document,code_or_config_sources,scope
+docs/current-state/architecture-and-runtime.md,src/NatureProtector.Simulator.Host;src/NatureProtector.Prevention.Host;src/NatureProtector.Backoffice.Api;docker-compose.yml,architecture and runtime
+docs/current-state/operations-control-plane.md,src/NatureProtector.Backoffice.Api/Operations;.github/workflows/_*-operation.yml,"operation catalog, store and dispatch"
+docs/current-state/roles-capabilities-and-ui.md,src/NatureProtector.Backoffice.Api/Operations/Authorization/OperationCapabilities.cs;webUI/src/app/ui-v2,roles and navigation
+docs/current-state/quality-evidence-and-testing.md,tests;tools/evidence;.github/workflows/quality-guardrails.yml;.github/workflows/security.yml,quality and evidence
+docs/current-state/cloud-and-deployment.md,infra/gcp;deploy;.github/workflows/gcp-*;scripts/cloud,cloud and deployment
+docs/current-state/data-risk-and-scientific-boundaries.md,data;scripts/data;src/NatureProtector.Prevention;src/NatureProtector.Core,data and risk

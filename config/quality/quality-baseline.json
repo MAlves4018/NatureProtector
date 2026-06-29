@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "measured_on": "2026-06-28",
+  "baseline": {
+    "frontend-typecheck-strict": {
+      "status": "PASS",
+      "findings": 0
+    },
+    "python-ruff-critical": {
+      "status": "PASS",
+      "findings": 0
+    },
+    "frontend-biome-full": {
+      "status": "PASS",
+      "findings": 0,
+      "note": "Remediated during the final convergence correction; the gate is now enforced."
+    },
+    "dotnet-analyzers": {
+      "status": "NOT_MEASURED_IN_PHASE4_ENVIRONMENT",
+      "reason": "dotnet unavailable"
+    },
+    "powershell-psscriptanalyzer": {
+      "status": "NOT_MEASURED_IN_PHASE4_ENVIRONMENT",
+      "reason": "pwsh unavailable"
+    },
+    "shell-shellcheck": {
+      "status": "NOT_MEASURED_IN_PHASE4_ENVIRONMENT",
+      "reason": "shellcheck unavailable"
+    },
+    "frontend-format-full": {
+      "status": "PASS",
+      "findings": 0,
+      "note": "Remediated during the final convergence correction; the gate is now enforced."
+    },
+    "control-plane-decomposition": {
+      "status": "PASS",
+      "findings": 0,
+      "note": "Seven partial feature files preserve all eleven original member slices byte for byte and keep the IControlPlaneService public contract unchanged."
+    },
+    "frontend-decomposition": {
+      "status": "PASS",
+      "findings": 0,
+      "note": "Workspace orchestration, section views, shared presentation helpers, constants, and 61 public frontend type exports are protected by a deterministic decomposition contract."
+    },
+    "workflow-convergence": {
+      "status": "PASS",
+      "findings": 0,
+      "note": "Automatic staging CD now consumes the successful CI result instead of repeating standard validation; staging operations share one reusable workflow and release consumers download the immutable release artifact explicitly."
+    },
+    "repository-final-cleanup": {
+      "status": "PASS",
+      "findings": 0,
+      "note": "Fourteen zero-value G8.2 forwarding wrappers and two unused direct dependencies were removed; Python module imports and documented manual entrypoints leave zero unresolved script candidates."
+    }
+  },
+  "promotion_rule": "A report-only gate may become enforce only after its baseline is zero or an explicit reviewed suppression policy exists."
+}

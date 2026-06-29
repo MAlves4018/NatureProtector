@@ -137,34 +137,268 @@ export function buildUiV2PipelineSurface(
   const observabilityQueue = findQueue(rabbitMq, 'np.observability.raw');
 
   const fields: UiV2TechnicalField[] = [
-    field('Run ID', run?.id, run ? 'ready' : 'not-available', 'control.simulation_runs', runTimestamp, 'Selected/latest run', run ? none(locale) : noRecentExecution(locale)),
-    field('Area', run?.areaCode ?? summary?.areaCode, run?.areaCode ?? summary?.areaCode ? 'ready' : 'not-available', 'runtime summary / control.simulation_runs', generatedAt, 'Area code', ''),
-    field('Scenario', run?.scenarioCode, run?.scenarioCode ? 'ready' : 'not-available', 'control.simulation_runs', runTimestamp, 'Scenario code', ''),
-    field('Correlation ID', getRunCorrelationId(run), getRunCorrelationId(run) ? 'partial' : 'not-available', 'SimulationRun.MetadataJson', runTimestamp, 'Run metadata', getRunCorrelationId(run) ? 'Metadata field; not a distributed trace.' : 'Not present in selected run metadata.'),
-    field('Pipeline state', summary?.currentRun ? 'Running run observed' : run?.status, run?.status ? 'partial' : 'unknown', 'runtime summary', generatedAt, 'Runtime summary window', 'A loaded summary is not a full service health check.'),
-    field('Prevention.Host health', prevention?.status, statusToState(prevention?.status), prevention?.source ?? 'runtime operational health', formatUiV2Date(prevention?.observedAt, locale), prevention?.scope ?? 'Service health', prevention?.limitation ?? prevention?.reason ?? notConfirmed(locale)),
-    field('RabbitMQ health', rabbitMqHealth?.status ?? rabbitMq?.collectionStatus, statusToState(rabbitMqHealth?.status ?? rabbitMq?.collectionStatus), rabbitMqHealth?.source ?? rabbitMq?.source ?? 'RabbitMQ Management API', formatUiV2Date(rabbitMqHealth?.observedAt ?? rabbitMq?.observedAt, locale), rabbitMqHealth?.scope ?? 'Broker queues', rabbitMqHealth?.limitation ?? rabbitMqHealth?.reason ?? (rabbitMq ? none(locale) : 'RabbitMQ metrics endpoint not loaded.')),
-    field('Simulator lifecycle', simulator?.status, statusToState(simulator?.status), simulator?.source ?? 'runtime operational health', formatUiV2Date(simulator?.observedAt, locale), simulator?.scope ?? 'Latest run lifecycle', simulator?.limitation ?? simulator?.reason ?? notConfirmed(locale)),
-    field('PostgreSQL health', postgres?.status, statusToState(postgres?.status), postgres?.source ?? 'runtime operational health', formatUiV2Date(postgres?.observedAt, locale), postgres?.scope ?? 'Control-plane database', postgres?.limitation ?? postgres?.reason ?? notConfirmed(locale)),
-    field('InfluxDB health', influx?.status, statusToState(influx?.status), influx?.source ?? 'runtime operational health', formatUiV2Date(influx?.observedAt, locale), influx?.scope ?? 'InfluxDB endpoint', influx?.limitation ?? influx?.reason ?? notConfirmed(locale)),
-    field('Grafana health', grafana?.status, statusToState(grafana?.status), grafana?.source ?? 'runtime operational health', formatUiV2Date(grafana?.observedAt, locale), grafana?.scope ?? 'Grafana endpoint', grafana?.limitation ?? grafana?.reason ?? notConfirmed(locale)),
-    field('Produced at', null, 'not-instrumented', 'Simulator payload timestamps', notAvailable(locale), 'Per-event stage timestamp', 'Produced timestamps are not exposed by the UI v2 runtime contracts.'),
-    field('Published at', null, 'not-instrumented', 'RabbitMQ publisher', notAvailable(locale), 'Per-event stage timestamp', 'Publisher confirm/published timestamp is not exposed.'),
-    field('Consumed at', input.timings?.firstInboxReceivedAt, input.timings?.firstInboxReceivedAt ? 'partial' : 'not-available', 'pipeline.event_inbox', formatUiV2Date(input.timings?.firstInboxReceivedAt, locale), 'Selected run timing summary', input.timings?.firstInboxReceivedAt ? 'Represents first inbox row, not every event.' : noEvidence(locale)),
-    field('Processed at', input.timings?.lastProcessingAttemptFinishedAt, input.timings?.lastProcessingAttemptFinishedAt ? 'partial' : 'not-available', 'pipeline.processing_attempts', formatUiV2Date(input.timings?.lastProcessingAttemptFinishedAt, locale), 'Selected run timing summary', input.timings?.lastProcessingAttemptFinishedAt ? 'Represents last exposed processing attempt finish.' : noEvidence(locale)),
-    field('Risk persisted at', input.timings?.firstRiskAssessmentCreatedAt, input.timings?.firstRiskAssessmentCreatedAt ? 'partial' : 'not-available', 'projection.risk_assessment_log', formatUiV2Date(input.timings?.firstRiskAssessmentCreatedAt, locale), 'Selected run timing summary', input.timings?.firstRiskAssessmentCreatedAt ? 'First risk assessment only; not end-to-end latency.' : noEvidence(locale)),
-    field('Projected at', summary?.areaOperationalState?.lastProjectionUpdatedAt, summary?.areaOperationalState?.lastProjectionUpdatedAt ? 'partial' : 'not-available', 'projection.area_operational_state', formatUiV2Date(summary?.areaOperationalState?.lastProjectionUpdatedAt, locale), 'Current area projection', summary?.areaOperationalState ? 'Current projection can be affected by later runs.' : noEvidence(locale)),
-    field('Retry count', input.audit ? String(input.audit.retryAttempts) : null, input.audit ? 'ready' : 'not-available', 'pipeline.processing_attempts', runTimestamp, 'Selected run audit', input.audit ? none(locale) : noEvidence(locale)),
-    field('Rejection reason', latestRejected ? `${latestRejected.rejectionCode}: ${latestRejected.rejectionReason}` : null, latestRejected ? 'partial' : 'not-available', 'pipeline.rejected_events', formatUiV2Date(latestRejected?.rejectedAt, locale), 'Recent runtime summary window', latestRejected ? 'Latest summary item only.' : 'No recent rejection exposed in this summary window.'),
-    field('Quarantine reason', latestQuarantined ? `${latestQuarantined.quarantineCode}: ${latestQuarantined.quarantineReason}` : null, latestQuarantined ? 'partial' : 'not-available', 'pipeline.quarantined_events', formatUiV2Date(latestQuarantined?.quarantinedAt, locale), 'Recent runtime summary window', latestQuarantined ? 'Latest summary item only.' : 'No recent quarantine exposed in this summary window.'),
-    field('Error code', latestFailed?.errorCode, latestFailed?.errorCode ? 'partial' : 'not-available', 'pipeline.processing_attempts', formatUiV2Date(latestFailed?.finishedAt ?? latestFailed?.startedAt, locale), 'Recent failed attempts', latestFailed ? 'Latest failed attempt only.' : 'No failed attempt exposed in this summary window.'),
-    field('Ingestion ready', metricValue(ingestionQueue?.messagesReady), queueMetricState(ingestionQueue), ingestionQueue?.source ?? 'RabbitMQ Management API', formatUiV2Date(ingestionQueue?.observedAt, locale), 'np.ingestion.readings messages_ready', ingestionQueue?.limitation ?? none(locale)),
-    field('Ingestion unacknowledged', metricValue(ingestionQueue?.messagesUnacknowledged), queueMetricState(ingestionQueue), ingestionQueue?.source ?? 'RabbitMQ Management API', formatUiV2Date(ingestionQueue?.observedAt, locale), 'np.ingestion.readings messages_unacknowledged', ingestionQueue?.limitation ?? none(locale)),
-    field('Ingestion consumers', metricValue(ingestionQueue?.consumers), queueMetricState(ingestionQueue), ingestionQueue?.source ?? 'RabbitMQ Management API', formatUiV2Date(ingestionQueue?.observedAt, locale), 'np.ingestion.readings consumers', ingestionQueue?.limitation ?? none(locale)),
-    field('Observability ready', metricValue(observabilityQueue?.messagesReady), queueMetricState(observabilityQueue), observabilityQueue?.source ?? 'RabbitMQ Management API', formatUiV2Date(observabilityQueue?.observedAt, locale), 'np.observability.raw messages_ready', observabilityQueue?.limitation ?? none(locale)),
-    field('Queue state', rabbitMq?.collectionStatus, statusToState(rabbitMq?.collectionStatus), rabbitMq?.source ?? 'RabbitMQ health/management', formatUiV2Date(rabbitMq?.observedAt, locale), 'Broker queue metrics', rabbitMq ? 'Ready/unacknowledged/total are measured only when collectionStatus=Measured.' : 'RabbitMQ metrics endpoint not loaded.'),
-    field('Latency', formatLatency(input.timings), input.timings?.runDurationMs != null ? 'partial' : 'not-available', 'runtime run timings', runTimestamp, 'Selected run', input.timings?.runDurationMs != null ? 'Run duration and first-stage timings only; no full per-event latency.' : noEvidence(locale)),
-    field('Readiness', summary ? 'Runtime summary readable' : null, summary ? 'partial' : 'unknown', 'GET /api/control/runtime/summary', generatedAt, 'UI v2 technical read path', summary ? 'Readiness is limited to this contract load, not full staging readiness.' : notConfirmed(locale)),
+    field(
+      'Run ID',
+      run?.id,
+      run ? 'ready' : 'not-available',
+      'control.simulation_runs',
+      runTimestamp,
+      'Selected/latest run',
+      run ? none(locale) : noRecentExecution(locale),
+    ),
+    field(
+      'Area',
+      run?.areaCode ?? summary?.areaCode,
+      (run?.areaCode ?? summary?.areaCode) ? 'ready' : 'not-available',
+      'runtime summary / control.simulation_runs',
+      generatedAt,
+      'Area code',
+      '',
+    ),
+    field(
+      'Scenario',
+      run?.scenarioCode,
+      run?.scenarioCode ? 'ready' : 'not-available',
+      'control.simulation_runs',
+      runTimestamp,
+      'Scenario code',
+      '',
+    ),
+    field(
+      'Correlation ID',
+      getRunCorrelationId(run),
+      getRunCorrelationId(run) ? 'partial' : 'not-available',
+      'SimulationRun.MetadataJson',
+      runTimestamp,
+      'Run metadata',
+      getRunCorrelationId(run) ? 'Metadata field; not a distributed trace.' : 'Not present in selected run metadata.',
+    ),
+    field(
+      'Pipeline state',
+      summary?.currentRun ? 'Running run observed' : run?.status,
+      run?.status ? 'partial' : 'unknown',
+      'runtime summary',
+      generatedAt,
+      'Runtime summary window',
+      'A loaded summary is not a full service health check.',
+    ),
+    field(
+      'Prevention.Host health',
+      prevention?.status,
+      statusToState(prevention?.status),
+      prevention?.source ?? 'runtime operational health',
+      formatUiV2Date(prevention?.observedAt, locale),
+      prevention?.scope ?? 'Service health',
+      prevention?.limitation ?? prevention?.reason ?? notConfirmed(locale),
+    ),
+    field(
+      'RabbitMQ health',
+      rabbitMqHealth?.status ?? rabbitMq?.collectionStatus,
+      statusToState(rabbitMqHealth?.status ?? rabbitMq?.collectionStatus),
+      rabbitMqHealth?.source ?? rabbitMq?.source ?? 'RabbitMQ Management API',
+      formatUiV2Date(rabbitMqHealth?.observedAt ?? rabbitMq?.observedAt, locale),
+      rabbitMqHealth?.scope ?? 'Broker queues',
+      rabbitMqHealth?.limitation ??
+        rabbitMqHealth?.reason ??
+        (rabbitMq ? none(locale) : 'RabbitMQ metrics endpoint not loaded.'),
+    ),
+    field(
+      'Simulator lifecycle',
+      simulator?.status,
+      statusToState(simulator?.status),
+      simulator?.source ?? 'runtime operational health',
+      formatUiV2Date(simulator?.observedAt, locale),
+      simulator?.scope ?? 'Latest run lifecycle',
+      simulator?.limitation ?? simulator?.reason ?? notConfirmed(locale),
+    ),
+    field(
+      'PostgreSQL health',
+      postgres?.status,
+      statusToState(postgres?.status),
+      postgres?.source ?? 'runtime operational health',
+      formatUiV2Date(postgres?.observedAt, locale),
+      postgres?.scope ?? 'Control-plane database',
+      postgres?.limitation ?? postgres?.reason ?? notConfirmed(locale),
+    ),
+    field(
+      'InfluxDB health',
+      influx?.status,
+      statusToState(influx?.status),
+      influx?.source ?? 'runtime operational health',
+      formatUiV2Date(influx?.observedAt, locale),
+      influx?.scope ?? 'InfluxDB endpoint',
+      influx?.limitation ?? influx?.reason ?? notConfirmed(locale),
+    ),
+    field(
+      'Grafana health',
+      grafana?.status,
+      statusToState(grafana?.status),
+      grafana?.source ?? 'runtime operational health',
+      formatUiV2Date(grafana?.observedAt, locale),
+      grafana?.scope ?? 'Grafana endpoint',
+      grafana?.limitation ?? grafana?.reason ?? notConfirmed(locale),
+    ),
+    field(
+      'Produced at',
+      null,
+      'not-instrumented',
+      'Simulator payload timestamps',
+      notAvailable(locale),
+      'Per-event stage timestamp',
+      'Produced timestamps are not exposed by the UI v2 runtime contracts.',
+    ),
+    field(
+      'Published at',
+      null,
+      'not-instrumented',
+      'RabbitMQ publisher',
+      notAvailable(locale),
+      'Per-event stage timestamp',
+      'Publisher confirm/published timestamp is not exposed.',
+    ),
+    field(
+      'Consumed at',
+      input.timings?.firstInboxReceivedAt,
+      input.timings?.firstInboxReceivedAt ? 'partial' : 'not-available',
+      'pipeline.event_inbox',
+      formatUiV2Date(input.timings?.firstInboxReceivedAt, locale),
+      'Selected run timing summary',
+      input.timings?.firstInboxReceivedAt ? 'Represents first inbox row, not every event.' : noEvidence(locale),
+    ),
+    field(
+      'Processed at',
+      input.timings?.lastProcessingAttemptFinishedAt,
+      input.timings?.lastProcessingAttemptFinishedAt ? 'partial' : 'not-available',
+      'pipeline.processing_attempts',
+      formatUiV2Date(input.timings?.lastProcessingAttemptFinishedAt, locale),
+      'Selected run timing summary',
+      input.timings?.lastProcessingAttemptFinishedAt
+        ? 'Represents last exposed processing attempt finish.'
+        : noEvidence(locale),
+    ),
+    field(
+      'Risk persisted at',
+      input.timings?.firstRiskAssessmentCreatedAt,
+      input.timings?.firstRiskAssessmentCreatedAt ? 'partial' : 'not-available',
+      'projection.risk_assessment_log',
+      formatUiV2Date(input.timings?.firstRiskAssessmentCreatedAt, locale),
+      'Selected run timing summary',
+      input.timings?.firstRiskAssessmentCreatedAt
+        ? 'First risk assessment only; not end-to-end latency.'
+        : noEvidence(locale),
+    ),
+    field(
+      'Projected at',
+      summary?.areaOperationalState?.lastProjectionUpdatedAt,
+      summary?.areaOperationalState?.lastProjectionUpdatedAt ? 'partial' : 'not-available',
+      'projection.area_operational_state',
+      formatUiV2Date(summary?.areaOperationalState?.lastProjectionUpdatedAt, locale),
+      'Current area projection',
+      summary?.areaOperationalState ? 'Current projection can be affected by later runs.' : noEvidence(locale),
+    ),
+    field(
+      'Retry count',
+      input.audit ? String(input.audit.retryAttempts) : null,
+      input.audit ? 'ready' : 'not-available',
+      'pipeline.processing_attempts',
+      runTimestamp,
+      'Selected run audit',
+      input.audit ? none(locale) : noEvidence(locale),
+    ),
+    field(
+      'Rejection reason',
+      latestRejected ? `${latestRejected.rejectionCode}: ${latestRejected.rejectionReason}` : null,
+      latestRejected ? 'partial' : 'not-available',
+      'pipeline.rejected_events',
+      formatUiV2Date(latestRejected?.rejectedAt, locale),
+      'Recent runtime summary window',
+      latestRejected ? 'Latest summary item only.' : 'No recent rejection exposed in this summary window.',
+    ),
+    field(
+      'Quarantine reason',
+      latestQuarantined ? `${latestQuarantined.quarantineCode}: ${latestQuarantined.quarantineReason}` : null,
+      latestQuarantined ? 'partial' : 'not-available',
+      'pipeline.quarantined_events',
+      formatUiV2Date(latestQuarantined?.quarantinedAt, locale),
+      'Recent runtime summary window',
+      latestQuarantined ? 'Latest summary item only.' : 'No recent quarantine exposed in this summary window.',
+    ),
+    field(
+      'Error code',
+      latestFailed?.errorCode,
+      latestFailed?.errorCode ? 'partial' : 'not-available',
+      'pipeline.processing_attempts',
+      formatUiV2Date(latestFailed?.finishedAt ?? latestFailed?.startedAt, locale),
+      'Recent failed attempts',
+      latestFailed ? 'Latest failed attempt only.' : 'No failed attempt exposed in this summary window.',
+    ),
+    field(
+      'Ingestion ready',
+      metricValue(ingestionQueue?.messagesReady),
+      queueMetricState(ingestionQueue),
+      ingestionQueue?.source ?? 'RabbitMQ Management API',
+      formatUiV2Date(ingestionQueue?.observedAt, locale),
+      'np.ingestion.readings messages_ready',
+      ingestionQueue?.limitation ?? none(locale),
+    ),
+    field(
+      'Ingestion unacknowledged',
+      metricValue(ingestionQueue?.messagesUnacknowledged),
+      queueMetricState(ingestionQueue),
+      ingestionQueue?.source ?? 'RabbitMQ Management API',
+      formatUiV2Date(ingestionQueue?.observedAt, locale),
+      'np.ingestion.readings messages_unacknowledged',
+      ingestionQueue?.limitation ?? none(locale),
+    ),
+    field(
+      'Ingestion consumers',
+      metricValue(ingestionQueue?.consumers),
+      queueMetricState(ingestionQueue),
+      ingestionQueue?.source ?? 'RabbitMQ Management API',
+      formatUiV2Date(ingestionQueue?.observedAt, locale),
+      'np.ingestion.readings consumers',
+      ingestionQueue?.limitation ?? none(locale),
+    ),
+    field(
+      'Observability ready',
+      metricValue(observabilityQueue?.messagesReady),
+      queueMetricState(observabilityQueue),
+      observabilityQueue?.source ?? 'RabbitMQ Management API',
+      formatUiV2Date(observabilityQueue?.observedAt, locale),
+      'np.observability.raw messages_ready',
+      observabilityQueue?.limitation ?? none(locale),
+    ),
+    field(
+      'Queue state',
+      rabbitMq?.collectionStatus,
+      statusToState(rabbitMq?.collectionStatus),
+      rabbitMq?.source ?? 'RabbitMQ health/management',
+      formatUiV2Date(rabbitMq?.observedAt, locale),
+      'Broker queue metrics',
+      rabbitMq
+        ? 'Ready/unacknowledged/total are measured only when collectionStatus=Measured.'
+        : 'RabbitMQ metrics endpoint not loaded.',
+    ),
+    field(
+      'Latency',
+      formatLatency(input.timings),
+      input.timings?.runDurationMs != null ? 'partial' : 'not-available',
+      'runtime run timings',
+      runTimestamp,
+      'Selected run',
+      input.timings?.runDurationMs != null
+        ? 'Run duration and first-stage timings only; no full per-event latency.'
+        : noEvidence(locale),
+    ),
+    field(
+      'Readiness',
+      summary ? 'Runtime summary readable' : null,
+      summary ? 'partial' : 'unknown',
+      'GET /api/control/runtime/summary',
+      generatedAt,
+      'UI v2 technical read path',
+      summary ? 'Readiness is limited to this contract load, not full staging readiness.' : notConfirmed(locale),
+    ),
   ];
 
   const limitations = [
@@ -175,10 +409,10 @@ export function buildUiV2PipelineSurface(
     'Publisher timestamps remain gated because the published RabbitMQ contract has no persisted PublishedAt.',
     'Current projections can reflect later runs; use run-scoped audit/timings when available.',
     ...(input.observabilityError ? [input.observabilityError.message] : []),
-    ...(summary?.limitations.map(item => item.message) ?? []),
-    ...(input.health?.limitations.map(item => item.message) ?? []),
-    ...(rabbitMq?.limitations.map(item => item.message) ?? []),
-    ...(input.audit?.limitations.map(item => item.message) ?? []),
+    ...(summary?.limitations.map((item) => item.message) ?? []),
+    ...(input.health?.limitations.map((item) => item.message) ?? []),
+    ...(rabbitMq?.limitations.map((item) => item.message) ?? []),
+    ...(input.audit?.limitations.map((item) => item.message) ?? []),
     ...(input.timings?.limitations ?? []),
   ];
 
@@ -217,7 +451,8 @@ export function buildUiV2QaSuites(): UiV2QaSuite[] {
       suiteId: 'm04-backoffice-api',
       suiteName: 'Backoffice API authorization/runtime tests',
       category: 'API, integration, authorization',
-      testDefinition: 'dotnet test tests/NatureProtector.Backoffice.Api.Tests/NatureProtector.Backoffice.Api.Tests.csproj',
+      testDefinition:
+        'dotnet test tests/NatureProtector.Backoffice.Api.Tests/NatureProtector.Backoffice.Api.Tests.csproj',
       testExecution: 'Last recorded execution',
       status: 'Passed',
       executedAt: '2026-06-14',
@@ -236,7 +471,8 @@ export function buildUiV2QaSuites(): UiV2QaSuite[] {
       suiteId: 'm05-final-gates',
       suiteName: 'M05 final local gates',
       category: 'typecheck, focused tests, build, coverage, diff check',
-      testDefinition: 'npm run typecheck; npm test; npm run test:coverage -- src/app/ui-v2 src/app/services/api.test.ts; npm run build; dotnet test NatureProtector.sln --no-restore',
+      testDefinition:
+        'npm run typecheck; npm test; npm run test:coverage -- src/app/ui-v2 src/app/services/api.test.ts; npm run build; dotnet test NatureProtector.sln --no-restore',
       testExecution: 'Last recorded execution',
       status: 'Passed with dependency findings recorded',
       executedAt: '2026-06-14',
@@ -249,7 +485,9 @@ export function buildUiV2QaSuites(): UiV2QaSuite[] {
       coverage: 'app/ui-v2 84.12% lines; all frontend 30.72% lines',
       reportReference: 'NatureProtector.brain/control/M05-TECHNICAL-QA-AND-HARDENING/handoff.md',
       evidenceReference: 'webUI/test-results/vitest-junit.xml plus terminal validation recorded in M05 handoff',
-      limitations: ['Counts combine broad frontend and .NET solution test totals; typecheck/build/security checks are command gates, not test cases.'],
+      limitations: [
+        'Counts combine broad frontend and .NET solution test totals; typecheck/build/security checks are command gates, not test cases.',
+      ],
     },
     {
       suiteId: 'security-dependency-checks',
@@ -288,7 +526,7 @@ export function buildUiV2EvidenceItems(
   locale: UiV2Locale,
 ): UiV2EvidenceItem[] {
   const run = input.audit?.run ?? input.run ?? input.summary?.latestRun ?? null;
-  const catalogItems: UiV2EvidenceItem[] = (input.catalog?.items ?? []).slice(0, 8).map(item => ({
+  const catalogItems: UiV2EvidenceItem[] = (input.catalog?.items ?? []).slice(0, 8).map((item) => ({
     evidenceId: item.evidenceId,
     title: item.title,
     type: `HTTP evidence ${item.type}`,
@@ -344,7 +582,9 @@ export function buildUiV2EvidenceItems(
       createdAt: input.summary?.generatedAtUtc ?? null,
       executedAt: input.summary?.generatedAtUtc ?? null,
       environment: 'Current UI/API session',
-      scope: input.summary ? `${input.summary.areaCode ?? 'all areas'}, recent window ${input.summary.recentWindowMinutes} minutes` : 'No summary loaded',
+      scope: input.summary
+        ? `${input.summary.areaCode ?? 'all areas'}, recent window ${input.summary.recentWindowMinutes} minutes`
+        : 'No summary loaded',
       supportsClaims: input.summary ? ['UI displays persisted runtime summary fields without frontend scoring.'] : [],
       doesNotSupportClaims: ['RabbitMQ queue health', 'full service health', 'external validation'],
       availability: input.summary ? 'partial' : 'not-available',
@@ -362,7 +602,8 @@ export function buildUiV2EvidenceItems(
       executedAt: run?.endedAt ?? run?.startedAt ?? null,
       environment: 'Current UI/API session',
       scope: run ? `Run ${run.id}` : 'No selected run',
-      supportsClaims: input.audit || input.timings ? ['Run-scoped audit/timing details are available for the selected run.'] : [],
+      supportsClaims:
+        input.audit || input.timings ? ['Run-scoped audit/timing details are available for the selected run.'] : [],
       doesNotSupportClaims: ['Per-event end-to-end latency for every pipeline stage'],
       availability: input.audit || input.timings ? 'partial' : 'not-available',
       reference: 'src/NatureProtector.Backoffice.Api/Controllers/ControlRuntimeController.cs',
@@ -470,10 +711,42 @@ export function buildUiV2P3Surface(
     readiness,
     nextGate: 'Dedicated evidence review before any integration decision.',
     fields: [
-      field('Phase', availability?.phase ?? 'P3NegativePipeline', availability ? 'ready' : 'partial', 'DevControlledValidationController', notAvailable(locale), 'P3 availability contract', ''),
-      field('Runtime availability', availability?.available == null ? null : String(availability.available), availability ? (availability.available ? 'partial' : 'blocked') : 'not-confirmed', 'GET /api/dev/controlled-validation/p3', notAvailable(locale), 'Authorized Sim/Admin profiles only', availability ? availability.message : 'Endpoint is backend-protected and was not queried for this profile.'),
-      field('Integration status', 'Not integrated', 'blocked', 'M05 scope guardrail', '2026-06-14', 'Main runtime/scoring/alerts', 'No P3 runtime/scoring integration was added.'),
-      field('Validation status', 'Not externally validated', 'no-evidence', 'Project stance', '2026-06-14', 'Scientific/operational validation', 'P3 remains candidate evidence only.'),
+      field(
+        'Phase',
+        availability?.phase ?? 'P3NegativePipeline',
+        availability ? 'ready' : 'partial',
+        'DevControlledValidationController',
+        notAvailable(locale),
+        'P3 availability contract',
+        '',
+      ),
+      field(
+        'Runtime availability',
+        availability?.available == null ? null : String(availability.available),
+        availability ? (availability.available ? 'partial' : 'blocked') : 'not-confirmed',
+        'GET /api/dev/controlled-validation/p3',
+        notAvailable(locale),
+        'Authorized Sim/Admin profiles only',
+        availability ? availability.message : 'Endpoint is backend-protected and was not queried for this profile.',
+      ),
+      field(
+        'Integration status',
+        'Not integrated',
+        'blocked',
+        'M05 scope guardrail',
+        '2026-06-14',
+        'Main runtime/scoring/alerts',
+        'No P3 runtime/scoring integration was added.',
+      ),
+      field(
+        'Validation status',
+        'Not externally validated',
+        'no-evidence',
+        'Project stance',
+        '2026-06-14',
+        'Scientific/operational validation',
+        'P3 remains candidate evidence only.',
+      ),
     ],
     limitations: [
       'M05 does not start P3 controlled validation.',
@@ -511,7 +784,8 @@ export function buildUiV2ReadinessItems(input: {
     {
       item: 'Profiles',
       status: roles.length > 0 ? 'partial' : 'not-confirmed',
-      evidence: roles.length > 0 ? `Current profile roles: ${roles.join(', ')}.` : 'Unsigned prototype read-only profile.',
+      evidence:
+        roles.length > 0 ? `Current profile roles: ${roles.join(', ')}.` : 'Unsigned prototype read-only profile.',
       limitation: 'Real Pipeline/Sim/Admin browser journeys require existing local identities.',
     },
     {
@@ -566,11 +840,11 @@ function formatLatency(timings: RuntimeRunTimingSummaryResponse | null) {
 }
 
 function findComponent(health: RuntimeOperationalHealthResponse | null | undefined, component: string) {
-  return health?.components.find(item => item.component === component) ?? null;
+  return health?.components.find((item) => item.component === component) ?? null;
 }
 
 function findQueue(rabbitMq: RabbitMqMetricsResponse | null | undefined, queueName: string) {
-  return rabbitMq?.queues.find(item => item.queueName === queueName) ?? null;
+  return rabbitMq?.queues.find((item) => item.queueName === queueName) ?? null;
 }
 
 function statusToState(status: string | null | undefined): UiV2TechnicalState {
@@ -588,7 +862,6 @@ function statusToState(status: string | null | undefined): UiV2TechnicalState {
     case 'Unavailable':
     case 'Error':
       return 'not-available';
-    case 'Unknown':
     default:
       return 'unknown';
   }

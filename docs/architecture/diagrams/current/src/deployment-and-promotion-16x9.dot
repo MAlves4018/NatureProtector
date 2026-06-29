@@ -1,0 +1,18 @@
+digraph G { graph [size="13.33,7.5!", ratio=fill]; rankdir=LR; graph [fontname="Arial", bgcolor="white", pad="0.25", nodesep="0.45", ranksep="0.7", splines=ortho];
+node [fontname="Arial", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F7FAFC", color="#334155", penwidth=1.2, margin="0.14,0.09"];
+edge [fontname="Arial", fontsize=9, color="#475569", arrowsize=0.75, penwidth=1.1];
+code [label="Commit / protected ref",fillcolor="#DBEAFE"];
+validate [label="Validate + qualify",fillcolor="#DCFCE7"];
+release [label="Immutable release
+images, manifest, checksums, SBOM, attestation",shape=folder,fillcolor="#F3E8FF"];
+staging [label="STAGING
+isolated GCP project",shape=box3d,fillcolor="#E0F2FE"];
+smoke [label="Smoke + readiness + observability evidence",fillcolor="#DCFCE7"];
+gate [label="Approval gate
+exact release + evidence",shape=diamond,fillcolor="#FEF3C7"];
+prod [label="PRODUCTION
+promotion, not rebuild",shape=box3d,fillcolor="#EDE9FE"];
+observe [label="Post-deploy observation + rollback target",fillcolor="#FCE7F3"];
+code->validate->release->staging->smoke->gate->prod->observe;
+gate->staging [label="fail / remediate",color="#B91C1C"];
+}

@@ -1,0 +1,8 @@
+\section*{Adenda factual posterior ao estado R13}
+\addcontentsline{toc}{section}{Adenda factual posterior ao estado R13}
+
+Após o fecho do estado factual R13, o repositório passou a incluir um plano de operações de engenharia com autorização por capabilities no servidor, um catálogo fechado para qualidade, evidência, deployment e operações cloud, registos auditáveis, confirmações, aprovações e dispatch para workflows especializados. A interface passou a incluir as vistas Mission Control, Quality Runs, Evidence Explorer, Deployments, Cloud Resources, Approvals e administração de utilizadores e roles.
+
+Esta evolução não autoriza uma leitura de produção provada. A implementação de workflows, Terraform e integração GCP permanece distinta da prova de uma release assinada para o último snapshot, da qualificação de staging e de uma promoção para produção. As ações sem workflow ou contrato de input qualificado, incluindo variantes de destroy, permanecem bloqueadas na superfície Web.
+
+A alteração reforça a contribuição de auditabilidade: a mesma regra que separa implementação, execução, evidência e autoridade no runtime passa a aplicar-se às operações de engenharia. O browser não recebe credenciais de provider nem aceita comandos arbitrários; solicita apenas identificadores de operações do catálogo, sujeitos a policy, confirmação, aprovação e registo.

@@ -6,7 +6,10 @@ export const TECHNICAL_LABELS: readonly TechnicalLabel[] = [
   {
     code: 'Expired',
     label: { 'pt-PT': 'Dados expirados', en: 'Expired data' },
-    detail: { 'pt-PT': 'O dado ultrapassou a janela temporal esperada.', en: 'The data is outside the expected time window.' },
+    detail: {
+      'pt-PT': 'O dado ultrapassou a janela temporal esperada.',
+      en: 'The data is outside the expected time window.',
+    },
   },
   {
     code: 'LowCoverage',
@@ -16,17 +19,26 @@ export const TECHNICAL_LABELS: readonly TechnicalLabel[] = [
   {
     code: 'CompleteWithCandidateDefaults',
     label: { 'pt-PT': 'Dados completos com parametros candidatos', en: 'Complete with candidate defaults' },
-    detail: { 'pt-PT': 'O prototipo aplicou parametros V1 candidatos.', en: 'The prototype applied candidate V1 parameters.' },
+    detail: {
+      'pt-PT': 'O prototipo aplicou parametros V1 candidatos.',
+      en: 'The prototype applied candidate V1 parameters.',
+    },
   },
   {
     code: 'ExpiredCarryForward',
     label: { 'pt-PT': 'Dados anteriores mantidos, mas expirados', en: 'Expired carried-forward data' },
-    detail: { 'pt-PT': 'Foi mantido um valor anterior; nao deve ser tratado como atual.', en: 'A previous value was retained and should not be treated as current.' },
+    detail: {
+      'pt-PT': 'Foi mantido um valor anterior; nao deve ser tratado como atual.',
+      en: 'A previous value was retained and should not be treated as current.',
+    },
   },
   {
     code: 'NotAvailable',
     label: { 'pt-PT': 'Nao disponivel', en: 'Not available' },
-    detail: { 'pt-PT': 'O contrato atual nao forneceu este valor.', en: 'The current contract did not provide this value.' },
+    detail: {
+      'pt-PT': 'O contrato atual nao forneceu este valor.',
+      en: 'The current contract did not provide this value.',
+    },
   },
 ];
 
@@ -46,14 +58,14 @@ export const DEGRADATION_PROFILE_OPTIONS = [
 
 export function technicalLabel(code: string | null | undefined, locale: UiV2Locale) {
   if (!code) {
-    return localize(locale, TECHNICAL_LABELS.find(item => item.code === 'NotAvailable')!.label);
+    return localize(locale, TECHNICAL_LABELS.find((item) => item.code === 'NotAvailable')!.label);
   }
 
-  const match = TECHNICAL_LABELS.find(item => item.code.toLowerCase() === code.toLowerCase());
+  const match = TECHNICAL_LABELS.find((item) => item.code.toLowerCase() === code.toLowerCase());
   return match ? localize(locale, match.label) : code;
 }
 
 export function technicalLabelDetail(code: string, locale: UiV2Locale) {
-  const match = TECHNICAL_LABELS.find(item => item.code.toLowerCase() === code.toLowerCase());
+  const match = TECHNICAL_LABELS.find((item) => item.code.toLowerCase() === code.toLowerCase());
   return match ? localize(locale, match.detail) : '';
 }

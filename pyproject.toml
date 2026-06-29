@@ -1,0 +1,19 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+extend-exclude = [
+  ".git",
+  ".nuget",
+  "artifacts",
+  "node_modules",
+  "webUI",
+]
+
+[tool.ruff.lint]
+# Phase 4 blocks correctness/import defects but records legacy compact-layout
+# debt separately. E701/E702/E402 are intentionally deferred.
+select = ["E4", "E7", "E9", "F"]
+ignore = ["E402", "E701", "E702", "E712"]
+
+[tool.ruff.lint.per-file-ignores]
+"tools/**/tests/*.py" = ["S101"]

@@ -112,6 +112,7 @@ docs/evidence/controlled-validation/*
 # G10 contracts
 !docs/evidence/g10-2-phase3-state.json
 !docs/evidence/g10-3-phase4-state.json
+!docs/evidence/report-inventory-collection.md
 
 #TEMP 
 docs/planning/V0/
@@ -139,6 +140,8 @@ webUI/npm-audit.policy.json
 # Python cache
 __pycache__/
 **/__pycache__/
+.ruff_cache/
+**/.ruff_cache/
 *.py[cod]
 
 # Terraform local working directories
@@ -147,3 +150,33 @@ artifacts/cloud-setup/
 **/*.tfplan
 **/.terraform/
 **/.terraform.lock.hcl.backup
+
+# Repository hygiene: local IDE/user state
+.idea/
+.vs/
+*.suo
+*.user
+*.sln.DotSettings.user
+
+# Repository hygiene: local/runtime state that must be provisioned
+/infra/grafana/grafana.db
+
+# Repository hygiene: obsolete local test archive
+/tests/NatureProtector.Prevention.Tests/NatureProtector.Prevention.Tests.zip
+
+# Repository hygiene: LaTeX transient build products
+/docs/report/LaTeXReport_template/**/*.aux
+/docs/report/LaTeXReport_template/**/*.acn
+/docs/report/LaTeXReport_template/**/*.acr
+/docs/report/LaTeXReport_template/**/*.alg
+/docs/report/LaTeXReport_template/**/*.bbl
+/docs/report/LaTeXReport_template/**/*.blg
+/docs/report/LaTeXReport_template/**/*.fdb_latexmk
+/docs/report/LaTeXReport_template/**/*.fls
+/docs/report/LaTeXReport_template/**/*.ist
+/docs/report/LaTeXReport_template/**/*.loa
+/docs/report/LaTeXReport_template/**/*.log
+/docs/report/LaTeXReport_template/**/*.out
+/docs/report/LaTeXReport_template/**/*.synctex.gz
+/docs/report/LaTeXReport_template/**/*.toc
+/docs/report/LaTeXReport_template/References/*.bib.bak

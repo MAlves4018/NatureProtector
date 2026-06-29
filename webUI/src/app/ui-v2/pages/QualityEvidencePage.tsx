@@ -11,8 +11,8 @@ type EvidenceItem = ReturnType<typeof useUiV2>['evidenceItems'][number];
 export function QualityEvidencePage() {
   const { copy, qaSuites, evidenceItems } = useUiV2();
   const latest = qaSuites[0] ?? null;
-  const historical = evidenceItems.filter(item => item.environment !== 'Current UI/API session');
-  const runtimeEvidence = evidenceItems.filter(item => item.environment === 'Current UI/API session');
+  const historical = evidenceItems.filter((item) => item.environment !== 'Current UI/API session');
+  const runtimeEvidence = evidenceItems.filter((item) => item.environment === 'Current UI/API session');
 
   return (
     <section className="ui-v2-page">
@@ -25,10 +25,22 @@ export function QualityEvidencePage() {
           </div>
           <p>{latest.suiteName}</p>
           <div className="ui-v2-fact-list">
-            <span><strong>{copy('technical.testDefinition')}</strong>{latest.testDefinition}</span>
-            <span><strong>{copy('technical.testExecution')}</strong>{latest.testExecution}</span>
-            <span><strong>{copy('technical.environment')}</strong>{latest.environment}</span>
-            <span><strong>{copy('technical.coverage')}</strong>{latest.coverage}</span>
+            <span>
+              <strong>{copy('technical.testDefinition')}</strong>
+              {latest.testDefinition}
+            </span>
+            <span>
+              <strong>{copy('technical.testExecution')}</strong>
+              {latest.testExecution}
+            </span>
+            <span>
+              <strong>{copy('technical.environment')}</strong>
+              {latest.environment}
+            </span>
+            <span>
+              <strong>{copy('technical.coverage')}</strong>
+              {latest.coverage}
+            </span>
           </div>
         </section>
       )}
@@ -46,7 +58,7 @@ function EvidenceSection({ title, items }: { title: string; items: ReturnType<ty
     <section className="ui-v2-panel">
       <h3>{title}</h3>
       <div className="ui-v2-grid">
-        {items.map(item => (
+        {items.map((item) => (
           <article className="ui-v2-card" key={item.evidenceId}>
             <div className="ui-v2-section-heading">
               <h4>{item.title}</h4>
@@ -54,10 +66,20 @@ function EvidenceSection({ title, items }: { title: string; items: ReturnType<ty
             </div>
             <p>{item.scope}</p>
             <span className="ui-v2-label">{copy('technical.supports')}</span>
-            <ul>{item.supportsClaims.map(claim => <li key={claim}>{claim}</li>)}</ul>
+            <ul>
+              {item.supportsClaims.map((claim) => (
+                <li key={claim}>{claim}</li>
+              ))}
+            </ul>
             <span className="ui-v2-label">{copy('technical.notSupport')}</span>
-            <ul>{item.doesNotSupportClaims.map(claim => <li key={claim}>{claim}</li>)}</ul>
-            {item.reference.startsWith('/api/') && item.availability === 'ready' && <EvidenceDownloadButton item={item} />}
+            <ul>
+              {item.doesNotSupportClaims.map((claim) => (
+                <li key={claim}>{claim}</li>
+              ))}
+            </ul>
+            {item.reference.startsWith('/api/') && item.availability === 'ready' && (
+              <EvidenceDownloadButton item={item} />
+            )}
           </article>
         ))}
       </div>
@@ -105,7 +127,5 @@ function triggerBrowserDownload(blob: Blob, filename: string) {
 }
 
 function defaultEvidenceFilename(item: EvidenceItem) {
-  return item.type.toLowerCase().includes('json')
-    ? `${item.evidenceId}.json`
-    : `${item.evidenceId}.txt`;
+  return item.type.toLowerCase().includes('json') ? `${item.evidenceId}.json` : `${item.evidenceId}.txt`;
 }

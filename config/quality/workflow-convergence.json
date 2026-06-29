@@ -1,0 +1,50 @@
+{
+  "schema_version": 3,
+  "policy": "ONGOING_DEPLOYMENT_WORKFLOW_POLICY_WITH_HISTORICAL_SNAPSHOT",
+  "canonical_repository_sha256": "b44c0d38e55bef14b00fc7177e20c19a54e2230206f1000869ffa79a61a5eff2",
+  "canonical_deployment_workflows": {
+    "_deploy.yml": "b9da5b9c8e1dff1a2dc18aec75163b4d8ac43685f44c8a39ddd2b46d66919629",
+    "_qualify.yml": "f858bd91ec65e314c4cc4d164a25c77ce7483dba6a6b3a60c90ff9a33feed11e",
+    "_release.yml": "8202c2e4b31d783a96026829295dfd64deab277175bc66016be2ae9993b843bb",
+    "_validate.yml": "efd595d072aafc9bb7baf60dd5c590575de91cd2c2f2b9e56720d07da7f909bf",
+    "cd-staging.yml": "e54502a18210401148a38672f16803230e498881bb2f0dd77e69905e5e28abc7",
+    "ci.yml": "3af1cbb8d5e3b1d65355d94dd9a5969c815922c316c7d3e07a08bd3852689590",
+    "engineering-foundations.yml": "9f228375c8857d7698194e1cbfc35675be1b255e58d4bf47ce09fd799bd016f1",
+    "gcp-g8-1-deploy-staging.yml": "1e27816a0a31308fe3921a3f75d45f4e3bd2e5ceebf77fdaac306988c6ce932a",
+    "gcp-g8-1-production-policy.yml": "df326e36289b78f1663f95e2fcb49f87a3ae40e49a9a05c160991043426db84c",
+    "gcp-g8-1-promote-production.yml": "df8c734f09c6fd35e6fed6ccc90838c86457406434cec324e3ad1ead047cf0c8",
+    "gcp-g8-1-release.yml": "e6adaae4b11a81986ec6a67cb33402f16d89052f8bc19b61f6913de5631f36ff",
+    "gcp-g8-1-teardown.yml": "19387b2f6fbe99dd6dd612e21b4a3024764ac3baa472c9b6eb408ff8e7aecc40",
+    "gcp-g8-2-authorization-request.yml": "889ab1402bcd4f923ea5f4d759b7eb0a32cbd71aa2ba00f573f4ad002dcb5cae",
+    "gcp-g8-2-authorization-verification.yml": "658e5cdd0c1e32b49245a1432b357eea70648d7dddb1274ee52cacfcc78e27f8",
+    "gcp-g8-2-independent-review.yml": "4dd1c41b50560ff4de64e061349783c15fc3dc04225eb83e4cad63ecd062567a",
+    "gcp-g8-2-policy.yml": "2a382ac3d951d8105278bd5c73af88789f3e5db33f4f3998264d92ad13c3cf6e",
+    "gcp-g8-2-runtime-probe.yml": "cb47af46b9fdca1833bb931a86f7ac8478ff86628fd71066e1704cae287a463c",
+    "gcp-g8-2-runtime-qualification.yml": "c16a8494700f64239a4deb1e12e875c8e339970046b85b3fe52f0d45715f4520",
+    "gcp-g8-2-submit-signed-governance.yml": "40c6059328f5c6b7fabce27d601cd1280982c752d7aa6f9c1061faaed8f621d6",
+    "gcp-g9-convergence-policy.yml": "a87025174851536c462271a3003b12ad4d9043c6c1e4bf22027d9da064f8c98a",
+    "open-staging.yml": "7ea323a85e2f6abf28e7fdd900d85617433db7be855eaa10556cde132ba2daae",
+    "release-candidate.yml": "d3a6956405ab60c96165393f8204c15861bc22886ff7483e313992939359add7",
+    "rollback-staging.yml": "94af8e762f149382b85e4154d275c5f7d08fb32cfc63e8d7800da204ef25c246",
+    "security.yml": "e8b4132636c28496de2b59c77f4b8c46e4b6004356cb72a4aa7284a581da0a16",
+    "teardown-staging.yml": "1bc4e593e8ac17d9bd33c22fc53ca844d0688fafd6047edcced4e8b64ee8528b",
+    "wif-deploy-probe.yml": "187172402c86704e572fc4fb729516552e864ef9d915e7a86ffc5eee8accf8d9",
+    "wif-readonly-probe.yml": "8215b50371672851591ba5ac73ee056bebfed3c91dceefc77f759bb1b344c778"
+  },
+  "tooling_workflow": "quality-guardrails.yml",
+  "production_markers": {
+    "gcp-g8-1-production-policy.yml": [
+      "G8.1 cloud production policy",
+      "Test-G81Static.py"
+    ],
+    "gcp-g8-1-promote-production.yml": [
+      "environment: production",
+      "PROMOTE_VERIFIED_RELEASE_TO_PRODUCTION"
+    ],
+    "gcp-g8-1-teardown.yml": [
+      "environment: production-operations"
+    ]
+  },
+  "minimum_workflow_count": 28,
+  "historical_snapshot_only": true
+}

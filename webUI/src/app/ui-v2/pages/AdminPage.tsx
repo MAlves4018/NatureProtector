@@ -22,7 +22,7 @@ export function AdminPage() {
             </tr>
           </thead>
           <tbody>
-            {adminActions.map(action => (
+            {adminActions.map((action) => (
               <tr key={`${action.capability}-${action.action}`}>
                 <td>{action.action}</td>
                 <td>{action.capability}</td>
@@ -30,7 +30,9 @@ export function AdminPage() {
                 <td>{action.authorizationState}</td>
                 <td>{action.confirmationRequired}</td>
                 <td>{action.auditAvailable}</td>
-                <td><StatusBadge label={action.availability} state={action.availability} /></td>
+                <td>
+                  <StatusBadge label={action.availability} state={action.availability} />
+                </td>
               </tr>
             ))}
           </tbody>

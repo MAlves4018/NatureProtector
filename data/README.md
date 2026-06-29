@@ -73,8 +73,8 @@ A ordem certa de confiança é:
 
 A explicação completa de setup, comandos, ordem dos passos e resultado esperado de cada etapa está em:
 
-- [scripts/data/README.md](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/README.md)
-- [docs/planing/pipeline-gap-and-dependency-map.md](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/docs/planning/pipeline-gap-and-dependency-map.md)
+- [scripts/data/README.md](../scripts/data/README.md)
+- [docs/planing/pipeline-gap-and-dependency-map.md](../docs/planning/pipeline-gap-and-dependency-map.md)
 
 Esse README conta a história completa da aquisição e curadoria de dados para `Proença-a-Nova`.
 

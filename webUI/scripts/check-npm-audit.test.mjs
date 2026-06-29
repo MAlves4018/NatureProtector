@@ -27,9 +27,7 @@ test('allows only the known Vite esbuild advisory chain from the explicit allowl
   const policy = readPolicy(fixture);
   assert.equal(policy.ok, true);
   assert.equal(policy.allowed.length, 3);
-  assert.deepEqual(
-    policy.allowed.map((entry) => entry.package).sort(),
-    ['@vitejs/plugin-react', 'esbuild', 'vite']);
+  assert.deepEqual(policy.allowed.map((entry) => entry.package).sort(), ['@vitejs/plugin-react', 'esbuild', 'vite']);
 });
 
 test('blocks an allowed advisory when a new dependency path appears', () => {
@@ -38,8 +36,8 @@ test('blocks an allowed advisory when a new dependency path appears', () => {
     devDependencies: {
       '@vitejs/plugin-react': '4.7.0',
       vite: '6.4.3',
-      'other-tool': '1.0.0'
-    }
+      'other-tool': '1.0.0',
+    },
   });
   const result = runAuditScript(fixture, 'allowed-vite-chain');
 
@@ -52,7 +50,7 @@ test('blocks an allowed advisory when a new dependency path appears', () => {
 test('blocks a new direct high runtime advisory', () => {
   const fixture = createFixture({
     dependencies: { 'bad-runtime': '1.0.0' },
-    devDependencies: {}
+    devDependencies: {},
   });
   const result = runAuditScript(fixture, 'direct-runtime-high');
 
@@ -65,7 +63,7 @@ test('blocks a new direct high runtime advisory', () => {
 test('blocks a high transitive advisory reachable from runtime dependencies', () => {
   const fixture = createFixture({
     dependencies: { 'app-lib': '1.0.0' },
-    devDependencies: {}
+    devDependencies: {},
   });
   const result = runAuditScript(fixture, 'transitive-runtime-high');
 
@@ -121,25 +119,31 @@ function createFixture({
   dependencies = {},
   devDependencies = {
     '@vitejs/plugin-react': '4.7.0',
-    vite: '6.4.3'
-  }
+    vite: '6.4.3',
+  },
 } = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'np-npm-audit-'));
   writeFileSync(
     join(directory, 'package.json'),
-    `${JSON.stringify({
-      name: 'webui-audit-fixture',
-      version: '0.0.0',
-      private: true,
-      dependencies,
-      devDependencies
-    }, null, 2)}\n`);
+    `${JSON.stringify(
+      {
+        name: 'webui-audit-fixture',
+        version: '0.0.0',
+        private: true,
+        dependencies,
+        devDependencies,
+      },
+      null,
+      2,
+    )}\n`,
+  );
   writeFileSync(
     join(directory, 'package-lock.json'),
-    `${JSON.stringify(createPackageLock({ dependencies, devDependencies }), null, 2)}\n`);
+    `${JSON.stringify(createPackageLock({ dependencies, devDependencies }), null, 2)}\n`,
+  );
   return {
     directory,
-    outputPath: join(directory, 'npm-audit.json')
+    outputPath: join(directory, 'npm-audit.json'),
   };
 }
 
@@ -154,38 +158,38 @@ function createPackageLock({ dependencies, devDependencies }) {
         name: 'webui-audit-fixture',
         version: '0.0.0',
         dependencies,
-        devDependencies
+        devDependencies,
       },
       'node_modules/@vitejs/plugin-react': {
         version: '4.7.0',
         dev: true,
-        peerDependencies: { vite: '^6.0.0' }
+        peerDependencies: { vite: '^6.0.0' },
       },
       'node_modules/vite': {
         version: '6.4.3',
         dev: true,
-        dependencies: { esbuild: '^0.25.0' }
+        dependencies: { esbuild: '^0.25.0' },
       },
       'node_modules/esbuild': {
         version: '0.25.0',
-        dev: true
+        dev: true,
       },
       'node_modules/bad-runtime': {
-        version: '1.0.0'
+        version: '1.0.0',
       },
       'node_modules/app-lib': {
         version: '1.0.0',
-        dependencies: { 'bad-transitive': '1.0.0' }
+        dependencies: { 'bad-transitive': '1.0.0' },
       },
       'node_modules/other-tool': {
         version: '1.0.0',
         dev: true,
-        dependencies: { esbuild: '^0.25.0' }
+        dependencies: { esbuild: '^0.25.0' },
       },
       'node_modules/bad-transitive': {
-        version: '1.0.0'
-      }
-    }
+        version: '1.0.0',
+      },
+    },
   };
 }
 
@@ -213,20 +217,17 @@ process.stdout.write(JSON.stringify(report.body));
 process.exit(report.exitCode);
 `;
 
-  return spawnSync(
-    process.execPath,
-    [scriptPath, fixture.outputPath],
-    {
-      cwd: fixture.directory,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        NP_NPM_AUDIT_COMMAND: process.execPath,
-        NP_NPM_AUDIT_ARGS: JSON.stringify(['-e', fakeAudit, scenario]),
-        NP_NPM_AUDIT_ALLOWLIST: allowlistPath,
-        NP_NPM_AUDIT_NOW: '2026-06-15T00:00:00Z'
-      }
-    });
+  return spawnSync(process.execPath, [scriptPath, fixture.outputPath], {
+    cwd: fixture.directory,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      NP_NPM_AUDIT_COMMAND: process.execPath,
+      NP_NPM_AUDIT_ARGS: JSON.stringify(['-e', fakeAudit, scenario]),
+      NP_NPM_AUDIT_ALLOWLIST: allowlistPath,
+      NP_NPM_AUDIT_NOW: '2026-06-15T00:00:00Z',
+    },
+  });
 }
 
 function readPolicy(fixture) {
@@ -245,7 +246,7 @@ function auditReports() {
   return {
     clean: {
       exitCode: 0,
-      body: baseReport({})
+      body: baseReport({}),
     },
     'allowed-vite-chain': {
       exitCode: 1,
@@ -257,7 +258,7 @@ function auditReports() {
           via: ['vite'],
           effects: [],
           range: '4.0.0-beta.0 - 5.1.4',
-          nodes: ['node_modules/@vitejs/plugin-react']
+          nodes: ['node_modules/@vitejs/plugin-react'],
         },
         vite: {
           name: 'vite',
@@ -266,7 +267,7 @@ function auditReports() {
           via: ['esbuild'],
           effects: ['@vitejs/plugin-react'],
           range: '4.2.0-beta.0 - 8.0.3',
-          nodes: ['node_modules/vite']
+          nodes: ['node_modules/vite'],
         },
         esbuild: {
           name: 'esbuild',
@@ -275,9 +276,9 @@ function auditReports() {
           via: [advisory('esbuild')],
           effects: ['vite'],
           range: '0.17.0 - 0.28.0',
-          nodes: ['node_modules/esbuild']
-        }
-      })
+          nodes: ['node_modules/esbuild'],
+        },
+      }),
     },
     'direct-runtime-high': {
       exitCode: 1,
@@ -289,9 +290,9 @@ function auditReports() {
           via: [advisory('bad-runtime')],
           effects: [],
           range: '<=1.0.0',
-          nodes: ['node_modules/bad-runtime']
-        }
-      })
+          nodes: ['node_modules/bad-runtime'],
+        },
+      }),
     },
     'transitive-runtime-high': {
       exitCode: 1,
@@ -303,15 +304,15 @@ function auditReports() {
           via: [advisory('bad-transitive')],
           effects: [],
           range: '<=1.0.0',
-          nodes: ['node_modules/bad-transitive']
-        }
-      })
+          nodes: ['node_modules/bad-transitive'],
+        },
+      }),
     },
     'missing-field': {
       exitCode: 1,
       body: {
-        auditReportVersion: 2
-      }
+        auditReportVersion: 2,
+      },
     },
     'unknown-path-high': {
       exitCode: 1,
@@ -323,10 +324,10 @@ function auditReports() {
           via: [advisory('unknown-package')],
           effects: [],
           range: '<=1.0.0',
-          nodes: ['node_modules/unknown-package']
-        }
-      })
-    }
+          nodes: ['node_modules/unknown-package'],
+        },
+      }),
+    },
   };
 }
 
@@ -343,9 +344,9 @@ function baseReport(vulnerabilities) {
         moderate: 0,
         high,
         critical,
-        total: Object.keys(vulnerabilities).length
-      }
-    }
+        total: Object.keys(vulnerabilities).length,
+      },
+    },
   };
 }
 
@@ -357,6 +358,6 @@ function advisory(packageName) {
     title: `${packageName} advisory`,
     url: 'https://github.com/advisories/GHSA-gv7w-rqvm-qjhr',
     severity: 'high',
-    range: '<=1.0.0'
+    range: '<=1.0.0',
   };
 }

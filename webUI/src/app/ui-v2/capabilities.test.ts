@@ -52,13 +52,22 @@ describe('UI v2 capabilities', () => {
   it('derives navigation entries from capabilities', () => {
     const navigation = getUiV2Pages(new Set(['demo.read', 'data_context.read', 'help.read']));
 
-    expect(navigation.map(item => item.id)).toEqual(['demo', 'context']);
+    expect(navigation.map((item) => item.id)).toEqual(['demo', 'context']);
   });
 
-  it('combines quality and evidence into one Pipeline task page', () => {
+  it('exposes mission, quality and evidence as separate read-only Pipeline tasks', () => {
     const navigation = getUiV2Pages(getUiV2Capabilities({ roles: ['Pipeline'] }));
 
-    expect(navigation.map(item => item.id)).toEqual(['demo', 'context', 'risk', 'runs', 'pipeline', 'qa']);
-    expect(navigation.some(item => item.id === 'evidence')).toBe(false);
+    expect(navigation.map((item) => item.id)).toEqual([
+      'demo',
+      'context',
+      'mission',
+      'risk',
+      'runs',
+      'pipeline',
+      'quality',
+      'evidence',
+    ]);
+    expect(navigation.some((item) => item.id === 'deployments')).toBe(false);
   });
 });

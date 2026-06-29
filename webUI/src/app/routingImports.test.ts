@@ -7,9 +7,9 @@ describe('routing imports', () => {
   it('keeps browser routing hooks on react-router-dom', () => {
     const sourceRoot = dirname(fileURLToPath(import.meta.url));
     const offenders = findSourceFiles(sourceRoot)
-      .filter(filePath => !filePath.endsWith('.test.ts') && !filePath.endsWith('.test.tsx'))
-      .filter(filePath => /\bfrom\s+['"]react-router['"]/.test(readFileSync(filePath, 'utf8')))
-      .map(filePath => relative(sourceRoot, filePath).replaceAll('\\', '/'))
+      .filter((filePath) => !filePath.endsWith('.test.ts') && !filePath.endsWith('.test.tsx'))
+      .filter((filePath) => /\bfrom\s+['"]react-router['"]/.test(readFileSync(filePath, 'utf8')))
+      .map((filePath) => relative(sourceRoot, filePath).replaceAll('\\', '/'))
       .sort();
 
     expect(offenders).toEqual([]);
@@ -18,15 +18,16 @@ describe('routing imports', () => {
   it('keeps frontend environment access limited to Vite public variables', () => {
     const sourceRoot = dirname(fileURLToPath(import.meta.url));
     const offenders = findSourceFiles(sourceRoot)
-      .filter(filePath => !filePath.endsWith('.test.ts') && !filePath.endsWith('.test.tsx'))
-      .flatMap(filePath => {
+      .filter((filePath) => !filePath.endsWith('.test.ts') && !filePath.endsWith('.test.tsx'))
+      .flatMap((filePath) => {
         const relativePath = relative(sourceRoot, filePath).replaceAll('\\', '/');
         const source = readFileSync(filePath, 'utf8');
-        const processEnvHits = [...source.matchAll(/\bprocess\.env\b/g)]
-          .map(match => `${relativePath}:${lineNumberFor(source, match.index ?? 0)} uses process.env`);
+        const processEnvHits = [...source.matchAll(/\bprocess\.env\b/g)].map(
+          (match) => `${relativePath}:${lineNumberFor(source, match.index ?? 0)} uses process.env`,
+        );
         const privateViteEnvHits = findImportMetaEnvAccesses(source)
-          .filter(access => access.variable === null || !access.variable.startsWith('VITE_'))
-          .map(access => `${relativePath}:${access.line} uses ${access.expression}`);
+          .filter((access) => access.variable === null || !access.variable.startsWith('VITE_'))
+          .map((access) => `${relativePath}:${access.line} uses ${access.expression}`);
 
         return [...processEnvHits, ...privateViteEnvHits];
       })
@@ -38,13 +39,13 @@ describe('routing imports', () => {
   it('keeps browser app source free of Node-only imports', () => {
     const sourceRoot = dirname(fileURLToPath(import.meta.url));
     const offenders = findSourceFiles(sourceRoot)
-      .filter(filePath => !filePath.endsWith('.test.ts') && !filePath.endsWith('.test.tsx'))
-      .flatMap(filePath => {
+      .filter((filePath) => !filePath.endsWith('.test.ts') && !filePath.endsWith('.test.tsx'))
+      .flatMap((filePath) => {
         const relativePath = relative(sourceRoot, filePath).replaceAll('\\', '/');
         const source = readFileSync(filePath, 'utf8');
         return findStaticModuleImports(source)
-          .filter(importedModule => isNodeOnlyModule(importedModule.moduleName))
-          .map(importedModule => `${relativePath}:${importedModule.line} imports ${importedModule.moduleName}`);
+          .filter((importedModule) => isNodeOnlyModule(importedModule.moduleName))
+          .map((importedModule) => `${relativePath}:${importedModule.line} imports ${importedModule.moduleName}`);
       })
       .sort();
 
@@ -54,13 +55,13 @@ describe('routing imports', () => {
   it('keeps browser app console logging free of user, token and session data', () => {
     const sourceRoot = dirname(fileURLToPath(import.meta.url));
     const offenders = findSourceFiles(sourceRoot)
-      .filter(filePath => !filePath.endsWith('.test.ts') && !filePath.endsWith('.test.tsx'))
-      .flatMap(filePath => {
+      .filter((filePath) => !filePath.endsWith('.test.ts') && !filePath.endsWith('.test.tsx'))
+      .flatMap((filePath) => {
         const relativePath = relative(sourceRoot, filePath).replaceAll('\\', '/');
         const source = readFileSync(filePath, 'utf8');
         return findConsoleStatements(source)
-          .filter(statement => sensitiveConsoleTerms.some(term => statement.text.toLowerCase().includes(term)))
-          .map(statement => `${relativePath}:${statement.line} logs sensitive session/user context`);
+          .filter((statement) => sensitiveConsoleTerms.some((term) => statement.text.toLowerCase().includes(term)))
+          .map((statement) => `${relativePath}:${statement.line} logs sensitive session/user context`);
       })
       .sort();
 
@@ -69,26 +70,27 @@ describe('routing imports', () => {
 });
 
 function findSourceFiles(directory: string): string[] {
-  return readdirSync(directory)
-    .flatMap(entry => {
-      const path = join(directory, entry);
-      const stats = statSync(path);
+  return readdirSync(directory).flatMap((entry) => {
+    const path = join(directory, entry);
+    const stats = statSync(path);
 
-      if (stats.isDirectory()) {
-        return findSourceFiles(path);
-      }
+    if (stats.isDirectory()) {
+      return findSourceFiles(path);
+    }
 
-      return /\.(ts|tsx)$/.test(entry) ? [path] : [];
-    });
+    return /\.(ts|tsx)$/.test(entry) ? [path] : [];
+  });
 }
 
 function lineNumberFor(source: string, index: number): number {
   return source.slice(0, index).split('\n').length;
 }
 
-function findImportMetaEnvAccesses(source: string): Array<{ expression: string; line: number; variable: string | null }> {
-  return [...source.matchAll(/\bimport\.meta\.env(?:\.([A-Za-z0-9_]+)|\[['"]([^'"]+)['"]\]|\[([^\]]+)\])?/g)]
-    .map(match => {
+function findImportMetaEnvAccesses(
+  source: string,
+): Array<{ expression: string; line: number; variable: string | null }> {
+  return [...source.matchAll(/\bimport\.meta\.env(?:\.([A-Za-z0-9_]+)|\[['"]([^'"]+)['"]\]|\[([^\]]+)\])?/g)].map(
+    (match) => {
       const variable = match[1] ?? match[2] ?? null;
 
       return {
@@ -96,15 +98,19 @@ function findImportMetaEnvAccesses(source: string): Array<{ expression: string; 
         line: lineNumberFor(source, match.index ?? 0),
         variable,
       };
-    });
+    },
+  );
 }
 
 function findStaticModuleImports(source: string): Array<{ line: number; moduleName: string }> {
-  return [...source.matchAll(/\bfrom\s+['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)|\brequire\(\s*['"]([^'"]+)['"]\s*\)/g)]
-    .map(match => ({
-      line: lineNumberFor(source, match.index ?? 0),
-      moduleName: match[1] ?? match[2] ?? match[3],
-    }));
+  return [
+    ...source.matchAll(
+      /\bfrom\s+['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)|\brequire\(\s*['"]([^'"]+)['"]\s*\)/g,
+    ),
+  ].map((match) => ({
+    line: lineNumberFor(source, match.index ?? 0),
+    moduleName: match[1] ?? match[2] ?? match[3],
+  }));
 }
 
 function isNodeOnlyModule(moduleName: string): boolean {
@@ -114,11 +120,10 @@ function isNodeOnlyModule(moduleName: string): boolean {
 }
 
 function findConsoleStatements(source: string): Array<{ line: number; text: string }> {
-  return [...source.matchAll(/\bconsole\.(?:log|warn|error|info|debug)\s*\(([^;\n]*)/g)]
-    .map(match => ({
-      line: lineNumberFor(source, match.index ?? 0),
-      text: match[0],
-    }));
+  return [...source.matchAll(/\bconsole\.(?:log|warn|error|info|debug)\s*\(([^;\n]*)/g)].map((match) => ({
+    line: lineNumberFor(source, match.index ?? 0),
+    text: match[0],
+  }));
 }
 
 const nodeOnlyModules = new Set([

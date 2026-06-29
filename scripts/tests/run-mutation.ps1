@@ -24,21 +24,9 @@ param(
     [switch]$NoRun
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
-
-function Find-RepositoryRoot {
-    $current = Get-Item -LiteralPath $PSScriptRoot
-    while ($null -ne $current) {
-        if ((Test-Path -LiteralPath (Join-Path $current.FullName "NatureProtector.sln")) -and
-            (Test-Path -LiteralPath (Join-Path $current.FullName "stryker-config.json"))) {
-            return $current.FullName
-        }
-
-        $current = $current.Parent
-    }
-
-    throw "Could not locate repository root from $PSScriptRoot."
-}
 
 function Resolve-UnderRoot {
     param(
@@ -58,21 +46,6 @@ function Resolve-UnderRoot {
     if (-not ($fullPath.StartsWith($rootFullPath.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -or
         [string]::Equals($fullPath, $rootFullPath, [System.StringComparison]::OrdinalIgnoreCase))) {
         throw "Refusing to write outside repository root: $fullPath"
-    }
-
-    return $fullPath
-}
-
-function Get-RelativePath {
-    param(
-        [string]$Root,
-        [string]$Path
-    )
-
-    $fullRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    if ($fullPath.StartsWith($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        return $fullPath.Substring($fullRoot.Length).TrimStart('\', '/')
     }
 
     return $fullPath
@@ -417,7 +390,7 @@ function Write-MutationDiagnostics {
     $markdown | Set-Content -LiteralPath $Path -Encoding UTF8
 }
 
-$repoRoot = Find-RepositoryRoot
+$repoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln', 'stryker-config.json')
 $outputRootPath = Resolve-UnderRoot $repoRoot $OutputRoot
 $runId = Get-Date -Format "yyyyMMdd-HHmmss"
 $runDirectory = Join-Path $outputRootPath $runId
@@ -477,7 +450,7 @@ if ($Profile -eq "Smoke") {
     }
 
     $smokeConfig | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $smokeConfigPath -Encoding UTF8
-    $effectiveConfigRelativePath = Get-RelativePath $repoRoot $smokeConfigPath
+    $effectiveConfigRelativePath = Get-NpPathUnderRoot $repoRoot $smokeConfigPath
 }
 
 $stdoutPath = Join-Path $runDirectory "stdout.log"

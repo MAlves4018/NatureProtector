@@ -40,7 +40,7 @@ function StatusItem({ label, value }: { label: string; value: string }) {
 }
 
 function fieldValue(fields: UiV2ContextField[], key: string, fallback: string) {
-  return fields.find(field => field.key === key)?.value ?? fallback;
+  return fields.find((field) => field.key === key)?.value ?? fallback;
 }
 
 function stateLabelKey(state: string) {

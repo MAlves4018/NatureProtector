@@ -5,14 +5,14 @@ import { localize } from '../types';
 
 export function BetaParityLinks({ ids }: { ids?: readonly string[] }) {
   const { locale, resolvedAreaCode, copy } = useUiV2();
-  const links = ids ? BETA_CAPABILITIES.filter(item => ids.includes(item.id)) : BETA_CAPABILITIES;
+  const links = ids ? BETA_CAPABILITIES.filter((item) => ids.includes(item.id)) : BETA_CAPABILITIES;
 
   return (
     <section className="ui-v2-panel ui-v2-panel-muted">
       <h3>Beta parity</h3>
       <p>{copy('footer.beta')}</p>
       <div className="ui-v2-beta-list">
-        {links.map(item => {
+        {links.map((item) => {
           const href = item.href(resolvedAreaCode);
           return (
             <div key={item.id} className="ui-v2-beta-item">

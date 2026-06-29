@@ -1,0 +1,2487 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-PT" xml:lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Miguel Alves" />
+  <title>NatureProtector - Comp��ndio Completo de Estudo</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="/mnt/data/np_doc_impl/build_outputs/compendium/compendium.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">NatureProtector - Comp��ndio Completo de Estudo</h1>
+<p class="author">Miguel Alves</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#natureprotector---compêndio-completo-de-estudo"
+id="toc-natureprotector---compêndio-completo-de-estudo">NatureProtector
+- Compêndio Completo de Estudo</a>
+<ul>
+<li><a href="#como-usar-este-documento"
+id="toc-como-usar-este-documento">Como usar este documento</a></li>
+<li><a href="#regra-de-ouro" id="toc-regra-de-ouro">Regra de
+ouro</a></li>
+<li><a href="#mapa-mental-de-uma-página"
+id="toc-mapa-mental-de-uma-página">Mapa mental de uma página</a></li>
+</ul></li>
+<li><a href="#parte-i---narrativa-problema-e-identidade"
+id="toc-parte-i---narrativa-problema-e-identidade">Parte I - Narrativa,
+problema e identidade</a>
+<ul>
+<li><a href="#pitch-de-30-segundos" id="toc-pitch-de-30-segundos">1.
+Pitch de 30 segundos</a></li>
+<li><a href="#problema" id="toc-problema">2. Problema</a></li>
+<li><a href="#objetivos" id="toc-objetivos">3. Objetivos</a></li>
+<li><a href="#âmbito-e-exclusões" id="toc-âmbito-e-exclusões">4. Âmbito
+e exclusões</a></li>
+<li><a href="#evolução-resumida" id="toc-evolução-resumida">5. Evolução
+resumida</a></li>
+<li><a href="#contribuição-e-responsabilidade"
+id="toc-contribuição-e-responsabilidade">6. Contribuição e
+responsabilidade</a></li>
+<li><a href="#como-contar-a-história" id="toc-como-contar-a-história">7.
+Como contar a história</a></li>
+</ul></li>
+<li><a href="#parte-ii---arquitetura-e-componentes"
+id="toc-parte-ii---arquitetura-e-componentes">Parte II - Arquitetura e
+componentes</a>
+<ul>
+<li><a href="#visão-por-containers" id="toc-visão-por-containers">8.
+Visão por containers</a>
+<ul>
+<li><a href="#simulator.host"
+id="toc-simulator.host">Simulator.Host</a></li>
+<li><a href="#rabbitmq" id="toc-rabbitmq">RabbitMQ</a></li>
+<li><a href="#prevention.host-e-prevention"
+id="toc-prevention.host-e-prevention">Prevention.Host e
+Prevention</a></li>
+<li><a href="#postgresql" id="toc-postgresql">PostgreSQL</a></li>
+<li><a href="#influxdb-e-grafana" id="toc-influxdb-e-grafana">InfluxDB e
+Grafana</a></li>
+<li><a href="#backoffice-api-e-webui"
+id="toc-backoffice-api-e-webui">Backoffice API e webUI</a></li>
+<li><a href="#github-actions-e-gcp" id="toc-github-actions-e-gcp">GitHub
+Actions e GCP</a></li>
+</ul></li>
+<li><a href="#inventário-da-solução-.net"
+id="toc-inventário-da-solução-.net">9. Inventário da solução
+.NET</a></li>
+<li><a href="#fluxo-nominal-de-uma-leitura"
+id="toc-fluxo-nominal-de-uma-leitura">10. Fluxo nominal de uma
+leitura</a></li>
+<li><a href="#falhas-retry-e-quarentena"
+id="toc-falhas-retry-e-quarentena">11. Falhas, retry e
+quarentena</a></li>
+<li><a href="#semântica-temporal" id="toc-semântica-temporal">12.
+Semântica temporal</a></li>
+<li><a href="#catálogo-de-eventos-e-sinais"
+id="toc-catálogo-de-eventos-e-sinais">13. Catálogo de eventos e
+sinais</a></li>
+<li><a href="#operations-control-plane"
+id="toc-operations-control-plane">14. Operations Control Plane</a>
+<ul>
+<li><a href="#estado-típico" id="toc-estado-típico">Estado
+típico</a></li>
+<li><a href="#princípio-de-segurança"
+id="toc-princípio-de-segurança">Princípio de segurança</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#parte-iii---dados-cenários-qualidade-e-risco"
+id="toc-parte-iii---dados-cenários-qualidade-e-risco">Parte III - Dados,
+cenários, qualidade e risco</a>
+<ul>
+<li><a href="#área-piloto-e-fontes" id="toc-área-piloto-e-fontes">15.
+Área piloto e fontes</a></li>
+<li><a href="#cenários" id="toc-cenários">16. Cenários</a></li>
+<li><a href="#degradações" id="toc-degradações">17. Degradações</a></li>
+<li><a href="#qualidade-antes-do-score"
+id="toc-qualidade-antes-do-score">18. Qualidade antes do score</a></li>
+<li><a href="#métodos-candidatos" id="toc-métodos-candidatos">19.
+Métodos candidatos</a>
+<ul>
+<li><a href="#score-natureprotector"
+id="toc-score-natureprotector">Score NatureProtector</a></li>
+<li><a href="#fwi" id="toc-fwi">FWI</a></li>
+<li><a href="#kbdi" id="toc-kbdi">KBDI</a></li>
+<li><a href="#portuguese-context-proxy"
+id="toc-portuguese-context-proxy">Portuguese Context Proxy</a></li>
+</ul></li>
+<li><a href="#validade-científica" id="toc-validade-científica">20.
+Validade científica</a></li>
+</ul></li>
+<li><a href="#parte-iv---persistência-api-ui-e-autorização"
+id="toc-parte-iv---persistência-api-ui-e-autorização">Parte IV -
+Persistência, API, UI e autorização</a>
+<ul>
+<li><a href="#postgresql-como-autoridade"
+id="toc-postgresql-como-autoridade">21. PostgreSQL como autoridade</a>
+<ul>
+<li><a href="#control" id="toc-control"><code>control</code></a></li>
+<li><a href="#pipeline" id="toc-pipeline"><code>pipeline</code></a></li>
+<li><a href="#projection"
+id="toc-projection"><code>projection</code></a></li>
+</ul></li>
+<li><a href="#estados-da-inbox" id="toc-estados-da-inbox">22. Estados da
+inbox</a></li>
+<li><a href="#ui-por-jornada" id="toc-ui-por-jornada">23. UI por
+jornada</a></li>
+<li><a href="#roles-e-capabilities" id="toc-roles-e-capabilities">24.
+Roles e capabilities</a>
+<ul>
+<li><a href="#regra-essencial" id="toc-regra-essencial">Regra
+essencial</a></li>
+</ul></li>
+<li><a href="#catálogo-fechado-de-operações"
+id="toc-catálogo-fechado-de-operações">25. Catálogo fechado de
+operações</a>
+<ul>
+<li><a href="#como-interpretar-disponibilidade"
+id="toc-como-interpretar-disponibilidade">Como interpretar
+disponibilidade</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#parte-v---qualidade-evidence-observabilidade-e-segurança"
+id="toc-parte-v---qualidade-evidence-observabilidade-e-segurança">Parte
+V - Qualidade, evidence, observabilidade e segurança</a>
+<ul>
+<li><a href="#pirâmide-de-validação" id="toc-pirâmide-de-validação">26.
+Pirâmide de validação</a></li>
+<li><a href="#escada-de-evidence" id="toc-escada-de-evidence">27. Escada
+de evidence</a></li>
+<li><a href="#regra-dos-artifacts" id="toc-regra-dos-artifacts">28.
+Regra dos artifacts</a></li>
+<li><a href="#observabilidade" id="toc-observabilidade">29.
+Observabilidade</a></li>
+<li><a href="#modelo-de-segurança" id="toc-modelo-de-segurança">30.
+Modelo de segurança</a></li>
+<li><a href="#threats-a-explicar" id="toc-threats-a-explicar">31.
+Threats a explicar</a></li>
+</ul></li>
+<li><a href="#parte-vi---cicd-cloud-e-ciclo-de-release"
+id="toc-parte-vi---cicd-cloud-e-ciclo-de-release">Parte VI - CI/CD,
+cloud e ciclo de release</a>
+<ul>
+<li><a href="#topologia-e-promoção" id="toc-topologia-e-promoção">32.
+Topologia e promoção</a></li>
+<li><a href="#cadeia-de-delivery" id="toc-cadeia-de-delivery">33. Cadeia
+de delivery</a></li>
+<li><a href="#estado-factual" id="toc-estado-factual">34. Estado
+factual</a></li>
+<li><a href="#terraform-e-state" id="toc-terraform-e-state">35.
+Terraform e state</a></li>
+<li><a href="#destroy-seguro" id="toc-destroy-seguro">36. Destroy
+seguro</a></li>
+</ul></li>
+<li><a href="#parte-vii---operação-local-e-leitura-do-projeto"
+id="toc-parte-vii---operação-local-e-leitura-do-projeto">Parte VII -
+Operação local e leitura do projeto</a>
+<ul>
+<li><a href="#percurso-de-exploração-do-repositório"
+id="toc-percurso-de-exploração-do-repositório">37. Percurso de
+exploração do repositório</a></li>
+<li><a href="#sequência-local-conceptual"
+id="toc-sequência-local-conceptual">38. Sequência local
+conceptual</a></li>
+<li><a href="#diagnóstico-por-sintoma"
+id="toc-diagnóstico-por-sintoma">39. Diagnóstico por sintoma</a></li>
+<li><a href="#workflows-do-repositório"
+id="toc-workflows-do-repositório">40. Workflows do repositório</a></li>
+</ul></li>
+<li><a href="#parte-viii---demonstração-e-apresentação"
+id="toc-parte-viii---demonstração-e-apresentação">Parte VIII -
+Demonstração e apresentação</a>
+<ul>
+<li><a href="#demonstração-recomendada"
+id="toc-demonstração-recomendada">41. Demonstração recomendada</a></li>
+<li><a href="#plano-offline" id="toc-plano-offline">42. Plano
+offline</a></li>
+<li><a href="#estrutura-de-10-15-minutos"
+id="toc-estrutura-de-10-15-minutos">43. Estrutura de 10-15
+minutos</a></li>
+<li><a href="#frases-âncora" id="toc-frases-âncora">44.
+Frases-âncora</a></li>
+</ul></li>
+<li><a href="#parte-ix---banco-de-perguntas-da-defesa"
+id="toc-parte-ix---banco-de-perguntas-da-defesa">Parte IX - Banco de
+perguntas da defesa</a>
+<ul>
+<li><a href="#qual-é-a-contribuição-principal"
+id="toc-qual-é-a-contribuição-principal">1. Qual é a contribuição
+principal?</a></li>
+<li><a href="#porque-usar-simulação" id="toc-porque-usar-simulação">2.
+Porque usar simulação?</a></li>
+<li><a href="#porque-rabbitmq" id="toc-porque-rabbitmq">3. Porque
+RabbitMQ?</a></li>
+<li><a href="#porque-é-necessário-um-eventenvelope"
+id="toc-porque-é-necessário-um-eventenvelope">4. Porque é necessário um
+EventEnvelope?</a></li>
+<li><a href="#o-que-acontece-antes-do-ack"
+id="toc-o-que-acontece-antes-do-ack">5. O que acontece antes do
+ACK?</a></li>
+<li><a href="#o-que-distingue-rejected-de-quarantined"
+id="toc-o-que-distingue-rejected-de-quarantined">6. O que distingue
+Rejected de Quarantined?</a></li>
+<li><a href="#porque-postgresql-e-influxdb"
+id="toc-porque-postgresql-e-influxdb">7. Porque PostgreSQL e
+InfluxDB?</a></li>
+<li><a href="#como-são-tratados-valores-ausentes"
+id="toc-como-são-tratados-valores-ausentes">8. Como são tratados valores
+ausentes?</a></li>
+<li><a href="#qual-a-diferença-entre-qualidade-e-confiança"
+id="toc-qual-a-diferença-entre-qualidade-e-confiança">9. Qual a
+diferença entre qualidade e confiança?</a></li>
+<li><a href="#o-score-natureprotector-prevê-incêndios"
+id="toc-o-score-natureprotector-prevê-incêndios">10. O score
+NatureProtector prevê incêndios?</a></li>
+<li><a href="#o-fwi-está-validado" id="toc-o-fwi-está-validado">11. O
+FWI está validado?</a></li>
+<li><a href="#o-kbdi-está-validado" id="toc-o-kbdi-está-validado">12. O
+KBDI está validado?</a></li>
+<li><a href="#o-que-é-o-portuguese-context-proxy"
+id="toc-o-que-é-o-portuguese-context-proxy">13. O que é o Portuguese
+Context Proxy?</a></li>
+<li><a href="#porque-a-ui-é-organizada-por-tarefas"
+id="toc-porque-a-ui-é-organizada-por-tarefas">14. Porque a UI é
+organizada por tarefas?</a></li>
+<li><a href="#as-capabilities-do-frontend-são-segurança"
+id="toc-as-capabilities-do-frontend-são-segurança">15. As capabilities
+do frontend são segurança?</a></li>
+<li><a
+href="#porque-admin-não-pode-automaticamente-fazer-deploy-de-produção"
+id="toc-porque-admin-não-pode-automaticamente-fazer-deploy-de-produção">16.
+Porque Admin não pode automaticamente fazer deploy de produção?</a></li>
+<li><a href="#o-que-é-uma-engineeringoperation"
+id="toc-o-que-é-uma-engineeringoperation">17. O que é uma
+EngineeringOperation?</a></li>
+<li><a href="#porque-não-executar-shell-a-partir-da-api"
+id="toc-porque-não-executar-shell-a-partir-da-api">18. Porque não
+executar shell a partir da API?</a></li>
+<li><a href="#como-se-prova-uma-operação"
+id="toc-como-se-prova-uma-operação">19. Como se prova uma
+operação?</a></li>
+<li><a href="#qual-a-diferença-entre-implemented-e-proved"
+id="toc-qual-a-diferença-entre-implemented-e-proved">20. Qual a
+diferença entre IMPLEMENTED e PROVED?</a></li>
+<li><a href="#porque-fixar-github-actions-por-sha"
+id="toc-porque-fixar-github-actions-por-sha">21. Porque fixar GitHub
+Actions por SHA?</a></li>
+<li><a href="#o-que-é-wif" id="toc-o-que-é-wif">22. O que é
+WIF?</a></li>
+<li><a href="#porque-staging-antes-de-produção"
+id="toc-porque-staging-antes-de-produção">23. Porque staging antes de
+produção?</a></li>
+<li><a href="#o-sistema-está-em-produção"
+id="toc-o-sistema-está-em-produção">24. O sistema está em
+produção?</a></li>
+<li><a href="#como-funciona-rollback"
+id="toc-como-funciona-rollback">25. Como funciona rollback?</a></li>
+<li><a href="#como-deveria-funcionar-terraform-destroy"
+id="toc-como-deveria-funcionar-terraform-destroy">26. Como deveria
+funcionar terraform destroy?</a></li>
+<li><a href="#o-que-é-declarednotobserved"
+id="toc-o-que-é-declarednotobserved">27. O que é
+DeclaredNotObserved?</a></li>
+<li><a href="#como-é-garantida-reprodutibilidade-de-uma-run"
+id="toc-como-é-garantida-reprodutibilidade-de-uma-run">28. Como é
+garantida reprodutibilidade de uma run?</a></li>
+<li><a href="#porque-event_time-e-ingest_time-são-diferentes"
+id="toc-porque-event_time-e-ingest_time-são-diferentes">29. Porque
+event_time e ingest_time são diferentes?</a></li>
+<li><a href="#como-são-tratados-duplicados"
+id="toc-como-são-tratados-duplicados">30. Como são tratados
+duplicados?</a></li>
+<li><a href="#como-são-tratados-eventos-fora-de-ordem"
+id="toc-como-são-tratados-eventos-fora-de-ordem">31. Como são tratados
+eventos fora de ordem?</a></li>
+<li><a href="#que-observabilidade-existe"
+id="toc-que-observabilidade-existe">32. Que observabilidade
+existe?</a></li>
+<li><a href="#qual-é-a-maior-limitação-científica"
+id="toc-qual-é-a-maior-limitação-científica">33. Qual é a maior
+limitação científica?</a></li>
+<li><a href="#qual-é-a-maior-limitação-técnica-atual"
+id="toc-qual-é-a-maior-limitação-técnica-atual">34. Qual é a maior
+limitação técnica atual?</a></li>
+<li><a href="#porque-preservar-documentação-histórica"
+id="toc-porque-preservar-documentação-histórica">35. Porque preservar
+documentação histórica?</a></li>
+<li><a href="#como-a-ia-foi-usada" id="toc-como-a-ia-foi-usada">36. Como
+a IA foi usada?</a></li>
+<li><a href="#como-demonstrar-sem-internet"
+id="toc-como-demonstrar-sem-internet">37. Como demonstrar sem
+Internet?</a></li>
+<li><a href="#qual-é-o-próximo-passo-prioritário"
+id="toc-qual-é-o-próximo-passo-prioritário">38. Qual é o próximo passo
+prioritário?</a></li>
+</ul></li>
+<li><a href="#apêndice-a---glossário"
+id="toc-apêndice-a---glossário">Apêndice A - Glossário</a></li>
+<li><a href="#apêndice-b---linguagem-autorizada"
+id="toc-apêndice-b---linguagem-autorizada">Apêndice B - Linguagem
+autorizada</a>
+<ul>
+<li><a href="#preferir" id="toc-preferir">Preferir</a></li>
+<li><a href="#evitar-sem-proof-específico"
+id="toc-evitar-sem-proof-específico">Evitar sem proof
+específico</a></li>
+<li><a href="#transformações-seguras"
+id="toc-transformações-seguras">Transformações seguras</a></li>
+</ul></li>
+<li><a href="#apêndice-c---gates-abertos"
+id="toc-apêndice-c---gates-abertos">Apêndice C - Gates abertos</a></li>
+<li><a href="#apêndice-d---checklist-antes-da-apresentação"
+id="toc-apêndice-d---checklist-antes-da-apresentação">Apêndice D -
+Checklist antes da apresentação</a></li>
+<li><a href="#apêndice-e---fontes-e-autoridade-deste-compêndio"
+id="toc-apêndice-e---fontes-e-autoridade-deste-compêndio">Apêndice E -
+Fontes e autoridade deste compêndio</a></li>
+</ul>
+</nav>
+<h1 id="natureprotector---compêndio-completo-de-estudo">NatureProtector
+- Compêndio Completo de Estudo</h1>
+<blockquote>
+<p>Documento pessoal de estudo e preparação da apresentação. Não
+substitui o relatório académico. Quando existe divergência, prevalecem o
+código/configuração do snapshot identificado e a evidence associada ao
+claim.</p>
+</blockquote>
+<h2 id="como-usar-este-documento">Como usar este documento</h2>
+<ol type="1">
+<li>Ler as Partes I e II para dominar a narrativa.</li>
+<li>Usar as Partes III a VII para perguntas técnicas.</li>
+<li>Ensaiar a Parte VIII antes da demonstração.</li>
+<li>Treinar as perguntas da Parte IX em voz alta.</li>
+<li>Consultar os apêndices como referência rápida.</li>
+</ol>
+<h2 id="regra-de-ouro">Regra de ouro</h2>
+<p><strong>Distinguir sempre implementação, execução, evidence,
+validação e autorização.</strong> Uma capacidade existente no código não
+é automaticamente uma capacidade provada em runtime, validada
+cientificamente ou autorizada para uso operacional.</p>
+<h2 id="mapa-mental-de-uma-página">Mapa mental de uma página</h2>
+<pre class="text"><code>PROBLEMA  informação ambiental pode estar ausente, degradada ou atrasada
+RESPOSTA  simulação controlada + eventos + estado durável + qualidade/elegibilidade
+RESULTADO cadeia técnica auditável com UI e operações de engenharia controladas
+CLAIM     integração e auditabilidade de engenharia
+NÃO CLAIM previsão oficial, calibração científica ou alerta operacional
+PROVA     associar sempre snapshot + execução + artifact + hash + limitação
+PRÓXIMO   provar runtime/staging final, fechar dados/métodos e validar externamente</code></pre>
+<h1 id="parte-i---narrativa-problema-e-identidade">Parte I - Narrativa,
+problema e identidade</h1>
+<h2 id="pitch-de-30-segundos">1. Pitch de 30 segundos</h2>
+<p>O NatureProtector é uma plataforma académica experimental que simula
+leituras ambientais e as processa através de uma pipeline orientada a
+eventos e auditável. A sua ideia distintiva não é afirmar que prevê
+incêndios: é tornar explícita a separação entre verdade simulada,
+observação disponível, qualidade, elegibilidade, falha técnica,
+avaliação candidata, evidence e autoridade. O sistema inclui uma UI
+orientada a roles e um Operations Control Plane que solicita workflows
+fechados de qualidade, evidence e deployment sem expor credenciais cloud
+ao browser.</p>
+<h2 id="problema">2. Problema</h2>
+<p>Sistemas ambientais distribuídos recebem mais do que valores
+numéricos. Recebem valores com origem, idade, cobertura, qualidade e
+possíveis falhas. Sem essas fronteiras, um valor ausente pode ser
+interpretado como risco baixo, um score interno pode ser apresentado
+como produto oficial e um dashboard pode ser confundido com a verdade
+operacional.</p>
+<p>O NatureProtector explora uma resposta de engenharia: preservar
+contexto e incerteza desde a origem simulada até à projeção e à
+evidence.</p>
+<h2 id="objetivos">3. Objetivos</h2>
+<ul>
+<li>Produzir cenários controlados e repetíveis.</li>
+<li>Transportar eventos com identidade, versão, correlação e tempo.</li>
+<li>Persistir receção, tentativas, falhas e projeções.</li>
+<li>Avaliar qualidade e elegibilidade antes da interpretação do
+score.</li>
+<li>Expor resultados com contexto, limitações e role adequada.</li>
+<li>Reunir testes e evidence de forma rastreável.</li>
+<li>Automatizar release/deployment sem transferir autoridade para o
+browser.</li>
+</ul>
+<h2 id="âmbito-e-exclusões">4. Âmbito e exclusões</h2>
+<p><strong>Incluído:</strong> simulação, degradações, RabbitMQ,
+inbox/retry/quarentena, PostgreSQL, InfluxDB, observabilidade, API, UI,
+testes, evidence, CI/CD e infraestrutura GCP.</p>
+<p><strong>Não demonstrado como claim concluído:</strong> previsão
+real-time, alerta oficial, conformidade oficial FWI, calibração,
+generalização nacional, validação institucional, staging final provado
+ou produção provada.</p>
+<figure>
+<img src="../architecture/diagrams/current/render/system-context-a4.png"
+alt="Contexto do sistema" />
+<figcaption aria-hidden="true">Contexto do sistema</figcaption>
+</figure>
+<h2 id="evolução-resumida">5. Evolução resumida</h2>
+<p>A história mostra uma passagem de experimentação e documentação
+fragmentada para contratos mais explícitos, persistência durável,
+reconstrução factual, qualidade/evidence e operações cloud
+controladas.</p>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Data</th>
+<th>Marco</th>
+<th>Implementação</th>
+<th>Evidence</th>
+<th>Leitura</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>2025-11-06</td>
+<td>Energy Meter experience becomes a NatureProtector precursor</td>
+<td>NOT_APPLICABLE</td>
+<td>PARTIALLY_PROVED</td>
+<td>The project needed a practical starting point for distributed
+services and telemetry.</td>
+</tr>
+<tr class="even">
+<td>2026-04-19</td>
+<td>Implementation reality and architecture documentation baseline</td>
+<td>PARTIAL</td>
+<td>PARTIALLY_PROVED</td>
+<td>Create a factual implementation baseline before higher-level
+architecture documentation or system change.</td>
+</tr>
+<tr class="odd">
+<td>2026-05-02</td>
+<td>Research Day 2 to controlled V1 implementation contract</td>
+<td>PARTIAL</td>
+<td>DOCUMENT_CORROBORATED</td>
+<td>Translate research into classified requirements and bounded
+implementation decisions.</td>
+</tr>
+<tr class="even">
+<td>2026-05-08</td>
+<td>Patch A closes lease, recovery and payload boundaries</td>
+<td>IMPLEMENTED</td>
+<td>HISTORICAL_EXECUTION_EVIDENCE</td>
+<td>Interrupted Processing entries and malformed inputs could cross weak
+boundaries.</td>
+</tr>
+<tr class="odd">
+<td>2026-05-11</td>
+<td>Final report truth baseline and writing sequence</td>
+<td>PARTIAL</td>
+<td>DOCUMENT_CORROBORATED</td>
+<td>Write the report from a truth baseline, chapter evidence map and
+honest claim boundaries.</td>
+</tr>
+<tr class="even">
+<td>2026-05-11</td>
+<td>Patch B separates quality, eligibility and scoring</td>
+<td>IMPLEMENTED</td>
+<td>PARTIALLY_PROVED</td>
+<td>Risk could not safely absorb invalidity, incomplete observations and
+quality uncertainty.</td>
+</tr>
+<tr class="odd">
+<td>2026-05-11</td>
+<td>Controlled V1 implementation master plan</td>
+<td>PARTIAL</td>
+<td>PARTIALLY_PROVED</td>
+<td>Convert V1 documents and reported repository state into the minimum
+safe implementation sequence.</td>
+</tr>
+<tr class="even">
+<td>2026-05-29</td>
+<td>ML feasibility, problem definition and claims boundary</td>
+<td>PARTIAL</td>
+<td>DOCUMENT_CORROBORATED</td>
+<td>Determine meaningful ML problems and required data, baselines and
+evidence before implementation.</td>
+</tr>
+<tr class="odd">
+<td>2026-06-13</td>
+<td>M02 — Engineering foundations, tests, quality, CI and minimum
+observability</td>
+<td>PARTIAL</td>
+<td>HISTORICAL_EXECUTION_EVIDENCE</td>
+<td>Strengthen infrastructure, tests, tooling, CI and minimum
+observability.</td>
+</tr>
+<tr class="even">
+<td>2026-06-14</td>
+<td>M06 — Delivery, capacity, simulation and cutover readiness</td>
+<td>PARTIAL</td>
+<td>HISTORICAL_EXECUTION_EVIDENCE</td>
+<td>Prepare local delivery, capacity, controlled workload and cutover
+evidence without production deployment.</td>
+</tr>
+<tr class="odd">
+<td>2026-06-18</td>
+<td>Project reconstruction archive begins</td>
+<td>IMPLEMENTED</td>
+<td>DOCUMENT_CORROBORATED</td>
+<td>The report required recoverable decisions, plans, real ordering,
+evidence and limitations across fragmented conversations.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="contribuição-e-responsabilidade">6. Contribuição e
+responsabilidade</h2>
+<p>A contribuição central é a integração da cadeia técnica com
+fronteiras explícitas e auditáveis. O relatório é elaborado por Miguel
+Alves, que define a estrutura, seleciona e verifica informação, integra
+alterações e assume responsabilidade pelo conteúdo. Os contributos
+técnicos do grupo devem ser atribuídos segundo evidence concreta, sem
+confundir participação no projeto com autoria do relatório.</p>
+<h2 id="como-contar-a-história">7. Como contar a história</h2>
+<p>Uma narrativa eficaz usa três atos:</p>
+<ol type="1">
+<li><strong>Ambiguidade:</strong> dados ambientais podem faltar ou
+degradar-se e ser sobreinterpretados.</li>
+<li><strong>Resposta de engenharia:</strong> simulação controlada,
+processamento durável, qualidade/elegibilidade e evidence.</li>
+<li><strong>Resultado honesto:</strong> plataforma experimental
+substancial, com fronteiras e limitações explícitas, não um sistema
+oficial de alerta.</li>
+</ol>
+<h1 id="parte-ii---arquitetura-e-componentes">Parte II - Arquitetura e
+componentes</h1>
+<h2 id="visão-por-containers">8. Visão por containers</h2>
+<figure>
+<img
+src="../architecture/diagrams/current/render/container-architecture-a4.png"
+alt="Arquitetura de containers" />
+<figcaption aria-hidden="true">Arquitetura de containers</figcaption>
+</figure>
+<h3 id="simulator.host">Simulator.Host</h3>
+<p>Resolve cenário, área e sensores; aplica seed e perfis de degradação;
+produz envelopes e regista o ciclo de vida da run. A reprodutibilidade
+exige preservar run spec, manifests e snapshot.</p>
+<h3 id="rabbitmq">RabbitMQ</h3>
+<p>Desacopla produtores e consumers. A entrega no broker não prova
+processamento de negócio; esse estado reside na inbox e nas tentativas
+duráveis.</p>
+<h3 id="prevention.host-e-prevention">Prevention.Host e Prevention</h3>
+<p>O Host recebe, persiste e coordena. A biblioteca Prevention contém
+normalização, qualidade, elegibilidade, avaliação e projeções. Esta
+separação facilita testes e reduz acoplamento ao transporte.</p>
+<h3 id="postgresql">PostgreSQL</h3>
+<p>Autoridade para plano de controlo, pipeline e projeção. Preserva
+runs, inbox, tentativas, rejeições, quarentena e estado operacional.</p>
+<h3 id="influxdb-e-grafana">InfluxDB e Grafana</h3>
+<p>Superfícies de séries temporais e observabilidade. Não substituem o
+estado relacional nem constituem, por si só, proof de operação.</p>
+<h3 id="backoffice-api-e-webui">Backoffice API e webUI</h3>
+<p>A API aplica autenticação, policies e contratos. A UI organiza
+tarefas por perfil: simulação, pipeline, QA, evidence, deployment,
+cloud, approvals e administração.</p>
+<h3 id="github-actions-e-gcp">GitHub Actions e GCP</h3>
+<p>Executam quality, evidence, release e deployment através de
+identidades e workflows limitados. O browser nunca deve receber tokens
+de administração ou chaves de service account.</p>
+<h2 id="inventário-da-solução-.net">9. Inventário da solução .NET</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Projeto</th>
+<th>Tipo</th>
+<th>Responsabilidade</th>
+<th>Caminho</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>NatureProtector.Benchmarks</td>
+<td>Benchmark</td>
+<td>Microbenchmarks com BenchmarkDotNet.</td>
+<td>benchmarks/NatureProtector.Benchmarks/NatureProtector.Benchmarks.csproj</td>
+</tr>
+<tr class="even">
+<td>NatureProtector.AppHost</td>
+<td>Produção</td>
+<td>Orquestração de desenvolvimento baseada em .NET Aspire.</td>
+<td>src/NatureProtector.AppHost/NatureProtector.AppHost.csproj</td>
+</tr>
+<tr class="odd">
+<td>NatureProtector.Backoffice.Api</td>
+<td>Produção</td>
+<td>API, autenticação, plano de controlo, runtime e operações de
+engenharia.</td>
+<td>src/NatureProtector.Backoffice.Api/NatureProtector.Backoffice.Api.csproj</td>
+</tr>
+<tr class="even">
+<td>NatureProtector.Core</td>
+<td>Produção</td>
+<td>Conceitos e regras centrais do domínio.</td>
+<td>src/NatureProtector.Core/NatureProtector.Core.csproj</td>
+</tr>
+<tr class="odd">
+<td>NatureProtector.Infrastructure.Influx</td>
+<td>Produção</td>
+<td>Persistência e consulta temporal em InfluxDB.</td>
+<td>src/NatureProtector.Infrastructure.Influx/NatureProtector.Infrastructure.Influx.csproj</td>
+</tr>
+<tr class="even">
+<td>NatureProtector.Infrastructure.Postgres</td>
+<td>Produção</td>
+<td>DbContext, records, migrations, bootstrap e serviços
+PostgreSQL.</td>
+<td>src/NatureProtector.Infrastructure.Postgres/NatureProtector.Infrastructure.Postgres.csproj</td>
+</tr>
+<tr class="odd">
+<td>NatureProtector.Postgres.Bootstrap</td>
+<td>Produção</td>
+<td>Aplicação explícita do bootstrap do plano de controlo.</td>
+<td>src/NatureProtector.Postgres.Bootstrap/NatureProtector.Postgres.Bootstrap.csproj</td>
+</tr>
+<tr class="even">
+<td>NatureProtector.Postgres.Migrations</td>
+<td>Produção</td>
+<td>Executável de migrations para ambientes controlados.</td>
+<td>src/NatureProtector.Postgres.Migrations/NatureProtector.Postgres.Migrations.csproj</td>
+</tr>
+<tr class="odd">
+<td>NatureProtector.Prevention</td>
+<td>Produção</td>
+<td>Normalização, qualidade, elegibilidade, scoring e projeções.</td>
+<td>src/NatureProtector.Prevention/NatureProtector.Prevention.csproj</td>
+</tr>
+<tr class="even">
+<td>NatureProtector.Prevention.Host</td>
+<td>Produção</td>
+<td>Consumer RabbitMQ, inbox, retry, quarentena e pipeline runtime.</td>
+<td>src/NatureProtector.Prevention.Host/NatureProtector.Prevention.Host.csproj</td>
+</tr>
+<tr class="odd">
+<td>NatureProtector.Shared</td>
+<td>Produção</td>
+<td>Contratos, envelope, topologia RabbitMQ e vocabulário
+partilhado.</td>
+<td>src/NatureProtector.Shared/NatureProtector.Shared.csproj</td>
+</tr>
+<tr class="even">
+<td>NatureProtector.Shared.Observability</td>
+<td>Produção</td>
+<td>Configuração OpenTelemetry e observabilidade partilhada.</td>
+<td>src/NatureProtector.Shared.Observability/NatureProtector.Shared.Observability.csproj</td>
+</tr>
+<tr class="odd">
+<td>NatureProtector.Simulator.Host</td>
+<td>Produção</td>
+<td>Resolução de cenários, simulação, degradações e publicação.</td>
+<td>src/NatureProtector.Simulator.Host/NatureProtector.Simulator.Host.csproj</td>
+</tr>
+<tr class="even">
+<td>NatureProtector.Backoffice.Api.Tests</td>
+<td>Testes</td>
+<td>Projeto de testes dirigido ao componente indicado pelo nome.</td>
+<td>tests/NatureProtector.Backoffice.Api.Tests/NatureProtector.Backoffice.Api.Tests.csproj</td>
+</tr>
+<tr class="odd">
+<td>NatureProtector.Core.Tests</td>
+<td>Testes</td>
+<td>Projeto de testes dirigido ao componente indicado pelo nome.</td>
+<td>tests/NatureProtector.Core.Tests/NatureProtector.Core.Tests.csproj</td>
+</tr>
+<tr class="even">
+<td>NatureProtector.Infrastructure.Influx.Tests</td>
+<td>Testes</td>
+<td>Projeto de testes dirigido ao componente indicado pelo nome.</td>
+<td>tests/NatureProtector.Infrastructure.Influx.Tests/NatureProtector.Infrastructure.Influx.Tests.csproj</td>
+</tr>
+<tr class="odd">
+<td>NatureProtector.IntegrationTests</td>
+<td>Testes</td>
+<td>Projeto de testes dirigido ao componente indicado pelo nome.</td>
+<td>tests/NatureProtector.IntegrationTests/NatureProtector.IntegrationTests.csproj</td>
+</tr>
+<tr class="even">
+<td>NatureProtector.Prevention.Host.Tests</td>
+<td>Testes</td>
+<td>Projeto de testes dirigido ao componente indicado pelo nome.</td>
+<td>tests/NatureProtector.Prevention.Host.Tests/NatureProtector.Prevention.Host.Tests.csproj</td>
+</tr>
+<tr class="odd">
+<td>NatureProtector.Prevention.Tests</td>
+<td>Testes</td>
+<td>Projeto de testes dirigido ao componente indicado pelo nome.</td>
+<td>tests/NatureProtector.Prevention.Tests/NatureProtector.Prevention.Tests.csproj</td>
+</tr>
+<tr class="even">
+<td>NatureProtector.Shared.Tests</td>
+<td>Testes</td>
+<td>Projeto de testes dirigido ao componente indicado pelo nome.</td>
+<td>tests/NatureProtector.Shared.Tests/NatureProtector.Shared.Tests.csproj</td>
+</tr>
+<tr class="odd">
+<td>NatureProtector.Simulator.Host.Tests</td>
+<td>Testes</td>
+<td>Projeto de testes dirigido ao componente indicado pelo nome.</td>
+<td>tests/NatureProtector.Simulator.Host.Tests/NatureProtector.Simulator.Host.Tests.csproj</td>
+</tr>
+</tbody>
+</table>
+<h2 id="fluxo-nominal-de-uma-leitura">10. Fluxo nominal de uma
+leitura</h2>
+<figure>
+<img
+src="../architecture/diagrams/current/render/runtime-risk-pipeline-a4.png"
+alt="Pipeline runtime" />
+<figcaption aria-hidden="true">Pipeline runtime</figcaption>
+</figure>
+<ol type="1">
+<li>A run spec define cenário, seed, sensores, ciclos, intervalo e
+degradação.</li>
+<li>O simulador resolve o contexto e publica
+<code>SensorReadingProduced</code> num <code>EventEnvelope</code>.</li>
+<li>O consumer valida a fronteira técnica e persiste a inbox.</li>
+<li>É criada uma tentativa; o ACK ocorre depois do commit durável quando
+essa capacidade está ativa.</li>
+<li>O pipeline normaliza, classifica validade temporal/semântica e
+calcula qualidade.</li>
+<li>A elegibilidade decide se existe base para avaliar.</li>
+<li>Os métodos candidatos produzem outputs contextualizados.</li>
+<li>Logs e projeções são persistidos.</li>
+<li>API, UI e evidence leem o estado projetado sem recalcular
+silenciosamente a verdade.</li>
+</ol>
+<h2 id="falhas-retry-e-quarentena">11. Falhas, retry e quarentena</h2>
+<ul>
+<li><strong>Falha transitória:</strong> pode voltar a ser tentada dentro
+de budget e backoff.</li>
+<li><strong>Rejeição:</strong> contrato ou semântica invalida; deve
+conservar código e payload seguro para diagnóstico.</li>
+<li><strong>Quarentena:</strong> falha permanente ou retries esgotados;
+não deve entrar num ciclo infinito.</li>
+<li><strong>Projeção falhada:</strong> não equivale a mensagem não
+recebida; as fases devem ser diagnosticadas separadamente.</li>
+</ul>
+<h2 id="semântica-temporal">12. Semântica temporal</h2>
+<ul>
+<li><code>event_time</code>: tempo representado pelo evento.</li>
+<li><code>ingest_time</code>: entrada no sistema.</li>
+<li>tempo de processamento: quando cada etapa executa.</li>
+<li>freshness: adequação temporal para interpretação.</li>
+<li>ordering/progresso: evita que um evento antigo substitua
+silenciosamente estado mais recente.</li>
+</ul>
+<h2 id="catálogo-de-eventos-e-sinais">13. Catálogo de eventos e
+sinais</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Nome</th>
+<th>Tipo</th>
+<th>Produtor</th>
+<th>Consumidor</th>
+<th>Estado</th>
+<th>Forma/leitura</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>SensorReadingProduced</td>
+<td>Evento externo RabbitMQ</td>
+<td>Simulator.Host</td>
+<td>Prevention.Host</td>
+<td>Ativo</td>
+<td><code>EventEnvelope&lt;SensorReadingProducedPayload&gt;</code></td>
+</tr>
+<tr class="even">
+<td>EventEnvelope<T></td>
+<td>Envelope de transporte</td>
+<td>Simulator.Host</td>
+<td>Consumers</td>
+<td>Ativo</td>
+<td>SchemaVersion, EventId, CorrelationId, Producer, EventType, AreaId,
+EventTime, IngestTime, Payload</td>
+</tr>
+<tr class="odd">
+<td>OperationalEvent</td>
+<td>Fronteira interna</td>
+<td>Prevention pipeline</td>
+<td>Normalização e risco</td>
+<td>Interno</td>
+<td>Adaptador interno, não é contrato RabbitMQ</td>
+</tr>
+<tr class="even">
+<td>ReadingAccepted</td>
+<td>Semântica operacional</td>
+<td>Pipeline</td>
+<td>Persistência/evidence</td>
+<td>Parcial</td>
+<td>Materializada por logs/projeções; não publicada formalmente</td>
+</tr>
+<tr class="odd">
+<td>ReadingRejected</td>
+<td>Semântica operacional</td>
+<td>Worker/inbox</td>
+<td>Rejeição/quarentena</td>
+<td>Parcial</td>
+<td>Materializada em persistência; não publicada formalmente</td>
+</tr>
+<tr class="even">
+<td>ReadingNormalized</td>
+<td>Semântica operacional</td>
+<td>Pipeline</td>
+<td>Elegibilidade/scoring</td>
+<td>Parcial</td>
+<td><code>NormalizedReading</code> interno</td>
+</tr>
+<tr class="odd">
+<td>area-risk-high</td>
+<td>Código de projeção</td>
+<td>Projection store</td>
+<td>API/UI</td>
+<td>Ativo como estado</td>
+<td>Não é evento formal</td>
+</tr>
+<tr class="even">
+<td>WarningRaised / AlarmRaised</td>
+<td>Evento futuro</td>
+<td>Futuro</td>
+<td>Futuro</td>
+<td>Futuro</td>
+<td>Contrato ainda não materializado end-to-end</td>
+</tr>
+</tbody>
+</table>
+<h2 id="operations-control-plane">14. Operations Control Plane</h2>
+<figure>
+<img
+src="../architecture/diagrams/current/render/operations-lifecycle-a4.png"
+alt="Ciclo de operação" />
+<figcaption aria-hidden="true">Ciclo de operação</figcaption>
+</figure>
+<p>Uma <code>EngineeringOperation</code> representa uma ação de quality,
+evidence, deployment ou cloud. Regista operação do catálogo, requester,
+roles/capabilities, ambiente, referência, inputs sanitizados,
+confirmação, aprovação, provider, timeline e artifacts.</p>
+<h3 id="estado-típico">Estado típico</h3>
+<pre class="text"><code>Requested -&gt; Validated -&gt; AwaitingConfirmation -&gt; AwaitingApproval
+          -&gt; Queued -&gt; Running -&gt; Succeeded/Failed/Cancelled
+          -&gt; RollbackRequested -&gt; RolledBack</code></pre>
+<h3 id="princípio-de-segurança">Princípio de segurança</h3>
+<p>A API não recebe comandos shell. Recebe apenas um
+<code>operationId</code> conhecido e inputs definidos pelo catálogo. O
+dispatcher chama um runner especializado.</p>
+<h1 id="parte-iii---dados-cenários-qualidade-e-risco">Parte III - Dados,
+cenários, qualidade e risco</h1>
+<h2 id="área-piloto-e-fontes">15. Área piloto e fontes</h2>
+<p>A área piloto é Proença-a-Nova. Os dados preparados incluem
+geometria, grelha, atributos, meteorologia de referência, observações
+recentes e histórico de incêndios, acompanhados por manifests. A
+presença de ficheiros não prova, por si só, direitos completos,
+atualidade ou adequação científica; esses atributos devem ser registados
+individualmente.</p>
+<figure>
+<img
+src="../architecture/diagrams/current/render/data-provenance-authority-a4.png"
+alt="Proveniência e autoridade" />
+<figcaption aria-hidden="true">Proveniência e autoridade</figcaption>
+</figure>
+<h2 id="cenários">16. Cenários</h2>
+<ul>
+<li><strong>A:</strong> nominal/baseline controlada.</li>
+<li><strong>B:</strong> perfil de risco elevado controlado.</li>
+<li><strong>C:</strong> cadeia degradada/falhas deliberadas.</li>
+</ul>
+<p>A designação não transforma o cenário numa ocorrência real. O cenário
+é um contrato experimental.</p>
+<h2 id="degradações">17. Degradações</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Família</th>
+<th>Efeito</th>
+<th>Pergunta que permite testar</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Missing</td>
+<td>remove valor/campo</td>
+<td>o sistema bloqueia ou inventa segurança?</td>
+</tr>
+<tr class="even">
+<td>Noise</td>
+<td>adiciona variabilidade</td>
+<td>qualidade e score reagem de forma explicável?</td>
+</tr>
+<tr class="odd">
+<td>Bias</td>
+<td>desloca sistematicamente</td>
+<td>existe sensibilidade a erro persistente?</td>
+</tr>
+<tr class="even">
+<td>Drift</td>
+<td>deslocamento progressivo</td>
+<td>o sistema deteta evolução anómala?</td>
+</tr>
+<tr class="odd">
+<td>Stuck</td>
+<td>valor constante</td>
+<td>é distinguido de estabilidade real?</td>
+</tr>
+<tr class="even">
+<td>Outlier</td>
+<td>valor extremo isolado</td>
+<td>é validado, rejeitado ou contextualizado?</td>
+</tr>
+<tr class="odd">
+<td>Clipping</td>
+<td>limita à faixa</td>
+<td>a perda de informação fica explícita?</td>
+</tr>
+<tr class="even">
+<td>Lag</td>
+<td>atraso temporal</td>
+<td>freshness e ordering são preservados?</td>
+</tr>
+<tr class="odd">
+<td>Duplicate</td>
+<td>repetição</td>
+<td>idempotência evita efeitos duplicados?</td>
+</tr>
+<tr class="even">
+<td>Out-of-order</td>
+<td>ordem alterada</td>
+<td>progresso temporal evita regressão de estado?</td>
+</tr>
+</tbody>
+</table>
+<h2 id="qualidade-antes-do-score">18. Qualidade antes do score</h2>
+<p>Qualidade não é um rótulo decorativo. Inclui validade, coverage,
+freshness, integridade e contexto. A elegibilidade deve bloquear outputs
+quando faltam condições mínimas. O sistema deve dizer “não elegível” em
+vez de produzir um número enganador.</p>
+<h2 id="métodos-candidatos">19. Métodos candidatos</h2>
+<h3 id="score-natureprotector">Score NatureProtector</h3>
+<p>Score específico do projeto para comparação e explicabilidade. Não é
+calibrado como indicador oficial de perigo.</p>
+<h3 id="fwi">FWI</h3>
+<p>Família estabelecida de índices meteorológicos. Para reclamar
+conformidade são necessários equações, estado acumulado, convenções de
+input e casos oficiais. O componente atual é candidato e criticamente
+avaliado.</p>
+<h3 id="kbdi">KBDI</h3>
+<p>Indicador de secura dependente de precipitação, estado inicial, clima
+e calibração. É candidato técnico, não índice validado para decisão
+operacional neste projeto.</p>
+<h3 id="portuguese-context-proxy">Portuguese Context Proxy</h3>
+<p>Proxy experimental do contexto português. Não substitui RCM, IPMA,
+ICNF, ANEPC nem outra autoridade.</p>
+<h2 id="validade-científica">20. Validade científica</h2>
+<p>A validade técnica responde “o software implementa o contrato e
+comporta-se como testado?”. A validade científica responde “o método
+mede o constructo pretendido com generalização e incerteza conhecidas?”.
+O projeto tem material forte de engenharia; continuam abertas
+proveniência completa, calibração, comparação externa, generalização
+territorial e avaliação independente.</p>
+<h1 id="parte-iv---persistência-api-ui-e-autorização">Parte IV -
+Persistência, API, UI e autorização</h1>
+<h2 id="postgresql-como-autoridade">21. PostgreSQL como autoridade</h2>
+<p>O desenho separa três schemas.</p>
+<h3 id="control"><code>control</code></h3>
+<table>
+<thead>
+<tr class="header">
+<th>Tabela</th>
+<th>Papel</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>configuration_versions</td>
+<td>Versão ativa da configuração</td>
+</tr>
+<tr class="even">
+<td>areas</td>
+<td>Área piloto e metadados</td>
+</tr>
+<tr class="odd">
+<td>area_contexts</td>
+<td>Contexto agregado preparado</td>
+</tr>
+<tr class="even">
+<td>grid_cells</td>
+<td>Grelha operacional</td>
+</tr>
+<tr class="odd">
+<td>sensor_profiles</td>
+<td>Perfis de ruído/falha/publicação</td>
+</tr>
+<tr class="even">
+<td>sensor_networks</td>
+<td>Rede lógica</td>
+</tr>
+<tr class="odd">
+<td>sensor_nodes</td>
+<td>Sensores ativos</td>
+</tr>
+<tr class="even">
+<td>scenario_definitions</td>
+<td>Cenários e parâmetros JSON</td>
+</tr>
+<tr class="odd">
+<td>simulation_runs</td>
+<td>Execuções concretas</td>
+</tr>
+<tr class="even">
+<td>rule_set_versions</td>
+<td>Versões de regras preparadas</td>
+</tr>
+<tr class="odd">
+<td>dataset_artifacts</td>
+<td>Catálogo de artefactos</td>
+</tr>
+<tr class="even">
+<td>scenario_dataset_bindings</td>
+<td>Relações cenário-dataset</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pipeline"><code>pipeline</code></h3>
+<table>
+<thead>
+<tr class="header">
+<th>Tabela</th>
+<th>Papel</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>event_inbox</td>
+<td>Registo único do envelope e estado</td>
+</tr>
+<tr class="even">
+<td>processing_attempts</td>
+<td>Histórico de tentativas</td>
+</tr>
+<tr class="odd">
+<td>rejected_events</td>
+<td>Rejeições técnicas e payload inválido</td>
+</tr>
+<tr class="even">
+<td>quarantined_events</td>
+<td>Falhas permanentes ou retries esgotados</td>
+</tr>
+</tbody>
+</table>
+<h3 id="projection"><code>projection</code></h3>
+<table>
+<thead>
+<tr class="header">
+<th>Tabela</th>
+<th>Papel</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>accepted_reading_log</td>
+<td>Leituras aceites</td>
+</tr>
+<tr class="even">
+<td>risk_assessment_log</td>
+<td>Assessments</td>
+</tr>
+<tr class="odd">
+<td>area_risk_snapshot_log</td>
+<td>Snapshots por área</td>
+</tr>
+<tr class="even">
+<td>cell_operational_state</td>
+<td>Estado atual por célula</td>
+</tr>
+<tr class="odd">
+<td>area_operational_state</td>
+<td>Estado atual por área</td>
+</tr>
+<tr class="even">
+<td>alert_state</td>
+<td>Estados de alerta simples</td>
+</tr>
+</tbody>
+</table>
+<h2 id="estados-da-inbox">22. Estados da inbox</h2>
+<pre class="text"><code>Pending -&gt; Processing -&gt; Processed
+                    \-&gt; Failed -&gt; RetryPending -&gt; Processing
+                    \-&gt; Rejected
+                    \-&gt; Quarantined</code></pre>
+<p>O significado concreto deve ser lido em conjunto com tentativas,
+código de erro e timestamps.</p>
+<h2 id="ui-por-jornada">23. UI por jornada</h2>
+<ul>
+<li><strong>Mission Control:</strong> visão da cadeia code -&gt; quality
+-&gt; evidence -&gt; release -&gt; staging -&gt; production.</li>
+<li><strong>Scenario Lab / Simulation:</strong> configuração de
+run.</li>
+<li><strong>Runs e Pipeline:</strong> lifecycle, inbox, tentativas,
+projeções e timings.</li>
+<li><strong>Quality Runs:</strong> suites fechadas e provider
+reference.</li>
+<li><strong>Evidence Explorer:</strong> artifacts, hashes, claims e
+limitações.</li>
+<li><strong>Deployments:</strong> planos, release, staging, promoção e
+rollback.</li>
+<li><strong>Cloud Resources:</strong> declarado versus observado.</li>
+<li><strong>Approvals:</strong> revisão separada de ações de risco
+elevado.</li>
+<li><strong>Users &amp; Roles:</strong> administração de identidade e
+capabilities.</li>
+</ul>
+<h2 id="roles-e-capabilities">24. Roles e capabilities</h2>
+<figure>
+<img
+src="../architecture/diagrams/current/render/roles-ui-journeys-a4.png"
+alt="Roles e jornadas" />
+<figcaption aria-hidden="true">Roles e jornadas</figcaption>
+</figure>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Role</th>
+<th>Finalidade</th>
+<th>Capabilities atuais</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Pipeline</td>
+<td>Leitura do pipeline, runs, risco e evidence, sem mutações de
+engenharia.</td>
+<td><code>demo.read</code>, <code>area.read</code>,
+<code>risk.read</code>, <code>pipeline.read</code>,
+<code>run.read</code>, <code>quality.read</code>,
+<code>evidence.read</code>, <code>evidence.download</code>,
+<code>evidence.compare</code>, <code>data_context.read</code>,
+<code>help.read</code></td>
+</tr>
+<tr class="even">
+<td>Sim</td>
+<td>Configuração e execução de simulações controladas.</td>
+<td><code>demo.read</code>, <code>area.read</code>,
+<code>risk.read</code>, <code>run.read</code>,
+<code>scenario.read</code>, <code>simulation.read</code>,
+<code>simulation.execute</code>, <code>evidence.read</code>,
+<code>data_context.read</code>, <code>help.read</code></td>
+</tr>
+<tr class="odd">
+<td>QA</td>
+<td>Execução de suites de qualidade e campanhas de evidence.</td>
+<td><code>demo.read</code>, <code>area.read</code>,
+<code>risk.read</code>, <code>run.read</code>,
+<code>quality.read</code>, <code>quality.execute.static</code>,
+<code>quality.execute.full</code>, <code>evidence.read</code>,
+<code>evidence.download</code>, <code>evidence.execute.campaign</code>,
+<code>evidence.compare</code>, <code>data_context.read</code>,
+<code>help.read</code></td>
+</tr>
+<tr class="even">
+<td>Operations</td>
+<td>Planos, deployment e operação controlada de staging.</td>
+<td><code>demo.read</code>, <code>area.read</code>,
+<code>risk.read</code>, <code>pipeline.read</code>,
+<code>run.read</code>, <code>quality.read</code>,
+<code>evidence.read</code>, <code>evidence.download</code>,
+<code>evidence.compare</code>, <code>deployment.read</code>,
+<code>deployment.plan</code>, <code>deployment.deploy.staging</code>,
+<code>deployment.rollback</code>, <code>cloud.read</code>,
+<code>cloud.operate.staging</code>, <code>data_context.read</code>,
+<code>help.read</code></td>
+</tr>
+<tr class="odd">
+<td>ReleaseApprover</td>
+<td>Revisão e aprovação de ações de produção e destrutivas.</td>
+<td><code>demo.read</code>, <code>quality.read</code>,
+<code>evidence.read</code>, <code>evidence.download</code>,
+<code>evidence.compare</code>, <code>deployment.read</code>,
+<code>deployment.plan</code>, <code>deployment.deploy.production</code>,
+<code>deployment.rollback</code>, <code>cloud.read</code>,
+<code>cloud.operate.production</code>, <code>cloud.destroy</code>,
+<code>approval.review</code>, <code>data_context.read</code>,
+<code>help.read</code></td>
+</tr>
+<tr class="even">
+<td>Admin</td>
+<td>Administração de utilizadores/roles e aplicação, sem herdar
+automaticamente autoridade cloud crítica.</td>
+<td><code>demo.read</code>, <code>area.read</code>,
+<code>risk.read</code>, <code>pipeline.read</code>,
+<code>run.read</code>, <code>scenario.read</code>,
+<code>simulation.read</code>, <code>simulation.execute</code>,
+<code>quality.read</code>, <code>evidence.read</code>,
+<code>evidence.download</code>, <code>evidence.compare</code>,
+<code>deployment.read</code>, <code>cloud.read</code>,
+<code>users.manage</code>, <code>roles.manage</code>,
+<code>admin.read</code>, <code>admin.execute</code>,
+<code>p3.read</code>, <code>data_context.read</code>,
+<code>help.read</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="regra-essencial">Regra essencial</h3>
+<p>A UI pode esconder ações, mas só o backend autoriza. Alterar
+JavaScript não pode conceder uma capability.</p>
+<h2 id="catálogo-fechado-de-operações">25. Catálogo fechado de
+operações</h2>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>ID</th>
+<th>Categoria</th>
+<th>Designação</th>
+<th>Disponibilidade</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>frontend-fast</td>
+<td>quality</td>
+<td>Frontend fast</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>frontend-full</td>
+<td>quality</td>
+<td>Frontend full</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>backend-unit</td>
+<td>quality</td>
+<td>Backend unit</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>backend-integration</td>
+<td>quality</td>
+<td>Backend integration</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>architecture</td>
+<td>quality</td>
+<td>Architecture</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>security</td>
+<td>quality</td>
+<td>Security</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>playwright-fixture</td>
+<td>quality</td>
+<td>Playwright fixture</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>playwright-full-stack</td>
+<td>quality</td>
+<td>Playwright full stack</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>accessibility</td>
+<td>quality</td>
+<td>Accessibility</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>mutation</td>
+<td>quality</td>
+<td>Mutation</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>terraform-static</td>
+<td>quality</td>
+<td>Terraform static</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>cloud-static</td>
+<td>quality</td>
+<td>Cloud static</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>quality-all</td>
+<td>quality</td>
+<td>All quality gates</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>evidence-static</td>
+<td>evidence</td>
+<td>Static evidence campaign</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>evidence-quality</td>
+<td>evidence</td>
+<td>Quality evidence campaign</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>evidence-full-plan</td>
+<td>evidence</td>
+<td>Full evidence plan</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>evidence-full-execute</td>
+<td>evidence</td>
+<td>Full evidence execution</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>staging-plan</td>
+<td>deployment</td>
+<td>Plan staging</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>staging-deploy</td>
+<td>deployment</td>
+<td>Deploy staging</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>staging-rollback</td>
+<td>deployment</td>
+<td>Rollback staging</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>production-plan</td>
+<td>deployment</td>
+<td>Plan production</td>
+<td>blocked-no-authoritative-workflow</td>
+<td>NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>production-deploy</td>
+<td>deployment</td>
+<td>Deploy production</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>production-rollback</td>
+<td>deployment</td>
+<td>Rollback production</td>
+<td>blocked-no-authoritative-workflow</td>
+<td>NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>cloud-inventory</td>
+<td>cloud</td>
+<td>Collect cloud inventory</td>
+<td>blocked-missing-qualified-owner-input</td>
+<td>NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>cloud-costs</td>
+<td>cloud</td>
+<td>Collect cloud costs</td>
+<td>blocked-no-authoritative-workflow</td>
+<td>NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>cloud-smoke</td>
+<td>cloud</td>
+<td>Run cloud smoke</td>
+<td>blocked-missing-qualified-input-contract</td>
+<td>NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>cloud-open-staging</td>
+<td>cloud</td>
+<td>Open staging</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>cloud-close-staging</td>
+<td>cloud</td>
+<td>Close staging</td>
+<td>implemented</td>
+<td>IMPLEMENTED_NOT_PROVED</td>
+</tr>
+<tr class="odd">
+<td>cloud-destroy-plan</td>
+<td>cloud</td>
+<td>Prepare destroy plan</td>
+<td>blocked-no-destroy-plan-workflow</td>
+<td>NOT_PROVED</td>
+</tr>
+<tr class="even">
+<td>cloud-destroy-execute</td>
+<td>cloud</td>
+<td>Execute approved destroy plan</td>
+<td>blocked-until-approved-plan</td>
+<td>NOT_PROVED</td>
+</tr>
+</tbody>
+</table>
+<h3 id="como-interpretar-disponibilidade">Como interpretar
+disponibilidade</h3>
+<ul>
+<li><code>implemented</code>: existe caminho de dispatch, mas falta
+proof runtime quando indicado.</li>
+<li><code>blocked-*</code>: o catálogo conhece a intenção, mas rejeita
+execução até existir workflow, input ou plano qualificado.</li>
+<li><code>IMPLEMENTED_NOT_PROVED</code>: código presente sem proof
+fornecida para o snapshot final.</li>
+<li><code>NOT_PROVED</code>: não existe base suficiente para claim de
+execução.</li>
+</ul>
+<h1 id="parte-v---qualidade-evidence-observabilidade-e-segurança">Parte
+V - Qualidade, evidence, observabilidade e segurança</h1>
+<h2 id="pirâmide-de-validação">26. Pirâmide de validação</h2>
+<figure>
+<img
+src="../architecture/diagrams/current/render/quality-evidence-flow-a4.png"
+alt="Quality e evidence" />
+<figcaption aria-hidden="true">Quality e evidence</figcaption>
+</figure>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Camada</th>
+<th>Pergunta</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Unitária</td>
+<td>a regra local está correta?</td>
+</tr>
+<tr class="even">
+<td>Integração</td>
+<td>componentes/dependências colaboram?</td>
+</tr>
+<tr class="odd">
+<td>Contratos/arquitetura</td>
+<td>fronteiras e dependências respeitam políticas?</td>
+</tr>
+<tr class="even">
+<td>API</td>
+<td>autenticação, autorização e respostas estão corretas?</td>
+</tr>
+<tr class="odd">
+<td>UI/browser</td>
+<td>a jornada funciona e é acessível?</td>
+</tr>
+<tr class="even">
+<td>Full-stack</td>
+<td>a cadeia real funciona no ambiente selecionado?</td>
+</tr>
+<tr class="odd">
+<td>Segurança/supply chain</td>
+<td>dependências, secrets, IaC, imagens e provenance são
+aceitáveis?</td>
+</tr>
+<tr class="even">
+<td>Staging</td>
+<td>a release implantada passa smoke e qualificação?</td>
+</tr>
+<tr class="odd">
+<td>Produção</td>
+<td>existe promoção, observação e rollback comprovados?</td>
+</tr>
+</tbody>
+</table>
+<h2 id="escada-de-evidence">27. Escada de evidence</h2>
+<figure>
+<img
+src="../architecture/diagrams/current/render/claims-evidence-maturity-a4.png"
+alt="Claims e maturidade" />
+<figcaption aria-hidden="true">Claims e maturidade</figcaption>
+</figure>
+<pre class="text"><code>PLANNED
+IMPLEMENTED
+STATICALLY_VERIFIED
+EXECUTED
+REPRODUCED
+VALIDATED
+AUTHORISED</code></pre>
+<p>Cada subida exige evidence adequada. Um artifact de commit antigo
+permanece histórico.</p>
+<h2 id="regra-dos-artifacts">28. Regra dos artifacts</h2>
+<p>Para promover uma execução, registar:</p>
+<ul>
+<li>operação/suite;</li>
+<li>commit ou digest;</li>
+<li>ambiente;</li>
+<li>produtor/workflow e run ID;</li>
+<li>timestamps;</li>
+<li>status e códigos de saída;</li>
+<li>artifacts esperados;</li>
+<li>SHA-256;</li>
+<li>limitações e retenção.</li>
+</ul>
+<h2 id="observabilidade">29. Observabilidade</h2>
+<p>O sistema inclui logs estruturados, métricas e traces OpenTelemetry,
+health/readiness, InfluxDB e Grafana. Observabilidade explica
+comportamento; não substitui testes, estado durável ou validação
+científica.</p>
+<h2 id="modelo-de-segurança">30. Modelo de segurança</h2>
+<figure>
+<img
+src="../architecture/diagrams/current/render/security-trust-boundaries-a4.png"
+alt="Fronteiras de segurança" />
+<figcaption aria-hidden="true">Fronteiras de segurança</figcaption>
+</figure>
+<ul>
+<li>JWT e configuração validados no arranque.</li>
+<li>Capabilities no servidor.</li>
+<li>Separação Admin / Operations / ReleaseApprover.</li>
+<li>Actions fixadas por SHA e dependências auditadas.</li>
+<li>Gitleaks e fronteira de secrets.</li>
+<li>WIF e credenciais curtas.</li>
+<li>Confirmação e approval para ações críticas.</li>
+<li>Catálogo fechado, sem shell arbitrário.</li>
+<li>Callback autenticado e artifacts com hash.</li>
+</ul>
+<h2 id="threats-a-explicar">31. Threats a explicar</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Risco</th>
+<th>Controlo</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>UI adulterada</td>
+<td>autorização backend</td>
+</tr>
+<tr class="even">
+<td>token no browser</td>
+<td>dispatcher server-side e WIF</td>
+</tr>
+<tr class="odd">
+<td>workflow alterado</td>
+<td>pin por SHA, review e evidence</td>
+</tr>
+<tr class="even">
+<td>operação repetida</td>
+<td>idempotency/operation record</td>
+</tr>
+<tr class="odd">
+<td>produção sem staging</td>
+<td>gate e exact release identity</td>
+</tr>
+<tr class="even">
+<td>destroy no state errado</td>
+<td>plan imutável, project/state checks e approval</td>
+</tr>
+<tr class="odd">
+<td>dashboard sobreinterpretado</td>
+<td>fonte de verdade e labels de evidence</td>
+</tr>
+</tbody>
+</table>
+<h1 id="parte-vi---cicd-cloud-e-ciclo-de-release">Parte VI - CI/CD,
+cloud e ciclo de release</h1>
+<h2 id="topologia-e-promoção">32. Topologia e promoção</h2>
+<figure>
+<img
+src="../architecture/diagrams/current/render/deployment-and-promotion-a4.png"
+alt="Deployment e promoção" />
+<figcaption aria-hidden="true">Deployment e promoção</figcaption>
+</figure>
+<p>A arquitetura cloud materializada no repositório usa
+projetos/ambientes isolados, Artifact Registry, GKE Autopilot, Cloud
+SQL/PostgreSQL, RabbitMQ Operator, KEDA, cert-manager, Cloud Deploy,
+Terraform e GitHub Actions com WIF.</p>
+<h2 id="cadeia-de-delivery">33. Cadeia de delivery</h2>
+<pre class="text"><code>commit/ref
+ -&gt; validate/qualify
+ -&gt; build de imagem/pacote
+ -&gt; checksum, SBOM, provenance/attestation
+ -&gt; release imutável por digest
+ -&gt; staging
+ -&gt; smoke/readiness/qualification
+ -&gt; approval
+ -&gt; promoção da mesma release
+ -&gt; observação e rollback readiness</code></pre>
+<h2 id="estado-factual">34. Estado factual</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Tema</th>
+<th>Estado autorizado</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Infraestrutura e workflows</td>
+<td>Implementados no repositório</td>
+</tr>
+<tr class="even">
+<td>Pin de attestation</td>
+<td>Remediação presente em source</td>
+</tr>
+<tr class="odd">
+<td>Signed release do head final</td>
+<td>Não provada pelos artifacts fornecidos</td>
+</tr>
+<tr class="even">
+<td>Staging</td>
+<td>Não provado</td>
+</tr>
+<tr class="odd">
+<td>Produção</td>
+<td>Não implantada/provada</td>
+</tr>
+<tr class="even">
+<td>Inventário/custos vivos</td>
+<td>Não observados neste pacote</td>
+</tr>
+<tr class="odd">
+<td>Destroy</td>
+<td>Definido no catálogo, bloqueado até plano/workflow/approval
+qualificados</td>
+</tr>
+</tbody>
+</table>
+<h2 id="terraform-e-state">35. Terraform e state</h2>
+<p>Terraform descreve intenção e cria recursos; o state é autoridade
+sobre a gestão desses recursos. Ambiente, project IDs, backend/state e
+recursos partilhados devem ser explicitamente verificados antes de apply
+ou destroy.</p>
+<h2 id="destroy-seguro">36. Destroy seguro</h2>
+<ol type="1">
+<li>Selecionar ambiente.</li>
+<li>Verificar project IDs, backend e workspace/state.</li>
+<li>Recolher inventário pré-destruição.</li>
+<li>Confirmar ausência/isolamento de recursos partilhados.</li>
+<li>Gerar plano de destroy imutável.</li>
+<li>Armazenar hash e artifacts.</li>
+<li>Exigir confirmação exata e approval separado.</li>
+<li>Aplicar exatamente o plano aprovado.</li>
+<li>Verificar recursos restantes e custos finais.</li>
+<li>Preservar evidence.</li>
+</ol>
+<h1 id="parte-vii---operação-local-e-leitura-do-projeto">Parte VII -
+Operação local e leitura do projeto</h1>
+<h2 id="percurso-de-exploração-do-repositório">37. Percurso de
+exploração do repositório</h2>
+<ol type="1">
+<li><code>README.md</code> e <code>docs/index.md</code>.</li>
+<li><code>docs/current-state/</code> para verdade atual.</li>
+<li><code>docs/architecture/diagrams/current/</code> para o modelo
+visual.</li>
+<li><code>src/NatureProtector.Shared</code> para contratos.</li>
+<li><code>Simulator.Host</code> e <code>Prevention.Host</code> para
+runtime.</li>
+<li><code>Infrastructure.Postgres</code> para estado durável.</li>
+<li><code>Backoffice.Api/Operations</code> para operations plane.</li>
+<li><code>webUI/src/app/ui-v2</code> para jornadas.</li>
+<li><code>.github/workflows</code>, <code>infra/gcp</code> e
+<code>scripts/cloud</code> para delivery.</li>
+<li><code>docs/evidence</code> e packages de resultado para proof.</li>
+</ol>
+<h2 id="sequência-local-conceptual">38. Sequência local conceptual</h2>
+<pre class="text"><code>setup -&gt; infra up -&gt; migrations/bootstrap -&gt; API/hosts/UI
+      -&gt; run controlada -&gt; inspeção pipeline/projection
+      -&gt; quality/evidence -&gt; shutdown e preservação de outputs</code></pre>
+<p>Os comandos concretos dependem do ambiente Windows/PowerShell e devem
+ser executados a partir dos runbooks canónicos, não copiados de registos
+históricos sem revisão.</p>
+<h2 id="diagnóstico-por-sintoma">39. Diagnóstico por sintoma</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Sintoma</th>
+<th>Primeiras fronteiras a verificar</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>run não inicia</td>
+<td>role/capability, config, runtime orchestrator, provider</td>
+</tr>
+<tr class="even">
+<td>eventos não chegam</td>
+<td>publisher, exchange/routing key, queue/binding, TLS</td>
+</tr>
+<tr class="odd">
+<td>eventos chegam mas não projetam</td>
+<td>inbox, tentativas, erro semântico, projection store</td>
+</tr>
+<tr class="even">
+<td>retries infinitos</td>
+<td>classificação, budget/backoff, estado da inbox</td>
+</tr>
+<tr class="odd">
+<td>UI sem dados</td>
+<td>API auth, endpoint, source profile, projection freshness</td>
+</tr>
+<tr class="even">
+<td>workflow não arranca</td>
+<td>catálogo, token/app, inputs, workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>deploy falha</td>
+<td>release identity, WIF, APIs, Terraform/Cloud Deploy, smoke</td>
+</tr>
+<tr class="even">
+<td>claim sem proof</td>
+<td>snapshot, run ID, artifacts, hash e limitação</td>
+</tr>
+</tbody>
+</table>
+<h2 id="workflows-do-repositório">40. Workflows do repositório</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ficheiro</th>
+<th>Nome</th>
+<th>Triggers detetados</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>_cloud-operation.yml</td>
+<td>_cloud operation</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>_deploy.yml</td>
+<td>_deploy</td>
+<td>workflow_call</td>
+</tr>
+<tr class="odd">
+<td>_deployment-operation.yml</td>
+<td>_deployment operation</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>_evidence-campaign.yml</td>
+<td>_evidence campaign operation</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>_qualify.yml</td>
+<td>_qualify</td>
+<td>workflow_call</td>
+</tr>
+<tr class="even">
+<td>_quality-operation.yml</td>
+<td>_quality operation</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>_release.yml</td>
+<td>_release</td>
+<td>workflow_call</td>
+</tr>
+<tr class="even">
+<td>_validate.yml</td>
+<td>_validate</td>
+<td>workflow_call</td>
+</tr>
+<tr class="odd">
+<td>cd-staging.yml</td>
+<td>CD staging</td>
+<td>push, workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>ci.yml</td>
+<td>CI</td>
+<td>pull_request, push, workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>documentation.yml</td>
+<td>Documentation</td>
+<td>pull_request, push, workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>engineering-foundations.yml</td>
+<td>Engineering foundations</td>
+<td>pull_request, push, workflow_dispatch, schedule</td>
+</tr>
+<tr class="odd">
+<td>gcp-g8-1-deploy-staging.yml</td>
+<td>G8.1 deploy verified release to staging</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>gcp-g8-1-production-policy.yml</td>
+<td>G8.1 cloud production policy</td>
+<td>pull_request, push, workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>gcp-g8-1-promote-production.yml</td>
+<td>G8.1 promote verified release to production</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>gcp-g8-1-release.yml</td>
+<td>G8.1 build immutable release</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>gcp-g8-1-teardown.yml</td>
+<td>G8.1 controlled one-week environment teardown</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>gcp-g8-2-authorization-request.yml</td>
+<td>G8.2 authorization request</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>gcp-g8-2-authorization-verification.yml</td>
+<td>G8.2 authorization verification</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>gcp-g8-2-independent-review.yml</td>
+<td>G8.2 independent review verification</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>gcp-g8-2-policy.yml</td>
+<td>G8.2 qualification integrity policy</td>
+<td>pull_request, push, workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>gcp-g8-2-runtime-probe.yml</td>
+<td>G8.2 runtime probe</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>gcp-g8-2-runtime-qualification.yml</td>
+<td>G8.2 runtime qualification</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>gcp-g8-2-submit-signed-governance.yml</td>
+<td>G8.2 submit signed governance document</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>gcp-g9-convergence-policy.yml</td>
+<td>G9 repository convergence policy</td>
+<td>pull_request, push, workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>open-staging.yml</td>
+<td>Open staging</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>quality-guardrails.yml</td>
+<td>Quality guardrails</td>
+<td>pull_request, push, workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>release-candidate.yml</td>
+<td>Release candidate</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>rollback-staging.yml</td>
+<td>Rollback staging</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="even">
+<td>security.yml</td>
+<td>Security</td>
+<td>pull_request, push, workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>teardown-staging.yml</td>
+<td>Teardown staging</td>
+<td>workflow_dispatch, schedule</td>
+</tr>
+<tr class="even">
+<td>wif-deploy-probe.yml</td>
+<td>WIF deploy authority probe</td>
+<td>workflow_dispatch</td>
+</tr>
+<tr class="odd">
+<td>wif-readonly-probe.yml</td>
+<td>WIF read-only probe</td>
+<td>workflow_dispatch</td>
+</tr>
+</tbody>
+</table>
+<h1 id="parte-viii---demonstração-e-apresentação">Parte VIII -
+Demonstração e apresentação</h1>
+<h2 id="demonstração-recomendada">41. Demonstração recomendada</h2>
+<ol type="1">
+<li>Abrir Mission Control e mostrar a cadeia de gates.</li>
+<li>Entrar como <code>Sim</code> e iniciar uma run curta com seed
+conhecida.</li>
+<li>Mostrar identidade, lifecycle e outputs da run.</li>
+<li>Introduzir missing/lag e explicar quality/eligibility.</li>
+<li>Entrar como <code>QA</code> e solicitar uma suite fechada.</li>
+<li>Abrir Evidence Explorer e mostrar producer, snapshot e hash.</li>
+<li>Mostrar Deployments/Cloud Resources e o rótulo
+<code>DeclaredNotObserved</code> ou bloqueios.</li>
+<li>Mostrar Approvals e separação de deveres.</li>
+<li>Fechar com a escada de evidence e limitações.</li>
+</ol>
+<h2 id="plano-offline">42. Plano offline</h2>
+<ul>
+<li>screenshots atuais por role;</li>
+<li>gravação curta ou evidence package;</li>
+<li>run histórica rotulada;</li>
+<li>diagramas A4/16:9;</li>
+<li>nunca fingir que um replay é uma execução ao vivo.</li>
+</ul>
+<h2 id="estrutura-de-10-15-minutos">43. Estrutura de 10-15 minutos</h2>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Tempo</th>
+<th>Conteúdo</th>
+<th>Visual</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1 min</td>
+<td>problema e âmbito</td>
+<td>system context</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2 min</td>
+<td>arquitetura</td>
+<td>containers</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2 min</td>
+<td>runtime e falhas</td>
+<td>risk pipeline</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2 min</td>
+<td>dados, qualidade e métodos</td>
+<td>provenance + quality</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2 min</td>
+<td>UI, roles e operations</td>
+<td>roles + lifecycle</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2 min</td>
+<td>quality/evidence/cloud</td>
+<td>evidence + deployment</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">1-3 min</td>
+<td>resultados, limites e futuro</td>
+<td>maturity ladder</td>
+</tr>
+</tbody>
+</table>
+<h2 id="frases-âncora">44. Frases-âncora</h2>
+<ul>
+<li>“Não transformamos ausência em segurança.”</li>
+<li>“Broker delivery não é business processing.”</li>
+<li>“Implementado não significa provado.”</li>
+<li>“A UI solicita; o backend autoriza; o runner executa; a evidence
+regressa.”</li>
+<li>“A contribuição é a auditabilidade integrada, não um alerta
+oficial.”</li>
+</ul>
+<h1 id="parte-ix---banco-de-perguntas-da-defesa">Parte IX - Banco de
+perguntas da defesa</h1>
+<h2 id="qual-é-a-contribuição-principal">1. Qual é a contribuição
+principal?</h2>
+<p>A integração de uma cadeia auditável que separa verdade simulada,
+observação, qualidade, elegibilidade, falha, avaliação candidata,
+evidence e autoridade. Não é a criação de um índice oficial.</p>
+<h2 id="porque-usar-simulação">2. Porque usar simulação?</h2>
+<p>Permite entradas repetíveis, seed conhecida e falhas deliberadas. É
+adequada para testar comportamento técnico, mas não substitui validação
+com dados externos reais e rastreáveis.</p>
+<h2 id="porque-rabbitmq">3. Porque RabbitMQ?</h2>
+<p>Desacopla produção e consumo. A entrega do broker não é o estado de
+negócio; a inbox PostgreSQL preserva idempotência, tentativas, retry e
+quarentena.</p>
+<h2 id="porque-é-necessário-um-eventenvelope">4. Porque é necessário um
+EventEnvelope?</h2>
+<p>Preserva identidade, correlação, versão, origem e tempos em torno do
+payload, permitindo compatibilidade e auditoria.</p>
+<h2 id="o-que-acontece-antes-do-ack">5. O que acontece antes do
+ACK?</h2>
+<p>Quando a persistência durável está ativa, o envelope é registado na
+inbox e a tentativa é criada antes do ACK, reduzindo o risco de perda
+invisível.</p>
+<h2 id="o-que-distingue-rejected-de-quarantined">6. O que distingue
+Rejected de Quarantined?</h2>
+<p>Rejected representa uma rejeição técnica/semântica; Quarantined
+representa uma falha permanente ou retries esgotados, preservada para
+diagnóstico.</p>
+<h2 id="porque-postgresql-e-influxdb">7. Porque PostgreSQL e
+InfluxDB?</h2>
+<p>PostgreSQL é autoridade relacional para controlo e estado
+operacional; InfluxDB serve séries temporais e observabilidade. Grafana
+não é fonte de verdade.</p>
+<h2 id="como-são-tratados-valores-ausentes">8. Como são tratados valores
+ausentes?</h2>
+<p>Através de validade, coverage, freshness, flags e eligibility.
+Ausência não é convertida em risco baixo.</p>
+<h2 id="qual-a-diferença-entre-qualidade-e-confiança">9. Qual a
+diferença entre qualidade e confiança?</h2>
+<p>Qualidade descreve propriedades do input/processamento; confiança é
+uma interpretação derivada e nunca deve esconder a causa concreta da
+limitação.</p>
+<h2 id="o-score-natureprotector-prevê-incêndios">10. O score
+NatureProtector prevê incêndios?</h2>
+<p>Não. É um score técnico candidato para comparação controlada e
+explicabilidade.</p>
+<h2 id="o-fwi-está-validado">11. O FWI está validado?</h2>
+<p>Não como implementação oficial/conforme. É um componente candidato,
+sujeito a convenções, estado acumulado, inputs e casos de validação
+oficiais.</p>
+<h2 id="o-kbdi-está-validado">12. O KBDI está validado?</h2>
+<p>Não. A interpretação exige clima, precipitação, inicialização e
+calibração adequados.</p>
+<h2 id="o-que-é-o-portuguese-context-proxy">13. O que é o Portuguese
+Context Proxy?</h2>
+<p>Uma aproximação experimental do projeto; não é um produto oficial de
+IPMA, ICNF ou ANEPC.</p>
+<h2 id="porque-a-ui-é-organizada-por-tarefas">14. Porque a UI é
+organizada por tarefas?</h2>
+<p>Os utilizadores precisam de simular, diagnosticar, avaliar e operar;
+reproduzir tabelas da base de dados na UI criaria acoplamento e pior
+compreensão.</p>
+<h2 id="as-capabilities-do-frontend-são-segurança">15. As capabilities
+do frontend são segurança?</h2>
+<p>Não. A segurança efetiva é aplicada por policies no backend. O
+frontend apenas adapta navegação e affordances.</p>
+<h2
+id="porque-admin-não-pode-automaticamente-fazer-deploy-de-produção">16.
+Porque Admin não pode automaticamente fazer deploy de produção?</h2>
+<p>Administração da aplicação e autoridade de release são deveres
+diferentes. A separação reduz privilégio excessivo e melhora
+auditoria.</p>
+<h2 id="o-que-é-uma-engineeringoperation">17. O que é uma
+EngineeringOperation?</h2>
+<p>Um pedido auditável de quality, evidence, deployment ou cloud com
+catálogo fechado, inputs limitados, confirmação, aprovação, timeline e
+artifacts.</p>
+<h2 id="porque-não-executar-shell-a-partir-da-api">18. Porque não
+executar shell a partir da API?</h2>
+<p>Isso juntaria vulnerabilidade Web, credenciais e autoridade de
+infraestrutura. A API despacha workflows especializados e limitados.</p>
+<h2 id="como-se-prova-uma-operação">19. Como se prova uma operação?</h2>
+<p>Não basta status de sucesso. É necessário associar snapshot,
+produtor, ambiente, artifacts e hashes às expectativas da operação.</p>
+<h2 id="qual-a-diferença-entre-implemented-e-proved">20. Qual a
+diferença entre IMPLEMENTED e PROVED?</h2>
+<p>IMPLEMENTED significa que o caminho existe; PROVED exige execução
+identificada e evidence suficiente para o claim e snapshot exatos.</p>
+<h2 id="porque-fixar-github-actions-por-sha">21. Porque fixar GitHub
+Actions por SHA?</h2>
+<p>Reduz risco de alteração invisível de uma tag e melhora
+reprodutibilidade da supply chain.</p>
+<h2 id="o-que-é-wif">22. O que é WIF?</h2>
+<p>Workload Identity Federation permite que GitHub obtenha credenciais
+curtas para GCP sem guardar uma service-account key de longa
+duração.</p>
+<h2 id="porque-staging-antes-de-produção">23. Porque staging antes de
+produção?</h2>
+<p>A mesma release imutável deve ser implantada, testada e qualificada
+num ambiente isolado antes de promoção.</p>
+<h2 id="o-sistema-está-em-produção">24. O sistema está em produção?</h2>
+<p>Não há proof fornecida de staging qualificado nem produção implantada
+para o head final. O código de infraestrutura não equivale a deployment
+provado.</p>
+<h2 id="como-funciona-rollback">25. Como funciona rollback?</h2>
+<p>Deve selecionar um target imutável conhecido, executar o workflow
+autorizado e recolher evidence pós-rollback. Não é “voltar ao branch
+anterior”.</p>
+<h2 id="como-deveria-funcionar-terraform-destroy">26. Como deveria
+funcionar terraform destroy?</h2>
+<p>Primeiro gerar plano imutável, verificar projeto/state/recursos
+partilhados, recolher inventário e hash; depois aprovação separada e
+execução exata desse plano.</p>
+<h2 id="o-que-é-declarednotobserved">27. O que é
+DeclaredNotObserved?</h2>
+<p>Um recurso ou estado está declarado em configuração, mas não foi
+observado por recolha autenticada atual. Evita apresentar IaC como
+estado vivo.</p>
+<h2 id="como-é-garantida-reprodutibilidade-de-uma-run">28. Como é
+garantida reprodutibilidade de uma run?</h2>
+<p>Preservando run spec, cenário, seed, sensores, ciclos, degradação,
+snapshot de código, manifests e evidence de execução.</p>
+<h2 id="porque-event_time-e-ingest_time-são-diferentes">29. Porque
+event_time e ingest_time são diferentes?</h2>
+<p>Um descreve quando o fenómeno/evento é representado; outro quando
+entrou no sistema. A diferença é necessária para atraso, ordering e
+freshness.</p>
+<h2 id="como-são-tratados-duplicados">30. Como são tratados
+duplicados?</h2>
+<p>A identidade do evento e a inbox permitem detetar repetição e evitar
+aplicar novamente efeitos de negócio sem controlo.</p>
+<h2 id="como-são-tratados-eventos-fora-de-ordem">31. Como são tratados
+eventos fora de ordem?</h2>
+<p>A semântica temporal e o estado projetado devem comparar
+tempos/progresso; a policy depende do contrato e não pode assumir ordem
+de chegada.</p>
+<h2 id="que-observabilidade-existe">32. Que observabilidade existe?</h2>
+<p>Logs estruturados, métricas e traces OpenTelemetry, health/readiness,
+InfluxDB/Grafana e evidence. A disponibilidade concreta depende do
+ambiente executado.</p>
+<h2 id="qual-é-a-maior-limitação-científica">33. Qual é a maior
+limitação científica?</h2>
+<p>Dados/proveniência, calibração, generalização territorial e ausência
+de validação externa integrada.</p>
+<h2 id="qual-é-a-maior-limitação-técnica-atual">34. Qual é a maior
+limitação técnica atual?</h2>
+<p>A ausência de proof runtime/remota completa para o snapshot final,
+sobretudo signed release, staging e produção.</p>
+<h2 id="porque-preservar-documentação-histórica">35. Porque preservar
+documentação histórica?</h2>
+<p>Explica decisões e evolução, mas deve estar rotulada para não
+competir com a verdade atual.</p>
+<h2 id="como-a-ia-foi-usada">36. Como a IA foi usada?</h2>
+<p>Como apoio à exploração, estruturação, implementação e revisão, com
+verificação proporcional ao claim. Não é fonte científica nem autora;
+Miguel Alves assume a autoria do relatório.</p>
+<h2 id="como-demonstrar-sem-internet">37. Como demonstrar sem
+Internet?</h2>
+<p>Usar evidence packages, screenshots e replay claramente rotulados
+como históricos, mantendo o mesmo guião de operação e proof
+boundary.</p>
+<h2 id="qual-é-o-próximo-passo-prioritário">38. Qual é o próximo passo
+prioritário?</h2>
+<p>Provar um snapshot final reproduzível em runtime e staging; depois
+fechar limitações de dados/métodos e executar avaliação integrada
+externa.</p>
+<h1 id="apêndice-a---glossário">Apêndice A - Glossário</h1>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Termo</th>
+<th>Definição operacional no projeto</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>ACK</td>
+<td>Confirmação ao broker de que a mensagem pode ser considerada
+entregue ao consumidor.</td>
+</tr>
+<tr class="even">
+<td>Artifact</td>
+<td>Ficheiro produzido por build, teste, release, deployment ou recolha
+de evidence.</td>
+</tr>
+<tr class="odd">
+<td>Attestation</td>
+<td>Declaração verificável sobre origem/processo de construção de um
+artifact.</td>
+</tr>
+<tr class="even">
+<td>Capability</td>
+<td>Permissão granular aplicada por policy no backend.</td>
+</tr>
+<tr class="odd">
+<td>Control plane</td>
+<td>Camada que gere configuração, runs, operações e autoridade; não é o
+fluxo principal de dados ambientais.</td>
+</tr>
+<tr class="even">
+<td>Coverage</td>
+<td>Proporção do conjunto esperado de dados que está efetivamente
+disponível.</td>
+</tr>
+<tr class="odd">
+<td>Degradação</td>
+<td>Transformação controlada que introduz missing, ruído, bias, drift,
+lag ou outra anomalia.</td>
+</tr>
+<tr class="even">
+<td>Eligibility</td>
+<td>Decisão sobre se os inputs satisfazem condições mínimas para uma
+avaliação.</td>
+</tr>
+<tr class="odd">
+<td>Evidence</td>
+<td>Artefacto e contexto que sustentam um claim específico.</td>
+</tr>
+<tr class="even">
+<td>Freshness</td>
+<td>Relação entre idade/tempo do dado e a janela em que ainda pode ser
+interpretado.</td>
+</tr>
+<tr class="odd">
+<td>Ground truth simulado</td>
+<td>Estado conhecido pelo simulador usado como referência experimental;
+não é uma observação real do território.</td>
+</tr>
+<tr class="even">
+<td>Idempotência</td>
+<td>Capacidade de repetir um processamento sem duplicar efeitos de
+negócio.</td>
+</tr>
+<tr class="odd">
+<td>Inbox</td>
+<td>Registo durável de mensagens recebidas e respetivo estado de
+processamento.</td>
+</tr>
+<tr class="even">
+<td>Lineage</td>
+<td>Cadeia de origem e transformações de um dado.</td>
+</tr>
+<tr class="odd">
+<td>Operation catalog</td>
+<td>Lista fechada de operações que a UI/API está autorizada a
+solicitar.</td>
+</tr>
+<tr class="even">
+<td>Projection</td>
+<td>Vista materializada do estado operacional atual, derivada de
+eventos/logs.</td>
+</tr>
+<tr class="odd">
+<td>Provenance</td>
+<td>Origem, propriedade, contexto e transformações associados a
+dados/evidence.</td>
+</tr>
+<tr class="even">
+<td>Quarentena</td>
+<td>Estado de um evento que deixou de ser reprocessado
+automaticamente.</td>
+</tr>
+<tr class="odd">
+<td>Release imutável</td>
+<td>Pacote/imagem identificado por digest e não reconstruído durante
+promoção.</td>
+</tr>
+<tr class="even">
+<td>Run spec</td>
+<td>Contrato que define cenário, seed, ciclos, sensores, intervalos e
+degradações.</td>
+</tr>
+<tr class="odd">
+<td>SBOM</td>
+<td>Inventário standard dos componentes incluídos num artifact.</td>
+</tr>
+<tr class="even">
+<td>Snapshot factual</td>
+<td>Conjunto de código/configuração/evidence a que uma afirmação se
+refere.</td>
+</tr>
+<tr class="odd">
+<td>WIF</td>
+<td>Federação de identidade de workload para credenciais curtas sem
+chave estática.</td>
+</tr>
+</tbody>
+</table>
+<h1 id="apêndice-b---linguagem-autorizada">Apêndice B - Linguagem
+autorizada</h1>
+<h2 id="preferir">Preferir</h2>
+<p><code>experimental</code>, <code>candidato</code>,
+<code>simulação controlada</code>, <code>snapshot identificado</code>,
+<code>verificação estática</code>, <code>execução identificada</code>,
+<code>evidence histórica</code>, <code>parcial</code>,
+<code>bloqueado</code>, <code>limitação</code>,
+<code>declarado não observado</code>.</p>
+<h2 id="evitar-sem-proof-específico">Evitar sem proof específico</h2>
+<p><code>real-time</code>, <code>live</code>, <code>dados reais</code>,
+<code>validado</code>, <code>calibrado</code>, <code>oficial</code>,
+<code>produção</code>, <code>production-ready</code>,
+<code>alerta real</code>, <code>previsão precisa</code>.</p>
+<h2 id="transformações-seguras">Transformações seguras</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Formulação perigosa</th>
+<th>Formulação segura</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>“o sistema prevê incêndios”</td>
+<td>“o sistema calcula scores candidatos em cenários controlados”</td>
+</tr>
+<tr class="even">
+<td>“dados em tempo real”</td>
+<td>“dados do cenário ou observações com timestamp e freshness
+conhecidos”</td>
+</tr>
+<tr class="odd">
+<td>“FWI implementado corretamente”</td>
+<td>“componente candidato FWI implementado e sujeito a validação de
+conformidade”</td>
+</tr>
+<tr class="even">
+<td>“deployment concluído”</td>
+<td>“infraestrutura/workflow implementado; execução atual deve ser
+provada”</td>
+</tr>
+<tr class="odd">
+<td>“a evidence prova o sistema”</td>
+<td>“o artifact suporta este claim, neste snapshot e camada”</td>
+</tr>
+</tbody>
+</table>
+<h1 id="apêndice-c---gates-abertos">Apêndice C - Gates abertos</h1>
+<ul>
+<li>restore/build/test .NET no tree documental final;</li>
+<li>PowerShell e PSScriptAnalyzer;</li>
+<li>Terraform init/validate nos ambientes selecionados;</li>
+<li>ShellCheck/actionlint;</li>
+<li>Docker/full-stack;</li>
+<li>dispatch e callback GitHub reais;</li>
+<li>signed release para o head final;</li>
+<li>staging, smoke, observabilidade e rollback;</li>
+<li>produção e destroy;</li>
+<li>calibração/validação científica;</li>
+<li>estudo com utilizadores e validação institucional;</li>
+<li>revisão humana final de agradecimentos, atribuições e seleção de
+figuras.</li>
+</ul>
+<h1 id="apêndice-d---checklist-antes-da-apresentação">Apêndice D -
+Checklist antes da apresentação</h1>
+<ul class="task-list">
+<li><label><input type="checkbox" />Sei explicar o problema sem dizer
+“previsão oficial”.</label></li>
+<li><label><input type="checkbox" />Consigo desenhar o fluxo Simulator
+-&gt; RabbitMQ -&gt; Prevention -&gt; PostgreSQL -&gt;
+API/UI.</label></li>
+<li><label><input type="checkbox" />Sei distinguir
+<code>event_time</code>, <code>ingest_time</code> e processing
+time.</label></li>
+<li><label><input type="checkbox" />Sei explicar missing, eligibility,
+retry e quarantine.</label></li>
+<li><label><input type="checkbox" />Sei explicar PostgreSQL versus
+InfluxDB.</label></li>
+<li><label><input type="checkbox" />Sei explicar roles e porque Admin
+não herda produção.</label></li>
+<li><label><input type="checkbox" />Sei demonstrar evidence com snapshot
+e hash.</label></li>
+<li><label><input type="checkbox" />Sei dizer exatamente o que
+staging/produção ainda não provam.</label></li>
+<li><label><input type="checkbox" />Tenho demo offline.</label></li>
+<li><label><input type="checkbox" />Conheço as três limitações
+científicas mais importantes.</label></li>
+</ul>
+<h1 id="apêndice-e---fontes-e-autoridade-deste-compêndio">Apêndice E -
+Fontes e autoridade deste compêndio</h1>
+<p>Este documento foi consolidado a partir do repositório
+NatureProtector convergido de 28 de junho de 2026, do relatório factual
+R13, dos corpora de reconstrução, do handover visual e dos inventários
+gerados. Não substitui as fontes científicas citadas no relatório.
+Tabelas geradas a partir do código devem ser regeneradas quando roles,
+operations, projetos ou workflows mudarem.</p>
+</body>
+</html>

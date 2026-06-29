@@ -1,6 +1,8 @@
 import type { RuntimeSummaryResponse } from '../types';
 
-export function createUiV2RuntimeSummaryFixture(overrides: Partial<RuntimeSummaryResponse> = {}): RuntimeSummaryResponse {
+export function createUiV2RuntimeSummaryFixture(
+  overrides: Partial<RuntimeSummaryResponse> = {},
+): RuntimeSummaryResponse {
   return {
     generatedAtUtc: '2026-06-13T22:00:00Z',
     recentWindowMinutes: 30,

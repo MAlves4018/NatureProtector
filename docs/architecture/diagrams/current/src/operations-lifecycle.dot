@@ -1,0 +1,18 @@
+digraph G { rankdir=LR; graph [fontname="Arial", bgcolor="white", pad="0.25", nodesep="0.45", ranksep="0.7", splines=ortho];
+node [fontname="Arial", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F7FAFC", color="#334155", penwidth=1.2, margin="0.14,0.09"];
+edge [fontname="Arial", fontsize=9, color="#475569", arrowsize=0.75, penwidth=1.1];
+ui [label="Role-aware UI
+selects operation ID",fillcolor="#DBEAFE"];
+auth [label="Server capability policy",shape=diamond,fillcolor="#FEF3C7"];
+cat [label="Closed operation catalog",fillcolor="#DCFCE7"];
+confirm [label="Exact confirmation",shape=diamond,fillcolor="#FFEDD5"];
+approve [label="Separate approval",shape=diamond,fillcolor="#FDE68A"];
+store [label="Operation store
+request, roles, inputs, timeline",shape=cylinder,fillcolor="#FCE7F3"];
+dispatch [label="Authorised dispatcher",fillcolor="#EDE9FE"];
+runner [label="GitHub / deployment / cloud runner",fillcolor="#F3E8FF"];
+art [label="Artifacts + SHA-256 + limitations",shape=folder,fillcolor="#F1F5F9"];
+callback [label="Authenticated callback",fillcolor="#E0F2FE"];
+ui->auth; auth->cat [label="allowed"]; cat->confirm; confirm->approve; approve->store; store->dispatch; dispatch->runner; runner->art; runner->callback; callback->store; store->ui [label="status and evidence"];
+auth->ui [label="denied",color="#B91C1C"];
+}

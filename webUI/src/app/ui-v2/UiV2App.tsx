@@ -2,6 +2,7 @@ import { LogIn, Moon, Sun } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { UiV2Navigation } from './navigation/UiV2Navigation';
 import { UiV2Provider, useUiV2 } from './state/UiV2Context';
+import { OperationsProvider } from './operations/OperationsContext';
 import { PublicOverviewPage } from './pages/PublicOverviewPage';
 import { DataContextPage } from './pages/DataContextPage';
 import { OverviewPage } from './pages/OverviewPage';
@@ -12,6 +13,13 @@ import { PipelinePage } from './pages/PipelinePage';
 import { QualityEvidencePage } from './pages/QualityEvidencePage';
 import { AdminPage } from './pages/AdminPage';
 import { ExperimentalPage } from './pages/ExperimentalPage';
+import { MissionControlPage } from './pages/MissionControlPage';
+import { QualityRunsPage } from './pages/QualityRunsPage';
+import { EvidenceExplorerPage } from './pages/EvidenceExplorerPage';
+import { DeploymentsPage } from './pages/DeploymentsPage';
+import { CloudResourcesPage } from './pages/CloudResourcesPage';
+import { ApprovalsPage } from './pages/ApprovalsPage';
+import { UserRoleAdministrationPage } from './pages/UserRoleAdministrationPage';
 import type { UiV2NavTarget } from './capabilities';
 import { trapDialogTab } from './components/dialogFocus';
 import './theme/ui-v2.css';
@@ -19,7 +27,9 @@ import './theme/ui-v2.css';
 export function UiV2App({ isDark = false }: { isDark?: boolean }) {
   return (
     <UiV2Provider>
-      <UiV2Shell isDark={isDark} />
+      <OperationsProvider>
+        <UiV2Shell isDark={isDark} />
+      </OperationsProvider>
     </UiV2Provider>
   );
 }
@@ -34,6 +44,8 @@ function UiV2Shell({ isDark }: { isDark: boolean }) {
     setActivePage,
     user,
     isPublic,
+    capabilityAuthority,
+    capabilitiesLoading,
   } = useUiV2();
   const [helpTopic, setHelpTopic] = useState<string | null>(null);
   const helpCloseRef = useRef<HTMLButtonElement | null>(null);
@@ -78,7 +90,7 @@ function UiV2Shell({ isDark }: { isDark: boolean }) {
       <a
         className="ui-v2-skip"
         href={`#${mainId}`}
-        onClick={event => {
+        onClick={(event) => {
           event.preventDefault();
           document.getElementById(mainId)?.focus();
         }}
@@ -87,18 +99,34 @@ function UiV2Shell({ isDark }: { isDark: boolean }) {
       </a>
       <header className="ui-v2-hero">
         <div>
-          <p className="ui-v2-kicker">{copy('app.prototype')} / {copy('app.readOnly')}</p>
+          <p className="ui-v2-kicker">
+            {copy('app.prototype')} / {copy('app.readOnly')}
+          </p>
           <h1 className="ui-v2-title">{copy('app.name')}</h1>
           <p className="ui-v2-lead">
             {isPublic
               ? 'Entrada publica orientada a produto: proposito, limites e estado dos dados sem surfaces internas.'
-              : `Perfil ativo: ${user?.roles.join(', ') || 'sem roles'}. Navegacao organizada por tarefas e capabilities reais.`}
+              : `Perfil ativo: ${user?.roles.join(', ') || 'sem roles'}. Autorizacao: ${
+                  capabilitiesLoading ? 'a validar no backend' : capabilityAuthority
+                }.`}
           </p>
         </div>
         <div className="ui-v2-hero-actions">
           <div className="ui-v2-language">
-            <button type="button" className={locale === 'pt-PT' ? 'ui-v2-button' : 'ui-v2-secondary'} onClick={() => setLocale('pt-PT')}>{copy('language.pt')}</button>
-            <button type="button" className={locale === 'en' ? 'ui-v2-button' : 'ui-v2-secondary'} onClick={() => setLocale('en')}>{copy('language.en')}</button>
+            <button
+              type="button"
+              className={locale === 'pt-PT' ? 'ui-v2-button' : 'ui-v2-secondary'}
+              onClick={() => setLocale('pt-PT')}
+            >
+              {copy('language.pt')}
+            </button>
+            <button
+              type="button"
+              className={locale === 'en' ? 'ui-v2-button' : 'ui-v2-secondary'}
+              onClick={() => setLocale('en')}
+            >
+              {copy('language.en')}
+            </button>
           </div>
           <span className="ui-v2-badge">
             {isDark ? <Moon size={14} /> : <Sun size={14} />}
@@ -129,7 +157,9 @@ function UiV2Shell({ isDark }: { isDark: boolean }) {
             <h2 className="ui-v2-page-title">{copy('help.title')}</h2>
             <p>{copy('help.intro')}</p>
             <p>{copy('help.browser')}</p>
-            <button type="button" className="ui-v2-button" onClick={closeHelp} ref={helpCloseRef}>{copy('help.close')}</button>
+            <button type="button" className="ui-v2-button" onClick={closeHelp} ref={helpCloseRef}>
+              {copy('help.close')}
+            </button>
           </section>
         </div>
       )}
@@ -143,6 +173,8 @@ function renderPage(activePage: UiV2NavTarget) {
       return <PublicOverviewPage />;
     case 'context':
       return <DataContextPage />;
+    case 'mission':
+      return <MissionControlPage />;
     case 'risk':
       return <RiskPage />;
     case 'runs':
@@ -151,6 +183,8 @@ function renderPage(activePage: UiV2NavTarget) {
       return <SimulationPage />;
     case 'pipeline':
       return <PipelinePage />;
+    case 'quality':
+      return <QualityRunsPage />;
     case 'qa':
       return <QualityEvidencePage />;
     case 'admin':
@@ -158,7 +192,15 @@ function renderPage(activePage: UiV2NavTarget) {
     case 'p3':
       return <ExperimentalPage />;
     case 'evidence':
-      return <QualityEvidencePage />;
+      return <EvidenceExplorerPage />;
+    case 'deployments':
+      return <DeploymentsPage />;
+    case 'cloud':
+      return <CloudResourcesPage />;
+    case 'approvals':
+      return <ApprovalsPage />;
+    case 'users':
+      return <UserRoleAdministrationPage />;
     default:
       return <OverviewPage />;
   }

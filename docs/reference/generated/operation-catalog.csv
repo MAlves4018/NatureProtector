@@ -1,0 +1,33 @@
+operation_id,category,display_name,availability,evidence_level
+frontend-fast,quality,Frontend fast,implemented,IMPLEMENTED_NOT_PROVED
+frontend-full,quality,Frontend full,implemented,IMPLEMENTED_NOT_PROVED
+backend-unit,quality,Backend unit,implemented,IMPLEMENTED_NOT_PROVED
+backend-integration,quality,Backend integration,implemented,IMPLEMENTED_NOT_PROVED
+architecture,quality,Architecture,implemented,IMPLEMENTED_NOT_PROVED
+security,quality,Security,implemented,IMPLEMENTED_NOT_PROVED
+playwright-fixture,quality,Playwright fixture,implemented,IMPLEMENTED_NOT_PROVED
+playwright-full-stack,quality,Playwright full stack,implemented,IMPLEMENTED_NOT_PROVED
+accessibility,quality,Accessibility,implemented,IMPLEMENTED_NOT_PROVED
+mutation,quality,Mutation,implemented,IMPLEMENTED_NOT_PROVED
+terraform-static,quality,Terraform static,implemented,IMPLEMENTED_NOT_PROVED
+cloud-static,quality,Cloud static,implemented,IMPLEMENTED_NOT_PROVED
+quality-all,quality,All quality gates,implemented,IMPLEMENTED_NOT_PROVED
+evidence-static,evidence,Static evidence campaign,implemented,IMPLEMENTED_NOT_PROVED
+evidence-quality,evidence,Quality evidence campaign,implemented,IMPLEMENTED_NOT_PROVED
+evidence-full-plan,evidence,Full evidence plan,implemented,IMPLEMENTED_NOT_PROVED
+evidence-full-execute,evidence,Full evidence execution,implemented,IMPLEMENTED_NOT_PROVED
+staging-plan,deployment,Plan staging,implemented,IMPLEMENTED_NOT_PROVED
+staging-deploy,deployment,Deploy staging,implemented,IMPLEMENTED_NOT_PROVED
+staging-rollback,deployment,Rollback staging,implemented,IMPLEMENTED_NOT_PROVED
+production-plan,deployment,Plan production,blocked-no-authoritative-workflow,NOT_PROVED
+production-deploy,deployment,Deploy production,implemented,IMPLEMENTED_NOT_PROVED
+production-rollback,deployment,Rollback production,blocked-no-authoritative-workflow,NOT_PROVED
+cloud-inventory,cloud,Collect cloud inventory,blocked-missing-qualified-owner-input,NOT_PROVED
+cloud-costs,cloud,Collect cloud costs,blocked-no-authoritative-workflow,NOT_PROVED
+cloud-smoke,cloud,Run cloud smoke,blocked-missing-qualified-input-contract,NOT_PROVED
+cloud-open-staging,cloud,Open staging,implemented,IMPLEMENTED_NOT_PROVED
+cloud-close-staging,cloud,Close staging,implemented,IMPLEMENTED_NOT_PROVED
+cloud-destroy-plan,cloud,Prepare destroy plan,blocked-no-destroy-plan-workflow,NOT_PROVED
+cloud-destroy-execute,cloud,Execute approved destroy plan,blocked-until-approved-plan,NOT_PROVED
+implemented,deployment,IMPLEMENTED_NOT_PROVED,implemented,IMPLEMENTED_NOT_PROVED
+implemented,cloud,IMPLEMENTED_NOT_PROVED,implemented,IMPLEMENTED_NOT_PROVED

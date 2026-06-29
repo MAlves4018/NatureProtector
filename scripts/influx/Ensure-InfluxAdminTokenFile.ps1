@@ -11,51 +11,13 @@ volume recreation.
 [CmdletBinding()]
 param()
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
 
-function Find-RepositoryRoot {
-    $current = Get-Item -LiteralPath $PSScriptRoot
-
-    while ($null -ne $current) {
-        $solution = Join-Path $current.FullName "NatureProtector.sln"
-        $compose = Join-Path $current.FullName "docker-compose.yml"
-
-        if ((Test-Path -LiteralPath $solution) -and (Test-Path -LiteralPath $compose)) {
-            return $current.FullName
-        }
-
-        $current = $current.Parent
-    }
-
-    throw "Could not locate repository root from $PSScriptRoot."
-}
-
-function Read-DotEnv {
-    param([string]$Path)
-
-    $values = @{}
-
-    if (-not (Test-Path -LiteralPath $Path)) {
-        throw ".env not found at $Path. Create it from .env.example before running this script."
-    }
-
-    foreach ($rawLine in Get-Content -LiteralPath $Path) {
-        $line = $rawLine.Trim()
-
-        if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("#") -or -not $line.Contains("=")) {
-            continue
-        }
-
-        $parts = $line.Split("=", 2)
-        $values[$parts[0].Trim()] = $parts[1].Trim().Trim('"')
-    }
-
-    return $values
-}
-
-$repoRoot = Find-RepositoryRoot
+$repoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln', 'docker-compose.yml')
 $dotEnvPath = Join-Path $repoRoot ".env"
-$envValues = Read-DotEnv $dotEnvPath
+$envValues = Read-NpDotEnv -Path $dotEnvPath -QuoteHandling Double -Required -MissingFileMessage ".env not found at $dotEnvPath. Create it from .env.example before running this script."
 
 if (-not $envValues.ContainsKey("INFLUXDB_TOKEN") -or [string]::IsNullOrWhiteSpace($envValues["INFLUXDB_TOKEN"])) {
     throw "Missing INFLUXDB_TOKEN in .env."

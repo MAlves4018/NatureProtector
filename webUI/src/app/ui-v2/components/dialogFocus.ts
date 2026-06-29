@@ -14,8 +14,9 @@ export function trapDialogTab(event: KeyboardEvent<HTMLElement>) {
     return;
   }
 
-  const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(focusableSelector))
-    .filter(element => !element.hasAttribute('disabled') && element.tabIndex !== -1);
+  const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+    (element) => !element.hasAttribute('disabled') && element.tabIndex !== -1,
+  );
 
   if (focusable.length === 0) {
     return;

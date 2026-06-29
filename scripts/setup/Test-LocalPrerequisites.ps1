@@ -10,24 +10,9 @@ npm install, modify repository files, start containers, or delete data.
 [CmdletBinding()]
 param()
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Continue"
-
-function Find-RepositoryRoot {
-    $current = Get-Item -LiteralPath $PSScriptRoot
-
-    while ($null -ne $current) {
-        $solution = Join-Path $current.FullName "NatureProtector.sln"
-        $compose = Join-Path $current.FullName "docker-compose.yml"
-
-        if ((Test-Path -LiteralPath $solution) -and (Test-Path -LiteralPath $compose)) {
-            return $current.FullName
-        }
-
-        $current = $current.Parent
-    }
-
-    throw "Could not locate repository root from $PSScriptRoot."
-}
 
 $script:Results = @()
 
@@ -49,45 +34,6 @@ function Add-Result {
 
     $label = ("[{0}]" -f $Status).PadRight(7)
     Write-Host "$label $Name - $Detail"
-}
-
-function Read-DotEnv {
-    param([string]$Path)
-
-    $values = @{}
-    if (-not (Test-Path -LiteralPath $Path)) {
-        return $values
-    }
-
-    foreach ($rawLine in Get-Content -LiteralPath $Path) {
-        $line = $rawLine.Trim()
-        if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("#") -or -not $line.Contains("=")) {
-            continue
-        }
-
-        $parts = $line.Split("=", 2)
-        $name = $parts[0].Trim()
-        $value = $parts[1].Trim().Trim('"')
-        if (-not [string]::IsNullOrWhiteSpace($name)) {
-            $values[$name] = $value
-        }
-    }
-
-    return $values
-}
-
-function Get-ConfigValue {
-    param(
-        [hashtable]$Values,
-        [string]$Name,
-        [string]$Fallback
-    )
-
-    if ($Values.ContainsKey($Name) -and -not [string]::IsNullOrWhiteSpace([string]$Values[$Name])) {
-        return [string]$Values[$Name]
-    }
-
-    return $Fallback
 }
 
 function Get-CommandPath {
@@ -146,59 +92,6 @@ function Test-Tool {
     Add-Result "OK" $Name $version $Required
 }
 
-function Invoke-ExternalCommand {
-    param(
-        [string]$Name,
-        [string[]]$Arguments
-    )
-
-    try {
-        $command = Get-Command $Name -ErrorAction Stop
-        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $startInfo.FileName = $command.Source
-        $startInfo.UseShellExecute = $false
-        $startInfo.RedirectStandardOutput = $true
-        $startInfo.RedirectStandardError = $true
-
-        if ($Arguments.Count -gt 0) {
-            $quotedArguments = foreach ($argument in $Arguments) {
-                if ($argument -match '\s|"' ) {
-                    '"' + ($argument -replace '"', '\"') + '"'
-                }
-                else {
-                    $argument
-                }
-            }
-
-            $startInfo.Arguments = ($quotedArguments -join " ")
-        }
-
-        $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $startInfo
-        [void]$process.Start()
-        $standardOutput = $process.StandardOutput.ReadToEnd()
-        $standardError = $process.StandardError.ReadToEnd()
-        $process.WaitForExit()
-
-        $text = (($standardOutput + $standardError) | Out-String).Trim()
-        $exitCode = $process.ExitCode
-        if ($text -match "error during connect|Acesso negado|Access is denied|permission denied|Cannot connect") {
-            $exitCode = 1
-        }
-
-        return [pscustomobject]@{
-            ExitCode = $exitCode
-            Output = $text
-        }
-    }
-    catch {
-        return [pscustomobject]@{
-            ExitCode = 1
-            Output = $_.Exception.Message
-        }
-    }
-}
-
 function Get-PortOwners {
     param([int]$Port)
 
@@ -224,7 +117,7 @@ function Get-PortOwners {
 }
 
 function Get-DockerPortOwners {
-    $result = Invoke-ExternalCommand "docker" @("ps", "--format", "{{.Names}}|{{.Ports}}")
+    $result = Invoke-NpExternalCommand "docker" @("ps", "--format", "{{.Names}}|{{.Ports}}")
     if ($result.ExitCode -ne 0) {
         return @()
     }
@@ -298,12 +191,12 @@ function Test-DotNetSdkTarget {
     }
 }
 
-$repoRoot = Find-RepositoryRoot
+$repoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln', 'docker-compose.yml')
 Set-Location $repoRoot
 $dotEnvPath = Join-Path $repoRoot ".env"
 $dotEnvExamplePath = Join-Path $repoRoot ".env.example"
-$envValues = Read-DotEnv $dotEnvPath
-$exampleValues = Read-DotEnv $dotEnvExamplePath
+$envValues = Read-NpDotEnv -Path $dotEnvPath -QuoteHandling Double
+$exampleValues = Read-NpDotEnv -Path $dotEnvExamplePath -QuoteHandling Double
 
 Write-Host "NatureProtector local prerequisite check"
 Write-Host "Repository root: $repoRoot"
@@ -320,7 +213,7 @@ Test-DotNetSdkTarget $repoRoot
 Test-Tool "Docker CLI" "docker" @("--version") $true
 
 if (Get-CommandPath "docker") {
-    $dockerInfo = Invoke-ExternalCommand "docker" @("info", "--format", "{{.ServerVersion}}")
+    $dockerInfo = Invoke-NpExternalCommand "docker" @("info", "--format", "{{.ServerVersion}}")
     if ($dockerInfo.ExitCode -eq 0) {
         Add-Result "OK" "Docker engine" $dockerInfo.Output $true
     }
@@ -328,7 +221,7 @@ if (Get-CommandPath "docker") {
         Add-Result "FAIL" "Docker engine" "docker info failed: $($dockerInfo.Output)" $true
     }
 
-    $composeVersion = Invoke-ExternalCommand "docker" @("compose", "version")
+    $composeVersion = Invoke-NpExternalCommand "docker" @("compose", "version")
     if ($composeVersion.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($composeVersion.Output)) {
         Add-Result "OK" "Docker Compose v2" $composeVersion.Output $true
     }
@@ -353,7 +246,7 @@ else {
 if (Test-Path -LiteralPath $dotEnvPath) {
     Add-Result "OK" ".env" "found" $true
 
-    $influxToken = Get-ConfigValue $envValues "INFLUXDB_TOKEN" ""
+    $influxToken = Get-NpConfigValue $envValues "INFLUXDB_TOKEN" ""
     if ([string]::IsNullOrWhiteSpace($influxToken)) {
         Add-Result "WARN" "InfluxDB token config" "INFLUXDB_TOKEN is missing; up.ps1 will fail until .env is completed" $false
     }
@@ -385,13 +278,13 @@ else {
 }
 
 $effectiveValues = if ($envValues.Count -gt 0) { $envValues } else { $exampleValues }
-$rabbitAmqpPort = [int](Get-ConfigValue $effectiveValues "RABBITMQ_AMQP_PORT" "5672")
-$rabbitManagementPort = [int](Get-ConfigValue $effectiveValues "RABBITMQ_MANAGEMENT_PORT" "15672")
-$postgresPort = [int](Get-ConfigValue $effectiveValues "POSTGRES_PORT" "5433")
-$influxPort = [int](Get-ConfigValue $effectiveValues "INFLUXDB_PORT" "8181")
-$grafanaPort = [int](Get-ConfigValue $effectiveValues "GRAFANA_PORT" "3000")
-$apiPort = [int](Get-ConfigValue $effectiveValues "BACKOFFICE_API_PORT" "5254")
-$webPort = [int](Get-ConfigValue $effectiveValues "WEBUI_PORT" "5173")
+$rabbitAmqpPort = [int](Get-NpConfigValue $effectiveValues "RABBITMQ_AMQP_PORT" "5672")
+$rabbitManagementPort = [int](Get-NpConfigValue $effectiveValues "RABBITMQ_MANAGEMENT_PORT" "15672")
+$postgresPort = [int](Get-NpConfigValue $effectiveValues "POSTGRES_PORT" "5433")
+$influxPort = [int](Get-NpConfigValue $effectiveValues "INFLUXDB_PORT" "8181")
+$grafanaPort = [int](Get-NpConfigValue $effectiveValues "GRAFANA_PORT" "3000")
+$apiPort = [int](Get-NpConfigValue $effectiveValues "BACKOFFICE_API_PORT" "5254")
+$webPort = [int](Get-NpConfigValue $effectiveValues "WEBUI_PORT" "5173")
 
 $dockerLines = @(Get-DockerPortOwners)
 Test-BaselinePort "RabbitMQ AMQP" $rabbitAmqpPort @("np-rabbitmq") $dockerLines

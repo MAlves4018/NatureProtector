@@ -1,14 +1,19 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
 using NatureProtector.Backoffice.Api.Bootstrap;
 using NatureProtector.Backoffice.Api.Configuration;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 using NatureProtector.Backoffice.Api.OpenApi;
+using NatureProtector.Backoffice.Api.Operations.Authorization;
+using NatureProtector.Backoffice.Api.Operations.Configuration;
+using NatureProtector.Backoffice.Api.Operations.Services;
 using NatureProtector.Backoffice.Api.UserPlane.Services;
 using NatureProtector.Infrastructure.Postgres.DependencyInjection;
 using NatureProtector.Infrastructure.Postgres.Persistence;
@@ -43,15 +48,31 @@ builder.Services.AddOpenApi(options =>
     options.AddDocumentTransformer<BackofficeOpenApiSecurityDocumentTransformer>();
     options.AddOperationTransformer<BackofficeOpenApiSecurityOperationTransformer>();
 });
-builder.Services.Configure<BackofficeApiOptions>(
-    builder.Configuration.GetSection(BackofficeApiOptions.SectionName));
-builder.Services.Configure<JwtAuthenticationOptions>(
-    builder.Configuration.GetSection(JwtAuthenticationOptions.SectionName));
+builder.Services.AddSingleton<IValidateOptions<BackofficeApiOptions>, BackofficeApiOptionsValidator>();
+builder.Services.AddOptions<BackofficeApiOptions>()
+    .Bind(builder.Configuration.GetSection(BackofficeApiOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<JwtAuthenticationOptions>, JwtAuthenticationOptionsValidator>();
+builder.Services.AddOptions<JwtAuthenticationOptions>()
+    .Bind(builder.Configuration.GetSection(JwtAuthenticationOptions.SectionName))
+    .ValidateOnStart();
 builder.Services.AddNatureProtectorApiRateLimiting(builder.Configuration);
 
 var jwtOptions = builder.Configuration
     .GetSection(JwtAuthenticationOptions.SectionName)
     .Get<JwtAuthenticationOptions>() ?? new JwtAuthenticationOptions();
+var backofficeOptions = builder.Configuration
+    .GetSection(BackofficeApiOptions.SectionName)
+    .Get<BackofficeApiOptions>() ?? new BackofficeApiOptions();
+
+EnsureOptionsAreValid(
+    new JwtAuthenticationOptionsValidator(builder.Environment),
+    jwtOptions,
+    JwtAuthenticationOptions.SectionName);
+EnsureOptionsAreValid(
+    new BackofficeApiOptionsValidator(builder.Environment),
+    backofficeOptions,
+    BackofficeApiOptions.SectionName);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -69,11 +90,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
-
-var backofficeOptions = builder.Configuration
-    .GetSection(BackofficeApiOptions.SectionName)
-    .Get<BackofficeApiOptions>() ?? new BackofficeApiOptions();
+builder.Services.AddSingleton<IAuthorizationHandler, OperationCapabilityAuthorizationHandler>();
+builder.Services.AddAuthorization(OperationAuthorization.Configure);
+builder.Services.AddOptions<OperationsOptions>()
+    .Bind(builder.Configuration.GetSection(OperationsOptions.SectionName));
+builder.Services.AddSingleton<IOperationCatalog, OperationCatalog>();
+builder.Services.AddSingleton<IOperationStore, FileSystemOperationStore>();
+builder.Services.AddSingleton<IAutomationDispatcher, SafeAutomationDispatcher>();
+builder.Services.AddSingleton<IEngineeringOperationsService, EngineeringOperationsService>();
+builder.Services.AddSingleton<ICloudEnvironmentCatalogService, CloudEnvironmentCatalogService>();
 
 if (backofficeOptions.ControlPlaneEnabled)
 {
@@ -84,7 +109,7 @@ if (backofficeOptions.ControlPlaneEnabled)
         new PostgresControlPlaneService(
             services.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<NatureProtector.Infrastructure.Postgres.Persistence.NatureProtectorControlDbContext>>(),
             builder.Environment.ContentRootPath,
-            enableRuntimeProcessLaunch: true));
+            enableRuntimeProcessLaunch: backofficeOptions.LocalRuntimeProcessLaunchEnabled));
     builder.Services.AddScoped<IRuntimeObservabilityService, RuntimeObservabilityService>();
     builder.Services.AddSingleton<IPasswordHasher<UserRecord>, PasswordHasher<UserRecord>>();
     builder.Services.AddScoped<IUserRolePlaneService, PostgresUserRolePlaneService>();
@@ -188,4 +213,20 @@ static bool IsPostgresConnectivityFailure(Exception? exception)
     }
 
     return false;
+}
+
+static void EnsureOptionsAreValid<TOptions>(
+    IValidateOptions<TOptions> validator,
+    TOptions options,
+    string optionsName)
+    where TOptions : class
+{
+    var result = validator.Validate(optionsName, options);
+    if (result.Failed)
+    {
+        throw new OptionsValidationException(
+            optionsName,
+            typeof(TOptions),
+            result.Failures ?? ["Unknown configuration validation failure."]);
+    }
 }

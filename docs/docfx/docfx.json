@@ -26,26 +26,26 @@
           "index.md",
           "toc.yml",
           "openapi-future.md",
-          "../README.md",
-          "../architecture/**/*.md",
-          "../planning/**/*.md",
+          "api/**.yml",
+          "api/toc.yml",
+          "../**/*.md",
           "../../README.md",
           "../../data/README.md",
-          "../../scripts/data/README.md",
-          "api/**.yml",
-          "api/toc.yml"
+          "../../scripts/data/README.md"
         ],
         "exclude": [
           "**/bin/**",
-          "**/obj/**"
+          "**/obj/**",
+          "../docfx/output/**"
         ]
       }
     ],
     "resource": [
       {
         "files": [
+          "../architecture/diagrams/**",
           "../architecture/images/**",
-          "../architecture/diagrams/**"
+          "../study/assets/**"
         ]
       }
     ],

@@ -14,7 +14,7 @@ const contract = openApiContract as {
 
 describe('API/frontend OpenAPI contract parity', () => {
   it('keeps RuntimeSummaryResponse frontend fields aligned with the OpenAPI schema', () => {
-    const frontend = readFileSync(resolve(webUiRoot, 'src/app/types/index.tsx'), 'utf8');
+    const frontend = readFrontendTypeSources();
 
     const backendFields = extractSchemaFields('RuntimeSummaryResponse');
     const frontendFields = extractInterfaceFields(frontend, 'RuntimeSummaryResponse');
@@ -23,7 +23,7 @@ describe('API/frontend OpenAPI contract parity', () => {
   });
 
   it('keeps runtime index comparison additions visible to TypeScript through OpenAPI', () => {
-    const frontend = readFileSync(resolve(webUiRoot, 'src/app/types/index.tsx'), 'utf8');
+    const frontend = readFrontendTypeSources();
 
     const backendFields = extractSchemaFields('RuntimeIndexComparisonSummaryResponse');
     const frontendFields = extractInterfaceFields(frontend, 'RuntimeIndexComparisonSummaryResponse');
@@ -62,9 +62,21 @@ function extractInterfaceFields(source: string, interfaceName: string) {
   const match = source.match(new RegExp(`export interface ${interfaceName} \\{(?<body>[\\s\\S]*?)\\n\\}`));
   expect(match?.groups?.body).toBeTruthy();
 
-  return match!.groups!.body
-    .split('\n')
-    .map(line => line.trim())
+  return match!
+    .groups!.body.split('\n')
+    .map((line) => line.trim())
     .filter(Boolean)
-    .map(line => line.split(':')[0].replace('?', '').trim());
+    .map((line) => line.split(':')[0].replace('?', '').trim());
+}
+
+function readFrontendTypeSources() {
+  const typesRoot = resolve(webUiRoot, 'src/app/types');
+  const barrel = readFileSync(resolve(typesRoot, 'index.tsx'), 'utf8');
+  const modulePaths = Array.from(barrel.matchAll(/export \* from ['"](?<path>[^'"]+)['"];?/g))
+    .map((match) => match.groups?.path)
+    .filter((value): value is string => Boolean(value));
+
+  return modulePaths
+    .map((modulePath) => readFileSync(resolve(typesRoot, `${modulePath.replace(/^\.\//, '')}.ts`), 'utf8'))
+    .join('\n');
 }

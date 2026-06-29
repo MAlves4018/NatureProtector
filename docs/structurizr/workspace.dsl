@@ -1,143 +1,129 @@
-workspace "NatureProtector" "Modelo C4 da implementação atual do NatureProtector." {
+workspace "NatureProtector" "Current architecture, operations and deployment model verified against the 2026-06-28 repository snapshot." {
+  model {
+    publicUser = person "Public reader" "Views public context and limitations."
+    operator = person "Runtime operator" "Runs simulations and observes risk/pipeline state."
+    qa = person "QA operator" "Runs closed quality suites and evidence campaigns."
+    ops = person "Cloud operations" "Plans and operates staging."
+    approver = person "Release approver" "Reviews production, rollback and destroy gates."
+    admin = person "Application administrator" "Manages users, roles and application configuration."
 
-    model {
-        operator = person "Operador de backoffice" "Consulta a API e os dashboards para observar o estado da runtime."
-        developer = person "Programador" "Executa os hosts localmente e opera a baseline Docker Compose."
+    github = softwareSystem "GitHub Actions" "Authoritative CI, quality, release and dispatch workflows."
+    gcp = softwareSystem "Google Cloud Platform" "Artifact Registry, GKE/Autopilot, Cloud Deploy, managed identities and environment resources."
 
-        natureProtector = softwareSystem "NatureProtector" "Plataforma suportada pelo repositório para simulação, prevenção, plano de controlo e observabilidade." {
-            backofficeApi = container "Backoffice.Api" "API ASP.NET Core que expõe consultas sobre o plano de controlo e o estado operacional." "C# / ASP.NET Core"
-            postgresBootstrap = container "Postgres.Bootstrap" "Utilitário de linha de comandos que materializa a baseline do plano de controlo em PostgreSQL." "C# / .NET Console"
-            simulatorHost = container "Simulator.Host" "Worker que resolve contexto de simulação, gera leituras e publica eventos." "C# / .NET Worker"
-            preventionHost = container "Prevention.Host" "Worker que consome leituras, avalia risco, gere retries e mantém projeções operacionais." "C# / .NET Worker" {
-                preventionWorker = component "PreventionWorker" "Consumidor RabbitMQ que valida envelopes, guarda ou rejeita mensagens e dispara o processamento." "NatureProtector.Prevention.Host.PreventionWorker"
-                inboxRetryWorker = component "InboxRetryWorker" "Worker de polling que reentra retries devidos no fluxo de processamento." "NatureProtector.Prevention.Host.Processing.InboxRetryWorker"
-                readingEventProcessingService = component "ReadingEventProcessingService" "Coordena conclusão, agendamento de retry e transições para quarentena." "NatureProtector.Prevention.Host.Processing.ReadingEventProcessingService"
-                readingRiskPipeline = component "ReadingRiskPipeline" "Executa a sequência de leitura aceite, avaliação de risco, snapshot e projeção." "NatureProtector.Prevention.Host.Processing.ReadingRiskPipeline"
-                postgresReadingEventInbox = component "PostgresReadingEventInbox" "Implementação durável da inbox apoiada por PostgreSQL." "NatureProtector.Prevention.Host.Processing.PostgresReadingEventInbox"
-                simpleRiskScoringService = component "SimpleRiskScoringService" "Constrói avaliações de risco a partir de leituras aceites." "NatureProtector.Prevention.Risk.SimpleRiskScoringService"
-                postgresAcceptedReadingRepository = component "PostgresAcceptedReadingRepository" "Persiste logs de leituras aceites." "NatureProtector.Prevention.Host.Persistence.PostgresAcceptedReadingRepository"
-                postgresRiskAssessmentRepository = component "PostgresRiskAssessmentRepository" "Persiste e consulta logs de avaliações de risco." "NatureProtector.Prevention.Host.Persistence.PostgresRiskAssessmentRepository"
-                postgresAreaRiskSnapshotRepository = component "PostgresAreaRiskSnapshotRepository" "Persiste snapshots agregados de risco por área." "NatureProtector.Prevention.Host.Persistence.PostgresAreaRiskSnapshotRepository"
-                postgresAreaOperationalProjectionStore = component "PostgresAreaOperationalProjectionStore" "Mantém projeções consultáveis por célula, área e alerta." "NatureProtector.Prevention.Host.Projection.PostgresAreaOperationalProjectionStore"
-                influxWriteService = component "InfluxWriteService" "Escreve dados temporais de observabilidade." "NatureProtector.Infrastructure.Influx.Services.InfluxWriteService"
-            }
-            postgres = container "PostgreSQL" "Guarda plano de controlo, runs de simulação, inbox, tentativas, quarentena, logs e projeções operacionais." "PostgreSQL 16"
-            influxdb = container "InfluxDB" "Guarda leituras aceites, avaliações de risco e snapshots de área para observabilidade temporal." "InfluxDB 3"
-            rabbitmq = container "RabbitMQ" "Transporta eventos de leitura entre o simulador e a runtime de prevenção." "RabbitMQ 4"
-            grafana = container "Grafana" "Consulta o InfluxDB e apresenta dashboards de apoio à observabilidade." "Grafana 12"
-        }
-
-        operator -> backofficeApi "Consulta plano de controlo e estado operacional" "HTTP/JSON"
-        operator -> grafana "Consulta dashboards de observabilidade" "Browser"
-        developer -> postgresBootstrap "Materializa a baseline do plano de controlo" "PowerShell / dotnet run"
-        developer -> simulatorHost "Executa simulações localmente" "dotnet run"
-        developer -> preventionHost "Executa a runtime de prevenção localmente" "dotnet run"
-        developer -> backofficeApi "Executa a API localmente" "dotnet run"
-        developer -> grafana "Abre dashboards" "Browser"
-
-        postgresBootstrap -> postgres "Cria schema e carrega configuração, área, grelha, sensores, cenários e datasets" "EF Core / Npgsql"
-        simulatorHost -> postgres "Lê área, cenário e sensores; grava runs de simulação" "EF Core / Npgsql"
-        simulatorHost -> rabbitmq "Publica eventos SensorReadingProduced" "AMQP"
-        preventionHost -> rabbitmq "Consome eventos SensorReadingProduced" "AMQP"
-        preventionHost -> postgres "Persiste inbox, tentativas, rejeições, quarentena, leituras aceites, avaliações, snapshots e projeções" "EF Core / Npgsql"
-        preventionHost -> influxdb "Escreve medições de observabilidade" "InfluxDB client"
-        backofficeApi -> postgres "Lê plano de controlo e estado projetado" "EF Core / Npgsql"
-        grafana -> influxdb "Consulta medições" "HTTP"
-
-        preventionWorker -> rabbitmq "Consome eventos"
-        preventionWorker -> postgresReadingEventInbox "Guarda ou rejeita mensagens recebidas"
-        preventionWorker -> readingEventProcessingService "Encaminha eventos aceites"
-        inboxRetryWorker -> postgresReadingEventInbox "Procura retries devidos"
-        inboxRetryWorker -> readingEventProcessingService "Reprocessa retries devidos"
-        readingEventProcessingService -> readingRiskPipeline "Executa a pipeline de processamento"
-        readingEventProcessingService -> postgresReadingEventInbox "Conclui, reagenda ou coloca eventos em quarentena"
-        readingRiskPipeline -> simpleRiskScoringService "Constrói avaliações de risco"
-        readingRiskPipeline -> postgresAcceptedReadingRepository "Persiste leituras aceites"
-        readingRiskPipeline -> postgresRiskAssessmentRepository "Persiste e consulta avaliações"
-        readingRiskPipeline -> postgresAreaRiskSnapshotRepository "Persiste snapshots"
-        readingRiskPipeline -> postgresAreaOperationalProjectionStore "Atualiza projeções consultáveis"
-        readingRiskPipeline -> influxWriteService "Publica dados de observabilidade"
-        postgresReadingEventInbox -> postgres "Guarda inbox, tentativas, rejeições e quarentena"
-        postgresAcceptedReadingRepository -> postgres "Escreve logs de projeção"
-        postgresRiskAssessmentRepository -> postgres "Escreve e consulta logs de projeção"
-        postgresAreaRiskSnapshotRepository -> postgres "Escreve logs de snapshots"
-        postgresAreaOperationalProjectionStore -> postgres "Escreve estado por célula, área e alerta"
-        influxWriteService -> influxdb "Escreve medições"
-
-        local = deploymentEnvironment "Desenvolvimento local" {
-            workstation = deploymentNode "Posto de desenvolvimento" "Máquina local usada para desenvolvimento, validação e demonstração." "Windows / PowerShell" {
-                backofficeApiInstance = containerInstance backofficeApi
-                postgresBootstrapInstance = containerInstance postgresBootstrap
-                simulatorHostInstance = containerInstance simulatorHost
-                preventionHostInstance = containerInstance preventionHost
-
-                compose = deploymentNode "Baseline Docker Compose" "Infraestrutura local iniciada a partir de docker-compose.yml." "Docker" {
-                    rabbitmqInstance = containerInstance rabbitmq
-                    postgresInstance = containerInstance postgres
-                    influxdbInstance = containerInstance influxdb
-                    grafanaInstance = containerInstance grafana
-                }
-            }
-        }
+    np = softwareSystem "NatureProtector" "Experimental auditable platform for controlled environmental simulation and technical risk assessment." {
+      web = container "webUI" "Role-aware React/Vite interface with Mission Control, simulation, quality, evidence, deployment, cloud and approval views." "React / TypeScript"
+      api = container "Backoffice.Api" "ASP.NET Core API and server-side authorisation authority." "C# / ASP.NET Core" {
+        userPlane = component "User and role plane" "Authentication, role assignments and capability profile."
+        runtimePlane = component "Runtime control plane" "Areas, scenarios, runs, diagnostics and runtime operations."
+        operationsPlane = component "Engineering operations plane" "Closed operation catalog, store, approvals, confirmations and dispatch."
+        cloudCatalog = component "Cloud environment catalog" "Repository-declared environment/resource inventory with explicit observed-state limits."
+      }
+      simulator = container "Simulator.Host" "Creates deterministic/degraded readings from scenario and run contracts." ".NET Worker"
+      prevention = container "Prevention.Host" "Consumes readings, manages durable processing and projects eligible candidate risk." ".NET Worker"
+      bootstrap = container "Postgres.Bootstrap" "Creates the local control baseline." ".NET Console"
+      postgres = container "PostgreSQL" "Principal system of record for control, runs, inbox, attempts, assessments and projections." "PostgreSQL 16" "Database"
+      rabbit = container "RabbitMQ" "Sensor-reading event transport." "RabbitMQ" "Message Broker"
+      influx = container "InfluxDB" "Temporal observability data." "InfluxDB 3" "Database"
+      grafana = container "Grafana" "Temporal dashboards." "Grafana"
+      evidenceStore = container "Evidence store" "Operation artifacts, hashes, manifests and limitations; filesystem/GCS depending on environment." "Files / Cloud Storage"
     }
 
-    views {
-        systemContext natureProtector "contexto-sistema" {
-            include operator
-            include developer
-            include natureProtector
-            autolayout lr
+    publicUser -> web "Reads public context"
+    operator -> web "Runs scenarios and observes runtime"
+    qa -> web "Runs quality/evidence"
+    ops -> web "Plans and operates staging"
+    approver -> web "Reviews and approves gates"
+    admin -> web "Manages users and roles"
+    web -> api "HTTP/JSON; evaluated capability profile"
+    api -> postgres "Reads/writes identity, control, runtime and operation records"
+    api -> github "Dispatches closed workflows with server-side identity"
+    github -> api "Authenticated status/artifact callback"
+    github -> gcp "WIF-authenticated release/deploy/cloud operations"
+    github -> evidenceStore "Publishes artifacts, manifests and hashes"
+    api -> evidenceStore "Indexes/streams authorised evidence"
+    simulator -> postgres "Reads scenarios and records runs"
+    simulator -> rabbit "Publishes SensorReadingProduced"
+    prevention -> rabbit "Consumes reading events"
+    prevention -> postgres "Durable inbox, attempts, assessments and projections"
+    prevention -> influx "Writes temporal observability"
+    grafana -> influx "Queries telemetry"
+    api -> postgres "Reads projected state"
+
+    local = deploymentEnvironment "Local" {
+      workstation = deploymentNode "Developer workstation" "Windows/PowerShell supported path" {
+        webI = containerInstance web
+        apiI = containerInstance api
+        simulatorI = containerInstance simulator
+        preventionI = containerInstance prevention
+        bootstrapI = containerInstance bootstrap
+        compose = deploymentNode "Docker Compose" {
+          postgresI = containerInstance postgres
+          rabbitI = containerInstance rabbit
+          influxI = containerInstance influx
+          grafanaI = containerInstance grafana
         }
-
-        container natureProtector "runtime-atual" {
-            include operator
-            include developer
-            include backofficeApi
-            include postgresBootstrap
-            include simulatorHost
-            include preventionHost
-            include postgres
-            include influxdb
-            include rabbitmq
-            include grafana
-            autolayout lr
-        }
-
-        component preventionHost "componentes-prevention-host" {
-            include preventionWorker
-            include inboxRetryWorker
-            include readingEventProcessingService
-            include readingRiskPipeline
-            include postgresReadingEventInbox
-            include simpleRiskScoringService
-            include postgresAcceptedReadingRepository
-            include postgresRiskAssessmentRepository
-            include postgresAreaRiskSnapshotRepository
-            include postgresAreaOperationalProjectionStore
-            include influxWriteService
-            include postgres
-            include influxdb
-            include rabbitmq
-            autolayout lr
-        }
-
-        deployment natureProtector "Desenvolvimento local" "baseline-local-docker-compose" {
-            include *
-            autolayout lr
-        }
-
-        styles {
-            element "Person" {
-                shape person
-            }
-
-            element "Container" {
-                shape roundedbox
-            }
-
-            element "Database" {
-                shape cylinder
-            }
-        }
+      }
     }
+    staging = deploymentEnvironment "Staging" {
+      stagingProject = deploymentNode "Isolated GCP staging project" "Qualification before production" {
+        stagingCluster = deploymentNode "GKE/Autopilot" {
+          webS = containerInstance web
+          apiS = containerInstance api
+          simulatorS = containerInstance simulator
+          preventionS = containerInstance prevention
+          rabbitS = containerInstance rabbit
+        }
+        postgresS = containerInstance postgres
+        evidenceS = containerInstance evidenceStore
+      }
+    }
+    production = deploymentEnvironment "Production" {
+      productionProject = deploymentNode "Isolated GCP production project" "Promotion only after staging evidence and approval" {
+        productionCluster = deploymentNode "GKE/Autopilot" {
+          webP = containerInstance web
+          apiP = containerInstance api
+          simulatorP = containerInstance simulator
+          preventionP = containerInstance prevention
+          rabbitP = containerInstance rabbit
+        }
+        postgresP = containerInstance postgres
+        evidenceP = containerInstance evidenceStore
+      }
+    }
+  }
+
+  views {
+    systemContext np "system-context-current" { include *; autolayout lr }
+    container np "containers-current" { include *; autolayout lr }
+    component api "api-control-planes" { include *; autolayout lr }
+    dynamic np "runtime-reading-flow" "Nominal reading processing" {
+      operator -> web "1. Requests run"
+      web -> api "2. Creates run"
+      api -> simulator "3. Launches/dispatches run"
+      simulator -> rabbit "4. Publishes reading"
+      prevention -> rabbit "5. Consumes reading"
+      prevention -> postgres "6. Persists inbox, result and projection"
+      web -> api "7. Reads run/risk/evidence"
+      autolayout lr
+    }
+    dynamic np "engineering-operation-flow" "Auditable engineering operation" {
+      qa -> web "1. Selects closed operation"
+      web -> api "2. Requests operation"
+      api -> postgres "3. Records and validates"
+      api -> github "4. Dispatches workflow"
+      github -> evidenceStore "5. Publishes artifacts"
+      github -> api "6. Authenticated callback"
+      web -> api "7. Reads timeline/evidence"
+      autolayout lr
+    }
+    deployment np "Local" "deployment-local" { include *; autolayout lr }
+    deployment np "Staging" "deployment-staging" { include *; autolayout lr }
+    deployment np "Production" "deployment-production" { include *; autolayout lr }
+    styles {
+      element "Person" { shape person }
+      element "Database" { shape cylinder }
+      element "Message Broker" { shape pipe }
+      element "Container" { shape roundedbox }
+    }
+  }
 }

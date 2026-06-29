@@ -10,14 +10,25 @@ export function OverviewPage() {
 
   return (
     <section className="ui-v2-page">
-      <PageHeader title="Visao geral" subtitle="Resumo autenticado focado em leitura: area, estado dos dados, ultimo contexto de run e readiness local." helpTopic="overview" />
+      <PageHeader
+        title="Visao geral"
+        subtitle="Resumo autenticado focado em leitura: area, estado dos dados, ultimo contexto de run e readiness local."
+        helpTopic="overview"
+      />
       <AreaSelector />
       <DataStatusSummary />
       <div className="ui-v2-grid">
         <article className="ui-v2-card">
           <h3>{copy('risk.title')}</h3>
           <p>{riskModel.summary}</p>
-          <StatusBadge label={riskModel.canShowScore ? `${riskModel.scoreDisplay} / ${riskModel.classDisplay ?? '-'}` : copy('risk.noScore')} state={riskModel.state} />
+          <StatusBadge
+            label={
+              riskModel.canShowScore
+                ? `${riskModel.scoreDisplay} / ${riskModel.classDisplay ?? '-'}`
+                : copy('risk.noScore')
+            }
+            state={riskModel.state}
+          />
         </article>
         <article className="ui-v2-card">
           <h3>{copy('run.latest')}</h3>
@@ -28,7 +39,7 @@ export function OverviewPage() {
       <section className="ui-v2-panel">
         <h3>{copy('readiness.title')}</h3>
         <div className="ui-v2-grid">
-          {readinessItems.map(item => (
+          {readinessItems.map((item) => (
             <article className="ui-v2-status-item" key={item.item}>
               <span className="ui-v2-label">{item.item}</span>
               <StatusBadge label={item.status} state={item.status} />

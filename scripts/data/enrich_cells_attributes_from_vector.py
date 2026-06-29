@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 
 import geopandas as gpd
-import pandas as pd
 
 from geospatial_utils import load_cells_attributes, load_grid, write_cells_attributes
 

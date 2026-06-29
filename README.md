@@ -253,7 +253,7 @@ A nova evidência runtime de `scenario_c` deve ser recolhida quando se pretender
 - [docs/architecture/implementation.md](docs/architecture/implementation.md)
 - [docs/contracts/v1-vocabulary-map.md](docs/contracts/v1-vocabulary-map.md)
 - [docs/architecture/scenario-run-orchestrator.md](docs/architecture/scenario-run-orchestrator.md)
-- [docs/planning/pesquisa-ii-vs-implementation-state.md](docs/planning/pesquisa-ii-vs-implementation-state.md)
+- [docs/current-state/data-risk-and-scientific-boundaries.md](docs/current-state/data-risk-and-scientific-boundaries.md)
 - [tests/README.md](tests/README.md)
 
 ---
@@ -266,3 +266,17 @@ A nova evidência runtime de `scenario_c` deve ser recolhida quando se pretender
 - `scenario_c` deve ser revalidado em runtime antes de ser usado como evidência final de comparação B/C.
 - InfluxDB/Grafana fazem parte da observabilidade local; problemas nestes serviços devem ser diagnosticados pelo guia de setup.
 - Autenticação local usa credenciais de Development (`admin` / `admin123`) apenas para baseline local.
+
+## Unified Operations Control Plane
+
+The Backoffice UI now includes a closed, auditable engineering operations surface for quality, evidence, deployment and cloud workflows. The backend is the authorization authority; the browser never receives provider credentials and cannot submit arbitrary commands.
+
+Documentation:
+
+- `docs/implementation/operations/unified-operations-control-plane.md`
+- `docs/implementation/operations/security-model.md`
+- `docs/implementation/operations/workflow-callback.md`
+- `docs/implementation/operations/demo-narrative.md`
+- `docs/implementation/operations/open-gates.md`
+
+Success criteria are machine-readable in `config/operations/success-criteria.json`.

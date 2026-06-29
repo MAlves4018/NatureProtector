@@ -17,148 +17,10 @@ param(
     [int]$PollSeconds = 2
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
-
-function Find-RepositoryRoot {
-    $current = Get-Item -LiteralPath $PSScriptRoot
-
-    while ($null -ne $current) {
-        $solution = Join-Path $current.FullName "NatureProtector.sln"
-        $compose = Join-Path $current.FullName "docker-compose.yml"
-
-        if ((Test-Path -LiteralPath $solution) -and (Test-Path -LiteralPath $compose)) {
-            return $current.FullName
-        }
-
-        $current = $current.Parent
-    }
-
-    throw "Could not locate repository root from $PSScriptRoot."
-}
-
-function Read-DotEnv {
-    param([string]$Path)
-
-    $values = @{}
-    if (-not (Test-Path -LiteralPath $Path)) {
-        return $values
-    }
-
-    foreach ($rawLine in Get-Content -LiteralPath $Path) {
-        $line = $rawLine.Trim()
-        if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("#") -or -not $line.Contains("=")) {
-            continue
-        }
-
-        $parts = $line.Split("=", 2)
-        $name = $parts[0].Trim()
-        $value = $parts[1].Trim()
-        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
-            $value = $value.Substring(1, $value.Length - 2)
-        }
-
-        if (-not [string]::IsNullOrWhiteSpace($name)) {
-            $values[$name] = $value
-        }
-    }
-
-    return $values
-}
-
-function Get-ConfigValue {
-    param(
-        [hashtable]$Values,
-        [string]$Name,
-        [string]$Fallback = ""
-    )
-
-    $fromEnvironment = [Environment]::GetEnvironmentVariable($Name)
-    if (-not [string]::IsNullOrWhiteSpace($fromEnvironment)) {
-        return $fromEnvironment
-    }
-
-    if ($Values.ContainsKey($Name) -and -not [string]::IsNullOrWhiteSpace([string]$Values[$Name])) {
-        return [string]$Values[$Name]
-    }
-
-    return $Fallback
-}
-
-function Invoke-ExternalCommand {
-    param(
-        [string]$FileName,
-        [string[]]$Arguments,
-        [hashtable]$Environment = @{}
-    )
-
-    $command = Get-Command $FileName -ErrorAction Stop
-    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $startInfo.FileName = $command.Source
-    $startInfo.UseShellExecute = $false
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-
-    foreach ($entry in $Environment.GetEnumerator()) {
-        $startInfo.Environment[$entry.Key] = [string]$entry.Value
-    }
-
-    if ($Arguments.Count -gt 0) {
-        $quotedArguments = foreach ($argument in $Arguments) {
-            if ($argument -match '\s|"' ) {
-                '"' + ($argument -replace '"', '\"') + '"'
-            }
-            else {
-                $argument
-            }
-        }
-
-        $startInfo.Arguments = ($quotedArguments -join " ")
-    }
-
-    $process = New-Object System.Diagnostics.Process
-    $process.StartInfo = $startInfo
-    [void]$process.Start()
-    $standardOutput = $process.StandardOutput.ReadToEnd()
-    $standardError = $process.StandardError.ReadToEnd()
-    $process.WaitForExit()
-
-    $text = (($standardOutput + $standardError) | Out-String).Trim()
-    $exitCode = $process.ExitCode
-    if ($text -match "error during connect|Acesso negado|Access is denied|permission denied|Cannot connect") {
-        $exitCode = 1
-    }
-
-    return [pscustomobject]@{
-        ExitCode = $exitCode
-        Output = $text
-    }
-}
-
-function Test-TcpPort {
-    param(
-        [string]$HostName,
-        [int]$Port,
-        [int]$TimeoutMilliseconds = 2000
-    )
-
-    $client = New-Object System.Net.Sockets.TcpClient
-    try {
-        $async = $client.BeginConnect($HostName, $Port, $null, $null)
-        if (-not $async.AsyncWaitHandle.WaitOne($TimeoutMilliseconds, $false)) {
-            return $false
-        }
-
-        $client.EndConnect($async)
-        return $true
-    }
-    catch {
-        return $false
-    }
-    finally {
-        $client.Close()
-    }
-}
 
 function Test-InfluxHttp {
     param(
@@ -189,7 +51,7 @@ function Test-InfluxHttp {
     }
 }
 
-$repoRoot = Find-RepositoryRoot
+$repoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln', 'docker-compose.yml')
 Set-Location $repoRoot
 
 $dotEnvPath = Join-Path $repoRoot ".env"
@@ -197,19 +59,19 @@ if (-not (Test-Path -LiteralPath $dotEnvPath)) {
     throw "Missing .env. Create it from .env.example before provisioning InfluxDB."
 }
 
-$envValues = Read-DotEnv -Path $dotEnvPath
+$envValues = Read-NpDotEnv -Path $dotEnvPath
 
-$database = Get-ConfigValue -Values $envValues -Name "INFLUXDB_DATABASE" -Fallback ""
+$database = Get-NpConfigValue -Values $envValues -Name "INFLUXDB_DATABASE" -Fallback "" -EnvironmentFirst
 if ([string]::IsNullOrWhiteSpace($database)) {
     throw "Missing INFLUXDB_DATABASE in .env. Add INFLUXDB_DATABASE=np_telemetry."
 }
 
-$bucket = Get-ConfigValue -Values $envValues -Name "INFLUXDB_BUCKET" -Fallback $database
+$bucket = Get-NpConfigValue -Values $envValues -Name "INFLUXDB_BUCKET" -Fallback $database -EnvironmentFirst
 if ($bucket -ne $database) {
     Write-Warning "INFLUXDB_BUCKET ('$bucket') differs from INFLUXDB_DATABASE ('$database'). InfluxDB 3 uses database semantics; ensuring '$database'."
 }
 
-$token = Get-ConfigValue -Values $envValues -Name "INFLUXDB_TOKEN" -Fallback ""
+$token = Get-NpConfigValue -Values $envValues -Name "INFLUXDB_TOKEN" -Fallback "" -EnvironmentFirst
 if ([string]::IsNullOrWhiteSpace($token)) {
     throw "Missing INFLUXDB_TOKEN in .env. Add the local InfluxDB admin token before provisioning."
 }
@@ -218,14 +80,14 @@ if ($token -match "REPLACE_WITH|CHANGE_ME|<") {
     throw "INFLUXDB_TOKEN in .env is still a placeholder. Set a local apiv3_ token before provisioning InfluxDB."
 }
 
-$portText = Get-ConfigValue -Values $envValues -Name "INFLUXDB_PORT" -Fallback "8181"
+$portText = Get-NpConfigValue -Values $envValues -Name "INFLUXDB_PORT" -Fallback "8181" -EnvironmentFirst
 $influxPort = 0
 if (-not [int]::TryParse($portText, [ref]$influxPort)) {
     throw "Invalid INFLUXDB_PORT '$portText' in .env."
 }
 
-$influxUrl = Get-ConfigValue -Values $envValues -Name "INFLUXDB_URL" -Fallback "http://localhost:$influxPort"
-$containerName = Get-ConfigValue -Values $envValues -Name "INFLUXDB_CONTAINER" -Fallback "np-influxdb"
+$influxUrl = Get-NpConfigValue -Values $envValues -Name "INFLUXDB_URL" -Fallback "http://localhost:$influxPort" -EnvironmentFirst
+$containerName = Get-NpConfigValue -Values $envValues -Name "INFLUXDB_CONTAINER" -Fallback "np-influxdb" -EnvironmentFirst
 
 Write-Host "NatureProtector InfluxDB provisioning"
 Write-Host "Repository root: $repoRoot"
@@ -236,7 +98,7 @@ Write-Host "Container: $containerName"
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $lastHttp = $null
 do {
-    if (Test-TcpPort -HostName "localhost" -Port $influxPort) {
+    if (Test-NpTcpEndpoint -HostName "localhost" -Port $influxPort) {
         $lastHttp = Test-InfluxHttp -Url $influxUrl -Token $token
         if ($lastHttp.Success) {
             break
@@ -259,7 +121,7 @@ if ($null -eq $lastHttp -or -not $lastHttp.Success) {
 $cliEnvironment = @{ INFLUXDB3_AUTH_TOKEN = $token }
 $cliHost = "http://127.0.0.1:8181"
 
-$listResult = Invoke-ExternalCommand `
+$listResult = Invoke-NpExternalCommand -ThrowOnStartFailure `
     -FileName "docker" `
     -Arguments @("exec", "-e", "INFLUXDB3_AUTH_TOKEN", $containerName, "influxdb3", "show", "databases", "-H", $cliHost, "--format", "csv") `
     -Environment $cliEnvironment
@@ -281,7 +143,7 @@ if ($databases -contains $database) {
 }
 
 Write-Host "InfluxDB database '$database' is missing; creating it now."
-$createResult = Invoke-ExternalCommand `
+$createResult = Invoke-NpExternalCommand -ThrowOnStartFailure `
     -FileName "docker" `
     -Arguments @("exec", "-e", "INFLUXDB3_AUTH_TOKEN", $containerName, "influxdb3", "create", "database", "-H", $cliHost, $database) `
     -Environment $cliEnvironment
@@ -290,7 +152,7 @@ if ($createResult.ExitCode -ne 0) {
     throw "Could not create InfluxDB database '$database'. Output: $($createResult.Output)"
 }
 
-$verifyResult = Invoke-ExternalCommand `
+$verifyResult = Invoke-NpExternalCommand -ThrowOnStartFailure `
     -FileName "docker" `
     -Arguments @("exec", "-e", "INFLUXDB3_AUTH_TOKEN", $containerName, "influxdb3", "show", "databases", "-H", $cliHost, "--format", "csv") `
     -Environment $cliEnvironment

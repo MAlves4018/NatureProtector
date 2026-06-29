@@ -29,13 +29,10 @@ const runId = '11111111-1111-4111-8111-111111111111';
 const startedAt = '2026-06-16T09:55:00Z';
 const endedAt = '2026-06-16T09:56:30Z';
 
-export async function installUiV2ApiFixture(
-  page: Page,
-  options: UiV2ApiFixtureOptions = {},
-): Promise<UiV2ApiFixture> {
+export async function installUiV2ApiFixture(page: Page, options: UiV2ApiFixtureOptions = {}): Promise<UiV2ApiFixture> {
   const requests: ObservedApiRequest[] = [];
 
-  await page.context().route('**/api/**', async route => {
+  await page.context().route('**/api/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname.replace(/^\/api/, '') || '/';
@@ -66,7 +63,10 @@ async function handleApiRoute(route: Route, path: string, options: UiV2ApiFixtur
   }
 
   if (path === '/users-roles/me') {
-    if (options.meStatus === 401 || ['Bearer expired-token', 'Bearer invalid-token'].includes(authorizationHeader(route) ?? '')) {
+    if (
+      options.meStatus === 401 ||
+      ['Bearer expired-token', 'Bearer invalid-token'].includes(authorizationHeader(route) ?? '')
+    ) {
       await json(route, { status: 401, title: 'Unauthorized', message: 'Session expired' }, 401);
       return;
     }
@@ -372,24 +372,26 @@ function runtimeSummary(state: SummaryState) {
       latestTimestamp: blocked || unknown ? null : now,
       recentScores: blocked || unknown ? [] : [{ timestamp: now, riskScore: 0.73, riskLevel: 'High' }],
     },
-    areaOperationalState: unknown ? null : {
-      areaCode: 'proenca-a-nova',
-      configurationVersionNumber: 1,
-      snapshotTimestamp: now,
-      aggregateRiskScore: blocked ? 0 : 0.73,
-      aggregateRiskLevel: blocked ? 'Blocked' : 'High',
-      severity: blocked ? 'Blocked' : 'Warning',
-      summary: blocked ? 'Blocked fixture summary' : 'Fixture risk summary',
-      assessmentCount: blocked ? 0 : 4,
-      updatedAt: now,
-      alertState: 'Warning',
-      coverageStatus: partial ? 'Partial' : 'Complete',
-      freshnessStatus: stale ? 'Stale' : 'Fresh',
-      carryForwardStatus: stale ? 'ExpiredCarryForward' : 'Current',
-      lastAssessmentTimestamp: blocked ? null : now,
-      lastProjectionUpdatedAt: now,
-      operationalStatusReason: blocked ? 'Blocked by missing required observations' : null,
-    },
+    areaOperationalState: unknown
+      ? null
+      : {
+          areaCode: 'proenca-a-nova',
+          configurationVersionNumber: 1,
+          snapshotTimestamp: now,
+          aggregateRiskScore: blocked ? 0 : 0.73,
+          aggregateRiskLevel: blocked ? 'Blocked' : 'High',
+          severity: blocked ? 'Blocked' : 'Warning',
+          summary: blocked ? 'Blocked fixture summary' : 'Fixture risk summary',
+          assessmentCount: blocked ? 0 : 4,
+          updatedAt: now,
+          alertState: 'Warning',
+          coverageStatus: partial ? 'Partial' : 'Complete',
+          freshnessStatus: stale ? 'Stale' : 'Fresh',
+          carryForwardStatus: stale ? 'ExpiredCarryForward' : 'Current',
+          lastAssessmentTimestamp: blocked ? null : now,
+          lastProjectionUpdatedAt: now,
+          operationalStatusReason: blocked ? 'Blocked by missing required observations' : null,
+        },
     cellOperationalStateCount: unknown ? 0 : 12,
     activeAlerts: [],
     freshness: {
@@ -582,10 +584,7 @@ function rabbitMqMetrics() {
     observedAt: now,
     source: 'RabbitMQ Management API fixture',
     collectionStatus: 'Measured',
-    queues: [
-      queue('np.ingestion.readings', 0, 0, 0, 1),
-      queue('np.observability.raw', 1, 0, 1, 1),
-    ],
+    queues: [queue('np.ingestion.readings', 0, 0, 0, 1), queue('np.observability.raw', 1, 0, 1, 1)],
     limitations: [],
   };
 }

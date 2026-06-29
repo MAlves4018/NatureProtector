@@ -313,6 +313,41 @@ public sealed class PostgresUserRolePlaneService : IUserRolePlaneService
         return results;
     }
 
+    public async Task<IReadOnlyList<UserResponse>> ListUsersAsync(CancellationToken cancellationToken)
+    {
+        if (!IsAvailable)
+        {
+            return [];
+        }
+
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var users = await dbContext.Users
+            .AsNoTracking()
+            .OrderBy(entity => entity.Username)
+            .ToListAsync(cancellationToken);
+        var responses = new List<UserResponse>(users.Count);
+        foreach (var user in users)
+        {
+            responses.Add(await BuildUserResponseAsync(dbContext, user, cancellationToken));
+        }
+        return responses;
+    }
+
+    public async Task<IReadOnlyList<RoleResponse>> ListRolesAsync(CancellationToken cancellationToken)
+    {
+        if (!IsAvailable)
+        {
+            return [];
+        }
+
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await dbContext.Roles
+            .AsNoTracking()
+            .OrderBy(entity => entity.Id)
+            .Select(entity => new RoleResponse(entity.Id, entity.Name))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
         if (!IsAvailable)

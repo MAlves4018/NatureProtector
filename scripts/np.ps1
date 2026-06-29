@@ -64,10 +64,13 @@ function Get-EnvironmentConfig {
 }
 
 function Get-EvidenceDirectory {
-    param([string]$Operation)
-    $root = if ($EvidenceRoot) { $EvidenceRoot } elseif ($env:NP_EVIDENCE_ROOT) { $env:NP_EVIDENCE_ROOT } else { Join-Path $RepoRoot "..\NatureProtector-Standard-CD-Result-local" }
-    $path = Join-Path (Resolve-Path -LiteralPath (Split-Path -Parent $root) -ErrorAction SilentlyContinue).Path (Split-Path -Leaf $root)
-    if (-not (Test-Path -LiteralPath $path)) { New-Item -ItemType Directory -Force -Path $path | Out-Null }
+    param(
+        [string]$Operation,
+        [Parameter(Mandatory)][hashtable]$Config
+    )
+    $root = if ($EvidenceRoot) { $EvidenceRoot } elseif ($env:NP_EVIDENCE_ROOT) { $env:NP_EVIDENCE_ROOT } else { Join-Path $RepoRoot ([string]$Config.evidence.default_root) }
+    $path = if ([System.IO.Path]::IsPathRooted($root)) { [System.IO.Path]::GetFullPath($root) } else { [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $root)) }
+    if (-not (Test-Path -LiteralPath $path -PathType Container)) { New-Item -ItemType Directory -Force -Path $path | Out-Null }
     $operationPath = Join-Path $path ($Operation -replace '[^a-zA-Z0-9_.-]', '-')
     New-Item -ItemType Directory -Force -Path $operationPath | Out-Null
     return $operationPath
@@ -274,7 +277,7 @@ $config = Get-EnvironmentConfig $Environment
 $verb = if ($Command.Count -gt 0) { $Command[0].ToLowerInvariant() } else { "help" }
 $noun = if ($Command.Count -gt 1) { $Command[1].ToLowerInvariant() } else { "" }
 $operation = if ($noun) { "$verb-$noun" } else { $verb }
-$evidence = Get-EvidenceDirectory $operation
+$evidence = Get-EvidenceDirectory -Operation $operation -Config $config
 
 try {
     switch ($verb) {
@@ -291,6 +294,15 @@ try {
         }
         "validate" {
             $commands = @(
+                @{ name="configuration-authorities"; cmd="python"; args=@("tools/config-audit/validate.py", "--repo", ".") },
+                @{ name="script-tooling-authority"; cmd="python"; args=@("tools/script-audit/validate.py", "--repo", ".") },
+                @{ name="quality-guardrail-policy"; cmd="python"; args=@("tools/quality-gates/validate.py", "--repo", ".") },
+                @{ name="control-plane-decomposition"; cmd="python"; args=@("tools/control-plane-audit/validate.py", "--repo", ".") },
+                @{ name="frontend-decomposition"; cmd="python"; args=@("tools/frontend-audit/validate.py", "--repo", ".") },
+                @{ name="workflow-authority"; cmd="python"; args=@("tools/workflow-audit/validate.py", "--repo", ".") },
+                @{ name="repository-final-cleanup"; cmd="python"; args=@("tools/final-audit/validate.py", "--repo", ".") },
+                @{ name="evidence-tooling-tests"; cmd="python"; args=@("-m", "unittest", "discover", "-s", "tests/evidence", "-p", "test_*.py", "-v") },
+                @{ name="powershell-tooling-runtime"; cmd="pwsh"; args=@("-NoProfile", "-File", "scripts/tests/test-common-tooling.ps1") },
                 @{ name="g81-static"; cmd="python"; args=@("scripts/cloud/Test-G81Static.py") },
                 @{ name="g82-static"; cmd="python"; args=@("scripts/cloud/Test-G82Static.py") },
                 @{ name="g9-convergence"; cmd="python"; args=@("scripts/cloud/Test-G9Convergence.py") },

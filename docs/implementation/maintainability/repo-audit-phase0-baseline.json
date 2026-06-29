@@ -1,0 +1,77 @@
+{
+  "audit_tool_version": "1.0.0",
+  "configuration_literals": {
+    "repeated_across_multiple_files": 6,
+    "tracked": 6
+  },
+  "configuration_sha256": "a1f7c8a6d67ef8703f03d61c3aac9378fbd30f2818b12ad1b32a45ddb5d86835",
+  "environment_variables": {
+    "referenced_without_repository_example": 251,
+    "total": 270
+  },
+  "exact_duplicates": {
+    "groups": 9,
+    "potential_duplicate_bytes": 11120
+  },
+  "files": {
+    "binary_or_unclassified": 236,
+    "by_category": {
+      "dataset": 24,
+      "generated": 37,
+      "historical": 64,
+      "source": 1146
+    },
+    "bytes": 61612539,
+    "bytes_by_category": {
+      "dataset": 30378304,
+      "generated": 1110904,
+      "historical": 10258930,
+      "source": 19864401
+    },
+    "text": 1035,
+    "total": 1271
+  },
+  "lines_by_language": {
+    "C#": 96532,
+    "CSS": 701,
+    "HTML": 13,
+    "JSON": 11101,
+    "JSONC": 74,
+    "JavaScript": 953,
+    "MSBuild": 471,
+    "Markdown": 26612,
+    "Other": 88407,
+    "PowerShell": 18651,
+    "Python": 9030,
+    "SQL": 6892,
+    "Shell": 356,
+    "Terraform": 1771,
+    "TypeScript": 4633,
+    "TypeScript TSX": 7748,
+    "XML": 602,
+    "YAML": 4308
+  },
+  "observations": {
+    "by_kind": {
+      "CANONICAL_LITERAL_REPEATED": 6,
+      "ENVIRONMENT_VARIABLE_WITHOUT_REPOSITORY_EXAMPLE": 251,
+      "EXACT_DUPLICATE_GROUP": 9,
+      "LARGE_FILE": 8,
+      "LARGE_TEXT_FILE": 117,
+      "SCRIPT_WITHOUT_STATIC_REFERENCE": 21
+    },
+    "total": 412
+  },
+  "repository_root": ".",
+  "schema_version": 1,
+  "scripts": {
+    "by_static_reference_status": {
+      "AUTOMATION_REFERENCED": 66,
+      "DOCUMENTED": 7,
+      "NO_STATIC_REFERENCE_FOUND": 21,
+      "OTHER_STATIC_REFERENCE": 3,
+      "WORKFLOW_REFERENCED": 40
+    },
+    "total": 137
+  }
+}

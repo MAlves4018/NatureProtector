@@ -10,7 +10,25 @@ export type UiV2Capability =
   | 'simulation.read'
   | 'simulation.execute'
   | 'qa.read'
+  | 'quality.read'
+  | 'quality.execute.static'
+  | 'quality.execute.full'
   | 'evidence.read'
+  | 'evidence.download'
+  | 'evidence.execute.campaign'
+  | 'evidence.compare'
+  | 'deployment.read'
+  | 'deployment.plan'
+  | 'deployment.deploy.staging'
+  | 'deployment.deploy.production'
+  | 'deployment.rollback'
+  | 'cloud.read'
+  | 'cloud.operate.staging'
+  | 'cloud.operate.production'
+  | 'cloud.destroy'
+  | 'approval.review'
+  | 'users.manage'
+  | 'roles.manage'
   | 'limitations.read'
   | 'admin.read'
   | 'admin.execute'
@@ -18,18 +36,40 @@ export type UiV2Capability =
   | 'data_context.read'
   | 'help.read';
 
-export type UiV2NavTarget = 'demo' | 'risk' | 'pipeline' | 'simulation' | 'runs' | 'qa' | 'evidence' | 'admin' | 'p3' | 'context';
+export type UiV2NavTarget =
+  | 'demo'
+  | 'mission'
+  | 'risk'
+  | 'pipeline'
+  | 'simulation'
+  | 'runs'
+  | 'quality'
+  | 'qa'
+  | 'evidence'
+  | 'deployments'
+  | 'cloud'
+  | 'approvals'
+  | 'users'
+  | 'admin'
+  | 'p3'
+  | 'context';
 
 export interface UiV2NavigationItem {
   id: UiV2NavTarget;
   labelKey:
     | 'nav.demo'
+    | 'nav.mission'
     | 'nav.risk'
     | 'nav.pipeline'
     | 'nav.simulation'
     | 'nav.runs'
+    | 'nav.quality'
     | 'nav.qa'
     | 'nav.evidence'
+    | 'nav.deployments'
+    | 'nav.cloud'
+    | 'nav.approvals'
+    | 'nav.users'
     | 'nav.admin'
     | 'nav.p3'
     | 'nav.context';
@@ -52,53 +92,86 @@ export const UI_V2_PUBLIC_CAPABILITIES: readonly UiV2Capability[] = [
   'help.read',
 ];
 
-export const UI_V2_PIPELINE_CAPABILITIES: readonly UiV2Capability[] = [
-  ...UI_V2_COMMON_AUTH_CAPABILITIES,
-  'qa.read',
+const READ_ENGINEERING: readonly UiV2Capability[] = [
+  'quality.read',
   'evidence.read',
-  'limitations.read',
-  'pipeline.read',
-];
-
-export const UI_V2_SIM_CAPABILITIES: readonly UiV2Capability[] = [
-  ...UI_V2_COMMON_AUTH_CAPABILITIES,
-  'scenario.read',
-  'simulation.read',
-  'simulation.execute',
-];
-
-export const UI_V2_EXECUTE_CAPABILITIES: readonly UiV2Capability[] = [
-  ...UI_V2_COMMON_AUTH_CAPABILITIES,
-  'pipeline.read',
-  'scenario.read',
-  'simulation.read',
-  'qa.read',
-  'evidence.read',
-  'limitations.read',
-  'p3.read',
-  'simulation.execute',
+  'evidence.download',
+  'evidence.compare',
 ];
 
 export function getUiV2Capabilities(user: Pick<User, 'roles'> | null | undefined): Set<UiV2Capability> {
   const roles = user?.roles ?? [];
-
   if (roles.length === 0) {
     return new Set(UI_V2_PUBLIC_CAPABILITIES);
   }
 
-  if (roles.includes('Admin')) {
-    return new Set([...UI_V2_EXECUTE_CAPABILITIES, 'admin.read', 'admin.execute']);
+  const recognizedRoles = new Set(['Pipeline', 'Sim', 'QA', 'Operations', 'ReleaseApprover', 'Admin']);
+  if (!roles.some((role) => recognizedRoles.has(role))) {
+    return new Set(['demo.read', 'help.read']);
   }
 
-  if (roles.includes('Sim')) {
-    return new Set(UI_V2_SIM_CAPABILITIES);
-  }
+  const capabilities = new Set<UiV2Capability>(UI_V2_COMMON_AUTH_CAPABILITIES);
+  const add = (items: readonly UiV2Capability[]) => {
+    for (const item of items) {
+      capabilities.add(item);
+    }
+  };
 
   if (roles.includes('Pipeline')) {
-    return new Set(UI_V2_PIPELINE_CAPABILITIES);
+    add(['qa.read', 'pipeline.read', 'limitations.read', ...READ_ENGINEERING]);
+  }
+  if (roles.includes('Sim')) {
+    add(['scenario.read', 'simulation.read', 'simulation.execute', 'evidence.read']);
+  }
+  if (roles.includes('QA')) {
+    add([
+      ...READ_ENGINEERING,
+      'qa.read',
+      'quality.execute.static',
+      'quality.execute.full',
+      'evidence.execute.campaign',
+    ]);
+  }
+  if (roles.includes('Operations')) {
+    add([
+      ...READ_ENGINEERING,
+      'pipeline.read',
+      'deployment.plan',
+      'deployment.deploy.staging',
+      'deployment.rollback',
+      'cloud.read',
+      'cloud.operate.staging',
+    ]);
+  }
+  if (roles.includes('ReleaseApprover')) {
+    add([
+      ...READ_ENGINEERING,
+      'deployment.plan',
+      'deployment.deploy.production',
+      'deployment.rollback',
+      'cloud.read',
+      'cloud.operate.production',
+      'cloud.destroy',
+      'approval.review',
+    ]);
+  }
+  if (roles.includes('Admin')) {
+    add([
+      ...READ_ENGINEERING,
+      'pipeline.read',
+      'scenario.read',
+      'simulation.read',
+      'simulation.execute',
+      'cloud.read',
+      'users.manage',
+      'roles.manage',
+      'admin.read',
+      'admin.execute',
+      'p3.read',
+    ]);
   }
 
-  return new Set(['demo.read', 'help.read']);
+  return capabilities;
 }
 
 export function hasUiV2Capability(capabilities: Set<UiV2Capability>, capability: UiV2Capability) {

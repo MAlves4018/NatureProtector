@@ -1,0 +1,72 @@
+{
+  "schema_version": 2,
+  "phase": 8,
+  "script_candidates": {
+    "parameterized_dispatcher": "scripts/cloud/probes/Invoke-G82ProbeAdapter.ps1",
+    "runtime_caller": "scripts/cloud/Invoke-G82RuntimeProbe.ps1",
+    "source_adapter_directory": "scripts/cloud/probes/sources",
+    "actions": [
+      "capacity",
+      "collect-audit",
+      "cost-observation",
+      "incident-drill",
+      "pilot-1",
+      "pilot-2",
+      "pilot-3",
+      "rollback-drill",
+      "second-operator",
+      "security-rotation",
+      "soak-finish",
+      "soak-observe",
+      "soak-start",
+      "teardown-rehearsal"
+    ],
+    "python_imported_helpers": [
+      "scripts/cloud/Test_G102_import_helper.py",
+      "scripts/cloud/g8_state_evidence.py"
+    ],
+    "retained_manual_entrypoints": [
+      "scripts/dotnet/Invoke-RepoDotnet.ps1",
+      "scripts/evidence/export_db_evidence.py",
+      "scripts/evidence/collect-reliability-evidence.sh",
+      "scripts/evidence/run-report-evidence-campaign.sh"
+    ],
+    "deployment_authority_wrappers": [
+      "scripts/cloud/probes/capacity.ps1",
+      "scripts/cloud/probes/collect-audit.ps1",
+      "scripts/cloud/probes/cost-observation.ps1",
+      "scripts/cloud/probes/incident-drill.ps1",
+      "scripts/cloud/probes/pilot-1.ps1",
+      "scripts/cloud/probes/pilot-2.ps1",
+      "scripts/cloud/probes/pilot-3.ps1",
+      "scripts/cloud/probes/rollback-drill.ps1",
+      "scripts/cloud/probes/second-operator.ps1",
+      "scripts/cloud/probes/security-rotation.ps1",
+      "scripts/cloud/probes/soak-finish.ps1",
+      "scripts/cloud/probes/soak-observe.ps1",
+      "scripts/cloud/probes/soak-start.ps1",
+      "scripts/cloud/probes/teardown-rehearsal.ps1"
+    ]
+  },
+  "removed_dependencies": {
+    "npm": [
+      "react-leaflet"
+    ],
+    "nuget": [
+      "InfluxDB.Client.Linq"
+    ]
+  },
+  "retained_exact_duplicate_classes": [
+    "historical evidence snapshots",
+    "independent Terraform lock files",
+    "minimal project files with distinct identities",
+    "host-specific development settings",
+    "Node version aliases for different version managers",
+    "directory placeholder files"
+  ],
+  "documentation": [
+    "scripts/README.md",
+    "docs/implementation/maintainability/repository-cleanup-phase8.md"
+  ],
+  "deployment_authority": "CURRENT_CANONICAL_REPOSITORY"
+}

@@ -1,4 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import { api } from '../../services/api';
 import { useToken } from '../../context/TokenContext';
 import type {
@@ -81,6 +91,8 @@ interface UiV2ContextValue {
   setLocale: (locale: UiV2Locale) => void;
   copy: (key: UiV2MessageKey) => string;
   capabilities: Set<UiV2Capability>;
+  capabilityAuthority: string;
+  capabilitiesLoading: boolean;
   pages: readonly UiV2PageDefinition[];
   activePage: UiV2NavTarget;
   setActivePage: (page: UiV2NavTarget) => void;
@@ -150,14 +162,18 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
   const [areas, setAreas] = useState<AreaResponse[]>([]);
   const [areasLoading, setAreasLoading] = useState(false);
   const [areaError, setAreaError] = useState<Error | null>(null);
-  const [selectedAreaCode, setSelectedAreaCode] = useState(() => initialValueFromQuery('area') ?? sessionStorage.getItem(AREA_STORAGE_KEY) ?? '');
+  const [selectedAreaCode, setSelectedAreaCode] = useState(
+    () => initialValueFromQuery('area') ?? sessionStorage.getItem(AREA_STORAGE_KEY) ?? '',
+  );
   const [summary, setSummary] = useState<RuntimeSummaryResponse | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<Error | null>(null);
   const [scenarios, setScenarios] = useState<ScenarioResponse[]>([]);
   const [scenariosLoading, setScenariosLoading] = useState(false);
   const [scenarioError, setScenarioError] = useState<Error | null>(null);
-  const [selectedScenarioCode, setSelectedScenarioCode] = useState(() => sessionStorage.getItem(SCENARIO_STORAGE_KEY) ?? '');
+  const [selectedScenarioCode, setSelectedScenarioCode] = useState(
+    () => sessionStorage.getItem(SCENARIO_STORAGE_KEY) ?? '',
+  );
   const [runs, setRuns] = useState<SimulationRunResponse[]>([]);
   const [runsLoading, setRunsLoading] = useState(false);
   const [runsError, setRunsError] = useState<Error | null>(null);
@@ -178,9 +194,13 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
   const [p3Availability, setP3Availability] = useState<ControlledValidationP3AvailabilityResponse | null>(null);
   const [p3Loading, setP3Loading] = useState(false);
   const [p3Error, setP3Error] = useState<Error | null>(null);
-  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [_refreshNonce, setRefreshNonce] = useState(0);
+  const fallbackCapabilities = useMemo(() => getUiV2Capabilities(user), [user]);
+  const [serverCapabilities, setServerCapabilities] = useState<Set<UiV2Capability> | null>(null);
+  const [capabilityAuthority, setCapabilityAuthority] = useState('frontend-fallback');
+  const [capabilitiesLoading, setCapabilitiesLoading] = useState(false);
 
-  const capabilities = useMemo(() => getUiV2Capabilities(user), [user]);
+  const capabilities = serverCapabilities ?? fallbackCapabilities;
   const pages = useMemo(() => getUiV2Pages(capabilities), [capabilities]);
   const isPublic = !user;
   const copy = useCallback((key: UiV2MessageKey) => translate(locale, key), [locale]);
@@ -191,7 +211,7 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
   const canExecuteSimulation = hasUiV2Capability(capabilities, 'simulation.execute');
   const canReadPipeline = hasUiV2Capability(capabilities, 'pipeline.read');
   const canReadEvidence = hasUiV2Capability(capabilities, 'evidence.read');
-  const canReadProtectedP3 = user?.roles.some(role => ['Admin'].includes(role)) ?? false;
+  const canReadProtectedP3 = hasUiV2Capability(capabilities, 'p3.read');
 
   const areaResolution = useMemo(
     () => resolveUiV2Area(selectedAreaCode, areas, locale, areasLoading, areaError),
@@ -200,31 +220,36 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
   const resolvedAreaCode = areaResolution.resolvedArea?.code ?? null;
 
   const riskModel = useMemo(
-    () => buildUiV2RiskReadModel({ summary, loading: summaryLoading, error: summaryError, accessDenied: !canReadRisk }, locale),
+    () =>
+      buildUiV2RiskReadModel(
+        { summary, loading: summaryLoading, error: summaryError, accessDenied: !canReadRisk },
+        locale,
+      ),
     [summary, summaryLoading, summaryError, canReadRisk, locale],
   );
   const scenarioContext = useMemo(
     () => buildUiV2ScenarioContext(selectedScenarioCode, scenarios, locale, scenarioError),
     [selectedScenarioCode, scenarios, locale, scenarioError],
   );
-  const selectedRunFromSummary = useMemo(
-    () => findRunInSummary(summary, selectedRunId),
-    [summary, selectedRunId],
-  );
+  const selectedRunFromSummary = useMemo(() => findRunInSummary(summary, selectedRunId), [summary, selectedRunId]);
   const selectedRunFromList = useMemo(
-    () => runs.find(run => run.id === selectedRunId) ?? null,
+    () => runs.find((run) => run.id === selectedRunId) ?? null,
     [runs, selectedRunId],
   );
   const selectedRun = runtimeRun ?? selectedRunFromSummary ?? selectedRunFromList;
   const runContext = useMemo(
-    () => buildUiV2RunContext({
-      requestedRunId: selectedRunId || null,
-      selectedRun,
-      summary,
-      audit: runAudit,
-      timings: runTimings,
-      error: selectedRun ? null : runDetailsError,
-    }, locale),
+    () =>
+      buildUiV2RunContext(
+        {
+          requestedRunId: selectedRunId || null,
+          selectedRun,
+          summary,
+          audit: runAudit,
+          timings: runTimings,
+          error: selectedRun ? null : runDetailsError,
+        },
+        locale,
+      ),
     [selectedRunId, selectedRun, summary, runAudit, runTimings, runDetailsError, locale],
   );
   const simulationRequest = useMemo(
@@ -236,20 +261,76 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
     [simulationRequest, simulationResult, locale],
   );
   const pipelineSurface = useMemo(
-    () => buildUiV2PipelineSurface({ summary, run: selectedRun, audit: runAudit, timings: runTimings, health: operationalHealth, rabbitMq: rabbitMqMetrics, observabilityError }, locale),
+    () =>
+      buildUiV2PipelineSurface(
+        {
+          summary,
+          run: selectedRun,
+          audit: runAudit,
+          timings: runTimings,
+          health: operationalHealth,
+          rabbitMq: rabbitMqMetrics,
+          observabilityError,
+        },
+        locale,
+      ),
     [summary, selectedRun, runAudit, runTimings, operationalHealth, rabbitMqMetrics, observabilityError, locale],
   );
   const qaSuites = useMemo(() => buildUiV2QaSuites(), []);
   const evidenceItems = useMemo(
-    () => buildUiV2EvidenceItems({ summary, run: selectedRun, audit: runAudit, timings: runTimings, catalog: evidenceCatalog }, locale),
+    () =>
+      buildUiV2EvidenceItems(
+        { summary, run: selectedRun, audit: runAudit, timings: runTimings, catalog: evidenceCatalog },
+        locale,
+      ),
     [summary, selectedRun, runAudit, runTimings, evidenceCatalog, locale],
   );
   const adminActions = useMemo(() => buildUiV2AdminActions(user), [user]);
-  const p3Surface = useMemo(() => buildUiV2P3Surface(p3Availability, p3Error, locale), [p3Availability, p3Error, locale]);
+  const p3Surface = useMemo(
+    () => buildUiV2P3Surface(p3Availability, p3Error, locale),
+    [p3Availability, p3Error, locale],
+  );
   const readinessItems = useMemo(
     () => buildUiV2ReadinessItems({ summary, run: selectedRun, user }),
     [summary, selectedRun, user],
   );
+
+  useEffect(() => {
+    if (!user) {
+      setServerCapabilities(null);
+      setCapabilityAuthority('public-fallback');
+      setCapabilitiesLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCapabilitiesLoading(true);
+    api
+      .getCurrentCapabilities()
+      .then((profile) => {
+        if (cancelled) {
+          return;
+        }
+        const allowed = new Set(profile.capabilities.filter(isUiV2Capability));
+        setServerCapabilities(allowed);
+        setCapabilityAuthority(profile.authority || 'backend-role-capability-policy');
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setServerCapabilities(null);
+          setCapabilityAuthority('frontend-fallback-after-backend-error');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCapabilitiesLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   useEffect(() => {
     sessionStorage.setItem('np.uiV2.locale', locale);
@@ -266,7 +347,9 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
   }, [selectedAreaCode]);
 
   useEffect(() => {
-    selectedScenarioCode ? sessionStorage.setItem(SCENARIO_STORAGE_KEY, selectedScenarioCode) : sessionStorage.removeItem(SCENARIO_STORAGE_KEY);
+    selectedScenarioCode
+      ? sessionStorage.setItem(SCENARIO_STORAGE_KEY, selectedScenarioCode)
+      : sessionStorage.removeItem(SCENARIO_STORAGE_KEY);
   }, [selectedScenarioCode]);
 
   useEffect(() => {
@@ -275,7 +358,7 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const fallback = defaultPageFor(capabilities);
-    if (!pages.some(page => page.id === activePage)) {
+    if (!pages.some((page) => page.id === activePage)) {
       setActivePage(fallback);
     }
   }, [activePage, capabilities, pages]);
@@ -313,12 +396,18 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
       setOperationalHealth(healthResult.status === 'fulfilled' ? healthResult.value : null);
       setRabbitMqMetrics(rabbitMqResult.status === 'fulfilled' ? rabbitMqResult.value : null);
       setEvidenceCatalog(evidenceResult.status === 'fulfilled' ? evidenceResult.value : null);
-      const rejected = [healthResult, rabbitMqResult, evidenceResult].find(result => result.status === 'rejected');
-      setObservabilityError(rejected && rejected.status === 'rejected' ? asError(rejected.reason, 'Failed to load runtime observability') : null);
+      const rejected = [healthResult, rabbitMqResult, evidenceResult].find((result) => result.status === 'rejected');
+      setObservabilityError(
+        rejected && rejected.status === 'rejected'
+          ? asError(rejected.reason, 'Failed to load runtime observability')
+          : null,
+      );
     });
 
-    return () => { cancelled = true; };
-  }, [canReadPipeline, canReadEvidence, refreshNonce]);
+    return () => {
+      cancelled = true;
+    };
+  }, [canReadPipeline, canReadEvidence]);
 
   useEffect(() => {
     if (!canReadArea) {
@@ -329,13 +418,14 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setAreasLoading(true);
     setAreaError(null);
-    api.getAreas()
-      .then(result => {
+    api
+      .getAreas()
+      .then((result) => {
         if (!cancelled) {
           setAreas(result);
         }
       })
-      .catch(err => {
+      .catch((err) => {
         if (!cancelled) {
           setAreaError(asError(err, 'Failed to load areas'));
         }
@@ -345,8 +435,10 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
           setAreasLoading(false);
         }
       });
-    return () => { cancelled = true; };
-  }, [canReadArea, refreshNonce]);
+    return () => {
+      cancelled = true;
+    };
+  }, [canReadArea]);
 
   useEffect(() => {
     if (!resolvedAreaCode || !canReadRisk) {
@@ -371,44 +463,48 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
       api.getRuntimeSummary(resolvedAreaCode),
       canReadScenario ? api.getAreaScenarios(resolvedAreaCode) : Promise.resolve([]),
       canReadRun ? api.listSimulationRuns(resolvedAreaCode, null, 20) : Promise.resolve([]),
-    ]).then(([summaryResult, scenariosResult, runsResult]) => {
-      if (cancelled) {
-        return;
-      }
-      if (summaryResult.status === 'fulfilled') {
-        setSummary(summaryResult.value);
-        if (!selectedRunId && summaryResult.value.latestRun?.id) {
-          setSelectedRunId(summaryResult.value.latestRun.id);
+    ])
+      .then(([summaryResult, scenariosResult, runsResult]) => {
+        if (cancelled) {
+          return;
         }
-      } else {
-        setSummary(null);
-        setSummaryError(asError(summaryResult.reason, 'Failed to load runtime summary'));
-      }
-      if (scenariosResult.status === 'fulfilled') {
-        setScenarios(scenariosResult.value);
-        if (!selectedScenarioCode && scenariosResult.value[0]?.code) {
-          setSelectedScenarioCode(scenariosResult.value[0].code);
+        if (summaryResult.status === 'fulfilled') {
+          setSummary(summaryResult.value);
+          if (!selectedRunId && summaryResult.value.latestRun?.id) {
+            setSelectedRunId(summaryResult.value.latestRun.id);
+          }
+        } else {
+          setSummary(null);
+          setSummaryError(asError(summaryResult.reason, 'Failed to load runtime summary'));
         }
-      } else {
-        setScenarios([]);
-        setScenarioError(asError(scenariosResult.reason, 'Failed to load scenarios'));
-      }
-      if (runsResult.status === 'fulfilled') {
-        setRuns(runsResult.value);
-      } else {
-        setRuns([]);
-        setRunsError(asError(runsResult.reason, 'Failed to load runs'));
-      }
-    }).finally(() => {
-      if (!cancelled) {
-        setSummaryLoading(false);
-        setScenariosLoading(false);
-        setRunsLoading(false);
-      }
-    });
+        if (scenariosResult.status === 'fulfilled') {
+          setScenarios(scenariosResult.value);
+          if (!selectedScenarioCode && scenariosResult.value[0]?.code) {
+            setSelectedScenarioCode(scenariosResult.value[0].code);
+          }
+        } else {
+          setScenarios([]);
+          setScenarioError(asError(scenariosResult.reason, 'Failed to load scenarios'));
+        }
+        if (runsResult.status === 'fulfilled') {
+          setRuns(runsResult.value);
+        } else {
+          setRuns([]);
+          setRunsError(asError(runsResult.reason, 'Failed to load runs'));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSummaryLoading(false);
+          setScenariosLoading(false);
+          setRunsLoading(false);
+        }
+      });
 
-    return () => { cancelled = true; };
-  }, [resolvedAreaCode, canReadRisk, canReadRun, canReadScenario, refreshNonce]);
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedAreaCode, canReadRisk, canReadRun, canReadScenario, selectedScenarioCode, selectedRunId]);
 
   useEffect(() => {
     if (!selectedRunId || !canReadRun) {
@@ -425,22 +521,28 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
       api.getRuntimeRun(selectedRunId),
       api.getRuntimeRunAudit(selectedRunId),
       api.getRuntimeRunTimings(selectedRunId),
-    ]).then(([runResult, auditResult, timingsResult]) => {
-      if (cancelled) {
-        return;
-      }
-      setRuntimeRun(runResult.status === 'fulfilled' ? runResult.value : null);
-      setRunAudit(auditResult.status === 'fulfilled' ? auditResult.value : null);
-      setRunTimings(timingsResult.status === 'fulfilled' ? timingsResult.value : null);
-      const rejected = [runResult, auditResult, timingsResult].find(result => result.status === 'rejected');
-      setRunDetailsError(rejected && rejected.status === 'rejected' ? asError(rejected.reason, 'Failed to load run details') : null);
-    }).finally(() => {
-      if (!cancelled) {
-        setRunDetailsLoading(false);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [selectedRunId, canReadRun, refreshNonce]);
+    ])
+      .then(([runResult, auditResult, timingsResult]) => {
+        if (cancelled) {
+          return;
+        }
+        setRuntimeRun(runResult.status === 'fulfilled' ? runResult.value : null);
+        setRunAudit(auditResult.status === 'fulfilled' ? auditResult.value : null);
+        setRunTimings(timingsResult.status === 'fulfilled' ? timingsResult.value : null);
+        const rejected = [runResult, auditResult, timingsResult].find((result) => result.status === 'rejected');
+        setRunDetailsError(
+          rejected && rejected.status === 'rejected' ? asError(rejected.reason, 'Failed to load run details') : null,
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRunDetailsLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRunId, canReadRun]);
 
   useEffect(() => {
     if (!canReadProtectedP3) {
@@ -451,13 +553,14 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
 
     let cancelled = false;
     setP3Loading(true);
-    api.getControlledValidationP3Availability()
-      .then(result => {
+    api
+      .getControlledValidationP3Availability()
+      .then((result) => {
         if (!cancelled) {
           setP3Availability(result);
         }
       })
-      .catch(err => {
+      .catch((err) => {
         if (!cancelled) {
           setP3Error(asError(err, 'Failed to load P3 availability'));
         }
@@ -467,10 +570,12 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
           setP3Loading(false);
         }
       });
-    return () => { cancelled = true; };
-  }, [canReadProtectedP3, refreshNonce]);
+    return () => {
+      cancelled = true;
+    };
+  }, [canReadProtectedP3]);
 
-  const reloadAreaContext = useCallback(() => setRefreshNonce(value => value + 1), []);
+  const reloadAreaContext = useCallback(() => setRefreshNonce((value) => value + 1), []);
 
   const submitSimulation = useCallback(async () => {
     const blocker = simulationBlocker(copy, canExecuteSimulation, resolvedAreaCode, selectedScenarioCode);
@@ -496,77 +601,129 @@ export function UiV2Provider({ children }: { children: ReactNode }) {
     }
   }, [copy, canExecuteSimulation, resolvedAreaCode, selectedScenarioCode, simulationRequest, reloadAreaContext]);
 
-  const value = useMemo<UiV2ContextValue>(() => ({
-    user,
-    locale,
-    setLocale,
-    copy,
-    capabilities,
-    pages,
-    activePage,
-    setActivePage,
-    isPublic,
-    areas,
-    areasLoading,
-    areaError,
-    selectedAreaCode,
-    setSelectedAreaCode,
-    areaResolution,
-    resolvedAreaCode,
-    summary,
-    summaryLoading,
-    summaryError,
-    riskModel,
-    scenarios,
-    scenariosLoading,
-    scenarioError,
-    selectedScenarioCode,
-    setSelectedScenarioCode,
-    scenarioContext,
-    runs,
-    runsLoading,
-    runsError,
-    selectedRunId,
-    setSelectedRunId,
-    selectedRun,
-    runAudit,
-    runTimings,
-    runDetailsLoading,
-    runDetailsError,
-    operationalHealth,
-    rabbitMqMetrics,
-    evidenceCatalog,
-    observabilityError,
-    runContext,
-    simulationForm,
-    setSimulationForm,
-    simulationRequest,
-    simulationReview,
-    simulationResult,
-    simulationSubmitting,
-    simulationError,
-    canExecuteSimulation,
-    submitSimulation,
-    reloadAreaContext,
-    pipelineFields: pipelineSurface.fields,
-    pipelineLimitations: pipelineSurface.limitations,
-    qaSuites,
-    evidenceItems,
-    readinessItems,
-    adminActions,
-    p3Surface,
-    p3Loading,
-    degradationProfiles: DEGRADATION_PROFILE_OPTIONS,
-  }), [
-    user, locale, copy, capabilities, pages, activePage, isPublic, areas, areasLoading, areaError, selectedAreaCode,
-    areaResolution, resolvedAreaCode, summary, summaryLoading, summaryError, riskModel, scenarios, scenariosLoading,
-    scenarioError, selectedScenarioCode, scenarioContext, runs, runsLoading, runsError, selectedRunId, selectedRun,
-    runAudit, runTimings, runDetailsLoading, runDetailsError, operationalHealth, rabbitMqMetrics, evidenceCatalog,
-    observabilityError, runContext, simulationForm, simulationRequest,
-    simulationReview, simulationResult, simulationSubmitting, simulationError, canExecuteSimulation, submitSimulation,
-    reloadAreaContext, pipelineSurface.fields, pipelineSurface.limitations, qaSuites, evidenceItems, readinessItems,
-    adminActions, p3Surface, p3Loading,
-  ]);
+  const value = useMemo<UiV2ContextValue>(
+    () => ({
+      user,
+      locale,
+      setLocale,
+      copy,
+      capabilities,
+      capabilityAuthority,
+      capabilitiesLoading,
+      pages,
+      activePage,
+      setActivePage,
+      isPublic,
+      areas,
+      areasLoading,
+      areaError,
+      selectedAreaCode,
+      setSelectedAreaCode,
+      areaResolution,
+      resolvedAreaCode,
+      summary,
+      summaryLoading,
+      summaryError,
+      riskModel,
+      scenarios,
+      scenariosLoading,
+      scenarioError,
+      selectedScenarioCode,
+      setSelectedScenarioCode,
+      scenarioContext,
+      runs,
+      runsLoading,
+      runsError,
+      selectedRunId,
+      setSelectedRunId,
+      selectedRun,
+      runAudit,
+      runTimings,
+      runDetailsLoading,
+      runDetailsError,
+      operationalHealth,
+      rabbitMqMetrics,
+      evidenceCatalog,
+      observabilityError,
+      runContext,
+      simulationForm,
+      setSimulationForm,
+      simulationRequest,
+      simulationReview,
+      simulationResult,
+      simulationSubmitting,
+      simulationError,
+      canExecuteSimulation,
+      submitSimulation,
+      reloadAreaContext,
+      pipelineFields: pipelineSurface.fields,
+      pipelineLimitations: pipelineSurface.limitations,
+      qaSuites,
+      evidenceItems,
+      readinessItems,
+      adminActions,
+      p3Surface,
+      p3Loading,
+      degradationProfiles: DEGRADATION_PROFILE_OPTIONS,
+    }),
+    [
+      user,
+      locale,
+      copy,
+      capabilities,
+      capabilityAuthority,
+      capabilitiesLoading,
+      pages,
+      activePage,
+      isPublic,
+      areas,
+      areasLoading,
+      areaError,
+      selectedAreaCode,
+      areaResolution,
+      resolvedAreaCode,
+      summary,
+      summaryLoading,
+      summaryError,
+      riskModel,
+      scenarios,
+      scenariosLoading,
+      scenarioError,
+      selectedScenarioCode,
+      scenarioContext,
+      runs,
+      runsLoading,
+      runsError,
+      selectedRunId,
+      selectedRun,
+      runAudit,
+      runTimings,
+      runDetailsLoading,
+      runDetailsError,
+      operationalHealth,
+      rabbitMqMetrics,
+      evidenceCatalog,
+      observabilityError,
+      runContext,
+      simulationForm,
+      simulationRequest,
+      simulationReview,
+      simulationResult,
+      simulationSubmitting,
+      simulationError,
+      canExecuteSimulation,
+      submitSimulation,
+      reloadAreaContext,
+      pipelineSurface.fields,
+      pipelineSurface.limitations,
+      qaSuites,
+      evidenceItems,
+      readinessItems,
+      adminActions,
+      p3Surface,
+      p3Loading,
+    ],
+  );
 
   return <UiV2Context.Provider value={value}>{children}</UiV2Context.Provider>;
 }
@@ -579,7 +736,11 @@ export function useUiV2() {
   return context;
 }
 
-function buildSimulationRequest(areaCode: string, scenarioCode: string, form: SimulationFormState): RuntimeRunStartRequest {
+function buildSimulationRequest(
+  areaCode: string,
+  scenarioCode: string,
+  form: SimulationFormState,
+): RuntimeRunStartRequest {
   const seed = form.seed.trim();
   const degradationProfile = form.degradationProfile.trim();
   const runLabel = form.runLabel.trim();
@@ -601,7 +762,12 @@ function buildSimulationRequest(areaCode: string, scenarioCode: string, form: Si
   };
 }
 
-function simulationBlocker(copy: (key: UiV2MessageKey) => string, canExecute: boolean, resolvedAreaCode: string | null, selectedScenarioCode: string) {
+function simulationBlocker(
+  copy: (key: UiV2MessageKey) => string,
+  canExecute: boolean,
+  resolvedAreaCode: string | null,
+  selectedScenarioCode: string,
+) {
   if (!canExecute) {
     return copy('simulation.forbidden');
   }
@@ -639,6 +805,12 @@ function setQueryParam(name: string, value: string | null) {
     url.searchParams.delete(name);
   }
   window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function isUiV2Capability(value: string): value is UiV2Capability {
+  return getUiV2Capabilities({ roles: ['Pipeline', 'Sim', 'QA', 'Operations', 'ReleaseApprover', 'Admin'] }).has(
+    value as UiV2Capability,
+  );
 }
 
 function asError(value: unknown, fallback: string) {

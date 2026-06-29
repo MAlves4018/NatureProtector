@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-PT" xml:lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Miguel Alves" />
+  <title>NatureProtector - Suplemento de Atualiza����o do Estado do Projeto</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="report.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">NatureProtector - Suplemento de Atualiza����o do
+Estado do Projeto</h1>
+<p class="author">Miguel Alves</p>
+<p class="date">28 de junho de 2026</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#finalidade-e-autoridade"
+id="toc-finalidade-e-autoridade">Finalidade e autoridade</a></li>
+<li><a href="#síntese-da-atualização"
+id="toc-síntese-da-atualização">Síntese da atualização</a></li>
+<li><a href="#integração-arquitetural"
+id="toc-integração-arquitetural">Integração arquitetural</a></li>
+<li><a href="#roles-e-separação-de-poderes"
+id="toc-roles-e-separação-de-poderes">Roles e separação de
+poderes</a></li>
+<li><a href="#qualidade-e-evidence"
+id="toc-qualidade-e-evidence">Qualidade e evidence</a></li>
+<li><a href="#cloud-e-deployment" id="toc-cloud-e-deployment">Cloud e
+deployment</a></li>
+<li><a href="#fronteira-científica-e-operacional"
+id="toc-fronteira-científica-e-operacional">Fronteira científica e
+operacional</a></li>
+<li><a href="#sistema-documental-e-portfolio-visual"
+id="toc-sistema-documental-e-portfolio-visual">Sistema documental e
+portfolio visual</a></li>
+<li><a href="#mapa-de-integração-no-relatório"
+id="toc-mapa-de-integração-no-relatório">Mapa de integração no
+relatório</a></li>
+<li><a href="#controlos-de-linguagem"
+id="toc-controlos-de-linguagem">Controlos de linguagem</a></li>
+<li><a href="#requisito-editorial-remanescente"
+id="toc-requisito-editorial-remanescente">Requisito editorial
+remanescente</a></li>
+</ul>
+</nav>
+<h1 id="finalidade-e-autoridade">Finalidade e autoridade</h1>
+<p>Este suplemento regista a diferença factual entre o estado do
+relatório identificado como <strong>R13</strong> e o snapshot do
+repositório que inclui o Unified Operations Control Plane e o novo
+sistema documental. É um instrumento de integração, não substitui
+automaticamente o relatório de 379 páginas e não constitui evidence de
+que staging ou produção foram concluídos.</p>
+<p>O relatório fornecido posiciona corretamente o NatureProtector como
+plataforma experimental auditável e distingue implementação, verificação
+estática, resultado vigente, execução histórica, tentativa bloqueada,
+reprodução e validação. O repositório atual estende essa disciplina às
+operações de engenharia.</p>
+<h1 id="síntese-da-atualização">Síntese da atualização</h1>
+<p>O repositório passou a conter policies de capabilities no servidor;
+as roles <code>QA</code>, <code>Operations</code> e
+<code>ReleaseApprover</code>; as vistas Mission Control, Quality Runs,
+Evidence Explorer, Deployments, Cloud Resources, Approvals e
+administração de utilizadores/roles; catálogo fechado de operações;
+registos, confirmação e aprovação; wrappers de GitHub Actions; callback
+autenticado e classificação de artifacts.</p>
+<p>Foi também criada uma camada documental canónica com current state,
+tutorial/how-to/reference/explanation, modelo Structurizr, portfolio
+visual com source/render/sidecar, manifests, inventários, validação de
+links e compêndio de estudo.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/container-architecture-a4.png"
+alt="Arquitetura atual de containers" />
+<figcaption aria-hidden="true">Arquitetura atual de
+containers</figcaption>
+</figure>
+<h1 id="integração-arquitetural">Integração arquitetural</h1>
+<p>A arquitetura do relatório deve agora distinguir três planos:</p>
+<ol type="1">
+<li>processamento runtime e dados;</li>
+<li>API, UI e plano de controlo;</li>
+<li>operações de engenharia, runners e evidence.</li>
+</ol>
+<p>O browser permanece fora da fronteira de confiança do provider.
+Seleciona um identificador de operação do catálogo; o backend autoriza e
+regista; runners especializados detêm a identidade necessária.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/operations-lifecycle-a4.png"
+alt="Ciclo de uma operação" />
+<figcaption aria-hidden="true">Ciclo de uma operação</figcaption>
+</figure>
+<h1 id="roles-e-separação-de-poderes">Roles e separação de poderes</h1>
+<p>O modelo atual acrescenta <code>QA</code>, <code>Operations</code> e
+<code>ReleaseApprover</code>. <code>Admin</code> gere utilizadores,
+roles e configuração da aplicação, mas não recebe automaticamente
+capacidade de deployment de produção ou destroy. A separação continua
+relevante mesmo quando o owner académico acumula roles, porque
+solicitação, confirmação e aprovação ficam registadas como passos
+distintos.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/roles-ui-journeys-a4.png"
+alt="Roles e jornadas da UI" />
+<figcaption aria-hidden="true">Roles e jornadas da UI</figcaption>
+</figure>
+<h1 id="qualidade-e-evidence">Qualidade e evidence</h1>
+<p>As operações de qualidade e evidence são selecionadas num catálogo
+limitado e despachadas para workflows autorizados. Um status de sucesso
+do provider não é suficiente para classificar um claim como provado.
+Devem existir artifacts esperados, referência do snapshot, ambiente,
+produtor, run ID e SHA-256, e o âmbito da evidence tem de corresponder à
+afirmação.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/quality-evidence-flow-a4.png"
+alt="Fluxo de qualidade e evidence" />
+<figcaption aria-hidden="true">Fluxo de qualidade e
+evidence</figcaption>
+</figure>
+<h1 id="cloud-e-deployment">Cloud e deployment</h1>
+<p>A implementação inclui Terraform, GKE/Autopilot, Cloud Deploy,
+Artifact Registry, WIF e workflows de release/deployment. A formulação
+factual continua a ser: a implementação source está avançada, mas os
+artifacts fornecidos não provam uma signed release para o head final, um
+deployment de staging qualificado ou produção.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/deployment-and-promotion-a4.png"
+alt="Deployment e promoção" />
+<figcaption aria-hidden="true">Deployment e promoção</figcaption>
+</figure>
+<h1 id="fronteira-científica-e-operacional">Fronteira científica e
+operacional</h1>
+<p>A evolução de engenharia não altera as limitações científicas. FWI,
+KBDI, o score NatureProtector e o proxy de contexto português continuam
+componentes candidatos de comparação técnica; não são apresentados como
+métodos oficiais, calibrados ou validados para utilização
+operacional.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/data-provenance-authority-a4.png"
+alt="Proveniência e autoridade" />
+<figcaption aria-hidden="true">Proveniência e autoridade</figcaption>
+</figure>
+<h1 id="sistema-documental-e-portfolio-visual">Sistema documental e
+portfolio visual</h1>
+<p>A documentação corrente passa a ter:</p>
+<ul>
+<li>entrada canónica em <code>docs/index.md</code>;</li>
+<li>documentos de current state por tema;</li>
+<li>classificação <code>CURRENT</code>, <code>HISTORICAL</code>,
+<code>PLANNED</code>, <code>GENERATED</code>, <code>EVIDENCE</code>,
+<code>EXPERIMENTAL</code> e <code>SUPERSEDED</code>;</li>
+<li>inventário e manifest documental;</li>
+<li>validação de links e triples source/render/sidecar;</li>
+<li>modelo Structurizr com ambientes e dynamic views;</li>
+<li>dez diagramas factualmente reconciliados em variantes web, A4 e
+16:9;</li>
+<li>compêndio pessoal e referência rápida da defesa;</li>
+<li>portal HTML pesquisável.</li>
+</ul>
+<h1 id="mapa-de-integração-no-relatório">Mapa de integração no
+relatório</h1>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Destino</th>
+<th>Alteração necessária</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Capítulo 4</td>
+<td>Acrescentar Operations Control Plane, fronteiras runner/provider,
+capabilities e vistas de ambiente</td>
+</tr>
+<tr class="even">
+<td>Capítulo 5</td>
+<td>Acrescentar ciclo de convergência documental e governação de
+fontes</td>
+</tr>
+<tr class="odd">
+<td>Capítulo 6</td>
+<td>Acrescentar páginas da UI, catálogo de operações, workflows e
+callback</td>
+</tr>
+<tr class="even">
+<td>Capítulo 8</td>
+<td>Acrescentar dispatch fechado de quality/evidence e regra de promoção
+por artifacts com hash</td>
+</tr>
+<tr class="odd">
+<td>Capítulo 9</td>
+<td>Discutir separação entre administração da aplicação e autoridade de
+release</td>
+</tr>
+<tr class="even">
+<td>Capítulo 10</td>
+<td>Retirar a Operations UI já implementada do trabalho futuro; manter
+proof runtime/cloud e validação científica</td>
+</tr>
+<tr class="odd">
+<td>Capítulo 11</td>
+<td>Alargar a contribuição de auditabilidade sem reclamar produção
+provada</td>
+</tr>
+<tr class="even">
+<td>Anexo E</td>
+<td>Atualizar componentes, endpoints, roles e estrutura do
+repositório</td>
+</tr>
+<tr class="odd">
+<td>Anexo H</td>
+<td>Atualizar quality/evidence e gates de execução ainda abertos</td>
+</tr>
+<tr class="even">
+<td>Anexo I</td>
+<td>Atualizar administração e capabilities</td>
+</tr>
+<tr class="odd">
+<td>Anexo J</td>
+<td>Atualizar cloud/CD e a fronteira factual de proof</td>
+</tr>
+<tr class="even">
+<td>Anexo K</td>
+<td>Substituir diagramas selecionados R13 por figuras atuais e
+screenshots atuais quando existirem</td>
+</tr>
+</tbody>
+</table>
+<h1 id="controlos-de-linguagem">Controlos de linguagem</h1>
+<p>Usar: <code>implementado</code>,
+<code>verificado estaticamente</code>,
+<code>execução identificada</code>, <code>evidence histórica</code>,
+<code>snapshot atual</code>, <code>parcial</code>,
+<code>bloqueado</code>, <code>candidato</code>,
+<code>experimental</code>.</p>
+<p>Não usar sem proof atual: <code>production-ready</code>,
+<code>live</code>, <code>real-time</code>, <code>validado</code>,
+<code>calibrado</code>, <code>alerta oficial</code>,
+<code>sistema operacional</code>, <code>dados reais</code>.</p>
+<h1 id="requisito-editorial-remanescente">Requisito editorial
+remanescente</h1>
+<p>A fonte editável do relatório atual de 379 páginas não foi incluída
+nos inputs. Uma operação editorial futura deve inserir a adenda LaTeX e
+as alterações por capítulo na fonte real, recompilar o relatório e
+executar revisão visual, bibliográfica e de rastreabilidade. Este pacote
+não altera silenciosamente um PDF sem a respetiva fonte.</p>
+</body>
+</html>

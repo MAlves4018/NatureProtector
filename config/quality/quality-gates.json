@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "default_mode": "enforce",
+  "tool_versions": {
+    "ruff": "0.15.14",
+    "psscriptanalyzer": "1.25.0",
+    "shellcheck": "0.11.0",
+    "biome": "2.5.0"
+  },
+  "gates": [
+    {
+      "id": "quality-policy-static",
+      "description": "Validate the guardrail configuration and rollout contract.",
+      "rollout": "enforce",
+      "cwd": ".",
+      "command": [
+        "python",
+        "tools/quality-gates/validate.py",
+        "--repo",
+        "."
+      ]
+    },
+    {
+      "id": "control-plane-decomposition",
+      "description": "Preserve the Postgres control-plane public contract and byte-stable feature slices.",
+      "rollout": "enforce",
+      "cwd": ".",
+      "command": [
+        "python",
+        "tools/control-plane-audit/validate.py",
+        "--repo",
+        "."
+      ]
+    },
+    {
+      "id": "frontend-decomposition",
+      "description": "Preserve the Workspace and frontend type barrel contracts after Phase 6 decomposition.",
+      "rollout": "enforce",
+      "cwd": ".",
+      "command": [
+        "python",
+        "tools/frontend-audit/validate.py",
+        "--repo",
+        "."
+      ]
+    },
+    {
+      "id": "workflow-convergence",
+      "description": "Preserve CI validation authority, staging operation reuse, release artifact hand-off, and production policy boundaries.",
+      "rollout": "enforce",
+      "cwd": ".",
+      "command": [
+        "python",
+        "tools/workflow-audit/validate.py",
+        "--repo",
+        "."
+      ]
+    },
+    {
+      "id": "operations-control-plane",
+      "description": "Enforce the closed operations catalog, separation of duties, callback proof and browser credential boundary.",
+      "rollout": "enforce",
+      "cwd": ".",
+      "command": [
+        "python",
+        "tools/operations-audit/validate.py",
+        "--repo",
+        "."
+      ]
+    },
+    {
+      "id": "operations-python-tests",
+      "description": "Run adversarial tests for the operations architecture and callback reporter.",
+      "rollout": "enforce",
+      "cwd": ".",
+      "command": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/operations",
+        "-p",
+        "test_*.py",
+        "-v"
+      ]
+    },
+    {
+      "id": "repository-final-cleanup",
+      "description": "Preserve final script classifications, dependency removals, and the parameterized G8.2 adapter topology.",
+      "rollout": "enforce",
+      "cwd": ".",
+      "command": [
+        "python",
+        "tools/final-audit/validate.py",
+        "--repo",
+        "."
+      ]
+    },
+    {
+      "id": "frontend-typecheck-strict",
+      "description": "Compile the complete frontend with TypeScript strict mode.",
+      "rollout": "enforce",
+      "cwd": "webUI",
+      "command": [
+        "npm",
+        "run",
+        "typecheck:strict"
+      ]
+    },
+    {
+      "id": "python-ruff-critical",
+      "description": "Block Python import and correctness defects outside the canonical deployment source-of-truth boundary.",
+      "rollout": "enforce",
+      "cwd": ".",
+      "command": [
+        "ruff",
+        "check",
+        "--no-cache",
+        "scripts",
+        "tools",
+        "--exclude",
+        "scripts/cloud"
+      ]
+    },
+    {
+      "id": "frontend-biome-full",
+      "description": "Enforce the complete frontend lint policy.",
+      "rollout": "enforce",
+      "cwd": "webUI",
+      "command": [
+        "npm",
+        "run",
+        "lint:all"
+      ]
+    },
+    {
+      "id": "frontend-format-full",
+      "description": "Enforce formatter consistency across all frontend sources.",
+      "rollout": "enforce",
+      "cwd": "webUI",
+      "command": [
+        "npm",
+        "run",
+        "format:all:check"
+      ]
+    },
+    {
+      "id": "dotnet-analyzers",
+      "description": "Run .NET analyzers without converting legacy warnings into build failures.",
+      "rollout": "report",
+      "cwd": ".",
+      "command": [
+        "dotnet",
+        "build",
+        "NatureProtector.sln",
+        "-c",
+        "Release",
+        "--no-restore",
+        "--nologo",
+        "-v",
+        "minimal",
+        "-p:NPQualityMode=report"
+      ]
+    },
+    {
+      "id": "powershell-psscriptanalyzer",
+      "description": "Inventory PowerShell warning and error findings using the repository settings.",
+      "rollout": "report",
+      "cwd": ".",
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/quality-gates/Invoke-PSScriptAnalyzer.ps1"
+      ]
+    },
+    {
+      "id": "shell-shellcheck",
+      "description": "Inventory ShellCheck warnings in the three maintained shell entrypoints.",
+      "rollout": "report",
+      "cwd": ".",
+      "command": [
+        "shellcheck",
+        "-x",
+        "scripts/cloud/Build-G81Release.sh",
+        "scripts/cloud/Sign-G81ExistingRelease.sh",
+        "scripts/cloud/Verify-G82WorkflowRun.sh"
+      ]
+    }
+  ]
+}

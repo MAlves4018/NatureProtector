@@ -4,7 +4,9 @@ import { EmptyState } from './EmptyState';
 
 describe('EmptyState', () => {
   it('renders the empty title and optional detail without adding actions', () => {
-    render(<EmptyState title="Sem evidence disponivel" detail="A resposta atual nao contem artefactos descarregaveis." />);
+    render(
+      <EmptyState title="Sem evidence disponivel" detail="A resposta atual nao contem artefactos descarregaveis." />,
+    );
 
     expect(screen.getByRole('heading', { name: 'Sem evidence disponivel', level: 3 })).toBeInTheDocument();
     expect(screen.getByText('A resposta atual nao contem artefactos descarregaveis.')).toBeInTheDocument();

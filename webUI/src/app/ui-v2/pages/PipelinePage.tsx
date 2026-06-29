@@ -15,7 +15,11 @@ export function PipelinePage() {
       </section>
       <section className="ui-v2-panel">
         <h3>Limitacoes tecnicas</h3>
-        <ul>{pipelineLimitations.map(item => <li key={item}>{item}</li>)}</ul>
+        <ul>
+          {pipelineLimitations.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
       </section>
       <BetaParityLinks ids={['runtime-monitor', 'flow-model']} />
     </section>

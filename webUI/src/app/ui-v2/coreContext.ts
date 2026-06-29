@@ -68,7 +68,12 @@ export interface UiV2SimulationReviewModel {
   resolved: RuntimeRunOverrideValuesResponse | null;
   resultStatus: string;
   resultMessage: string;
-  fields: Array<{ label: string; requested: string; resolved: string; state: 'requested' | 'resolved' | 'defaulted' | 'unknown' }>;
+  fields: Array<{
+    label: string;
+    requested: string;
+    resolved: string;
+    state: 'requested' | 'resolved' | 'defaulted' | 'unknown';
+  }>;
   warnings: string[];
 }
 
@@ -98,10 +103,17 @@ export function resolveUiV2Area(
   }
 
   if (availableAreas.length === 0) {
-    return areaModel(normalized, null, availableAreas, 'unavailable', 'unavailable', translate(locale, 'area.unavailable'));
+    return areaModel(
+      normalized,
+      null,
+      availableAreas,
+      'unavailable',
+      'unavailable',
+      translate(locale, 'area.unavailable'),
+    );
   }
 
-  const match = availableAreas.find(area => area.code.toLowerCase() === normalized.toLowerCase()) ?? null;
+  const match = availableAreas.find((area) => area.code.toLowerCase() === normalized.toLowerCase()) ?? null;
   if (!match) {
     return areaModel(normalized, null, availableAreas, 'not-found', 'not-found', translate(locale, 'area.notFound'));
   }
@@ -159,13 +171,27 @@ export function buildUiV2RunContext(
       { label: coreLabel(locale, 'completed'), value: formatUiV2Date(run.endedAt, locale) },
       { label: coreLabel(locale, 'cycles'), value: String(run.numberOfCycles) },
       { label: coreLabel(locale, 'interval'), value: `${run.intervalSeconds}s` },
-      { label: coreLabel(locale, 'seed'), value: run.executionSeed == null ? translate(locale, 'value.notAvailable') : String(run.executionSeed) },
+      {
+        label: coreLabel(locale, 'seed'),
+        value: run.executionSeed == null ? translate(locale, 'value.notAvailable') : String(run.executionSeed),
+      },
       { label: coreLabel(locale, 'requestedConfig'), value: formatOverrideValues(overrides?.requested, locale) },
       { label: coreLabel(locale, 'resolvedConfig'), value: formatOverrideValues(overrides?.resolved, locale) },
-      { label: coreLabel(locale, 'acceptedMissing'), value: input.audit ? `${input.audit.acceptedReadings}/${input.audit.missingEvents ?? translate(locale, 'value.unknown')}` : translate(locale, 'value.notAvailable') },
-      { label: coreLabel(locale, 'timing'), value: input.timings?.runDurationMs == null ? translate(locale, 'value.notAvailable') : `${Math.round(input.timings.runDurationMs)}ms` },
+      {
+        label: coreLabel(locale, 'acceptedMissing'),
+        value: input.audit
+          ? `${input.audit.acceptedReadings}/${input.audit.missingEvents ?? translate(locale, 'value.unknown')}`
+          : translate(locale, 'value.notAvailable'),
+      },
+      {
+        label: coreLabel(locale, 'timing'),
+        value:
+          input.timings?.runDurationMs == null
+            ? translate(locale, 'value.notAvailable')
+            : `${Math.round(input.timings.runDurationMs)}ms`,
+      },
     ],
-    limitations: input.audit?.limitations.map(item => item.message) ?? [],
+    limitations: input.audit?.limitations.map((item) => item.message) ?? [],
   };
 }
 
@@ -188,7 +214,7 @@ export function buildUiV2ScenarioContext(
     return scenarioModel(requestedScenarioId, null, 'unavailable', locale);
   }
 
-  const scenario = scenarios.find(item => item.code === requestedScenarioId) ?? null;
+  const scenario = scenarios.find((item) => item.code === requestedScenarioId) ?? null;
   return scenario
     ? scenarioModel(requestedScenarioId, scenario, 'available', locale)
     : scenarioModel(requestedScenarioId, null, 'not-found', locale);
@@ -214,7 +240,12 @@ export function buildUiV2SimulationReview(
       reviewField('intervalSeconds', request.intervalSeconds, resolved?.intervalSeconds, locale),
       reviewField('seed', request.seed, resolved?.seed, locale),
       reviewField('degradationProfile', request.degradationProfile, resolved?.degradationProfile, locale),
-      reviewField('orchestratorCorrelationId', result?.requested.orchestratorCorrelationId, resolved?.orchestratorCorrelationId, locale),
+      reviewField(
+        'orchestratorCorrelationId',
+        result?.requested.orchestratorCorrelationId,
+        resolved?.orchestratorCorrelationId,
+        locale,
+      ),
     ],
   };
 }
@@ -244,13 +275,19 @@ function scenarioModel(
     availability,
     fields: scenario
       ? [
-        { label: coreLabel(locale, 'scenarioId'), value: scenario.code },
-        { label: coreLabel(locale, 'name'), value: scenario.name },
-        { label: coreLabel(locale, 'kind'), value: scenario.scenarioKind },
-        { label: coreLabel(locale, 'description'), value: scenario.description ?? translate(locale, 'value.notAvailable') },
-        { label: coreLabel(locale, 'baseScenario'), value: scenario.baseScenarioCode ?? translate(locale, 'value.notAvailable') },
-        { label: coreLabel(locale, 'datasetBindings'), value: String(scenario.datasetBindingCount) },
-      ]
+          { label: coreLabel(locale, 'scenarioId'), value: scenario.code },
+          { label: coreLabel(locale, 'name'), value: scenario.name },
+          { label: coreLabel(locale, 'kind'), value: scenario.scenarioKind },
+          {
+            label: coreLabel(locale, 'description'),
+            value: scenario.description ?? translate(locale, 'value.notAvailable'),
+          },
+          {
+            label: coreLabel(locale, 'baseScenario'),
+            value: scenario.baseScenarioCode ?? translate(locale, 'value.notAvailable'),
+          },
+          { label: coreLabel(locale, 'datasetBindings'), value: String(scenario.datasetBindingCount) },
+        ]
       : [],
     limitations,
   };
@@ -279,10 +316,7 @@ function mapRunState(status: string): UiV2RunLifecycleState {
   return 'unknown';
 }
 
-function formatOverrideValues(
-  values: RuntimeRunOverrideValuesResponse | null | undefined,
-  locale: UiV2Locale,
-) {
+function formatOverrideValues(values: RuntimeRunOverrideValuesResponse | null | undefined, locale: UiV2Locale) {
   if (!values) {
     return translate(locale, 'value.notAvailable');
   }
@@ -312,11 +346,12 @@ function reviewField(
 ): UiV2SimulationReviewModel['fields'][number] {
   const requestedValue = formatMaybe(requested, locale);
   const resolvedValue = formatMaybe(resolved, locale);
-  const state = resolved === null || resolved === undefined
-    ? 'requested'
-    : requestedValue === resolvedValue
-      ? 'resolved'
-      : 'defaulted';
+  const state =
+    resolved === null || resolved === undefined
+      ? 'requested'
+      : requestedValue === resolvedValue
+        ? 'resolved'
+        : 'defaulted';
 
   return { label, requested: requestedValue, resolved: resolvedValue, state };
 }

@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AreaResponse, RuntimeRunStartRequest, RuntimeRunStartResponse, ScenarioResponse } from '../types';
-import {
-  buildUiV2ScenarioContext,
-  buildUiV2SimulationReview,
-  resolveUiV2Area,
-} from './coreContext';
+import { buildUiV2ScenarioContext, buildUiV2SimulationReview, resolveUiV2Area } from './coreContext';
 
 const area: AreaResponse = {
   id: 'area-1',
@@ -92,8 +88,8 @@ describe('UI v2 core context adapters', () => {
     const review = buildUiV2SimulationReview(request, response, 'en');
 
     expect(review.resultStatus).toBe('Validated');
-    expect(review.fields.find(field => field.label === 'scenarioCode')?.requested).toBe('scenario_b');
-    expect(review.fields.find(field => field.label === 'scenarioCode')?.resolved).toBe('Not available');
+    expect(review.fields.find((field) => field.label === 'scenarioCode')?.requested).toBe('scenario_b');
+    expect(review.fields.find((field) => field.label === 'scenarioCode')?.resolved).toBe('Not available');
     expect(review.warnings).toEqual(['launch disabled']);
   });
 });

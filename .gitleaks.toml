@@ -6,7 +6,6 @@ useDefault = true
 [allowlist]
 description = "Approved local-only fixtures and non-secret placeholders used by tests, docs, and developer baseline setup."
 paths = [
-  '''(^|.*[/\\])\.env\.example$''',
   '''(^|.*[/\\])tests[/\\]NatureProtector\.Backoffice\.Api\.Tests[/\\]JwtAuthenticationTests\.cs$''',
 ]
 regexes = [

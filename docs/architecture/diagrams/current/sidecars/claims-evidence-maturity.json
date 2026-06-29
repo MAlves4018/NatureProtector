@@ -1,0 +1,25 @@
+{
+  "id": "claims-evidence-maturity",
+  "title": "Claims, evidence and maturity ladder",
+  "status": "CURRENT",
+  "verified_at": "2026-06-28",
+  "source_of_truth": [
+    "repository code",
+    "configuration",
+    "workflows",
+    "current-state documentation"
+  ],
+  "evidence_level": "FACT_CHECKED_AGAINST_SUPPLIED_REPOSITORY",
+  "variants": {
+    "web": "architecture/diagrams/current/render/claims-evidence-maturity.svg",
+    "presentation": "architecture/diagrams/current/render/claims-evidence-maturity-16x9.svg",
+    "report_a4": "architecture/diagrams/current/render/claims-evidence-maturity-a4.svg"
+  },
+  "alt_text": "Claims, evidence and maturity ladder. Diagram showing the principal elements and directed relationships.",
+  "long_description": "Claims, evidence and maturity ladder; the diagram uses labelled nodes and arrows to distinguish implementation, evidence, authority and environment boundaries.",
+  "limitations": [
+    "Not an execution trace unless explicitly stated",
+    "Cloud resources may be declared rather than observed"
+  ],
+  "supersedes": []
+}

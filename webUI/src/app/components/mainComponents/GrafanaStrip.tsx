@@ -1,29 +1,26 @@
 import { useEffect, useState } from 'react';
-import {
-  Box, Flex, Heading
-} from '@chakra-ui/react';
+import { Box, Flex, Heading } from '@chakra-ui/react';
 import { getColors } from '../../utils/utils';
 
-
-
-export function GrafanaStrip({ isDark, areaId, ...c }: {
+export function GrafanaStrip({
+  isDark,
+  areaId,
+  ...c
+}: {
   isDark: boolean;
   areaId: string;
-}
-  & ReturnType<typeof getColors>
-) {
+} & ReturnType<typeof getColors>) {
   const [dashboardLinks, setDashboardLinks] = useState<string[]>([]);
   useEffect(() => {
-    console.log("areaId:", areaId);
+    console.log('areaId:', areaId);
     fetch('/area_dashboards_links.txt')
-      .then(r => r.text())
-      .then(text => {
-        const links = text.split('\n').filter(line => line.trim());
+      .then((r) => r.text())
+      .then((text) => {
+        const links = text.split('\n').filter((line) => line.trim());
         setDashboardLinks(links);
       })
-      .catch(err => console.error('Failed to load dashboards:', err));
-  }, []);
-
+      .catch((err) => console.error('Failed to load dashboards:', err));
+  }, [areaId]);
 
   return (
     <Box
@@ -32,10 +29,12 @@ export function GrafanaStrip({ isDark, areaId, ...c }: {
       borderColor={c.panelBorder}
       flexShrink={0}
       transition="background 0.2s"
-    // REMOVED resize="vertical" to avoid manual height override
+      // REMOVED resize="vertical" to avoid manual height override
     >
       <Box px={6} pt={4} pb={1}>
-        <Heading size="xl" color={c.textPrimary} fontFamily="serif">Grafana Dashboards</Heading>
+        <Heading size="xl" color={c.textPrimary} fontFamily="serif">
+          Grafana Dashboards
+        </Heading>
       </Box>
 
       <Flex
@@ -47,12 +46,12 @@ export function GrafanaStrip({ isDark, areaId, ...c }: {
         align="stretch" // Ensures all boxes have the same height if one is taller
         css={{
           scrollbarWidth: 'thin',
-          scrollbarColor: `${isDark ? '#2d3547' : '#d1d5db'} transparent`
+          scrollbarColor: `${isDark ? '#2d3547' : '#d1d5db'} transparent`,
         }}
       >
         {dashboardLinks.map((dash, index) => (
           <Box
-            key={index}
+            key={dash}
             minW="450px"
             flex="1"
             minH="500px"
@@ -76,23 +75,25 @@ export function GrafanaStrip({ isDark, areaId, ...c }: {
   );
 }
 
-export function AreaRisk({ isDark, areaId, ...c }: {
+export function AreaRisk({
+  isDark,
+  areaId,
+  ...c
+}: {
   isDark: boolean;
   areaId: string;
-}
-  & ReturnType<typeof getColors>
-) {
-  const [areaRiskLink, setareaRiskLink] = useState<string>("");
+} & ReturnType<typeof getColors>) {
+  const [areaRiskLink, setareaRiskLink] = useState<string>('');
   useEffect(() => {
-    console.log("areaId:", areaId);
+    console.log('areaId:', areaId);
     fetch('/area_risk_link.txt')
-      .then(r => r.text())
-      .then(text => {
-        const links = text.split('\n').filter(line => line.trim());
-        setareaRiskLink(links[0] || "");
+      .then((r) => r.text())
+      .then((text) => {
+        const links = text.split('\n').filter((line) => line.trim());
+        setareaRiskLink(links[0] || '');
       })
-      .catch(err => console.error('Failed to load dashboards:', err));
-  }, []);
+      .catch((err) => console.error('Failed to load dashboards:', err));
+  }, [areaId]);
 
   return (
     <Box

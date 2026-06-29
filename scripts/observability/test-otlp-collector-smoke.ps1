@@ -6,18 +6,9 @@ param(
     [int]$StartupTimeoutSeconds = 45
 )
 
-$ErrorActionPreference = "Stop"
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
 
-function Get-FreeTcpPort {
-    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
-    try {
-        $listener.Start()
-        return ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
-    }
-    finally {
-        $listener.Stop()
-    }
-}
+$ErrorActionPreference = "Stop"
 
 function Wait-ForFileContent {
     param(
@@ -59,7 +50,7 @@ function Start-PackageApi {
         throw "Backoffice API DLL not found: $apiDll"
     }
 
-    $port = Get-FreeTcpPort
+    $port = Get-NpFreeTcpPort
     $baseUrl = "http://127.0.0.1:$port"
     $stdoutPath = Join-Path $EvidenceDirectory "backoffice-api.stdout.log"
     $stderrPath = Join-Path $EvidenceDirectory "backoffice-api.stderr.log"
@@ -136,7 +127,7 @@ $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $runDirectory = Join-Path $repoRoot (Join-Path $OutputRoot $timestamp)
 New-Item -ItemType Directory -Force -Path $runDirectory | Out-Null
 
-$grpcPort = Get-FreeTcpPort
+$grpcPort = Get-NpFreeTcpPort
 $containerName = "np-otel-smoke-$($timestamp.Replace('-', ''))"
 $tracesPath = Join-Path $runDirectory "traces.json"
 $metricsPath = Join-Path $runDirectory "metrics.json"

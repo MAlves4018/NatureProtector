@@ -283,8 +283,8 @@ Depois entram os scripts de download e curadoria:
 
 No snapshot atual do repositório, porém, o que existe é apenas:
 
-- [data/runtime/exports/.gitkeep](../../data/runtime/exports/.gitkeep);
-- [data/runtime/simulations/.gitkeep](../../data/runtime/simulations/.gitkeep).
+- [data/runtime/exports/.gitkeep](../../data/runtime/exports/);
+- [data/runtime/simulations/.gitkeep](../../data/runtime/simulations/).
 
 Estado atual verificado: não foi encontrado nesta leitura um writer ativo no código que grave automaticamente ficheiros versionados em `data/runtime/`. A evidência operacional atual vive antes em RabbitMQ, PostgreSQL, InfluxDB e logs aplicacionais.
 
@@ -600,7 +600,7 @@ No `Program.cs`, a ordem factual é simples: resolver a raiz do repositório, ca
 
 Em `BootstrapPilotAreaAsync`, a sequência observável é esta:
 
-1. `EnsureSchemaAsync`, exceto quando `NP_BOOTSTRAP_SKIP_SCHEMA_MIGRATION=true`
+1. `EnsureSchemaAsync`
 2. `UpsertConfigurationVersionAsync`
 3. `UpsertDatasetArtifactsAsync`
 4. `UpsertPilotAreaAsync`
@@ -654,7 +654,7 @@ O papel do bootstrap é materializar estado estável. O runtime posterior consom
 ### Notas de compreensão ou armadilhas
 
 - O bootstrap está fortemente parametrizado para `Proença-a-Nova`. O nome pode sugerir uma generalidade maior do que a implementação atual oferece.
-- `EnsureSchemaAsync` usa migrations quando existem e só cai para `EnsureCreatedAsync` se não houver migrations. Em cloud staging, esta etapa deve ser saltada com `NP_BOOTSTRAP_SKIP_SCHEMA_MIGRATION=true`, porque o schema é preparado pelo job dedicado `np-postgres-migrations` e o bootstrap usa o role runtime `np_app`.
+- `EnsureSchemaAsync` usa migrations quando existem e só cai para `EnsureCreatedAsync` se não houver migrations. Na branch atual há migrations formais, por isso o caminho esperado é `Database.MigrateAsync`.
 
 ### Ficheiros, classes e métodos principais
 

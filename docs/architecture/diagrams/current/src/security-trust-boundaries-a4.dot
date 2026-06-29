@@ -1,0 +1,13 @@
+digraph G { graph [size="7.3,10.2!", ratio=compress]; rankdir=TB; graph [fontname="Arial", bgcolor="white", pad="0.25", nodesep="0.3", ranksep="0.5", splines=ortho];
+node [fontname="Arial", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F7FAFC", color="#334155", penwidth=1.2, margin="0.14,0.09"];
+edge [fontname="Arial", fontsize=9, color="#475569", arrowsize=0.75, penwidth=1.1];
+subgraph cluster_browser { label="Untrusted client boundary"; color="#FCA5A5"; ui [label="Browser UI
+no provider secrets",fillcolor="#FEE2E2"]; }
+subgraph cluster_app { label="Application trust boundary"; color="#93C5FD"; api [label="Backoffice.Api",fillcolor="#DBEAFE"]; policy [label="Capability policies",fillcolor="#BFDBFE"]; catalog [label="Closed inputs/catalog",fillcolor="#BFDBFE"]; store [label="Audit store",shape=cylinder,fillcolor="#FCE7F3"]; api->policy; policy->catalog; catalog->store; }
+subgraph cluster_runner { label="Runner/provider boundary"; color="#C4B5FD"; gh [label="GitHub Actions / GitHub App",fillcolor="#F3E8FF"]; secret [label="Secret Manager / WIF
+short-lived identity",fillcolor="#EDE9FE"]; cloud [label="GCP resources",fillcolor="#DDD6FE"]; gh->secret->cloud; }
+ui->api [label="JWT + bounded request"];
+api->gh [label="workflow dispatch"];
+gh->api [label="HTTPS callback + shared secret"];
+cloud->store [label="evidence references only",style=dashed];
+}

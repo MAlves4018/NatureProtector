@@ -1,0 +1,9 @@
+canonical_document,report_targets,integration_purpose
+project-state.md,"Chapters 1, 9, 11",Executive factual state and limitations
+architecture-and-runtime.md,"Chapters 4, 6; Appendix E","Containers, flow, deployment environments"
+operations-control-plane.md,"Chapters 4, 6, 8; Appendices H, I, J",Engineering operations and evidence
+roles-capabilities-and-ui.md,"Chapter 6; Appendices B, E, I, K",Roles and UI journeys
+quality-evidence-and-testing.md,Chapter 8; Appendix H,Quality/evidence model
+cloud-and-deployment.md,"Chapters 6, 8, 9, 10; Appendix J",Cloud/CD implementation and proof boundary
+data-risk-and-scientific-boundaries.md,"Chapters 2, 7, 9; Appendices C, D, G",Scientific positioning
+limitations-and-open-gates.md,"Chapters 9, 10, 11",Limitations and future work

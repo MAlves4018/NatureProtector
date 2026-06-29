@@ -1,16 +1,54 @@
 - name: Home
   href: index.md
-- name: Repository Overview
-  href: ../../README.md
+- name: Current state
+  items:
+  - name: Project state
+    href: ../current-state/project-state.md
+  - name: Architecture and runtime
+    href: ../current-state/architecture-and-runtime.md
+  - name: Operations Control Plane
+    href: ../current-state/operations-control-plane.md
+  - name: Roles, capabilities and UI
+    href: ../current-state/roles-capabilities-and-ui.md
+  - name: Quality and evidence
+    href: ../current-state/quality-evidence-and-testing.md
+  - name: Cloud and deployment
+    href: ../current-state/cloud-and-deployment.md
+  - name: Data and scientific boundaries
+    href: ../current-state/data-risk-and-scientific-boundaries.md
+  - name: Limitations and gates
+    href: ../current-state/limitations-and-open-gates.md
+- name: Tutorials
+  href: ../tutorials/first-guided-run.md
+- name: How-to
+  items:
+  - name: Quality and evidence
+    href: ../how-to/run-quality-and-read-evidence.md
+  - name: Staging review
+    href: ../how-to/review-a-staging-deployment.md
+- name: Reference
+  items:
+  - name: Roles and capabilities
+    href: ../reference/roles-and-capabilities.md
+  - name: Operation catalog
+    href: ../reference/operation-catalog.md
+- name: Explanation
+  href: ../explanation/evidence-and-authority.md
 - name: Architecture
   href: ../architecture/README.md
-- name: Planning
-  href: ../planning/project-completion-roadmap.md
+- name: Operations
+  href: ../operations/g8-1-cd-and-rollout-runbook.md
+- name: Security
+  href: ../security/repository-governance.md
+- name: Decisions
+  href: ../decisions/ADR-G8-1-production-cloud-and-cd.md
+- name: Evidence
+  href: ../evidence/README.md
+- name: Study compendium
+  href: ../study/NatureProtector-Complete-Study-Compendium.md
+- name: Repository overview
+  href: ../../README.md
 - name: Data
   href: ../../data/README.md
-- name: Data Scripts
-  href: ../../scripts/data/README.md
-- name: API Reference
-  href: api/toc.yml
-- name: OpenAPI Future
+- name: API reference status
   href: openapi-future.md

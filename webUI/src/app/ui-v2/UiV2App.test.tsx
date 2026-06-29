@@ -157,23 +157,25 @@ describe('UiV2App', () => {
     expect(englishButton).toHaveFocus();
   });
 
-  it('keeps simulation hidden for Pipeline profiles and combines quality with evidence', async () => {
+  it('keeps simulation hidden and exposes separate mission, quality and evidence pages for Pipeline profiles', async () => {
     vi.stubGlobal('fetch', createFetchMock({ roles: ['Pipeline'] }));
     renderAuthenticatedUiV2(['Pipeline']);
 
     expect(await screen.findByRole('button', { name: /Risco e dados/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /simulacao/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Evidencia$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Evidence Explorer/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Deployments$/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
     expect(await screen.findByRole('heading', { name: /Pipeline e observabilidade/i })).toBeInTheDocument();
     expect(screen.getByText('Ingestion ready')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Qualidade e evidencia/i }));
-    expect(await screen.findByRole('heading', { name: /Qualidade e evidencia/i })).toBeInTheDocument();
-    expect(screen.getByText(/Latest test execution/i)).toBeInTheDocument();
-    expect(screen.getByText(/Historical evidence/i)).toBeInTheDocument();
-    expect(screen.getByText(/M05 initial workspace snapshot/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Testes e qualidade/i }));
+    expect(await screen.findByRole('heading', { name: /Quality Runs/i })).toBeInTheDocument();
+    expect(screen.getByText(/suites fechadas/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Evidence Explorer/i }));
+    expect(await screen.findByRole('heading', { name: /Evidence Explorer/i })).toBeInTheDocument();
   });
 
   it('shows executable simulation with controlled degradation for Sim profiles', async () => {
@@ -203,10 +205,7 @@ describe('UiV2App', () => {
     fireEvent.click(submitButton);
 
     expect(await screen.findByRole('heading', { name: /Contexto de run/i })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/control/runtime/runs',
-      expect.objectContaining({ method: 'POST' }),
-    );
+    expect(fetchMock).toHaveBeenCalledWith('/api/control/runtime/runs', expect.objectContaining({ method: 'POST' }));
   });
 
   it('shows proportional administration and experimental P3 only for Admin profiles', async () => {
@@ -275,6 +274,20 @@ function createFetchMock(options: { failSummary?: boolean; roles?: string[] } = 
         email: 'test@example.invalid',
         roles,
       });
+    }
+
+    if (path === '/api/users-roles/me/capabilities') {
+      const { getUiV2Capabilities } = await import('./capabilities');
+      return jsonResponse({
+        roles: options.roles ?? [],
+        capabilities: [...getUiV2Capabilities({ roles: options.roles ?? [] })],
+        authority: 'test-backend-policy',
+        evaluatedAt: '2026-06-28T20:00:00Z',
+      });
+    }
+
+    if (path === '/api/control/operations/catalog' || path === '/api/control/operations') {
+      return jsonResponse([]);
     }
 
     if (path === '/api/control/areas') {

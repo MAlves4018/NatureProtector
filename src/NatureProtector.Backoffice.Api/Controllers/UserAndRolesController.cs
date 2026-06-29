@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NatureProtector.Backoffice.Api.UserPlane.Contracts;
+using NatureProtector.Backoffice.Api.Operations.Authorization;
+using NatureProtector.Backoffice.Api.Operations.Contracts;
 using NatureProtector.Backoffice.Api.UserPlane.Services;
 
 [Authorize]
@@ -46,6 +48,32 @@ public sealed class UserAndRolesController : UserAndRolesControllerBase
 
         await UserPlane.LogoutAsync(cancellationToken);
         return NoContent();
+    }
+
+    [HttpGet("users")]
+    [Authorize(Policy = OperationCapabilities.UsersManage)]
+    public async Task<ActionResult<IReadOnlyList<UserResponse>>> ListUsersAsync(CancellationToken cancellationToken)
+    {
+        var unavailable = EnsureUserPlaneAvailable();
+        if (unavailable is not null)
+        {
+            return unavailable;
+        }
+
+        return Ok(await UserPlane.ListUsersAsync(cancellationToken));
+    }
+
+    [HttpGet("roles")]
+    [Authorize(Policy = OperationCapabilities.RolesManage)]
+    public async Task<ActionResult<IReadOnlyList<RoleResponse>>> ListRolesAsync(CancellationToken cancellationToken)
+    {
+        var unavailable = EnsureUserPlaneAvailable();
+        if (unavailable is not null)
+        {
+            return unavailable;
+        }
+
+        return Ok(await UserPlane.ListRolesAsync(cancellationToken));
     }
 
     [HttpPost("users")]
@@ -321,6 +349,18 @@ public sealed class UserAndRolesController : UserAndRolesControllerBase
 
         var response = await UserPlane.GetCurrentUserAsync(Authorization, cancellationToken);
         return Ok(response);
+    }
+
+    [HttpGet("me/capabilities")]
+    public ActionResult<CapabilityProfileResponse> GetCurrentCapabilities()
+    {
+        var roles = OperationRoleCatalog.GetRoles(User);
+        var capabilities = OperationRoleCatalog.GetCapabilities(roles);
+        return Ok(new CapabilityProfileResponse(
+            roles,
+            capabilities,
+            "server-role-capability-policy",
+            DateTimeOffset.UtcNow));
     }
 
 }

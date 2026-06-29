@@ -1,0 +1,25 @@
+digraph G { graph [size="13.33,7.5!", ratio=fill]; rankdir=LR; graph [fontname="Arial", bgcolor="white", pad="0.25", nodesep="0.45", ranksep="0.7", splines=ortho];
+node [fontname="Arial", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F7FAFC", color="#334155", penwidth=1.2, margin="0.14,0.09"];
+edge [fontname="Arial", fontsize=9, color="#475569", arrowsize=0.75, penwidth=1.1];
+pipeline [label="Pipeline
+read pipeline + evidence",fillcolor="#E0F2FE"];
+sim [label="Sim
+run scenarios",fillcolor="#DCFCE7"];
+qa [label="QA
+quality + evidence campaigns",fillcolor="#FEF3C7"];
+ops [label="Operations
+staging plan/deploy/rollback",fillcolor="#DBEAFE"];
+appr [label="ReleaseApprover
+production/destroy review",fillcolor="#FDE68A"];
+admin [label="Admin
+users, roles, app administration",fillcolor="#FCE7F3"];
+mission [label="Mission Control",fillcolor="#F8FAFC"];
+runtime [label="Risk / Pipeline / Runs / Simulation",fillcolor="#F8FAFC"];
+quality [label="Quality Runs / Evidence Explorer",fillcolor="#F8FAFC"];
+deploy [label="Deployments / Cloud Resources",fillcolor="#F8FAFC"];
+approvals [label="Approvals",fillcolor="#F8FAFC"];
+users [label="User & Role Administration",fillcolor="#F8FAFC"];
+{pipeline sim qa ops appr admin}->mission;
+pipeline->runtime; sim->runtime; qa->quality; ops->deploy; appr->approvals; admin->users;
+admin->deploy [label="read only by default",style=dashed];
+}

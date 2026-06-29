@@ -11,11 +11,15 @@ export function PublicOverviewPage() {
     <section className="ui-v2-page ui-v2-public-page">
       <div className="ui-v2-product-hero">
         <div>
-          <p className="ui-v2-kicker">{copy('app.prototype')} / {copy('app.nonOperational')}</p>
+          <p className="ui-v2-kicker">
+            {copy('app.prototype')} / {copy('app.nonOperational')}
+          </p>
           <h2>{copy('demo.title')}</h2>
           <p>{copy('demo.body')}</p>
           <div className="ui-v2-hero-actions">
-            <button type="button" className="ui-v2-button" onClick={() => setActivePage('context')}>{copy('demo.primaryAction')}</button>
+            <button type="button" className="ui-v2-button" onClick={() => setActivePage('context')}>
+              {copy('demo.primaryAction')}
+            </button>
           </div>
         </div>
         <div className="ui-v2-product-signal" aria-hidden="true">
@@ -23,7 +27,11 @@ export function PublicOverviewPage() {
           <Shield size={36} />
         </div>
       </div>
-      <PageHeader title="Leitura publica" subtitle="A pagina publica apresenta o produto, limites e estado dos dados sem expor surfaces internas de pipeline, QA, simulacao ou P3." helpTopic="overview" />
+      <PageHeader
+        title="Leitura publica"
+        subtitle="A pagina publica apresenta o produto, limites e estado dos dados sem expor surfaces internas de pipeline, QA, simulacao ou P3."
+        helpTopic="overview"
+      />
       <div className="ui-v2-grid">
         <BoundaryCard title={copy('demo.boundaryOne')} />
         <BoundaryCard title={copy('demo.boundaryTwo')} />

@@ -9,7 +9,9 @@ describe('UI v2 risk read model', () => {
     expect(model.canShowScore).toBe(true);
     expect(model.scoreDisplay).toBe('0.78');
     expect(model.classDisplay).toBe('Very high');
-    expect(model.contextFields.some(field => field.key === 'provenance' && field.value === 'Candidate Parameter Set V1.0')).toBe(true);
+    expect(
+      model.contextFields.some((field) => field.key === 'provenance' && field.value === 'Candidate Parameter Set V1.0'),
+    ).toBe(true);
   });
 
   it('does not present blocked output as score zero', () => {
@@ -35,19 +37,22 @@ describe('UI v2 risk read model', () => {
   });
 
   it('deduplicates repeated limitations from the existing runtime projections', () => {
-    const model = buildUiV2RiskReadModel({
-      summary: createUiV2RuntimeSummaryFixture({
-        limitations: [{ code: 'limited', message: 'Limited antecedent history' }],
-        scoreComponents: {
-          ...createUiV2RuntimeSummaryFixture().scoreComponents!,
-          limitations: 'Limited antecedent history; Candidate defaults',
-        },
-        indexComparison: {
-          ...createUiV2RuntimeSummaryFixture().indexComparison!,
-          limitations: 'Limited antecedent history; Candidate defaults',
-        },
-      }),
-    }, 'en');
+    const model = buildUiV2RiskReadModel(
+      {
+        summary: createUiV2RuntimeSummaryFixture({
+          limitations: [{ code: 'limited', message: 'Limited antecedent history' }],
+          scoreComponents: {
+            ...createUiV2RuntimeSummaryFixture().scoreComponents!,
+            limitations: 'Limited antecedent history; Candidate defaults',
+          },
+          indexComparison: {
+            ...createUiV2RuntimeSummaryFixture().indexComparison!,
+            limitations: 'Limited antecedent history; Candidate defaults',
+          },
+        }),
+      },
+      'en',
+    );
 
     expect(model.limitations).toEqual(['Limited antecedent history', 'Candidate defaults']);
   });

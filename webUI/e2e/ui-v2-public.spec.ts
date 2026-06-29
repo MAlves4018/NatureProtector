@@ -68,7 +68,8 @@ test.describe('UI v2 public surface', () => {
 async function expectAxeClean(page: Page) {
   await page.addScriptTag({ content: axeSource });
   const violations = await page.evaluate(async () => {
-      const axe = (window as unknown as {
+    const axe = (
+      window as unknown as {
         axe: {
           run: (context: Document) => Promise<{
             violations: Array<{
@@ -79,22 +80,23 @@ async function expectAxeClean(page: Page) {
             }>;
           }>;
         };
-      }).axe;
-      const result = await axe.run(document);
+      }
+    ).axe;
+    const result = await axe.run(document);
 
-      return result.violations.map(violation => ({
-        id: violation.id,
-        impact: violation.impact,
-        help: violation.help,
-        targets: violation.nodes.flatMap(node => node.target),
-      }));
+    return result.violations.map((violation) => ({
+      id: violation.id,
+      impact: violation.impact,
+      help: violation.help,
+      targets: violation.nodes.flatMap((node) => node.target),
+    }));
   });
 
   expect(violations, JSON.stringify(violations, null, 2)).toEqual([]);
 }
 
 async function mockApi(page: Page) {
-  await page.route('**/api/**', async route => {
+  await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
 
     if (url.pathname === '/api/control/areas') {

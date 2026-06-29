@@ -53,7 +53,7 @@ export function ContextualHelp({ topicId, mode = 'popover' }: { topicId: HelpTop
         type="button"
         className="ui-v2-icon-button"
         aria-label={`${title}: ajuda`}
-        onClick={() => setOpen(value => !value)}
+        onClick={() => setOpen((value) => !value)}
         onFocus={openFromFocus}
       >
         <HelpCircle size={16} />
@@ -62,23 +62,49 @@ export function ContextualHelp({ topicId, mode = 'popover' }: { topicId: HelpTop
         <div className="ui-v2-help-popover" role="note">
           <strong>{title}</strong>
           <p>{localize(locale, topic.summary)}</p>
-          <p><span className="ui-v2-label">Fonte</span>{localize(locale, topic.source)}</p>
-          <p><span className="ui-v2-label">Limite</span>{localize(locale, topic.limitation)}</p>
-          <button type="button" className="ui-v2-secondary" onClick={() => setOpen(false)}>Fechar</button>
+          <p>
+            <span className="ui-v2-label">Fonte</span>
+            {localize(locale, topic.source)}
+          </p>
+          <p>
+            <span className="ui-v2-label">Limite</span>
+            {localize(locale, topic.limitation)}
+          </p>
+          <button type="button" className="ui-v2-secondary" onClick={() => setOpen(false)}>
+            Fechar
+          </button>
         </div>
       )}
       {open && mode === 'dialog' && (
         <div className="ui-v2-help-overlay">
-          <section className="ui-v2-help-dialog" role="dialog" aria-modal="true" aria-label={title} onKeyDown={handleDialogKeyDown}>
+          <section
+            className="ui-v2-help-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            onKeyDown={handleDialogKeyDown}
+          >
             <div className="ui-v2-page-header">
               <h2 className="ui-v2-page-title">{title}</h2>
-              <button type="button" className="ui-v2-icon-button" onClick={closeDialog} aria-label="Fechar ajuda" ref={closeRef}>
+              <button
+                type="button"
+                className="ui-v2-icon-button"
+                onClick={closeDialog}
+                aria-label="Fechar ajuda"
+                ref={closeRef}
+              >
                 <X size={16} />
               </button>
             </div>
             <p>{localize(locale, topic.explanation)}</p>
-            <p><span className="ui-v2-label">Fonte</span>{localize(locale, topic.source)}</p>
-            <p><span className="ui-v2-label">Limite</span>{localize(locale, topic.limitation)}</p>
+            <p>
+              <span className="ui-v2-label">Fonte</span>
+              {localize(locale, topic.source)}
+            </p>
+            <p>
+              <span className="ui-v2-label">Limite</span>
+              {localize(locale, topic.limitation)}
+            </p>
           </section>
         </div>
       )}

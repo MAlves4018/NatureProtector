@@ -1,0 +1,16 @@
+digraph G { graph [size="13.33,7.5!", ratio=fill]; rankdir=TB; graph [fontname="Arial", bgcolor="white", pad="0.25", nodesep="0.45", ranksep="0.7", splines=ortho];
+node [fontname="Arial", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F7FAFC", color="#334155", penwidth=1.2, margin="0.14,0.09"];
+edge [fontname="Arial", fontsize=9, color="#475569", arrowsize=0.75, penwidth=1.1];
+req [label="Closed suite/profile + immutable reference",fillcolor="#DBEAFE"];
+wf [label="Authoritative workflow",fillcolor="#F3E8FF"];
+checks [label="Unit / integration / architecture / security / browser / IaC",fillcolor="#DCFCE7"];
+res [label="Provider status",fillcolor="#FEF3C7"];
+arts [label="Logs, TRX/JUnit, coverage, screenshots, SBOM, plans",shape=folder,fillcolor="#F1F5F9"];
+prov [label="Provenance fields
+producer, run, commit, env, time, hash",fillcolor="#FCE7F3"];
+gate [label="Evidence classification",shape=diamond,fillcolor="#FFEDD5"];
+proved [label="PROVED
+current and reproducible",fillcolor="#DCFCE7"];
+partial [label="PARTIAL / IMPLEMENTED_NOT_PROVED / BLOCKED / HISTORICAL",fillcolor="#FEE2E2"];
+req->wf->checks; checks->res; checks->arts; arts->prov; res->gate; prov->gate; gate->proved [label="scope + artifacts + hashes complete"]; gate->partial [label="otherwise"];
+}

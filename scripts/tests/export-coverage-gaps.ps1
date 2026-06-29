@@ -16,21 +16,9 @@ param(
     [double]$LowCoverageThreshold = 50.0
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
-
-function Find-RepositoryRoot {
-    $current = Get-Item -LiteralPath $PSScriptRoot
-    while ($null -ne $current) {
-        if ((Test-Path -LiteralPath (Join-Path $current.FullName "NatureProtector.sln")) -and
-            (Test-Path -LiteralPath (Join-Path $current.FullName "artifacts"))) {
-            return $current.FullName
-        }
-
-        $current = $current.Parent
-    }
-
-    throw "Could not locate repository root from $PSScriptRoot."
-}
 
 function Resolve-UnderRoot {
     param(
@@ -83,7 +71,7 @@ function Parse-CoverageSummary {
     return $items
 }
 
-$repoRoot = Find-RepositoryRoot
+$repoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln', 'artifacts')
 $coverageRootPath = Resolve-UnderRoot $repoRoot $CoverageRoot
 $outputRootPath = Resolve-UnderRoot $repoRoot $OutputRoot
 $runId = Get-Date -Format "yyyyMMdd-HHmmss"

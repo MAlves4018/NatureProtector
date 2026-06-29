@@ -26,10 +26,12 @@ export function TechnicalDetail({ title, fields }: { title: string; fields: read
             </tr>
           </thead>
           <tbody>
-            {fields.map(field => (
+            {fields.map((field) => (
               <tr key={`${field.label}-${field.source}`}>
                 <td>{field.label}</td>
-                <td><StatusBadge label={field.state} state={field.state} /></td>
+                <td>
+                  <StatusBadge label={field.state} state={field.state} />
+                </td>
                 <td>{field.value}</td>
                 <td>{field.source}</td>
                 <td>{field.scope}</td>
