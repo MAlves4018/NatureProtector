@@ -4,7 +4,8 @@ metadata:
   name: natureprotector-app
 spec:
   tags: []
-  rabbitmqClusterReference: {name: natureprotector-rabbitmq}
+  rabbitmqClusterReference:
+    connectionSecret: {name: natureprotector-rabbitmq-default-user}
   importCredentialsSecret: {name: np-rabbitmq-app-credentials}
 ---
 apiVersion: rabbitmq.com/v1beta1
@@ -18,7 +19,8 @@ spec:
     configure: '^np\.'
     write: '^np\.'
     read: '^np\.'
-  rabbitmqClusterReference: {name: natureprotector-rabbitmq}
+  rabbitmqClusterReference:
+    connectionSecret: {name: natureprotector-rabbitmq-default-user}
 ---
 apiVersion: rabbitmq.com/v1beta1
 kind: Policy
@@ -33,4 +35,5 @@ spec:
     max-length-bytes: 1073741824
     delivery-limit: 8
   priority: 10
-  rabbitmqClusterReference: {name: natureprotector-rabbitmq}
+  rabbitmqClusterReference:
+    connectionSecret: {name: natureprotector-rabbitmq-default-user}

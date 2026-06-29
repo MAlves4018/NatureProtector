@@ -89,6 +89,22 @@ resource "google_project_iam_member" "cloud_deploy_environment_roles" {
   member  = "serviceAccount:${var.cloud_deploy_execution_service_account}"
 }
 
+resource "google_project_iam_custom_role" "cloud_deploy_run_policy_setter" {
+  count       = var.create_data_plane ? 1 : 0
+  project     = var.project_id
+  role_id     = "npCloudDeployRunPolicySetter"
+  title       = "NatureProtector Cloud Deploy Run policy setter"
+  description = "Allows the staging Cloud Deploy execution identity to set Cloud Run service IAM policy when deploying invoker-iam-disabled services."
+  permissions = ["run.services.setIamPolicy"]
+}
+
+resource "google_project_iam_member" "cloud_deploy_run_policy_setter" {
+  count   = var.create_data_plane ? 1 : 0
+  project = var.project_id
+  role    = google_project_iam_custom_role.cloud_deploy_run_policy_setter[0].id
+  member  = "serviceAccount:${var.cloud_deploy_execution_service_account}"
+}
+
 resource "google_service_account_iam_member" "workflow_uses_runtime_accounts" {
   for_each           = var.create_data_plane ? local.runtime_accounts : {}
   service_account_id = google_service_account.runtime[each.key].name

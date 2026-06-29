@@ -140,8 +140,21 @@ if ($LASTEXITCODE -ne 0) { throw "G8.1 cluster dependency bootstrap failed." }
 if ($LASTEXITCODE -ne 0) { throw "Runtime job preparation failed." }
 
 # Cloud Deploy target parameters inject environment-specific values after
-# rendering. The source remains identical for staging and production.
-$sourceRoot = "infra/gcp"
+# rendering. RabbitmqCluster.spec.image is a CRD field, so Skaffold image
+# substitution does not rewrite it. Prepare a release-scoped source copy and
+# replace only that CRD placeholder with the signed manifest digest.
+$sourceRoot = Join-Path $EvidenceDirectory "cloud-deploy-source"
+if (Test-Path -LiteralPath $sourceRoot) {
+    Remove-Item -Recurse -Force -LiteralPath $sourceRoot
+}
+Copy-Item -Recurse -Force -LiteralPath "infra/gcp" -Destination $sourceRoot
+$rabbitMqManifest = Join-Path $sourceRoot "kubernetes/g8-1/base/rabbitmq.yaml"
+$rabbitMqManifestText = Get-Content -Raw -LiteralPath $rabbitMqManifest
+if ($rabbitMqManifestText -notmatch "RABBITMQ_IMAGE_BY_DIGEST") {
+    throw "RabbitMQ manifest does not contain the digest placeholder."
+}
+$rabbitMqManifestText.Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference) |
+    Set-Content -Encoding utf8 -LiteralPath $rabbitMqManifest
 $releaseSpecs = @(
     [ordered]@{
         Pipeline = "natureprotector-api"

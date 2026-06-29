@@ -68,6 +68,30 @@ postgres_bootstrapper = (
 deploy_runtime_jobs = (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1").read_text(
     encoding="utf-8"
 )
+staging_kustomization = (
+    ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml"
+).read_text(encoding="utf-8")
+gke_network_policy = (
+    ROOT / "infra/gcp/kubernetes/g8-1/base/network-policy.yaml"
+).read_text(encoding="utf-8")
+gke_prevention = (
+    ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml"
+).read_text(encoding="utf-8")
+gke_rabbitmq = (
+    ROOT / "infra/gcp/kubernetes/g8-1/base/rabbitmq.yaml"
+).read_text(encoding="utf-8")
+gke_prevention_scaling = (
+    ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml"
+).read_text(encoding="utf-8")
+prevention_worker_text = (
+    ROOT / "src/NatureProtector.Prevention.Host/PreventionWorker.cs"
+).read_text(encoding="utf-8")
+rabbitmq_options_text = (
+    ROOT / "src/NatureProtector.Shared/Configuration/RabbitMqOptions.cs"
+).read_text(encoding="utf-8")
+simulator_publisher_text = (
+    ROOT / "src/NatureProtector.Simulator.Host/Publishing/RabbitMqReadingPublisher.cs"
+).read_text(encoding="utf-8")
 autopilot_foundation = (
     ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh"
 )
@@ -75,6 +99,10 @@ autopilot_runner = (
     ROOT / "scripts/cloud/complete-staging-after-autopilot-remediation.sh"
 )
 autopilot_deploy = ROOT / "scripts/cloud/Deploy-G81Staging-Autopilot.ps1"
+standard_deploy = ROOT / "scripts/cloud/Deploy-G81Staging.ps1"
+prevention_skaffold_text = (
+    ROOT / "infra/gcp/cloud-deploy/g8-1/prevention/skaffold.yaml"
+).read_text(encoding="utf-8")
 operator_lock = ROOT / "infra/gcp/kubernetes/g8-1/operator-lock.json"
 
 check(
@@ -260,6 +288,21 @@ if autopilot_runner.is_file():
         and "status-porcelain-before.txt" in autopilot_runner_text,
         "autopilot-runner-bounded-dirty-gate-missing",
     )
+    for allowed_dirty_path in [
+        "infra/gcp/cloud-deploy/g8-1/api/skaffold.yaml",
+        "infra/gcp/cloud-deploy/g8-1/frontend/skaffold.yaml",
+        "infra/gcp/kubernetes/g8-1/base/network-policy.yaml",
+        "infra/gcp/kubernetes/g8-1/base/prevention.yaml",
+        "infra/gcp/kubernetes/g8-1/base/rabbitmq.yaml",
+        "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml",
+        "scripts/cloud/Deploy-G81Staging.ps1",
+        "scripts/cloud/Test-G81Static.py",
+        "docs/operations/g8-1-cd-and-rollout-runbook.md",
+    ]:
+        check(
+            allowed_dirty_path in autopilot_runner_text,
+            f"autopilot-runner-dirty-gate-missing:{allowed_dirty_path}",
+        )
     check(
         "managed resources: expected 53" in autopilot_runner_text
         and "data resources: expected 3" in autopilot_runner_text,
@@ -319,6 +362,55 @@ if autopilot_deploy.is_file():
         "NP_G81_OPERATORS_READY" in autopilot_deploy_text
         and "Autopilot-aware operator foundation" in autopilot_deploy_text,
         "autopilot-deploy-operator-evidence-gate-missing",
+    )
+    check(
+        "$pipeline = [string]$spec.Pipeline" in autopilot_deploy_text
+        and "$target = [string]$spec.Target" in autopilot_deploy_text
+        and "$skaffold = [string]$spec.Skaffold" in autopilot_deploy_text
+        and "$imageMappings = [string]$spec.Images" in autopilot_deploy_text
+        and "--delivery-pipeline=$spec.Pipeline" not in autopilot_deploy_text
+        and "--skaffold-file=$spec.Skaffold" not in autopilot_deploy_text
+        and "--images=$spec.Images" not in autopilot_deploy_text,
+        "autopilot-deploy-cloud-deploy-native-argument-property-expansion-unsafe",
+    )
+    check(
+        'Join-Path $EvidenceDirectory "cloud-deploy-source"' in autopilot_deploy_text
+        and "RabbitmqCluster.spec.image is a CRD field" in autopilot_deploy_text
+        and 'Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference)' in autopilot_deploy_text
+        and "--source=$sourceRoot" in autopilot_deploy_text,
+        "autopilot-deploy-must-render-rabbitmq-crd-image-from-signed-manifest",
+    )
+
+if standard_deploy.is_file():
+    standard_deploy_text = standard_deploy.read_text(encoding="utf-8")
+    check(
+        'Join-Path $EvidenceDirectory "cloud-deploy-source"' in standard_deploy_text
+        and "RabbitmqCluster.spec.image is a CRD field" in standard_deploy_text
+        and 'Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference)' in standard_deploy_text
+        and "--images=$spec.Images" in standard_deploy_text,
+        "standard-deploy-must-render-rabbitmq-crd-image-from-signed-manifest",
+    )
+
+api_skaffold = (ROOT / "infra/gcp/cloud-deploy/g8-1/api/skaffold.yaml").read_text(
+    encoding="utf-8"
+)
+frontend_skaffold = (
+    ROOT / "infra/gcp/cloud-deploy/g8-1/frontend/skaffold.yaml"
+).read_text(encoding="utf-8")
+for name, text, health_path in [
+    ("api", api_skaffold, "/health/live"),
+    ("frontend", frontend_skaffold, "/healthz"),
+]:
+    check(
+        "CLOUD_RUN_SERVICE_URLS" in text
+        and "protected edge smoke" in text
+        and health_path in text,
+        f"cloud-run-{name}-verify-must-defer-http-to-edge-smoke",
+    )
+    check(
+        'curl -fsS "$url' not in text
+        and "curl -fsS \"$url" not in text,
+        f"cloud-run-{name}-verify-must-not-probe-restricted-run-app",
     )
 
 check(
@@ -409,6 +501,111 @@ check(
     and "POSTGRES_USER=np_app" in deploy_runtime_jobs
     and "POSTGRES_MIGRATION_USER=np_migration" in deploy_runtime_jobs,
     "postgres-bootstrap-cloud-job-skip-schema-env-missing",
+)
+
+check(
+    "cloud_sql_ca_secret_resources" not in (PLATFORM / "terraform.staging.tfvars").read_text(encoding="utf-8")
+    and "rabbitmq_tls_secret_resources" not in (PLATFORM / "terraform.staging.tfvars").read_text(encoding="utf-8")
+    and "runtime_secret_resources" not in (PLATFORM / "terraform.staging.tfvars").read_text(encoding="utf-8"),
+    "platform-gke-deploy-parameters-must-not-use-multiline-secret-resource-sets",
+)
+check(
+    "np-staging-cloud-sql-server-ca/versions/1" in staging_kustomization
+    and "np-staging-rabbitmq-tls-certificate/versions/latest" in staging_kustomization
+    and "np-staging-rabbitmq-tls-private-key/versions/latest" in staging_kustomization
+    and "np-staging-rabbitmq-ca-certificate/versions/latest" in staging_kustomization
+    and "np-staging-postgres-app-password/versions/1" in staging_kustomization,
+    "staging-kustomization-secret-provider-resources-missing",
+)
+check(
+    "containers:\n              - name: rabbitmq" in gke_rabbitmq
+    and "np.network/rabbitmq" in gke_rabbitmq,
+    "gke-rabbitmq-statefulset-override-must-keep-required-container-entry",
+)
+check(
+    "K8S_HOSTNAME_SUFFIX" in gke_rabbitmq
+    and "$(MY_POD_NAMESPACE).svc.cluster.local" in gke_rabbitmq
+    and "RABBITMQ_NODENAME" in gke_rabbitmq,
+    "gke-rabbitmq-nodename-must-use-headless-service-fqdn",
+)
+check(
+    "requests: {cpu: \"1\", memory: 4Gi}" in gke_rabbitmq
+    and "limits: {cpu: \"2\", memory: 4Gi}" in gke_rabbitmq
+    and "path: /spec/resources/requests/memory\n        value: 512Mi" in staging_kustomization
+    and "path: /spec/resources/limits/memory\n        value: 512Mi" in staging_kustomization,
+    "gke-rabbitmq-memory-request-and-limit-must-match",
+)
+check(
+    "management.tcp.port = none" not in gke_rabbitmq
+    and "management.tcp.port = none" not in staging_kustomization
+    and "management.ssl.port = 15671" in gke_rabbitmq
+    and "management.ssl.port = 15671" in staging_kustomization,
+    "gke-rabbitmq-management-tcp-port-must-not-use-non-integer-none",
+)
+check(
+    "ssl_options.fail_if_no_peer_cert = false" in gke_rabbitmq
+    and "ssl_options.fail_if_no_peer_cert = false" in staging_kustomization,
+    "gke-rabbitmq-server-tls-must-not-require-client-certificates",
+)
+check(
+    "port: 15672" in gke_rabbitmq
+    and "connectionSecret: {name: natureprotector-rabbitmq-default-user}" in (ROOT / "infra/gcp/kubernetes/g8-1/base/rabbitmq-topology.yaml").read_text(encoding="utf-8")
+    and "{protocol: TCP, port: 15672}" in gke_network_policy,
+    "gke-rabbitmq-topology-operator-must-use-internal-management-connection-secret",
+)
+check(
+    "kubectl patch secret natureprotector-rabbitmq-default-user" in prevention_skaffold_text
+    and "http://natureprotector-rabbitmq.natureprotector-staging.svc:15672" in prevention_skaffold_text
+    and "kubectl wait --for=condition=Ready user/natureprotector-app" in prevention_skaffold_text
+    and "kubectl wait --for=condition=Ready permission/natureprotector-app" in prevention_skaffold_text
+    and "kubectl wait --for=condition=Ready policy/natureprotector-quorum-policy" in prevention_skaffold_text,
+    "gke-cloud-deploy-verify-must-reconcile-rabbitmq-topology-secret-uri",
+)
+check(
+    "amqps://natureprotector-rabbitmq.natureprotector-staging.svc.cluster.local:5671/" in gke_prevention_scaling
+    and "amqps://natureprotector-rabbitmq:5671/" not in gke_prevention_scaling,
+    "gke-keda-rabbitmq-host-must-use-cluster-fqdn",
+)
+check(
+    "{name: RabbitMq__TlsCertificateAuthorityPath, value: /var/run/secrets/rabbitmq/ca.crt}" in gke_prevention
+    and "public bool TlsEnabled" in rabbitmq_options_text
+    and "public string? TlsServerName" in rabbitmq_options_text
+    and "public string? TlsCertificateAuthorityPath" in rabbitmq_options_text
+    and "factory.Ssl = new SslOption" in prevention_worker_text
+    and "PrivateCertificateAuthorityValidator.Create(options.TlsCertificateAuthorityPath)" in prevention_worker_text
+    and "factory.Ssl = new SslOption" in simulator_publisher_text
+    and "PrivateCertificateAuthorityValidator.Create(options.TlsCertificateAuthorityPath)" in simulator_publisher_text,
+    "rabbitmq-clients-must-enable-tls-with-private-ca",
+)
+check(
+    "cidr: 127.0.0.1/32 # from-param: ${cloud_sql_private_cidr}" not in gke_network_policy
+    and "cidr: 10.255.255.255/32 # from-param: ${cloud_sql_private_cidr}" in gke_network_policy
+    and "cloud_sql_private_cidr" in (ROOT / "infra/gcp/terraform/g8-1-platform/terraform.staging.tfvars").read_text(encoding="utf-8"),
+    "gke-prevention-cloud-sql-egress-default-must-not-use-loopback",
+)
+check(
+    "commonLabels:" not in staging_kustomization
+    and "includeSelectors: false" in staging_kustomization
+    and "includeTemplates: true" in staging_kustomization,
+    "gke-staging-labels-must-not-mutate-networkpolicy-selectors",
+)
+check(
+    "runAsNonRoot: true" in gke_prevention
+    and "runAsUser: 1654" in gke_prevention
+    and "runAsGroup: 1654" in gke_prevention
+    and "fsGroup: 1654" in gke_prevention
+    and "allowPrivilegeEscalation: false" in gke_prevention,
+    "gke-prevention-must-use-explicit-numeric-non-root-identity",
+)
+check(
+    "169.254.169.252/32" in gke_network_policy
+    and "port: 988" in gke_network_policy
+    and "port: 987" in gke_network_policy
+    and "169.254.169.254/32" in gke_network_policy
+    and "port: 80" in gke_network_policy
+    and "port: 8080" in gke_network_policy
+    and "metadata.google.internal" not in gke_network_policy,
+    "gke-otel-network-policy-must-allow-gke-metadata-server-only",
 )
 
 payload = {

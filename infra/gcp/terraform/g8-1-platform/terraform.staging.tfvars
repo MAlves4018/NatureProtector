@@ -50,17 +50,11 @@ staging_run_deploy_parameters = {
   rabbitmq_ca_version            = "1"
   rabbitmq_private_host          = "rabbitmq.staging.natureprotector.internal"
   rabbitmq_tls_server_name       = "rabbitmq.staging.natureprotector.internal"
-  runtime_network_interfaces     = "[{\"network\":\"np-staging\",\"subnetwork\":\"np-staging-europe-southwest1\"}]"
   runtime_project_id             = "natureprotector-500518"
   runtime_region                 = "europe-southwest1"
 }
 
 staging_gke_deploy_parameters = {
-  cloud_sql_ca_secret_resources = <<-EOT
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-cloud-sql-server-ca/versions/1"
-      path: "server-ca.pem"
-  EOT
-
   cloud_sql_private_cidr    = "10.196.1.3/32"
   cloud_sql_private_ip      = "10.196.1.3"
   otel_gsa                  = "np-staging-otel@natureprotector-500518.iam.gserviceaccount.com"
@@ -68,25 +62,7 @@ staging_gke_deploy_parameters = {
   prevention_gsa            = "np-staging-prevention@natureprotector-500518.iam.gserviceaccount.com"
   rabbitmq_load_balancer_ip = "10.20.0.3"
 
-  rabbitmq_tls_secret_resources = <<-EOT
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-certificate/versions/1"
-      path: "tls.crt"
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-private-key/versions/1"
-      path: "tls.key"
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-ca-certificate/versions/1"
-      path: "ca.crt"
-  EOT
-
   rabbitmq_tls_server_name = "rabbitmq.staging.natureprotector.internal"
-
-  runtime_secret_resources = <<-EOT
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-postgres-app-password/versions/1"
-      path: "postgres-app-password"
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-app-username/versions/1"
-      path: "rabbitmq-username"
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-app-password/versions/1"
-      path: "rabbitmq-password"
-  EOT
 
   runtime_subnet_cidr = "10.20.0.0/24"
   secret_sync_gsa     = "np-staging-secret-sync@natureprotector-500518.iam.gserviceaccount.com"

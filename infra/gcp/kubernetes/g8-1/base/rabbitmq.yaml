@@ -12,7 +12,7 @@ spec:
     storageClassName: premium-rwo
     storage: 50Gi
   resources:
-    requests: {cpu: "1", memory: 2Gi}
+    requests: {cpu: "1", memory: 4Gi}
     limits: {cpu: "2", memory: 4Gi}
   service:
     type: LoadBalancer
@@ -30,7 +30,7 @@ spec:
       quorum_queue.initial_cluster_size = 3
       disk_free_limit.absolute = 5GB
       vm_memory_high_watermark.relative = 0.6
-      management.tcp.port = none
+      ssl_options.fail_if_no_peer_cert = false
       management.ssl.port = 15671
       consumer_timeout = 900000
   override:
@@ -38,6 +38,11 @@ spec:
       spec:
         externalTrafficPolicy: Local
         loadBalancerIP: 127.0.0.1 # from-param: ${rabbitmq_load_balancer_ip}
+        ports:
+          - {name: amqps, port: 5671, targetPort: 5671, protocol: TCP, appProtocol: amqps}
+          - {name: management, port: 15672, targetPort: 15672, protocol: TCP, appProtocol: http}
+          - {name: management-tls, port: 15671, targetPort: 15671, protocol: TCP, appProtocol: https}
+          - {name: prometheus-tls, port: 15691, targetPort: 15691, protocol: TCP, appProtocol: prometheus.io/metric-tls}
     statefulSet:
       spec:
         template:
@@ -45,6 +50,13 @@ spec:
             labels:
               np.network/rabbitmq: "true"
           spec:
+            containers:
+              - name: rabbitmq
+                env:
+                  - name: K8S_HOSTNAME_SUFFIX
+                    value: .$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE).svc.cluster.local
+                  - name: RABBITMQ_NODENAME
+                    value: rabbit@$(MY_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE).svc.cluster.local
             terminationGracePeriodSeconds: 120
             topologySpreadConstraints:
               - maxSkew: 1

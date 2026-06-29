@@ -53,10 +53,19 @@ para produção continua a exigir o perfil production-ready e os gates existente
 4. executa bootstrap duas vezes;
 5. cria ou reutiliza idempotentemente três releases Cloud Deploy;
 6. aguarda a conclusão dos rollouts;
-7. executa o smoke funcional pelo hostname HTTPS protegido; URLs `run.app` são rejeitadas;
-8. arquiva evidence e checksums com `staging_verified=true`.
+7. os verifies Cloud Deploy dos serviços Cloud Run confirmam apenas que o rollout publicou metadata `run.app`, porque o ingress direto está restrito a `internal-and-cloud-load-balancing`;
+8. executa o smoke funcional pelo hostname HTTPS protegido; URLs `run.app` são rejeitadas;
+9. arquiva evidence e checksums com `staging_verified=true`.
 
 Falha em migration, bootstrap, rollout ou smoke bloqueia promoção.
+
+No rollout GKE, confirmar que `prevention-runtime` permite egress para o
+`cloud_sql_private_cidr` real e que os pods `Prevention.Host` recebem
+`RabbitMq__TlsEnabled=true`, `RabbitMq__TlsServerName` e
+`RabbitMq__TlsCertificateAuthorityPath=/var/run/secrets/rabbitmq/ca.crt`.
+Se o `ScaledObject` KEDA reportar `no queue 'np.ingestion.readings'`, primeiro
+validar que o pod Prevention ficou Ready; a fila é declarada pelo worker no
+arranque e a ausência da fila pode ser sintoma de falha de ligação anterior.
 
 ## Produção
 
@@ -107,7 +116,7 @@ O bootstrap técnico nunca pode ser usado como staging evidence para produção,
 - scans e assinaturas;
 - migration/bootstrap executions;
 - Cloud Deploy release e rollouts;
-- resultados de verify;
+- resultados de verify e smoke HTTPS pelo edge protegido;
 - SLO snapshot antes/depois;
 - rollback, quando aplicável;
 - checksums.
@@ -117,6 +126,11 @@ O bootstrap técnico nunca pode ser usado como staging evidence para produção,
 Before any GKE workload rollout, the environment workflow obtains credentials through the GKE DNS endpoint and executes `Install-G81ClusterDependencies.ps1`. The gate is idempotent and fail-closed: an unpinned tag, missing release asset, absent GitHub-published SHA-256 digest, digest mismatch or failed operator rollout stops deployment. The exact cert-manager, RabbitMQ Cluster Operator, RabbitMQ Messaging Topology Operator and KEDA releases are recorded under `cluster-dependencies/cluster-dependencies.json`.
 
 The workflow identity receives `roles/container.admin` only in its own environment project because installing CRDs and cluster-scoped RBAC cannot be performed with namespace-only deployment permissions. Trust remains restricted to the exact staging or production workflow reference by the platform WIF provider. Runtime identities do not receive this role.
+
+RabbitMQ topology is reconciled through the default-user `connectionSecret`
+against the internal management HTTP port 15672. The application AMQP path
+remains TLS-only on 5671 with private CA validation; only the topology operator
+namespace is allowed to reach 15672 by NetworkPolicy.
 
 ### Why Prevention is not a percentage canary
 

@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -410,6 +412,62 @@ public sealed class PreventionWorkerTests
         Assert.Equal(2, recorder.Invocations.Count(x => x.MethodName == "QueueBind"));
     }
 
+    [Fact]
+    public void CreateConnectionFactory_ConfiguresTlsWithPrivateCertificateAuthority()
+    {
+        using var root = CreateCertificateAuthority("NatureProtector RabbitMQ Test Root");
+        var caPath = WriteCertificateAuthorityPem(root);
+        try
+        {
+            var options = new RabbitMqOptions
+            {
+                HostName = "rabbitmq.staging.natureprotector.internal",
+                Port = 5671,
+                UserName = "np_app",
+                Password = "not-a-real-secret",
+                TlsEnabled = true,
+                TlsServerName = "rabbitmq.staging.natureprotector.internal",
+                TlsCertificateAuthorityPath = caPath
+            };
+
+            var factory = PreventionWorker.CreateConnectionFactory(options);
+
+            Assert.True(factory.Ssl.Enabled);
+            Assert.Equal("rabbitmq.staging.natureprotector.internal", factory.Ssl.ServerName);
+            Assert.NotNull(factory.Ssl.CertificateValidationCallback);
+            Assert.True(factory.DispatchConsumersAsync);
+        }
+        finally
+        {
+            File.Delete(caPath);
+        }
+    }
+
+    [Theory]
+    [InlineData(null, "ca.pem", "RabbitMQ TlsServerName is required when TLS is enabled.")]
+    [InlineData("rabbitmq.staging.natureprotector.internal", null, "RabbitMQ TlsCertificateAuthorityPath is required when TLS is enabled.")]
+    public void CreateConnectionFactory_RejectsIncompleteTlsConfiguration(
+        string? tlsServerName,
+        string? tlsCertificateAuthorityPath,
+        string expectedMessage)
+    {
+        var options = new RabbitMqOptions
+        {
+            HostName = "rabbitmq.staging.natureprotector.internal",
+            Port = 5671,
+            UserName = "np_app",
+            Password = "not-a-real-secret",
+            TlsEnabled = true,
+            TlsServerName = tlsServerName,
+            TlsCertificateAuthorityPath = tlsCertificateAuthorityPath
+        };
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            PreventionWorker.CreateConnectionFactory(options));
+
+        Assert.Equal(expectedMessage, exception.Message);
+    }
+
     private static async Task<(InMemoryReadingEventInbox Inbox, RecordingDispatchProxy<IModel> Recorder)> InvokeWorkerWithBodyAsync(
         byte[] body,
         ulong deliveryTag)
@@ -447,6 +505,39 @@ public sealed class PreventionWorkerTests
         mutate?.Invoke(root);
 
         return Encoding.UTF8.GetBytes(root.ToJsonString());
+    }
+
+    private static X509Certificate2 CreateCertificateAuthority(string commonName)
+    {
+        using var rsa = RSA.Create(2048);
+        var request = new CertificateRequest(
+            $"CN={commonName}",
+            rsa,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+        request.CertificateExtensions.Add(
+            new X509BasicConstraintsExtension(
+                certificateAuthority: true,
+                hasPathLengthConstraint: false,
+                pathLengthConstraint: 0,
+                critical: true));
+        request.CertificateExtensions.Add(
+            new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign, critical: true));
+
+        var certificate = request.CreateSelfSigned(
+            DateTimeOffset.UtcNow.AddDays(-1),
+            DateTimeOffset.UtcNow.AddDays(1));
+        return new X509Certificate2(certificate.Export(X509ContentType.Pfx));
+    }
+
+    private static string WriteCertificateAuthorityPem(X509Certificate2 certificate)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.crt");
+        File.WriteAllText(
+            path,
+            new string(PemEncoding.Write("CERTIFICATE", certificate.RawData)),
+            Encoding.ASCII);
+        return path;
     }
 
     private static void ApplyContractMutation(JsonObject root, ContractFixtureMutation mutation)

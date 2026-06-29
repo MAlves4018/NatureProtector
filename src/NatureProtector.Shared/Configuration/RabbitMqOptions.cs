@@ -11,6 +11,9 @@ public sealed class RabbitMqOptions
     public string UserName { get; init; } = "np";
     public string Password { get; init; } = "np_dev_pass";
     public string VirtualHost { get; init; } = "/";
+    public bool TlsEnabled { get; init; }
+    public string? TlsServerName { get; init; }
+    public string? TlsCertificateAuthorityPath { get; init; }
     public string ExchangeName { get; init; } = "np.events";
     public int PublisherConfirmTimeoutSeconds { get; init; } = 10;
     public string IngestionReadingsQueueName { get; init; } =

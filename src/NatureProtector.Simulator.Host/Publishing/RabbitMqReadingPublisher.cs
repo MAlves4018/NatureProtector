@@ -155,14 +155,7 @@ public sealed class RabbitMqReadingPublisher(
                     "RabbitMQ PublisherConfirmTimeoutSeconds must be greater than zero.");
             }
 
-            var factory = new ConnectionFactory
-            {
-                HostName = _options.HostName,
-                Port = _options.Port,
-                UserName = _options.UserName,
-                Password = _options.Password,
-                VirtualHost = _options.VirtualHost
-            };
+            var factory = CreateConnectionFactory(_options);
 
             _connection = factory.CreateConnection();
             _channel = _connection.CreateModel();
@@ -211,6 +204,41 @@ public sealed class RabbitMqReadingPublisher(
                 exchange: _options.ExchangeName,
                 routingKey: routingKey);
         }
+    }
+
+    internal static ConnectionFactory CreateConnectionFactory(RabbitMqOptions options)
+    {
+        var factory = new ConnectionFactory
+        {
+            HostName = options.HostName,
+            Port = options.Port,
+            UserName = options.UserName,
+            Password = options.Password,
+            VirtualHost = options.VirtualHost
+        };
+
+        if (options.TlsEnabled)
+        {
+            if (string.IsNullOrWhiteSpace(options.TlsServerName))
+            {
+                throw new InvalidOperationException("RabbitMQ TlsServerName is required when TLS is enabled.");
+            }
+
+            if (string.IsNullOrWhiteSpace(options.TlsCertificateAuthorityPath))
+            {
+                throw new InvalidOperationException("RabbitMQ TlsCertificateAuthorityPath is required when TLS is enabled.");
+            }
+
+            var validator = PrivateCertificateAuthorityValidator.Create(options.TlsCertificateAuthorityPath);
+            factory.Ssl = new SslOption
+            {
+                Enabled = true,
+                ServerName = options.TlsServerName,
+                CertificateValidationCallback = validator is null ? null : validator.Validate
+            };
+        }
+
+        return factory;
     }
 
     /// <summary>

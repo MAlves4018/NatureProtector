@@ -114,14 +114,7 @@ public sealed class RabbitMqControlledValidationMessagePublisher(
                     "RabbitMQ PublisherConfirmTimeoutSeconds must be greater than zero.");
             }
 
-            var factory = new ConnectionFactory
-            {
-                HostName = _options.HostName,
-                Port = _options.Port,
-                UserName = _options.UserName,
-                Password = _options.Password,
-                VirtualHost = _options.VirtualHost
-            };
+            var factory = RabbitMqReadingPublisher.CreateConnectionFactory(_options);
 
             _connection = factory.CreateConnection();
             _channel = _connection.CreateModel();

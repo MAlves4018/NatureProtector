@@ -340,6 +340,16 @@ check(
 )
 
 check(
+    'resource "google_project_iam_custom_role" "cloud_deploy_run_policy_setter"'
+    in iam_text
+    and '"run.services.setIamPolicy"' in iam_text
+    and 'resource "google_project_iam_member" "cloud_deploy_run_policy_setter"'
+    in iam_text
+    and '"roles/run.admin"' not in iam_text,
+    "cloud-deploy-run-invoker-policy-permission-must-be-minimal",
+)
+
+check(
     'mode               = "BASIC"' in gke_text,
     "gke-security-posture-mode-invalid",
 )

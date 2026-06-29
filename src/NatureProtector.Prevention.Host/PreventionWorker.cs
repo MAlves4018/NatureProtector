@@ -49,15 +49,7 @@ public sealed class PreventionWorker(
     {
         logger.LogInformation("Prevention worker started at: {Time}", DateTimeOffset.Now);
 
-        var factory = new ConnectionFactory
-        {
-            HostName = _options.HostName,
-            Port = _options.Port,
-            UserName = _options.UserName,
-            Password = _options.Password,
-            VirtualHost = _options.VirtualHost,
-            DispatchConsumersAsync = true
-        };
+        var factory = CreateConnectionFactory(_options);
 
         var connection = factory.CreateConnection();
         var channel = connection.CreateModel();
@@ -138,6 +130,57 @@ public sealed class PreventionWorker(
                 exchange: options.ExchangeName,
                 routingKey: routingKey);
         }
+    }
+
+    internal static ConnectionFactory CreateConnectionFactory(RabbitMqOptions options)
+    {
+        if (string.IsNullOrWhiteSpace(options.HostName))
+        {
+            throw new InvalidOperationException("RabbitMQ HostName is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.UserName))
+        {
+            throw new InvalidOperationException("RabbitMQ UserName is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Password))
+        {
+            throw new InvalidOperationException("RabbitMQ Password is not configured.");
+        }
+
+        var factory = new ConnectionFactory
+        {
+            HostName = options.HostName,
+            Port = options.Port,
+            UserName = options.UserName,
+            Password = options.Password,
+            VirtualHost = options.VirtualHost,
+            DispatchConsumersAsync = true
+        };
+
+        if (options.TlsEnabled)
+        {
+            if (string.IsNullOrWhiteSpace(options.TlsServerName))
+            {
+                throw new InvalidOperationException("RabbitMQ TlsServerName is required when TLS is enabled.");
+            }
+
+            if (string.IsNullOrWhiteSpace(options.TlsCertificateAuthorityPath))
+            {
+                throw new InvalidOperationException("RabbitMQ TlsCertificateAuthorityPath is required when TLS is enabled.");
+            }
+
+            var validator = PrivateCertificateAuthorityValidator.Create(options.TlsCertificateAuthorityPath);
+            factory.Ssl = new SslOption
+            {
+                Enabled = true,
+                ServerName = options.TlsServerName,
+                CertificateValidationCallback = validator is null ? null : validator.Validate
+            };
+        }
+
+        return factory;
     }
 
     private async Task HandleReceivedAsync(

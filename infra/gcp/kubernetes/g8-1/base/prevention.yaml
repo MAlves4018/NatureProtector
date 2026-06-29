@@ -28,6 +28,10 @@ spec:
       terminationGracePeriodSeconds: 90
       securityContext:
         runAsNonRoot: true
+        runAsUser: 1654
+        runAsGroup: 1654
+        fsGroup: 1654
+        fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
       topologySpreadConstraints:
@@ -57,6 +61,7 @@ spec:
             - {name: RabbitMq__TlsEnabled, value: "true"}
             - name: RabbitMq__TlsServerName
               value: missing-rabbitmq-server-name # from-param: ${rabbitmq_tls_server_name}
+            - {name: RabbitMq__TlsCertificateAuthorityPath, value: /var/run/secrets/rabbitmq/ca.crt}
             - {name: RabbitMq__UserName, valueFrom: {secretKeyRef: {name: np-runtime-secrets, key: rabbitmq-username}}}
             - {name: RabbitMq__Password, valueFrom: {secretKeyRef: {name: np-runtime-secrets, key: rabbitmq-password}}}
             - {name: POSTGRES_REQUIRE_EXPLICIT, value: "true"}

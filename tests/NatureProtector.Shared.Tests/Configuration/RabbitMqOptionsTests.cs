@@ -16,6 +16,9 @@ public sealed class RabbitMqOptionsTests
         Assert.Equal("np", options.UserName);
         Assert.Equal("np_dev_pass", options.Password);
         Assert.Equal("/", options.VirtualHost);
+        Assert.False(options.TlsEnabled);
+        Assert.Null(options.TlsServerName);
+        Assert.Null(options.TlsCertificateAuthorityPath);
         Assert.Equal(NatureProtectorRabbitMqTopology.ExchangeName, options.ExchangeName);
         Assert.Equal(10, options.PublisherConfirmTimeoutSeconds);
         Assert.Equal(NatureProtectorRabbitMqTopology.IngestionReadingsQueue, options.IngestionReadingsQueueName);
