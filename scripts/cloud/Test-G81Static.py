@@ -328,6 +328,8 @@ semantic_checks = {
     "production-rollout-is-idempotent": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "reused_existing_rollout"),
     "staging-bootstrap-is-not-verified": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "$stagingVerified = $false"),
     "production-bootstrap-is-not-verified": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "$productionVerified = $false"),
+    "staging-preserves-ready-operators": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "OPERATOR_FOUNDATION_ALREADY_READY"),
+    "staging-does-not-force-operator-conflicts": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "preserve-existing-operator-field-managers"),
     "release-waits-for-parallel-gates": (ROOT / ".github/workflows/gcp-g8-1-release.yml", "Waiting for $name on $SOURCE_SHA"),
     "release-gates-default-branch": (ROOT / ".github/workflows/gcp-g8-1-release.yml", ".headBranch==$branch"),
     "staging-verifies-release-attestation": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "gh attestation verify g81-release/release-manifest.json"),
