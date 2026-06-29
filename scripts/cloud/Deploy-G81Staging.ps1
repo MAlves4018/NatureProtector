@@ -140,6 +140,9 @@ function Test-OperatorFoundationReady {
 # Exact tagged release assets are resolved through the GitHub API and their
 # published SHA-256 digests are verified before server-side apply.
 $operatorEvidence = Join-Path $EvidenceDirectory "cluster-dependencies"
+& gcloud container clusters get-credentials $ClusterName `
+    --project=$StagingProjectId --region=$Region --dns-endpoint --quiet
+if ($LASTEXITCODE -ne 0) { throw "Unable to acquire DNS-endpoint GKE credentials." }
 if (Test-OperatorFoundationReady -OutputDirectory $operatorEvidence) {
     Write-Host "OPERATOR_FOUNDATION_ALREADY_READY"
 }
