@@ -228,9 +228,18 @@ $deployWorkflowText = Get-Content -Raw -LiteralPath $deployWorkflowPath
 
 foreach ($token in @(
     "actions: read",
+    "attestations: write",
     "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+    "google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db",
+    "gke-gcloud-auth-plugin",
     "name: standard-cd-release",
     "path: g81-release",
+    "Deploy-G81Staging.ps1",
+    "GCP_STAGING_CLOUD_SQL_PRIVATE_IP",
+    "GCP_STAGING_RABBITMQ_HOST",
+    "GCP_STAGING_CLOUD_SQL_CA_SECRET",
+    "standard-cd-staging-evidence",
+    "actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1",
     "TF_STATE_BUCKET",
     "New-CanonicalTerraformBackendFiles.ps1",
     "runner.temp"
@@ -238,6 +247,10 @@ foreach ($token in @(
     if ($deployWorkflowText -notlike "*$token*") {
         Add-Failure "_deploy.yml missing canonical backend token: $token"
     }
+}
+
+if ($deployWorkflowText -like "*np.ps1 staging deploy*") {
+    Add-Failure "_deploy.yml must execute the canonical staging deploy script, not the human-gated np.ps1 placeholder."
 }
 
 $qualifyWorkflowText = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot ".github/workflows/_qualify.yml")
