@@ -95,16 +95,63 @@ function Wait-CloudDeployRollout {
     throw "Timed out waiting for staging rollout for $Pipeline. Last rollout: $rolloutName"
 }
 
+function Test-OperatorFoundationReady {
+    param([Parameter(Mandatory)][string]$OutputDirectory)
+
+    New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+
+    $rollouts = @(
+        @{ Namespace = "cert-manager"; Resource = "deployment/cert-manager" },
+        @{ Namespace = "cert-manager"; Resource = "deployment/cert-manager-cainjector" },
+        @{ Namespace = "cert-manager"; Resource = "deployment/cert-manager-webhook" },
+        @{ Namespace = "rabbitmq-system"; Resource = "deployment/rabbitmq-cluster-operator" },
+        @{ Namespace = "rabbitmq-system"; Resource = "deployment/messaging-topology-operator" },
+        @{ Namespace = "keda"; Resource = "deployment/keda-operator" },
+        @{ Namespace = "keda"; Resource = "deployment/keda-metrics-apiserver" },
+        @{ Namespace = "keda"; Resource = "deployment/keda-admission" }
+    )
+
+    foreach ($rollout in $rollouts) {
+        $namespace = [string]$rollout.Namespace
+        $resource = [string]$rollout.Resource
+        & kubectl -n $namespace rollout status $resource --timeout=10s
+        if ($LASTEXITCODE -ne 0) { return $false }
+    }
+
+    & kubectl get deploy -n cert-manager -o json |
+        Set-Content -Encoding utf8 (Join-Path $OutputDirectory "cert-manager-deployments.json")
+    & kubectl get deploy -n rabbitmq-system -o json |
+        Set-Content -Encoding utf8 (Join-Path $OutputDirectory "rabbitmq-operator-deployments.json")
+    & kubectl get deploy -n keda -o json |
+        Set-Content -Encoding utf8 (Join-Path $OutputDirectory "keda-deployments.json")
+
+    [ordered]@{
+        schema_version = 1
+        status = "already-ready"
+        manager_policy = "preserve-existing-operator-field-managers"
+        rollouts = $rollouts
+    } | ConvertTo-Json -Depth 5 |
+        Set-Content -Encoding utf8 (Join-Path $OutputDirectory "operator-foundation.json")
+
+    return $true
+}
+
 # Cluster-scoped controllers are a separately sealed dependency layer.
 # Exact tagged release assets are resolved through the GitHub API and their
 # published SHA-256 digests are verified before server-side apply.
-& ./scripts/cloud/Install-G81ClusterDependencies.ps1 `
-    -ProjectId $StagingProjectId `
-    -Region $Region `
-    -ClusterName $ClusterName `
-    -LockPath "infra/gcp/kubernetes/g8-1/operator-lock.json" `
-    -EvidenceDirectory (Join-Path $EvidenceDirectory "cluster-dependencies")
-if ($LASTEXITCODE -ne 0) { throw "G8.1 cluster dependency bootstrap failed." }
+$operatorEvidence = Join-Path $EvidenceDirectory "cluster-dependencies"
+if (Test-OperatorFoundationReady -OutputDirectory $operatorEvidence) {
+    Write-Host "OPERATOR_FOUNDATION_ALREADY_READY"
+}
+else {
+    & ./scripts/cloud/Install-G81ClusterDependencies.ps1 `
+        -ProjectId $StagingProjectId `
+        -Region $Region `
+        -ClusterName $ClusterName `
+        -LockPath "infra/gcp/kubernetes/g8-1/operator-lock.json" `
+        -EvidenceDirectory $operatorEvidence
+    if ($LASTEXITCODE -ne 0) { throw "G8.1 cluster dependency bootstrap failed." }
+}
 
 # Schema, bootstrap and Simulator are explicit immutable-image gates. They are
 # deployed before services so the cloud API never points to a missing job.
