@@ -27,6 +27,20 @@ verify:
               sleep 5
             done
           done
+          deadline=$((SECONDS + 600))
+          until kubectl get secret natureprotector-rabbitmq-default-user >/dev/null 2>&1; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "RabbitMQ default-user secret was not materialized within 10 minutes" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+          kubectl patch secret natureprotector-rabbitmq-default-user \
+            --type=merge \
+            -p '{"stringData":{"uri":"http://natureprotector-rabbitmq.natureprotector-staging.svc:15672"}}'
+          kubectl wait --for=condition=Ready user/natureprotector-app --timeout=10m
+          kubectl wait --for=condition=Ready permission/natureprotector-app --timeout=10m
+          kubectl wait --for=condition=Ready policy/natureprotector-quorum-policy --timeout=10m
           kubectl wait --for=condition=Ready scaledobject/natureprotector-prevention --timeout=10m
           kubectl rollout status deployment/natureprotector-prevention --timeout=10m
 profiles:

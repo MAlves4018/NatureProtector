@@ -338,6 +338,8 @@ semantic_checks = {
     "random-provider-pin-current": (ROOT / "infra/gcp/terraform/g8-1-environment/versions.tf", 'version = "= 3.9.0"'),
     "frontend-healthz": (ROOT / "infra/gcp/cloud-deploy/g8-1/frontend/skaffold.yaml", "/healthz"),
     "cloud-run-verify-url-variable": (ROOT / "infra/gcp/cloud-deploy/g8-1/api/skaffold.yaml", "CLOUD_RUN_SERVICE_URLS"),
+    "cloud-run-verify-defers-http-to-edge": (ROOT / "infra/gcp/cloud-deploy/g8-1/api/skaffold.yaml", "protected edge smoke"),
+    "frontend-verify-defers-http-to-edge": (ROOT / "infra/gcp/cloud-deploy/g8-1/frontend/skaffold.yaml", "protected edge smoke"),
     "eleven-images": (ROOT / "scripts/cloud/Build-G81Release.sh", "cloud-deploy-verifier"),
     "custom-root-trust": (ROOT / "src/NatureProtector.Shared/Configuration/PrivateCertificateAuthorityValidator.cs", "X509ChainTrustMode.CustomRootTrust"),
     "rate-limit-health-bypass": (ROOT / "src/NatureProtector.Backoffice.Api/Configuration/ApiRateLimitingExtensions.cs", "unrestricted-health"),
@@ -367,6 +369,7 @@ semantic_checks = {
     "migration-job-uses-contract-env": (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1", "POSTGRES_MIGRATION_USER=np_migration"),
     "migration-password-uses-contract-env": (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1", "POSTGRES_MIGRATION_" + "PASS" + "WORD="),
     "keda-rabbitmq-autoscaling": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "queueName: np.ingestion.readings"),
+    "keda-rabbitmq-host-uses-cluster-fqdn": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "amqps://natureprotector-rabbitmq.natureprotector-staging.svc.cluster.local:5671/"),
     "keda-private-ca-authentication": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "parameter: ca"),
     "keda-safe-fallback": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "failureThreshold: 3"),
     "operator-assets-use-github-digests": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "GitHub did not publish a sha256 digest"),
@@ -379,6 +382,7 @@ semantic_checks = {
     "removed-gke-vulnerability-scanning-disabled": (ROOT / "infra/gcp/terraform/g8-1-environment/gke.tf", 'vulnerability_mode = "VULNERABILITY_DISABLED"'),
     "prevention-postgres-explicit": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "POSTGRES_REQUIRE_EXPLICIT"),
     "prevention-postgres-cloudsql-ip": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "${cloud_sql_private_ip}"),
+    "prevention-rabbitmq-private-ca": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "RabbitMq__TlsCertificateAuthorityPath"),
     "prevention-influx-explicitly-disabled": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "InfluxDb__Enabled"),
     "staging-is-qualification-profile": (ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml", "deployment-profile: qualification"),
     "production-cloudsql-guardrail": (ROOT / "infra/gcp/terraform/g8-1-environment/cloud_sql.tf", "Production requires regional Cloud SQL"),
@@ -387,7 +391,8 @@ for name, (path, token) in semantic_checks.items():
     check(token in path.read_text(encoding="utf-8"), f"semantic:{name}")
 
 staging_script = (ROOT / "scripts/cloud/Deploy-G81Staging.ps1").read_text(encoding="utf-8")
-check(not re.search(r"\.Replace\(\"(?:API_|FRONTEND_|OTEL_|RUNTIME_|CLOUD_SQL_|POSTGRES_|JWT_|RABBITMQ_)", staging_script), "semantic:staging-must-not-bake-target-values")
+check(not re.search(r"\.Replace\(\"(?:API_|FRONTEND_|OTEL_|RUNTIME_|CLOUD_SQL_|POSTGRES_|JWT_|RABBITMQ_(?!IMAGE_BY_DIGEST))", staging_script), "semantic:staging-must-not-bake-target-values")
+check('Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference)' in staging_script, "semantic:rabbitmq-crd-image-must-use-signed-manifest-digest")
 check("CLOUD_RUN_SERVICE_URL'" not in scope_text and "CLOUD_RUN_SERVICE_URL/" not in scope_text, "semantic:singular-cloud-run-url-variable-is-invalid")
 ca_validator = (ROOT / "src/NatureProtector.Shared/Configuration/PrivateCertificateAuthorityValidator.cs").read_text(encoding="utf-8")
 check("policyErrors == SslPolicyErrors.None" not in ca_validator, "semantic:private-ca-must-not-fallback-to-system-trust")

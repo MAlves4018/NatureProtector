@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: natureprotector-prevention-scaling
     app.kubernetes.io/part-of: natureprotector
 stringData:
-  host: amqps://natureprotector-rabbitmq:5671/
+  host: amqps://natureprotector-rabbitmq.natureprotector-staging.svc.cluster.local:5671/
   tls: enable
 ---
 apiVersion: keda.sh/v1alpha1

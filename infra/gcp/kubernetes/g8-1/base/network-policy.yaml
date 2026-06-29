@@ -24,7 +24,7 @@ spec:
       ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
     - to:
         - ipBlock:
-            cidr: 127.0.0.1/32 # from-param: ${cloud_sql_private_cidr}
+            cidr: 10.255.255.255/32 # from-param: ${cloud_sql_private_cidr}
       ports: [{protocol: TCP, port: 5432}]
 ---
 apiVersion: networking.k8s.io/v1
@@ -40,10 +40,10 @@ spec:
       ports: [{protocol: TCP, port: 5671}]
     - from:
         - ipBlock:
-            cidr: 127.0.0.1/32 # from-param: ${runtime_subnet_cidr}
+            cidr: 10.255.255.255/32 # from-param: ${runtime_subnet_cidr}
       ports: [{protocol: TCP, port: 5671}, {protocol: TCP, port: 15671}]
     - from: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: rabbitmq-system}}}]
-      ports: [{protocol: TCP, port: 15671}]
+      ports: [{protocol: TCP, port: 15671}, {protocol: TCP, port: 15672}]
     - from: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: keda}}}]
       ports: [{protocol: TCP, port: 5671}]
   egress:
@@ -65,10 +65,14 @@ spec:
       ports: [{protocol: TCP, port: 4317}, {protocol: TCP, port: 4318}]
     - from:
         - ipBlock:
-            cidr: 127.0.0.1/32 # from-param: ${runtime_subnet_cidr}
+            cidr: 10.255.255.255/32 # from-param: ${runtime_subnet_cidr}
       ports: [{protocol: TCP, port: 4317}, {protocol: TCP, port: 4318}]
   egress:
     - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
       ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
     - to: [{ipBlock: {cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]}}]
       ports: [{protocol: TCP, port: 443}]
+    - to: [{ipBlock: {cidr: 169.254.169.252/32}}]
+      ports: [{protocol: TCP, port: 987}, {protocol: TCP, port: 988}]
+    - to: [{ipBlock: {cidr: 169.254.169.254/32}}]
+      ports: [{protocol: TCP, port: 80}, {protocol: TCP, port: 8080}]

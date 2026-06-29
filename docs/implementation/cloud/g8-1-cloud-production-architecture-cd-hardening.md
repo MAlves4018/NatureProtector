@@ -101,6 +101,8 @@ do container.
 
 A criação do edge é faseada porque os serverless NEGs só podem apontar para serviços Cloud Run já existentes. A primeira release usa `services-only-bootstrap`, que cria os serviços e rollouts mas produz `staging_verified=false`/`production_verified=false`. Depois de ativar o edge, a mesma release é repetida idempotentemente em modo `verified`; só então o smoke usa o hostname HTTPS protegido e a evidence pode ficar verde. URLs `run.app` são rejeitadas pelo smoke.
 
+Os verifies Cloud Deploy dos serviços Cloud Run não fazem `curl` às URLs `run.app`: esses endpoints devolvem 404 quando o ingress está limitado a `internal-and-cloud-load-balancing`, como pretendido. O verify confirma a metadata do rollout e a prova HTTP real fica no smoke funcional pelo Load Balancer HTTPS protegido.
+
 ## Kubernetes
 
 `infra/gcp/kubernetes/g8-1` implementa:
@@ -114,7 +116,14 @@ A criação do edge é faseada porque os serverless NEGs só podem apontar para 
 - triggers por CPU e profundidade da fila RabbitMQ sobre AMQPS/TLS, com fallback seguro de três réplicas;
 - PDB mínimo 2;
 - RabbitMQ TLS-only, três réplicas, quorum queues e overflow `reject-publish`;
-- NetworkPolicy default-deny e egress explícito.
+- NetworkPolicy default-deny e egress explícito para RabbitMQ, OTLP, DNS e Cloud SQL private IP.
+
+Os clients AMQP (`Prevention.Host` e os publishers do simulator) usam
+`RabbitMq__TlsEnabled=true`, `RabbitMq__TlsServerName` e
+`RabbitMq__TlsCertificateAuthorityPath` para configurar `SslOption` com CA
+privada explícita. O manifesto base de `NetworkPolicy` usa defaults privados
+não funcionais para placeholders de CIDR, para que um render não parametrizado
+falhe fechado em vez de publicar loopback como se fosse Cloud SQL.
 
 ## Pipeline CD
 
@@ -207,5 +216,12 @@ Estas limitações impedem qualquer claim de produção. G8.2, G9, G10 e a execu
 O protótipo de HPA por métrica externa foi removido porque tratava a profundidade de uma fila RabbitMQ como uma métrica externa Google sem contrato de adapter válido. Prevention passa a ser controlado por um único KEDA `ScaledObject`, com triggers de profundidade da fila e CPU, fallback seguro de três réplicas, scale-out limitado e janela de estabilização de dez minutos no scale-down. O trigger RabbitMQ usa AMQPS, referências a username/password e a CA privada provenientes de Kubernetes Secrets sincronizados; não incorpora credenciais nos manifests.
 
 KEDA, cert-manager e os dois operadores RabbitMQ são dependências cluster-scoped. `Install-G81ClusterDependencies.ps1` resolve assets de releases GitHub com tags exatas a partir de `operator-lock.json`, exige o digest SHA-256 publicado pela API de releases, verifica os bytes descarregados, aplica-os por server-side apply, aguarda todos os controller rollouts e sela versões e hashes resolvidos na evidence de deployment. Os workflows de staging e produção executam este gate antes de criar jobs runtime ou releases Cloud Deploy.
+
+O runtime AMQP continua TLS-only na porta 5671. A reconciliação da topology
+RabbitMQ usa o `connectionSecret` do default user com management HTTP interno
+na porta 15672, porque o CRD do topology operator não fornece um campo de CA
+para a management API HTTPS privada. Esta exceção fica confinada por
+NetworkPolicy ao namespace `rabbitmq-system`; não altera o contrato AMQPS dos
+workloads da aplicação.
 
 Prevention não usa canary percentual: duas versões a consumir a mesma fila não permitem controlar deterministamente que eventos chegam à versão candidata. API e frontend conservam canary progressivo; Prevention usa rollout gradual verificado, PDB, KEDA, readiness e rollback para a revisão anterior.

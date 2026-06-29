@@ -231,22 +231,18 @@ RUN_PARAMETER_KEYS = {
     "rabbitmq_ca_version",
     "rabbitmq_private_host",
     "rabbitmq_tls_server_name",
-    "runtime_network_interfaces",
     "runtime_project_id",
     "runtime_region",
 }
 
 GKE_PARAMETER_KEYS = {
-    "cloud_sql_ca_secret_resources",
     "cloud_sql_private_cidr",
     "cloud_sql_private_ip",
     "otel_gsa",
     "otel_load_balancer_ip",
     "prevention_gsa",
     "rabbitmq_load_balancer_ip",
-    "rabbitmq_tls_secret_resources",
     "rabbitmq_tls_server_name",
-    "runtime_secret_resources",
     "runtime_subnet_cidr",
     "secret_sync_gsa",
 }
