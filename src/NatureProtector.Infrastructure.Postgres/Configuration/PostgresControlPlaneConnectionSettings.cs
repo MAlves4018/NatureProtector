@@ -28,7 +28,12 @@ public sealed record PostgresControlPlaneConnectionSettings(
 
         if (!string.IsNullOrWhiteSpace(SslModeName))
         {
-            builder.SslMode = Enum.Parse<SslMode>(SslModeName, ignoreCase: true);
+            var sslMode = Enum.Parse<SslMode>(SslModeName, ignoreCase: true);
+            builder.SslMode = sslMode;
+            if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
+            {
+                builder.ChannelBinding = ChannelBinding.Require;
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(RootCertificate))

@@ -52,6 +52,7 @@ public sealed class PostgresMigrationSettingsTests : IDisposable
         Assert.Equal("/var/run/secrets/cloudsql/server-ca.pem", settings.RootCertificate);
         Assert.Contains("Include Error Detail=False", connectionString, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("SSL Mode=VerifyCA", connectionString, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Channel Binding=Require", connectionString, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Root Certificate=/var/run/secrets/cloudsql/server-ca.pem", connectionString, StringComparison.OrdinalIgnoreCase);
     }
 

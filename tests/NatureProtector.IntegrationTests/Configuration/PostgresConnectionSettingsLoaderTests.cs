@@ -64,6 +64,7 @@ public sealed class PostgresConnectionSettingsLoaderTests : IDisposable
         Assert.Equal("VerifyCA", settings.SslModeName);
         Assert.Equal("/var/run/secrets/cloudsql/server-ca.pem", settings.RootCertificate);
         Assert.Contains("SSL Mode=VerifyCA", settings.BuildConnectionString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Channel Binding=Require", settings.BuildConnectionString(), StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Root Certificate=/var/run/secrets/cloudsql/server-ca.pem", settings.BuildConnectionString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -104,6 +105,49 @@ public sealed class PostgresConnectionSettingsLoaderTests : IDisposable
     }
 
     [Fact]
+    public void ValidateServerCertificateForCertificateAuthority_DoesNotDisposeProvidedCertificate()
+    {
+        using var root = CreateCertificateAuthority("NatureProtector Trusted Test Root");
+        using var server = CreateServerCertificate(root, "Cloud SQL Server");
+
+        var accepted = PostgresDataSourceFactory.ValidateServerCertificateForCertificateAuthority(server, root);
+        var signatureAlgorithm = server.SignatureAlgorithm.FriendlyName;
+
+        Assert.True(accepted);
+        Assert.False(string.IsNullOrWhiteSpace(signatureAlgorithm));
+    }
+
+    [Fact]
+    public void ValidateServerCertificateForCertificateAuthority_CanBeInvokedRepeatedlyWithSameCertificate()
+    {
+        using var root = CreateCertificateAuthority("NatureProtector Trusted Test Root");
+        using var server = CreateServerCertificate(root, "Cloud SQL Server");
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            Assert.True(PostgresDataSourceFactory.ValidateServerCertificateForCertificateAuthority(server, root));
+        }
+
+        Assert.False(string.IsNullOrWhiteSpace(server.GetSerialNumberString()));
+    }
+
+    [Fact]
+    public void ValidateServerCertificateForCertificateAuthority_DoesNotDisposeBaseCertificate()
+    {
+        using var root = CreateCertificateAuthority("NatureProtector Trusted Test Root");
+        using var server = CreateServerCertificate(root, "Cloud SQL Server");
+#pragma warning disable SYSLIB0057
+        using var runtimeCertificate = new X509Certificate(server.Export(X509ContentType.Cert));
+#pragma warning restore SYSLIB0057
+
+        var accepted = PostgresDataSourceFactory.ValidateServerCertificateForCertificateAuthority(runtimeCertificate, root);
+        var serialNumber = runtimeCertificate.GetSerialNumberString();
+
+        Assert.True(accepted);
+        Assert.False(string.IsNullOrWhiteSpace(serialNumber));
+    }
+
+    [Fact]
     public void ValidateServerCertificateForCertificateAuthority_RejectsServerCertificateSignedByDifferentRoot()
     {
         using var trustedRoot = CreateCertificateAuthority("NatureProtector Trusted Test Root");
@@ -113,6 +157,29 @@ public sealed class PostgresConnectionSettingsLoaderTests : IDisposable
         var accepted = PostgresDataSourceFactory.ValidateServerCertificateForCertificateAuthority(server, trustedRoot);
 
         Assert.False(accepted);
+    }
+
+    [Fact]
+    public void ValidateServerCertificateForCertificateAuthority_RejectsMissingServerCertificate()
+    {
+        using var root = CreateCertificateAuthority("NatureProtector Trusted Test Root");
+
+        var accepted = PostgresDataSourceFactory.ValidateServerCertificateForCertificateAuthority(null, root);
+
+        Assert.False(accepted);
+        Assert.False(string.IsNullOrWhiteSpace(root.Thumbprint));
+    }
+
+    [Fact]
+    public void ValidateServerCertificateForCertificateAuthority_DoesNotDisposeConfiguredCertificateAuthority()
+    {
+        using var root = CreateCertificateAuthority("NatureProtector Trusted Test Root");
+        using var server = CreateServerCertificate(root, "Cloud SQL Server");
+
+        Assert.True(PostgresDataSourceFactory.ValidateServerCertificateForCertificateAuthority(server, root));
+
+        Assert.Contains("NatureProtector Trusted Test Root", root.Subject, StringComparison.Ordinal);
+        Assert.False(string.IsNullOrWhiteSpace(root.GetCertHashString()));
     }
 
     [Fact]
