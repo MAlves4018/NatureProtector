@@ -18,6 +18,7 @@ using NatureProtector.Shared.Observability;
 using var bootstrapActivity = PostgresBootstrapTelemetry.ActivitySource.StartActivity("natureprotector.bootstrap.program");
 
 var contentRoot = BootstrapProgram.ResolveContentRoot(AppContext.BaseDirectory);
+var skipSchemaMigration = BootstrapProgram.ShouldSkipSchemaMigration();
 var settings = PostgresConnectionSettingsLoader.LoadFromEnvironmentOrDotEnv(contentRoot);
 await using var dataSource = settings.BuildDataSource();
 
@@ -25,11 +26,12 @@ var optionsBuilder = new DbContextOptionsBuilder<NatureProtectorControlDbContext
 optionsBuilder.UseNpgsql(dataSource);
 
 await using var dbContext = new NatureProtectorControlDbContext(optionsBuilder.Options);
-var bootstrapper = new ControlPlaneBootstrapper(dbContext, contentRoot);
+var bootstrapper = new ControlPlaneBootstrapper(dbContext, contentRoot, skipSchemaMigration);
 var summary = await bootstrapper.BootstrapPilotAreaAsync();
 
 Console.WriteLine("NatureProtector.Postgres.Bootstrap");
 Console.WriteLine($"Database: {settings.Database} @ {settings.Host}:{settings.Port}");
+Console.WriteLine($"Schema migration skipped: {skipSchemaMigration}");
 Console.WriteLine($"Configuration version: v{summary.ConfigurationVersionNumber}");
 Console.WriteLine($"Area imported: {summary.AreaCode} ({summary.AreaName})");
 Console.WriteLine($"Grid cells imported: {summary.GridCellCount}");

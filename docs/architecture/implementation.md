@@ -600,7 +600,7 @@ No `Program.cs`, a ordem factual é simples: resolver a raiz do repositório, ca
 
 Em `BootstrapPilotAreaAsync`, a sequência observável é esta:
 
-1. `EnsureSchemaAsync`
+1. `EnsureSchemaAsync`, exceto quando `NP_BOOTSTRAP_SKIP_SCHEMA_MIGRATION=true`
 2. `UpsertConfigurationVersionAsync`
 3. `UpsertDatasetArtifactsAsync`
 4. `UpsertPilotAreaAsync`
@@ -654,7 +654,7 @@ O papel do bootstrap é materializar estado estável. O runtime posterior consom
 ### Notas de compreensão ou armadilhas
 
 - O bootstrap está fortemente parametrizado para `Proença-a-Nova`. O nome pode sugerir uma generalidade maior do que a implementação atual oferece.
-- `EnsureSchemaAsync` usa migrations quando existem e só cai para `EnsureCreatedAsync` se não houver migrations. Na branch atual há migrations formais, por isso o caminho esperado é `Database.MigrateAsync`.
+- `EnsureSchemaAsync` usa migrations quando existem e só cai para `EnsureCreatedAsync` se não houver migrations. Em cloud staging, esta etapa deve ser saltada com `NP_BOOTSTRAP_SKIP_SCHEMA_MIGRATION=true`, porque o schema é preparado pelo job dedicado `np-postgres-migrations` e o bootstrap usa o role runtime `np_app`.
 
 ### Ficheiros, classes e métodos principais
 

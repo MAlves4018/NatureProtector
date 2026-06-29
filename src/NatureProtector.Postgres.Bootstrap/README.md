@@ -4,7 +4,7 @@ Este projeto existe para materializar a primeira vaga do plano de controlo em `P
 
 Ele não é um host de runtime da aplicação. É um utilitário de bootstrap pensado para:
 
-- criar ou atualizar o schema `control`;
+- materializar dados iniciais no schema `control`;
 - importar a área piloto `Proença-a-Nova`;
 - importar `grid_cells` a partir da grelha e do `cells_attributes`;
 - gerar perfis e a primeira rede de sensores piloto;
@@ -34,6 +34,14 @@ Ou usar o helper:
 ```powershell
 .\scripts\postgres\bootstrap-control-plane.ps1
 ```
+
+Por omissão, o bootstrap mantém compatibilidade local e garante o schema antes de importar dados. Em staging cloud, o schema é responsabilidade do job dedicado `np-postgres-migrations`; nesse caso o job `np-postgres-bootstrap` define:
+
+```text
+NP_BOOTSTRAP_SKIP_SCHEMA_MIGRATION=true
+```
+
+Com esse valor, o bootstrap não executa `EnsureSchemaAsync` nem `Database.MigrateAsync`; apenas materializa os dados iniciais usando o utilizador runtime `np_app`.
 
 ## O que produz
 
