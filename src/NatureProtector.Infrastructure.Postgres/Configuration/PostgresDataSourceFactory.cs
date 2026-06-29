@@ -1,4 +1,3 @@
-using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using Npgsql;
 
@@ -13,40 +12,37 @@ public static class PostgresDataSourceFactory
         if (!string.IsNullOrWhiteSpace(rootCertificatePath))
         {
             connectionBuilder.RootCertificate = null;
+            connectionBuilder["Trust Server Certificate"] = false;
         }
 
         var rootCertificate = string.IsNullOrWhiteSpace(rootCertificatePath)
             ? null
             : X509CertificateLoader.LoadCertificateFromFile(rootCertificatePath);
 
-        var validateCertificateAuthorityOnly = rootCertificate is not null &&
-            connectionBuilder.SslMode == SslMode.VerifyCA;
-
-        if (validateCertificateAuthorityOnly)
-        {
-            connectionBuilder.SslMode = SslMode.Require;
-        }
-
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionBuilder.ConnectionString);
 
         if (rootCertificate is not null)
         {
-            if (validateCertificateAuthorityOnly)
-            {
-                dataSourceBuilder.UseSslClientAuthenticationOptionsCallback(
-                    options =>
-                    {
-                        options.RemoteCertificateValidationCallback = (_, certificate, _, _) =>
-                            ValidateServerCertificateForCertificateAuthority(certificate, rootCertificate);
-                    });
-            }
-            else
-            {
-                dataSourceBuilder.UseRootCertificate(rootCertificate);
-            }
+            dataSourceBuilder.UseSslClientAuthenticationOptionsCallback(
+                options =>
+                {
+                    options.CertificateChainPolicy = CreateCertificateChainPolicy(rootCertificate);
+                });
         }
 
         return dataSourceBuilder.Build();
+    }
+
+    private static X509ChainPolicy CreateCertificateChainPolicy(X509Certificate2 certificateAuthority)
+    {
+        var policy = new X509ChainPolicy
+        {
+            TrustMode = X509ChainTrustMode.CustomRootTrust,
+            RevocationMode = X509RevocationMode.NoCheck,
+            VerificationFlags = X509VerificationFlags.NoFlag
+        };
+        policy.CustomTrustStore.Add(certificateAuthority);
+        return policy;
     }
 
     public static bool ValidateServerCertificateForCertificateAuthority(
@@ -58,13 +54,26 @@ public static class PostgresDataSourceFactory
             return false;
         }
 
-        using var serverCertificate = certificate as X509Certificate2 ?? new X509Certificate2(certificate);
-        using var chain = new X509Chain();
-        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-        chain.ChainPolicy.CustomTrustStore.Add(certificateAuthority);
-        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
+        var ownsServerCertificate = certificate is not X509Certificate2;
+        var serverCertificate = certificate as X509Certificate2 ??
+            X509CertificateLoader.LoadCertificate(certificate.Export(X509ContentType.Cert));
 
-        return chain.Build(serverCertificate);
+        try
+        {
+            using var chain = new X509Chain();
+            chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+            chain.ChainPolicy.CustomTrustStore.Add(certificateAuthority);
+            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+            chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
+
+            return chain.Build(serverCertificate);
+        }
+        finally
+        {
+            if (ownsServerCertificate)
+            {
+                serverCertificate.Dispose();
+            }
+        }
     }
 }

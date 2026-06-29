@@ -57,6 +57,7 @@ public sealed record MigrationSettings(
 
     public string BuildAdminConnectionString()
     {
+        var sslMode = Enum.Parse<SslMode>(SslModeName, ignoreCase: true);
         var builder = new NpgsqlConnectionStringBuilder
         {
             Host = Host,
@@ -68,8 +69,13 @@ public sealed record MigrationSettings(
             ApplicationName = "NatureProtector.Postgres.Migrations",
             Timeout = 15,
             CommandTimeout = 120,
-            SslMode = Enum.Parse<SslMode>(SslModeName, ignoreCase: true)
+            SslMode = sslMode
         };
+
+        if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
+        {
+            builder.ChannelBinding = ChannelBinding.Require;
+        }
 
         if (!string.IsNullOrWhiteSpace(RootCertificate))
         {

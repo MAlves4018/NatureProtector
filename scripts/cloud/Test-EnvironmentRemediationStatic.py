@@ -45,6 +45,10 @@ postgres_service_collection = (
     ROOT
     / "src/NatureProtector.Infrastructure.Postgres/DependencyInjection/ServiceCollectionExtensions.cs"
 ).read_text(encoding="utf-8")
+postgres_connection_settings = (
+    ROOT
+    / "src/NatureProtector.Infrastructure.Postgres/Configuration/PostgresControlPlaneConnectionSettings.cs"
+).read_text(encoding="utf-8")
 postgres_migration_settings = (
     ROOT / "src/NatureProtector.Postgres.Migrations/MigrationSettings.cs"
 ).read_text(encoding="utf-8")
@@ -319,15 +323,32 @@ check(
     "gke-private-endpoint-not-explicit",
 )
 check(
-    "UseRootCertificate" in postgres_data_source_factory
+    "UseSslClientAuthenticationOptionsCallback" in postgres_data_source_factory
+    and "CertificateChainPolicy" in postgres_data_source_factory
     and "X509CertificateLoader.LoadCertificateFromFile" in postgres_data_source_factory,
     "postgres-datasource-root-certificate-builder-missing",
 )
 check(
-    "UseSslClientAuthenticationOptionsCallback" in postgres_data_source_factory
-    and "X509ChainTrustMode.CustomRootTrust" in postgres_data_source_factory
-    and "RemoteCertificateValidationCallback" in postgres_data_source_factory,
+    "X509ChainTrustMode.CustomRootTrust" in postgres_data_source_factory
+    and "ValidateServerCertificateForCertificateAuthority" in postgres_data_source_factory,
     "postgres-datasource-verifyca-custom-root-validation-missing",
+)
+check(
+    "ownsServerCertificate" in postgres_data_source_factory
+    and "if (ownsServerCertificate)" in postgres_data_source_factory
+    and "serverCertificate.Dispose()" in postgres_data_source_factory
+    and "using var serverCertificate" not in postgres_data_source_factory
+    and "X509CertificateLoader.LoadCertificate(certificate.Export(X509ContentType.Cert))" in postgres_data_source_factory,
+    "postgres-datasource-must-not-dispose-tls-owned-certificate",
+)
+check(
+    'connectionBuilder["Trust Server Certificate"] = false' in postgres_data_source_factory
+    and "builder.ChannelBinding = ChannelBinding.Require" in postgres_connection_settings
+    and "builder.ChannelBinding = ChannelBinding.Require" in postgres_migration_settings
+    and "connectionBuilder.SslMode = SslMode.Require" not in postgres_data_source_factory
+    and "connectionBuilder.SslMode = SslMode.Prefer" not in postgres_data_source_factory
+    and "RemoteCertificateValidationCallback" not in postgres_data_source_factory,
+    "postgres-datasource-verifyca-must-not-downgrade-overwrite-callback-or-allow-channel-binding-fallback",
 )
 check(
     "AddSingleton<NpgsqlDataSource>" in postgres_service_collection
@@ -343,6 +364,12 @@ check(
     "BuildAdminDataSource()" in postgres_migration_runner
     and ".UseNpgsql(dataSource)" in postgres_migration_runner,
     "postgres-migration-runner-datasource-missing",
+)
+check(
+    "RoleExistsAsync" in postgres_migration_runner
+    and "CREATE ROLE" in postgres_migration_runner
+    and "ALTER ROLE" not in postgres_migration_runner,
+    "postgres-migration-runner-must-not-alter-cloud-sql-managed-role",
 )
 
 payload = {

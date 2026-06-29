@@ -62,17 +62,26 @@ public sealed class PostgresMigrationRunner(MigrationSettings settings)
         using var commandBuilder = new NpgsqlCommandBuilder();
         var quotedRole = commandBuilder.QuoteIdentifier(settings.AppUsername);
         var quotedDatabase = commandBuilder.QuoteIdentifier(settings.Database);
-        var passwordLiteral = await FormatPasswordLiteralAsync(connection, settings.AppPassword, cancellationToken);
+
+        if (!await RoleExistsAsync(connection, settings.AppUsername, cancellationToken))
+        {
+            var passwordLiteral = await FormatPasswordLiteralAsync(
+                connection,
+                settings.AppPassword,
+                cancellationToken);
+
+            await ExecuteAsync(connection, $"""
+                CREATE ROLE {quotedRole}
+                    LOGIN
+                    NOSUPERUSER
+                    NOCREATEDB
+                    NOCREATEROLE
+                    NOREPLICATION
+                    PASSWORD {passwordLiteral};
+                """, cancellationToken);
+        }
 
         await ExecuteAsync(connection, $"""
-            DO $block$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {ToSqlLiteral(settings.AppUsername)}) THEN
-                    EXECUTE 'CREATE ROLE {quotedRole} LOGIN';
-                END IF;
-            END
-            $block$;
-            ALTER ROLE {quotedRole} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD {passwordLiteral};
             GRANT CONNECT ON DATABASE {quotedDatabase} TO {quotedRole};
             GRANT USAGE ON SCHEMA public, control, pipeline, projection, user_base TO {quotedRole};
             GRANT SELECT ON TABLE public."__EFMigrationsHistory" TO {quotedRole};
@@ -83,6 +92,20 @@ public sealed class PostgresMigrationRunner(MigrationSettings settings)
             ALTER DEFAULT PRIVILEGES IN SCHEMA control, pipeline, projection, user_base
                 GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO {quotedRole};
             """, cancellationToken);
+    }
+
+    private static async Task<bool> RoleExistsAsync(
+        NpgsqlConnection connection,
+        string roleName,
+        CancellationToken cancellationToken)
+    {
+        await using var command = new NpgsqlCommand(
+            "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = @role_name);",
+            connection);
+        command.Parameters.AddWithValue("role_name", roleName);
+
+        return (bool)(await command.ExecuteScalarAsync(cancellationToken)
+            ?? throw new InvalidOperationException("PostgreSQL did not return role existence."));
     }
 
     private static async Task<string> FormatPasswordLiteralAsync(
