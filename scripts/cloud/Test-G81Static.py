@@ -82,6 +82,7 @@ REQUIRED = [
     ".github/workflows/gcp-g8-1-promote-production.yml",
     ".github/workflows/gcp-g8-1-teardown.yml",
     "scripts/cloud/Build-G81Release.sh",
+    "scripts/cloud/Test-BuildG81ReleaseStatic.py",
     "scripts/cloud/Install-G81ClusterDependencies.ps1",
     "scripts/cloud/Deploy-G81RuntimeJobs.ps1",
     "scripts/cloud/Invoke-G81FunctionalSmoke.ps1",
@@ -396,6 +397,16 @@ check('Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference)' 
 check("CLOUD_RUN_SERVICE_URL'" not in scope_text and "CLOUD_RUN_SERVICE_URL/" not in scope_text, "semantic:singular-cloud-run-url-variable-is-invalid")
 ca_validator = (ROOT / "src/NatureProtector.Shared/Configuration/PrivateCertificateAuthorityValidator.cs").read_text(encoding="utf-8")
 check("policyErrors == SslPolicyErrors.None" not in ca_validator, "semantic:private-ca-must-not-fallback-to-system-trust")
+
+build_release_static = subprocess.run(
+    [sys.executable, str(ROOT / "scripts/cloud/Test-BuildG81ReleaseStatic.py")],
+    cwd=ROOT,
+    capture_output=True,
+    text=True,
+    check=False,
+)
+build_release_output = (build_release_static.stdout + "\n" + build_release_static.stderr).strip().replace("\n", " | ")
+check(build_release_static.returncode == 0, f"build-g81-release-static:{build_release_output}")
 
 result = {
     "phase": "G8.1",
