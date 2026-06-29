@@ -56,6 +56,8 @@ jobs:
           manifest_path: ${{ inputs.manifest_path }}
       - name: Deploy by digest authority
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: >-
           ./scripts/cloud/Deploy-G81Staging.ps1
           -ManifestPath '${{ inputs.manifest_path }}'

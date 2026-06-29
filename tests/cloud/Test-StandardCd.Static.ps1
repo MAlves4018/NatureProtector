@@ -235,6 +235,7 @@ foreach ($token in @(
     "name: standard-cd-release",
     "path: g81-release",
     "Deploy-G81Staging.ps1",
+    "GH_TOKEN: `${{ github.token }}",
     "GCP_STAGING_CLOUD_SQL_PRIVATE_IP",
     "GCP_STAGING_RABBITMQ_HOST",
     "GCP_STAGING_CLOUD_SQL_CA_SECRET",
