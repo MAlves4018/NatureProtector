@@ -45,7 +45,7 @@ O `PostgreSQL` liga hoje:
 
 | Componente | Papel |
 | --- | --- |
-| [`../../src/NatureProtector.Postgres.Bootstrap/`](../../src/NatureProtector.Postgres.Bootstrap/) | aplica migrations e materializa o plano de controlo inicial |
+| [`../../src/NatureProtector.Postgres.Bootstrap/`](../../src/NatureProtector.Postgres.Bootstrap/) | materializa o plano de controlo inicial; em cloud staging salta migrations porque o schema pertence ao job dedicado `np-postgres-migrations` |
 | [`../../src/NatureProtector.Infrastructure.Postgres/`](../../src/NatureProtector.Infrastructure.Postgres/) | define records, `DbContext`, migrations e serviços de suporte |
 | [`../../src/NatureProtector.Simulator.Host/`](../../src/NatureProtector.Simulator.Host/) | lê área, cenário e sensores do `control` e regista `simulation_runs` |
 | [`../../src/NatureProtector.Prevention.Host/`](../../src/NatureProtector.Prevention.Host/) | usa `pipeline` e `projection` como ponto de commit durável e consulta operacional |
@@ -76,7 +76,7 @@ O schema `control` guarda a configuração que o sistema resolve antes de execut
 
 O bootstrap atual, implementado em [`../../src/NatureProtector.Infrastructure.Postgres/Bootstrap/ControlPlaneBootstrapper.cs`](../../src/NatureProtector.Infrastructure.Postgres/Bootstrap/ControlPlaneBootstrapper.cs), faz estas operações:
 
-1. aplica migrations;
+1. garante o schema por omissão; em cloud staging esta etapa é saltada com `NP_BOOTSTRAP_SKIP_SCHEMA_MIGRATION=true` porque `np-postgres-migrations` já executou as migrations;
 2. cria ou atualiza a configuração `v1`;
 3. indexa artefactos do plano de datasets;
 4. importa a área `proenca-a-nova`;

@@ -2,8 +2,42 @@ using NatureProtector.Postgres.Bootstrap;
 
 namespace NatureProtector.IntegrationTests.Bootstrap;
 
+[Collection("EnvironmentVariables")]
 public class PostgresBootstrapProgramTests
 {
+    [Fact]
+    public void ShouldSkipSchemaMigration_DefaultsToFalse()
+    {
+        WithSkipSchemaMigrationValue(null, () =>
+        {
+            Assert.False(BootstrapProgram.ShouldSkipSchemaMigration());
+        });
+    }
+
+    [Fact]
+    public void ShouldSkipSchemaMigration_ReturnsTrueWhenExplicitlyEnabled()
+    {
+        WithSkipSchemaMigrationValue("true", () =>
+        {
+            Assert.True(BootstrapProgram.ShouldSkipSchemaMigration());
+        });
+    }
+
+    [Fact]
+    public void ShouldSkipSchemaMigration_RejectsInvalidValue()
+    {
+        WithSkipSchemaMigrationValue("sometimes", () =>
+        {
+            var exception = Assert.Throws<InvalidOperationException>(
+                () => BootstrapProgram.ShouldSkipSchemaMigration());
+
+            Assert.Contains(
+                BootstrapProgram.SkipSchemaMigrationEnvironmentVariable,
+                exception.Message,
+                StringComparison.Ordinal);
+        });
+    }
+
     [Fact]
     public void ResolveRepoRoot_FindsRepositoryFromNestedExecutionPath()
     {
@@ -80,5 +114,25 @@ public class PostgresBootstrapProgramTests
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, "{}");
+    }
+
+    private static void WithSkipSchemaMigrationValue(string? value, Action action)
+    {
+        var previous = Environment.GetEnvironmentVariable(
+            BootstrapProgram.SkipSchemaMigrationEnvironmentVariable);
+
+        try
+        {
+            Environment.SetEnvironmentVariable(
+                BootstrapProgram.SkipSchemaMigrationEnvironmentVariable,
+                value);
+            action();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(
+                BootstrapProgram.SkipSchemaMigrationEnvironmentVariable,
+                previous);
+        }
     }
 }

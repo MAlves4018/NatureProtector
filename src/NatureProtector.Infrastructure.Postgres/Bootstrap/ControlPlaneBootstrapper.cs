@@ -37,11 +37,16 @@ public sealed class ControlPlaneBootstrapper
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly NatureProtectorControlDbContext _dbContext;
     private readonly string _repoRoot;
+    private readonly bool _skipSchemaMigration;
 
-    public ControlPlaneBootstrapper(NatureProtectorControlDbContext dbContext, string repoRoot)
+    public ControlPlaneBootstrapper(
+        NatureProtectorControlDbContext dbContext,
+        string repoRoot,
+        bool skipSchemaMigration = false)
     {
         _dbContext = dbContext;
         _repoRoot = repoRoot;
+        _skipSchemaMigration = skipSchemaMigration;
     }
 
     /// <summary>
@@ -54,7 +59,10 @@ public sealed class ControlPlaneBootstrapper
         var stopwatch = Stopwatch.StartNew();
         PostgresBootstrapTelemetry.BootstrapRuns.Add(1);
 
-        await ExecuteStepAsync("ensure_schema", _ => EnsureSchemaAsync(cancellationToken), cancellationToken);
+        if (!_skipSchemaMigration)
+        {
+            await ExecuteStepAsync("ensure_schema", _ => EnsureSchemaAsync(cancellationToken), cancellationToken);
+        }
 
         var configuration = await ExecuteStepAsync("upsert_configuration_version", _ => UpsertConfigurationVersionAsync(cancellationToken), cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);

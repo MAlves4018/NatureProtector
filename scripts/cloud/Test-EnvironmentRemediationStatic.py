@@ -55,6 +55,19 @@ postgres_migration_settings = (
 postgres_migration_runner = (
     ROOT / "src/NatureProtector.Postgres.Migrations/PostgresMigrationRunner.cs"
 ).read_text(encoding="utf-8")
+postgres_bootstrap_program = (
+    ROOT / "src/NatureProtector.Postgres.Bootstrap/Program.cs"
+).read_text(encoding="utf-8")
+postgres_bootstrap_helper = (
+    ROOT / "src/NatureProtector.Postgres.Bootstrap/BootstrapProgram.cs"
+).read_text(encoding="utf-8")
+postgres_bootstrapper = (
+    ROOT
+    / "src/NatureProtector.Infrastructure.Postgres/Bootstrap/ControlPlaneBootstrapper.cs"
+).read_text(encoding="utf-8")
+deploy_runtime_jobs = (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1").read_text(
+    encoding="utf-8"
+)
 autopilot_foundation = (
     ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh"
 )
@@ -370,6 +383,32 @@ check(
     and "CREATE ROLE" in postgres_migration_runner
     and "ALTER ROLE" not in postgres_migration_runner,
     "postgres-migration-runner-must-not-alter-cloud-sql-managed-role",
+)
+check(
+    "NP_BOOTSTRAP_SKIP_SCHEMA_MIGRATION" in postgres_bootstrap_helper
+    and "ShouldSkipSchemaMigration" in postgres_bootstrap_helper
+    and "return false;" in postgres_bootstrap_helper,
+    "postgres-bootstrap-skip-schema-env-default-missing",
+)
+check(
+    "skipSchemaMigration" in postgres_bootstrap_program
+    and "BootstrapProgram.ShouldSkipSchemaMigration()" in postgres_bootstrap_program
+    and "new ControlPlaneBootstrapper(dbContext, contentRoot, skipSchemaMigration)" in postgres_bootstrap_program
+    and "Schema migration skipped" in postgres_bootstrap_program,
+    "postgres-bootstrap-program-skip-schema-wiring-missing",
+)
+check(
+    "bool skipSchemaMigration = false" in postgres_bootstrapper
+    and "if (!_skipSchemaMigration)" in postgres_bootstrapper
+    and "EnsureSchemaAsync" in postgres_bootstrapper
+    and "Database.MigrateAsync" in postgres_bootstrapper,
+    "postgres-bootstrapper-skip-schema-guard-missing",
+)
+check(
+    "NP_BOOTSTRAP_SKIP_SCHEMA_MIGRATION=true" in deploy_runtime_jobs
+    and "POSTGRES_USER=np_app" in deploy_runtime_jobs
+    and "POSTGRES_MIGRATION_USER=np_migration" in deploy_runtime_jobs,
+    "postgres-bootstrap-cloud-job-skip-schema-env-missing",
 )
 
 payload = {

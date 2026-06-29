@@ -2,12 +2,28 @@ namespace NatureProtector.Postgres.Bootstrap;
 
 public static class BootstrapProgram
 {
+    public const string SkipSchemaMigrationEnvironmentVariable = "NP_BOOTSTRAP_SKIP_SCHEMA_MIGRATION";
+
     private static readonly string[] RequiredBootstrapInputs =
     [
         "data/manifests/datasets/proenca-a-nova-dataset-plan.json",
         "data/baseline/areas/proenca-a-nova/area.geojson",
         "data/manifests/scenarios/proenca-a-nova-scenarios.generated.json"
     ];
+
+    public static bool ShouldSkipSchemaMigration()
+    {
+        var value = Environment.GetEnvironmentVariable(SkipSchemaMigrationEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        return bool.TryParse(value, out var parsed)
+            ? parsed
+            : throw new InvalidOperationException(
+                $"{SkipSchemaMigrationEnvironmentVariable} must be either 'true' or 'false'.");
+    }
 
     public static string ResolveRepoRoot(string startPath)
     {

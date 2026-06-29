@@ -91,7 +91,7 @@ Invoke-Gcloud -Arguments @(
     "--service-account=$BootstrapServiceAccount",
     "--network=$RuntimeNetwork", "--subnet=$RuntimeSubnetwork", "--vpc-egress=private-ranges-only",
     "--tasks=1", "--max-retries=0", "--task-timeout=15m",
-    "--set-env-vars=$commonDb,POSTGRES_USER=np_app",
+    "--set-env-vars=$commonDb,POSTGRES_USER=np_app,NP_BOOTSTRAP_SKIP_SCHEMA_MIGRATION=true",
     "--set-secrets=POSTGRES_PASSWORD=${PostgresAppPasswordSecret}:${PostgresAppPasswordVersion},NP_BOOTSTRAP_ADMIN_PASSWORD=${BootstrapAdminPasswordSecret}:${BootstrapAdminPasswordVersion},$sqlCaMount",
     "--labels=$labels", "--quiet"
 )
