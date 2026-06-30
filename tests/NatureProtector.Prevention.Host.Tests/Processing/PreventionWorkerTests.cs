@@ -9,6 +9,7 @@ using NatureProtector.Prevention.Host.Configuration;
 using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Projection;
 using NatureProtector.Prevention.Host.Processing;
+using NatureProtector.Prevention.Host.Runtime;
 using NatureProtector.Prevention.Host.Tests.Fakes;
 using NatureProtector.Prevention.Host.Tests.Helpers;
 using NatureProtector.Prevention.Host.Tests.TestData;
@@ -628,7 +629,8 @@ public sealed class PreventionWorkerTests
             }),
             preventionOptions,
             inbox,
-            processingService);
+            processingService,
+            new PreventionRuntimeState());
     }
 
     private static ReadingRiskPipeline CreatePipeline(

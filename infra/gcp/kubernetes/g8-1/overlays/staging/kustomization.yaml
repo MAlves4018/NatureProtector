@@ -25,6 +25,24 @@ patches:
       kind: Deployment
       name: natureprotector-prevention
     patch: |-
+      - op: add
+        path: /spec/selector/matchLabels/environment
+        value: staging
+      - op: add
+        path: /spec/selector/matchLabels/phase
+        value: g8-1
+      - op: add
+        path: /spec/selector/matchLabels/deployment-profile
+        value: qualification
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/environment
+        value: staging
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/phase
+        value: g8-1
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/deployment-profile
+        value: qualification
       - op: replace
         path: /spec/replicas
         value: 1
@@ -108,6 +126,24 @@ patches:
       kind: Deployment
       name: natureprotector-otel
     patch: |-
+      - op: add
+        path: /spec/selector/matchLabels/environment
+        value: staging
+      - op: add
+        path: /spec/selector/matchLabels/phase
+        value: g8-1
+      - op: add
+        path: /spec/selector/matchLabels/deployment-profile
+        value: qualification
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/environment
+        value: staging
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/phase
+        value: g8-1
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/deployment-profile
+        value: qualification
       - op: replace
         path: /spec/replicas
         value: 1

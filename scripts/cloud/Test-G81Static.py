@@ -399,11 +399,87 @@ semantic_checks = {
     "prevention-postgres-cloudsql-ip": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "${cloud_sql_private_ip}"),
     "prevention-rabbitmq-private-ca": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "RabbitMq__TlsCertificateAuthorityPath"),
     "prevention-influx-explicitly-disabled": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "InfluxDb__Enabled"),
+    "prevention-host-uses-web-health-server": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", "WebApplication.CreateBuilder(args)"),
+    "prevention-host-registers-runtime-readiness": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", "AddSingleton<PreventionRuntimeState>()"),
+    "prevention-host-registers-readiness-check": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", 'AddCheck<PreventionReadinessHealthCheck>("prevention-ready")'),
+    "prevention-host-exposes-liveness": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", 'MapHealthChecks("/health/live"'),
+    "prevention-host-exposes-readiness": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", 'MapHealthChecks("/health/ready")'),
+    "prevention-host-uses-aspnet-runtime": (ROOT / "src/NatureProtector.Prevention.Host/NatureProtector.Prevention.Host.csproj", "Microsoft.AspNetCore.App"),
     "staging-is-qualification-profile": (ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml", "deployment-profile: qualification"),
     "production-cloudsql-guardrail": (ROOT / "infra/gcp/terraform/g8-1-environment/cloud_sql.tf", "Production requires regional Cloud SQL"),
 }
 for name, (path, token) in semantic_checks.items():
     check(token in path.read_text(encoding="utf-8"), f"semantic:{name}")
+
+staging_kustomization = yaml.safe_load(
+    (ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml").read_text(encoding="utf-8")
+)
+staging_patches = staging_kustomization.get("patches", [])
+selector_labels = {
+    "environment": "staging",
+    "phase": "g8-1",
+    "deployment-profile": "qualification",
+}
+for deployment_name in ("natureprotector-prevention", "natureprotector-otel"):
+    deployment_patches = [
+        patch
+        for patch in staging_patches
+        if patch.get("target", {}).get("kind") == "Deployment"
+        and patch.get("target", {}).get("name") == deployment_name
+    ]
+    check(deployment_patches, f"semantic:staging-selector-patch-present:{deployment_name}")
+    patch_ops = []
+    for deployment_patch in deployment_patches:
+        patch_ops.extend(yaml.safe_load(deployment_patch.get("patch", "[]")))
+    for label_name, label_value in selector_labels.items():
+        check(
+            any(
+                op.get("op") == "add"
+                and op.get("path") == f"/spec/selector/matchLabels/{label_name}"
+                and op.get("value") == label_value
+                for op in patch_ops
+            ),
+            f"semantic:staging-preserves-immutable-selector:{deployment_name}:{label_name}",
+        )
+        check(
+            any(
+                op.get("op") == "add"
+                and op.get("path")
+                == f"/spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/{label_name}"
+                and op.get("value") == label_value
+                for op in patch_ops
+            ),
+            f"semantic:staging-preserves-topology-selector:{deployment_name}:{label_name}",
+        )
+
+network_policy_documents = [
+    document
+    for document in yaml.safe_load_all(
+        (ROOT / "infra/gcp/kubernetes/g8-1/base/network-policy.yaml").read_text(encoding="utf-8")
+    )
+    if isinstance(document, dict) and document.get("kind") == "NetworkPolicy"
+]
+for policy_name in ("prevention-runtime", "rabbitmq-runtime", "otel-runtime"):
+    policy = next(
+        (document for document in network_policy_documents if document.get("metadata", {}).get("name") == policy_name),
+        None,
+    )
+    check(policy is not None, f"semantic:network-policy-present:{policy_name}")
+    egress_rules = policy.get("spec", {}).get("egress", []) if policy else []
+    dns_rules = [
+        rule
+        for rule in egress_rules
+        if any(target.get("ipBlock", {}).get("cidr") == "169.254.20.10/32" for target in rule.get("to", []))
+    ]
+    check(dns_rules, f"semantic:gke-node-local-dns-egress-present:{policy_name}")
+    for protocol in ("UDP", "TCP"):
+        check(
+            any(
+                any(port.get("protocol") == protocol and port.get("port") == 53 for port in rule.get("ports", []))
+                for rule in dns_rules
+            ),
+            f"semantic:gke-node-local-dns-egress-port:{policy_name}:{protocol}",
+        )
 
 staging_script = (ROOT / "scripts/cloud/Deploy-G81Staging.ps1").read_text(encoding="utf-8")
 check(not re.search(r"\.Replace\(\"(?:API_|FRONTEND_|OTEL_|RUNTIME_|CLOUD_SQL_|POSTGRES_|JWT_|RABBITMQ_(?!IMAGE_BY_DIGEST))", staging_script), "semantic:staging-must-not-bake-target-values")

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using NatureProtector.Prevention.Host.Configuration;
 using NatureProtector.Prevention.Host.Processing;
+using NatureProtector.Prevention.Host.Runtime;
 using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
@@ -35,7 +36,8 @@ public sealed class PreventionWorker(
     IOptions<RabbitMqOptions> rabbitMqOptions,
     IOptions<PreventionHostOptions> preventionHostOptions,
     IReadingEventInbox readingEventInbox,
-    ReadingEventProcessingService processingService) : BackgroundService
+    ReadingEventProcessingService processingService,
+    PreventionRuntimeState runtimeState) : BackgroundService
 {
     private const string SupportedSchemaVersion = "1.0";
 
@@ -48,14 +50,19 @@ public sealed class PreventionWorker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("Prevention worker started at: {Time}", DateTimeOffset.Now);
+        runtimeState.MarkNotReady("Prevention consumer is starting.");
 
         var factory = CreateConnectionFactory(_options);
 
-        var connection = factory.CreateConnection();
-        var channel = connection.CreateModel();
+        IConnection? connection = null;
+        IModel? channel = null;
+        var finalReadinessReason = "Prevention consumer stopped.";
 
         try
         {
+            connection = factory.CreateConnection();
+            channel = connection.CreateModel();
+
             DeclareTopology(channel, _options);
 
             // Um prefetch baixo limita o backlog invisivel de mensagens por
@@ -73,6 +80,7 @@ public sealed class PreventionWorker(
                 queue: _options.IngestionReadingsQueueName,
                 autoAck: false,
                 consumer: consumer);
+            runtimeState.MarkReady("Prevention consumer is connected to RabbitMQ and consuming.");
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -83,20 +91,28 @@ public sealed class PreventionWorker(
         {
             // Normal host shutdown path.
         }
+        catch (Exception ex)
+        {
+            finalReadinessReason = $"Prevention consumer failed: {ex.GetType().Name}";
+            runtimeState.MarkNotReady(finalReadinessReason);
+            throw;
+        }
         finally
         {
-            if (channel.IsOpen)
+            runtimeState.MarkNotReady(finalReadinessReason);
+
+            if (channel?.IsOpen == true)
             {
                 channel.Close();
             }
 
-            if (connection.IsOpen)
+            if (connection?.IsOpen == true)
             {
                 connection.Close();
             }
 
-            channel.Dispose();
-            connection.Dispose();
+            channel?.Dispose();
+            connection?.Dispose();
         }
     }
 
