@@ -109,3 +109,47 @@ resource "google_storage_bucket_iam_member" "cloud_deploy_source_metadata" {
   role   = "roles/storage.bucketViewer"
   member = "serviceAccount:${var.deploy_service_account_email}"
 }
+
+data "google_storage_bucket" "cloud_deploy_frontend_source" {
+  count = var.create_delivery_pipelines ? 1 : 0
+
+  name = var.cloud_deploy_frontend_source_bucket_name
+}
+
+resource "google_storage_bucket_iam_member" "cloud_deploy_frontend_source_objects" {
+  count = var.create_delivery_pipelines ? 1 : 0
+
+  bucket = data.google_storage_bucket.cloud_deploy_frontend_source[0].name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${var.deploy_service_account_email}"
+}
+
+resource "google_storage_bucket_iam_member" "cloud_deploy_frontend_source_metadata" {
+  count = var.create_delivery_pipelines ? 1 : 0
+
+  bucket = data.google_storage_bucket.cloud_deploy_frontend_source[0].name
+  role   = "roles/storage.bucketViewer"
+  member = "serviceAccount:${var.deploy_service_account_email}"
+}
+
+data "google_storage_bucket" "cloud_deploy_prevention_source" {
+  count = var.create_delivery_pipelines ? 1 : 0
+
+  name = var.cloud_deploy_prevention_source_bucket_name
+}
+
+resource "google_storage_bucket_iam_member" "cloud_deploy_prevention_source_objects" {
+  count = var.create_delivery_pipelines ? 1 : 0
+
+  bucket = data.google_storage_bucket.cloud_deploy_prevention_source[0].name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${var.deploy_service_account_email}"
+}
+
+resource "google_storage_bucket_iam_member" "cloud_deploy_prevention_source_metadata" {
+  count = var.create_delivery_pipelines ? 1 : 0
+
+  bucket = data.google_storage_bucket.cloud_deploy_prevention_source[0].name
+  role   = "roles/storage.bucketViewer"
+  member = "serviceAccount:${var.deploy_service_account_email}"
+}

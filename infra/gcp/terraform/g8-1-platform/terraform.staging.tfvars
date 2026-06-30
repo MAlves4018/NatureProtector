@@ -10,11 +10,13 @@ platform_project_id = "natureprotector-500518"
 staging_project_id  = "natureprotector-500518"
 region              = "europe-southwest1"
 
-artifact_repository_id          = "np-releases"
-terraform_state_bucket_name     = "np-tfstate-migkxl-202606"
-g82_evidence_bucket_name        = "np-g82-evidence-22505444922"
-cloud_build_logs_bucket_name    = "np-cloudbuild-logs-22505444922"
-cloud_deploy_source_bucket_name = "d09bb0b9ead342f0a6b38ecd9db4c11a_clouddeploy"
+artifact_repository_id                     = "np-releases"
+terraform_state_bucket_name                = "np-tfstate-migkxl-202606"
+g82_evidence_bucket_name                   = "np-g82-evidence-22505444922"
+cloud_build_logs_bucket_name               = "np-cloudbuild-logs-22505444922"
+cloud_deploy_source_bucket_name            = "d09bb0b9ead342f0a6b38ecd9db4c11a_clouddeploy"
+cloud_deploy_frontend_source_bucket_name   = "0055c8c327b743efbfa1809f2a4363ef_clouddeploy"
+cloud_deploy_prevention_source_bucket_name = "c31effabdcbc4c0895cf09390ae59db0_clouddeploy"
 
 staging_cluster_name = "np-staging"
 
