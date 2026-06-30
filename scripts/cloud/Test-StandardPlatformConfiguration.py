@@ -128,8 +128,11 @@ for required in [
     'data "google_artifact_registry_repository" "images"',
     'resource "google_storage_bucket" "g82_evidence"',
     'data "google_storage_bucket" "cloud_build_logs"',
+    'data "google_storage_bucket" "cloud_deploy_source"',
     "cloud_build_logs_bucket_name",
+    "cloud_deploy_source_bucket_name",
     '"np-cloudbuild-logs-22505444922"',
+    '"d09bb0b9ead342f0a6b38ecd9db4c11a_clouddeploy"',
     '"roles/storage.objectAdmin"',
     '"roles/storage.bucketViewer"',
     "retention_period = 31536000",
@@ -177,33 +180,29 @@ check(
     "platform-authorization-must-not-be-committed",
 )
 
-for required in [
-    'platform_project_id = "natureprotector-500518"',
-    'staging_project_id  = "natureprotector-500518"',
-    'artifact_repository_id       = "np-releases"',
-    (
-        'terraform_state_bucket_name  = '
-        '"np-tfstate-migkxl-202606"'
-    ),
-    (
-        'g82_evidence_bucket_name     = '
-        '"np-g82-evidence-22505444922"'
-    ),
-    (
-        'cloud_build_logs_bucket_name = '
-        '"np-cloudbuild-logs-22505444922"'
-    ),
-    (
-        'deploy_service_account_email = '
-        '"np-cd-deploy@natureprotector-500518.'
-        'iam.gserviceaccount.com"'
-    ),
-    "create_delivery_control_plane = true",
-    "create_delivery_pipelines     = true",
+for key, value in {
+    "platform_project_id": "natureprotector-500518",
+    "staging_project_id": "natureprotector-500518",
+    "artifact_repository_id": "np-releases",
+    "terraform_state_bucket_name": "np-tfstate-migkxl-202606",
+    "g82_evidence_bucket_name": "np-g82-evidence-22505444922",
+    "cloud_build_logs_bucket_name": "np-cloudbuild-logs-22505444922",
+    "cloud_deploy_source_bucket_name": "d09bb0b9ead342f0a6b38ecd9db4c11a_clouddeploy",
+    "deploy_service_account_email": "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com",
+}.items():
+    check(
+        re.search(rf"(?m)^\s*{key}\s*=\s*\"{re.escape(value)}\"\s*$", tfvars_text)
+        is not None,
+        f"missing-platform-tfvars-assignment:{key}",
+    )
+
+for key in [
+    "create_delivery_control_plane",
+    "create_delivery_pipelines",
 ]:
     check(
-        required in tfvars_text,
-        f"missing-platform-tfvars-token:{required}",
+        re.search(rf"(?m)^\s*{key}\s*=\s*true\s*$", tfvars_text) is not None,
+        f"missing-platform-tfvars-bool:{key}",
     )
 
 
