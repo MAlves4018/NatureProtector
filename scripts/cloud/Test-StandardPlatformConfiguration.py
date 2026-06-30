@@ -120,6 +120,9 @@ for required in [
     '"roles/clouddeploy.jobRunner"',
     '"roles/clouddeploy.admin"',
     '"deploy_pipeline_roles"',
+    'resource "google_project_iam_custom_role" "cloud_deploy_source_bucket_lister"',
+    '"storage.buckets.list"',
+    'resource "google_project_iam_member" "cloud_deploy_source_bucket_lister"',
     '"roles/cloudbuild.workerPoolOwner"',
     '"roles/serviceusage.serviceUsageAdmin"',
     '"roles/resourcemanager.projectIamAdmin"',
@@ -143,6 +146,11 @@ for required in [
         required in terraform_text,
         f"missing-platform-token:{required}",
     )
+
+check(
+    '"roles/storage.admin"' not in terraform_text,
+    "platform-must-not-use-project-wide-storage-admin",
+)
 
 for required_service in [
     "artifactregistry.googleapis.com",
