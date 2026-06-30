@@ -121,6 +121,7 @@ for required in [
     '"roles/clouddeploy.admin"',
     '"deploy_pipeline_roles"',
     'resource "google_project_iam_custom_role" "cloud_deploy_source_bucket_lister"',
+    '"storage.buckets.get"',
     '"storage.buckets.list"',
     'resource "google_project_iam_member" "cloud_deploy_source_bucket_lister"',
     '"roles/cloudbuild.workerPoolOwner"',
@@ -161,6 +162,33 @@ check(
     '"roles/storage.admin"' not in terraform_text,
     "platform-must-not-use-project-wide-storage-admin",
 )
+
+custom_role_match = re.search(
+    r'resource\s+"google_project_iam_custom_role"\s+"cloud_deploy_source_bucket_lister"\s*\{(?P<body>.*?)\n\}',
+    terraform_text,
+    re.DOTALL,
+)
+check(custom_role_match is not None, "cloud-deploy-source-bucket-lister-role-missing")
+custom_role_body = custom_role_match.group("body") if custom_role_match else ""
+
+for required_permission in [
+    '"storage.buckets.get"',
+    '"storage.buckets.list"',
+]:
+    check(
+        required_permission in custom_role_body,
+        f"cloud-deploy-source-bucket-lister-missing:{required_permission}",
+    )
+
+for forbidden_permission in [
+    '"storage.admin"',
+    '"storage.buckets.delete"',
+    '"storage.objects.delete"',
+]:
+    check(
+        forbidden_permission not in custom_role_body,
+        f"cloud-deploy-source-bucket-lister-forbidden:{forbidden_permission}",
+    )
 
 for required_service in [
     "artifactregistry.googleapis.com",

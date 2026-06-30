@@ -366,6 +366,7 @@ semantic_checks = {
     "platform-cloud-deploy-bucket-metadata-iam": (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf", 'google_storage_bucket_iam_member" "cloud_deploy_source_metadata"'),
     "platform-cloud-deploy-frontend-bucket-metadata-iam": (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf", 'google_storage_bucket_iam_member" "cloud_deploy_frontend_source_metadata"'),
     "platform-cloud-deploy-prevention-bucket-metadata-iam": (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf", 'google_storage_bucket_iam_member" "cloud_deploy_prevention_source_metadata"'),
+    "platform-cloud-deploy-bucket-get-custom-role": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", '"storage.buckets.get"'),
     "platform-cloud-deploy-bucket-list-custom-role": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", '"storage.buckets.list"'),
     "platform-is-single-project-staging-only": (ROOT / "infra/gcp/terraform/g8-1-platform/outputs.tf", 'value = "single-project-staging-only"'),
     "edge-requires-domain": (ROOT / "infra/gcp/terraform/g8-1-environment/variables.tf", "At least one managed certificate domain is required"),
@@ -414,6 +415,16 @@ check("$spec.Images" not in staging_script and "$spec.Pipeline" not in staging_s
 check("CLOUD_RUN_SERVICE_URL'" not in scope_text and "CLOUD_RUN_SERVICE_URL/" not in scope_text, "semantic:singular-cloud-run-url-variable-is-invalid")
 ca_validator = (ROOT / "src/NatureProtector.Shared/Configuration/PrivateCertificateAuthorityValidator.cs").read_text(encoding="utf-8")
 check("policyErrors == SslPolicyErrors.None" not in ca_validator, "semantic:private-ca-must-not-fallback-to-system-trust")
+platform_identity = (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf").read_text(encoding="utf-8")
+role_match = re.search(
+    r'resource\s+"google_project_iam_custom_role"\s+"cloud_deploy_source_bucket_lister"\s*\{(?P<body>.*?)\n\}',
+    platform_identity,
+    re.DOTALL,
+)
+check(role_match is not None, "semantic:cloud-deploy-source-bucket-lister-role-present")
+role_body = role_match.group("body") if role_match else ""
+for forbidden_permission in ['"storage.admin"', '"storage.buckets.delete"', '"storage.objects.delete"']:
+    check(forbidden_permission not in role_body, f"semantic:cloud-deploy-source-bucket-lister-forbids:{forbidden_permission}")
 
 build_release_static = subprocess.run(
     [sys.executable, str(ROOT / "scripts/cloud/Test-BuildG81ReleaseStatic.py")],
