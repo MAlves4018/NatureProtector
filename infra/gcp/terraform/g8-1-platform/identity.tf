@@ -69,7 +69,10 @@ resource "google_project_iam_custom_role" "cloud_deploy_source_bucket_lister" {
   role_id     = "npCloudDeploySourceBucketLister"
   title       = "NatureProtector Cloud Deploy source bucket lister"
   description = "Allows the workflow deployer to satisfy Cloud Deploy release source bucket discovery without project-wide Storage Admin."
-  permissions = ["storage.buckets.list"]
+  permissions = [
+    "storage.buckets.get",
+    "storage.buckets.list",
+  ]
 }
 
 resource "google_project_iam_member" "cloud_deploy_source_bucket_lister" {
