@@ -150,6 +150,8 @@ jobs:
           exit 1
 
       - name: Run Docker integration tests
+        env:
+          NP_TEST_RABBITMQ_CONTAINER: np-rabbitmq-it
         run: dotnet test ./tests/NatureProtector.IntegrationTests/NatureProtector.IntegrationTests.csproj -c Release --no-restore --nologo -v minimal --filter "Category=DockerIntegration" --logger "trx;LogFilePrefix=docker-integration" --results-directory ./TestResults
 
       - name: Upload Docker integration artifacts
