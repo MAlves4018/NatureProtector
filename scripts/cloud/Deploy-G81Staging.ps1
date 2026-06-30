@@ -228,38 +228,42 @@ $releaseSpecs = @(
 
 $rolloutSummary = @()
 foreach ($spec in $releaseSpecs) {
+    $pipeline = [string]$spec["Pipeline"]
+    $target = [string]$spec["Target"]
+    $skaffold = [string]$spec["Skaffold"]
+    $imagesArg = [string]$spec["Images"]
     $existing = Invoke-GcloudJson -Arguments @(
         "deploy", "releases", "describe", $ReleaseName,
         "--project=$PlatformProjectId", "--region=$Region",
-        "--delivery-pipeline=$($spec.Pipeline)", "--format=json"
+        "--delivery-pipeline=$pipeline", "--format=json"
     ) -AllowFailure
 
     if ($existing.exit_code -eq 0) {
         $release = $existing.output | ConvertFrom-Json
         if ([string]$release.annotations.sourceCommit -ne [string]$manifest.source_commit -or
             [string]$release.annotations.buildRunId -ne [string]$manifest.build_run_id) {
-            throw "Existing Cloud Deploy release $ReleaseName for $($spec.Pipeline) is bound to different source evidence."
+            throw "Existing Cloud Deploy release $ReleaseName for $pipeline is bound to different source evidence."
         }
     } else {
         & gcloud deploy releases create $ReleaseName `
             --project=$PlatformProjectId --region=$Region `
-            --delivery-pipeline=$spec.Pipeline `
-            --source=$sourceRoot --skaffold-file=$spec.Skaffold `
-            --images=$spec.Images --enable-initial-rollout `
+            --delivery-pipeline=$pipeline `
+            --source=$sourceRoot --skaffold-file=$skaffold `
+            --images=$imagesArg --enable-initial-rollout `
             --annotations="sourceCommit=$($manifest.source_commit),buildRunId=$($manifest.build_run_id),environment=staging" `
             --quiet
-        if ($LASTEXITCODE -ne 0) { throw "Cloud Deploy release failed: $($spec.Pipeline)" }
+        if ($LASTEXITCODE -ne 0) { throw "Cloud Deploy release failed: $pipeline" }
     }
 
     Invoke-GcloudJson -Arguments @(
         "deploy", "releases", "describe", $ReleaseName,
         "--project=$PlatformProjectId", "--region=$Region",
-        "--delivery-pipeline=$($spec.Pipeline)", "--format=json"
-    ) -OutputPath (Join-Path $EvidenceDirectory "$($spec.Pipeline)-release.json") | Out-Null
+        "--delivery-pipeline=$pipeline", "--format=json"
+    ) -OutputPath (Join-Path $EvidenceDirectory "$pipeline-release.json") | Out-Null
 
-    $rolloutEvidence = Join-Path $EvidenceDirectory "$($spec.Pipeline)-staging-rollout.json"
-    $rolloutName = Wait-CloudDeployRollout -Pipeline $spec.Pipeline -Target $spec.Target -OutputPath $rolloutEvidence
-    $rolloutSummary += [ordered]@{ pipeline = $spec.Pipeline; target = $spec.Target; rollout = $rolloutName; state = "SUCCEEDED" }
+    $rolloutEvidence = Join-Path $EvidenceDirectory "$pipeline-staging-rollout.json"
+    $rolloutName = Wait-CloudDeployRollout -Pipeline $pipeline -Target $target -OutputPath $rolloutEvidence
+    $rolloutSummary += [ordered]@{ pipeline = $pipeline; target = $target; rollout = $rolloutName; state = "SUCCEEDED" }
 }
 
 $functionalSmokePassed = $false

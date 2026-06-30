@@ -384,10 +384,20 @@ if autopilot_deploy.is_file():
 if standard_deploy.is_file():
     standard_deploy_text = standard_deploy.read_text(encoding="utf-8")
     check(
+        '$pipeline = [string]$spec["Pipeline"]' in standard_deploy_text
+        and '$target = [string]$spec["Target"]' in standard_deploy_text
+        and '$skaffold = [string]$spec["Skaffold"]' in standard_deploy_text
+        and '$imagesArg = [string]$spec["Images"]' in standard_deploy_text
+        and "--delivery-pipeline=$spec.Pipeline" not in standard_deploy_text
+        and "--skaffold-file=$spec.Skaffold" not in standard_deploy_text
+        and "--images=$spec.Images" not in standard_deploy_text,
+        "standard-deploy-cloud-deploy-native-argument-property-expansion-unsafe",
+    )
+    check(
         'Join-Path $EvidenceDirectory "cloud-deploy-source"' in standard_deploy_text
         and "RabbitmqCluster.spec.image is a CRD field" in standard_deploy_text
         and 'Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference)' in standard_deploy_text
-        and "--images=$spec.Images" in standard_deploy_text,
+        and "--images=$imagesArg" in standard_deploy_text,
         "standard-deploy-must-render-rabbitmq-crd-image-from-signed-manifest",
     )
 
