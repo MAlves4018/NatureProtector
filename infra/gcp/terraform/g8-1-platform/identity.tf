@@ -62,6 +62,24 @@ resource "google_project_iam_member" "deploy_pipeline_roles" {
   ]
 }
 
+resource "google_project_iam_custom_role" "cloud_deploy_source_bucket_lister" {
+  count = var.create_delivery_pipelines ? 1 : 0
+
+  project     = var.platform_project_id
+  role_id     = "npCloudDeploySourceBucketLister"
+  title       = "NatureProtector Cloud Deploy source bucket lister"
+  description = "Allows the workflow deployer to satisfy Cloud Deploy release source bucket discovery without project-wide Storage Admin."
+  permissions = ["storage.buckets.list"]
+}
+
+resource "google_project_iam_member" "cloud_deploy_source_bucket_lister" {
+  count = var.create_delivery_pipelines ? 1 : 0
+
+  project = var.platform_project_id
+  role    = google_project_iam_custom_role.cloud_deploy_source_bucket_lister[0].id
+  member  = "serviceAccount:${var.deploy_service_account_email}"
+}
+
 resource "google_service_account" "cloud_deploy_execution" {
   count = var.create_delivery_control_plane ? 1 : 0
 
