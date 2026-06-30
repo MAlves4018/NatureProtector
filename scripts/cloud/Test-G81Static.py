@@ -400,6 +400,7 @@ check('Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference)' 
 credentials_index = staging_script.find("gcloud container clusters get-credentials")
 operator_ready_index = staging_script.find("Test-OperatorFoundationReady -OutputDirectory")
 check(credentials_index >= 0 and operator_ready_index >= 0 and credentials_index < operator_ready_index, "semantic:staging-operator-readiness-requires-kubecontext-first")
+check("$spec.Images" not in staging_script and "$spec.Pipeline" not in staging_script and "$spec.Skaffold" not in staging_script, "semantic:cloud-deploy-release-specs-use-explicit-indexers")
 check("CLOUD_RUN_SERVICE_URL'" not in scope_text and "CLOUD_RUN_SERVICE_URL/" not in scope_text, "semantic:singular-cloud-run-url-variable-is-invalid")
 ca_validator = (ROOT / "src/NatureProtector.Shared/Configuration/PrivateCertificateAuthorityValidator.cs").read_text(encoding="utf-8")
 check("policyErrors == SslPolicyErrors.None" not in ca_validator, "semantic:private-ca-must-not-fallback-to-system-trust")
