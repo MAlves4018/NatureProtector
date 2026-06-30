@@ -22,6 +22,8 @@ spec:
       ports: [{protocol: TCP, port: 4317}]
     - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
       ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to: [{ipBlock: {cidr: 169.254.20.10/32}}]
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
     - to:
         - ipBlock:
             cidr: 10.255.255.255/32 # from-param: ${cloud_sql_private_cidr}
@@ -51,6 +53,8 @@ spec:
       ports: [{protocol: TCP, port: 4369}, {protocol: TCP, port: 25672}]
     - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
       ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to: [{ipBlock: {cidr: 169.254.20.10/32}}]
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -69,6 +73,8 @@ spec:
       ports: [{protocol: TCP, port: 4317}, {protocol: TCP, port: 4318}]
   egress:
     - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to: [{ipBlock: {cidr: 169.254.20.10/32}}]
       ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
     - to: [{ipBlock: {cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]}}]
       ports: [{protocol: TCP, port: 443}]

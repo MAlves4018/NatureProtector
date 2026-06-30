@@ -38,10 +38,10 @@ public sealed class DockerPublishedRuntimeProcessTests
         var seeded = await SeedProcessSmokeControlPlaneAsync(database);
         var postgresSettings = DockerIntegrationSettings.CreatePostgresSettings(database.DatabaseName);
         var apiPort = GetFreeTcpPort();
+        var preventionPort = GetFreeTcpPort();
         var environment = CreateRuntimeEnvironment(
             postgresSettings,
             rabbitMqOptions,
-            apiPort,
             seeded.AreaId);
 
         var apiPublishDir = Path.Combine(runRoot, "api");
@@ -74,7 +74,7 @@ public sealed class DockerPublishedRuntimeProcessTests
                 "Backoffice API",
                 apiPublishDir,
                 "NatureProtector.Backoffice.Api.dll",
-                environment,
+                WithAspNetCoreUrl(environment, apiPort),
                 Path.Combine(runRoot, "api"));
             var apiBaseUrl = $"http://127.0.0.1:{apiPort}";
             await WaitForHttpSuccessAsync(apiBaseUrl + "/health", apiProcess, TimeSpan.FromSeconds(60));
@@ -88,7 +88,7 @@ public sealed class DockerPublishedRuntimeProcessTests
                 "Prevention Host",
                 preventionPublishDir,
                 "NatureProtector.Prevention.Host.dll",
-                environment,
+                WithAspNetCoreUrl(environment, preventionPort),
                 Path.Combine(runRoot, "prevention"));
             await WaitForConsumerAsync(
                 virtualHost.CreateConnectionFactory(),
@@ -185,14 +185,12 @@ public sealed class DockerPublishedRuntimeProcessTests
     private static IReadOnlyDictionary<string, string> CreateRuntimeEnvironment(
         NatureProtector.Infrastructure.Postgres.Configuration.PostgresControlPlaneConnectionSettings postgres,
         NatureProtector.Shared.Configuration.RabbitMqOptions rabbitMq,
-        int apiPort,
         Guid areaId)
     {
         return new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["DOTNET_ENVIRONMENT"] = "Development",
             ["ASPNETCORE_ENVIRONMENT"] = "Development",
-            ["ASPNETCORE_URLS"] = $"http://127.0.0.1:{apiPort}",
             ["POSTGRES_HOST"] = postgres.Host,
             ["POSTGRES_PORT"] = postgres.Port.ToString(),
             ["POSTGRES_DB"] = postgres.Database,
@@ -224,6 +222,17 @@ public sealed class DockerPublishedRuntimeProcessTests
             ["Simulator__RunOverrides__DegradationProfile"] = "none",
             ["Simulator__RunOverrides__OrchestratorCorrelationId"] = $"process-smoke-{Guid.NewGuid():N}"
         };
+    }
+
+    private static IReadOnlyDictionary<string, string> WithAspNetCoreUrl(
+        IReadOnlyDictionary<string, string> environment,
+        int port)
+    {
+        var copy = new Dictionary<string, string>(environment, StringComparer.Ordinal)
+        {
+            ["ASPNETCORE_URLS"] = $"http://127.0.0.1:{port}"
+        };
+        return copy;
     }
 
     private static async Task WaitForConsumerAsync(ConnectionFactory factory, string queueName)

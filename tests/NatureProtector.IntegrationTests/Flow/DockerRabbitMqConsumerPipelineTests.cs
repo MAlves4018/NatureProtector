@@ -14,6 +14,7 @@ using NatureProtector.Prevention.Host.Configuration;
 using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Processing;
 using NatureProtector.Prevention.Host.Projection;
+using NatureProtector.Prevention.Host.Runtime;
 using NatureProtector.Prevention.Risk;
 using NatureProtector.Simulator.Host.Publishing;
 using NatureProtector.Shared.Configuration;
@@ -76,7 +77,8 @@ public sealed class DockerRabbitMqConsumerPipelineTests
             Options.Create(rabbitMqOptions),
             preventionOptions,
             inbox,
-            processingService);
+            processingService,
+            new PreventionRuntimeState());
         using var publisher = new RabbitMqReadingPublisher(
             NullLogger<RabbitMqReadingPublisher>.Instance,
             Options.Create(rabbitMqOptions));
@@ -1359,7 +1361,8 @@ public sealed class DockerRabbitMqConsumerPipelineTests
                 Options.Create(rabbitMqOptions),
                 preventionOptionsAccessor,
                 inbox,
-                processingService);
+                processingService,
+                new PreventionRuntimeState());
             var publisher = new RabbitMqReadingPublisher(
                 NullLogger<RabbitMqReadingPublisher>.Instance,
                 Options.Create(rabbitMqOptions));
@@ -1417,7 +1420,8 @@ public sealed class DockerRabbitMqConsumerPipelineTests
                 Options.Create(RabbitMqOptions),
                 Options.Create(PreventionOptions),
                 inbox ?? Inbox,
-                ProcessingService);
+                ProcessingService,
+                new PreventionRuntimeState());
         }
 
         public InboxRetryWorker CreateRetryWorker()

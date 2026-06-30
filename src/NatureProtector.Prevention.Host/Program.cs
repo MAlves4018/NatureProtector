@@ -1,11 +1,15 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using NatureProtector.Infrastructure.Influx.DependencyInjection;
 using NatureProtector.Infrastructure.Postgres.DependencyInjection;
 using NatureProtector.Prevention.Host;
 using NatureProtector.Prevention.Host.Configuration;
+using NatureProtector.Prevention.Host.Health;
 using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Processing;
 using NatureProtector.Prevention.Host.Projection;
+using NatureProtector.Prevention.Host.Runtime;
 using NatureProtector.Prevention.Persistence;
 using NatureProtector.Prevention.Risk;
 using NatureProtector.Shared.Configuration;
@@ -27,7 +31,7 @@ using NatureProtector.Shared.Observability;
  * - A escrita em Influx é registada independentemente do modo de inbox.
  */
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddNatureProtectorActivityTracking();
 builder.Services.AddNatureProtectorOpenTelemetry(
     builder.Configuration,
@@ -47,6 +51,9 @@ builder.Services.Configure<RabbitMqOptions>(
     builder.Configuration.GetSection(RabbitMqOptions.SectionName));
 
 builder.Services.AddInfluxPersistence(builder.Configuration, builder.Environment.ContentRootPath);
+builder.Services.AddSingleton<PreventionRuntimeState>();
+builder.Services.AddHealthChecks()
+    .AddCheck<PreventionReadinessHealthCheck>("prevention-ready");
 
 var preventionHostOptions = builder.Configuration
     .GetSection(PreventionHostOptions.SectionName)
@@ -102,5 +109,10 @@ builder.Services.AddSingleton<ReadingEventProcessingService>();
 
 builder.Services.AddHostedService<PreventionWorker>();
 
-var host = builder.Build();
-host.Run();
+var app = builder.Build();
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false
+});
+app.MapHealthChecks("/health/ready");
+app.Run();
