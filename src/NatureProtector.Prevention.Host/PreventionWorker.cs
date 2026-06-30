@@ -11,6 +11,8 @@ using RabbitMQ.Client.Events;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Text;
+using RabbitMQ.Client.Exceptions;
+using System.Net.Sockets;
 
 namespace NatureProtector.Prevention.Host;
 
@@ -41,6 +43,9 @@ public sealed class PreventionWorker(
 {
     private const string SupportedSchemaVersion = "1.0";
 
+    private static readonly TimeSpan ConnectionMonitorInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan InitialReconnectDelay = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan MaximumReconnectDelay = TimeSpan.FromSeconds(30);
     private readonly RabbitMqOptions _options = rabbitMqOptions.Value;
     private readonly PreventionHostOptions _preventionHostOptions = preventionHostOptions.Value;
 
@@ -49,72 +54,198 @@ public sealed class PreventionWorker(
     /// </summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("Prevention worker started at: {Time}", DateTimeOffset.Now);
+        logger.LogInformation(
+            "Prevention worker started at: {Time}",
+            DateTimeOffset.Now);
+
         runtimeState.MarkNotReady("Prevention consumer is starting.");
 
+        // A validação de configuração continua a falhar cedo. A ligação ao broker,
+        // contudo, é feita depois de o BackgroundService devolver controlo ao host,
+        // permitindo que /health/live fique disponível mesmo durante uma falha
+        // transitória do RabbitMQ.
         var factory = CreateConnectionFactory(_options);
 
-        IConnection? connection = null;
-        IModel? channel = null;
-        var finalReadinessReason = "Prevention consumer stopped.";
+        await Task.Yield();
 
+        var reconnectDelay = InitialReconnectDelay;
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            IConnection? connection = null;
+            IModel? channel = null;
+
+            try
+            {
+                runtimeState.MarkNotReady(
+                    "Prevention consumer is connecting to RabbitMQ.");
+
+                connection = factory.CreateConnection();
+                channel = connection.CreateModel();
+
+                DeclareTopology(channel, _options);
+
+                channel.BasicQos(
+                    prefetchSize: 0,
+                    prefetchCount: _preventionHostOptions.ConsumerPrefetchCount,
+                    global: false);
+
+                var consumer = new AsyncEventingBasicConsumer(channel);
+
+                consumer.Received += (_, ea) =>
+                    HandleReceivedAsync(channel, ea, stoppingToken);
+
+                channel.BasicConsume(
+                    queue: _options.IngestionReadingsQueueName,
+                    autoAck: false,
+                    consumer: consumer);
+
+                runtimeState.MarkReady(
+                    "Prevention consumer is connected to RabbitMQ and consuming.");
+
+                logger.LogInformation(
+                    "Prevention consumer connected to RabbitMQ host {Host}:{Port}.",
+                    _options.HostName,
+                    _options.Port);
+
+                reconnectDelay = InitialReconnectDelay;
+
+                while (!stoppingToken.IsCancellationRequested &&
+                       connection.IsOpen &&
+                       channel.IsOpen)
+                {
+                    await Task.Delay(
+                        ConnectionMonitorInterval,
+                        stoppingToken);
+                }
+
+                if (!stoppingToken.IsCancellationRequested)
+                {
+                    runtimeState.MarkNotReady(
+                        "RabbitMQ connection or channel closed. Reconnection is pending.");
+
+                    logger.LogWarning(
+                        "RabbitMQ connection or channel closed. " +
+                        "The Prevention worker will reconnect.");
+                }
+            }
+            catch (OperationCanceledException)
+                when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+                when (IsTransientRabbitMqConnectionFailure(ex))
+            {
+                var reason =
+                    $"RabbitMQ is temporarily unavailable. " +
+                    $"Retrying in {reconnectDelay.TotalSeconds:0} seconds.";
+
+                runtimeState.MarkNotReady(reason);
+
+                logger.LogWarning(
+                    ex,
+                    "RabbitMQ is temporarily unavailable. " +
+                    "The Prevention host remains alive and will retry in " +
+                    "{ReconnectDelaySeconds} seconds.",
+                    reconnectDelay.TotalSeconds);
+            }
+            catch (Exception ex)
+            {
+                runtimeState.MarkNotReady(
+                    $"Prevention consumer failed permanently: {ex.GetType().Name}");
+
+                logger.LogCritical(
+                    ex,
+                    "Prevention consumer encountered a non-transient failure.");
+
+                throw;
+            }
+            finally
+            {
+                DisposeRabbitMqResources(channel, connection);
+            }
+
+            if (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            try
+            {
+                await Task.Delay(reconnectDelay, stoppingToken);
+            }
+            catch (OperationCanceledException)
+                when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            reconnectDelay = TimeSpan.FromSeconds(
+                Math.Min(
+                    reconnectDelay.TotalSeconds * 2,
+                    MaximumReconnectDelay.TotalSeconds));
+        }
+
+        runtimeState.MarkNotReady("Prevention consumer stopped.");
+    }
+
+internal static bool IsTransientRabbitMqConnectionFailure(Exception exception)
+{
+    if (exception is ConnectFailureException or
+        EndOfStreamException or
+        IOException or
+        TimeoutException or
+        SocketException)
+    {
+        return true;
+    }
+
+    if (exception is AggregateException aggregateException)
+    {
+        return aggregateException.InnerExceptions.Any(
+            IsTransientRabbitMqConnectionFailure);
+    }
+
+    if (exception is BrokerUnreachableException brokerException)
+    {
+        return brokerException.InnerException is null ||
+               IsTransientRabbitMqConnectionFailure(
+                   brokerException.InnerException);
+    }
+
+    return exception.InnerException is not null &&
+           IsTransientRabbitMqConnectionFailure(
+               exception.InnerException);
+}
+
+    private void DisposeRabbitMqResources(
+        IModel? channel,
+        IConnection? connection)
+    {
         try
         {
-            connection = factory.CreateConnection();
-            channel = connection.CreateModel();
-
-            DeclareTopology(channel, _options);
-
-            // Um prefetch baixo limita o backlog invisivel de mensagens por
-            // materializar quando o inbox ou a base de dados abrandam.
-            channel.BasicQos(
-                prefetchSize: 0,
-                prefetchCount: _preventionHostOptions.ConsumerPrefetchCount,
-                global: false);
-
-            var consumer = new AsyncEventingBasicConsumer(channel);
-
-            consumer.Received += (_, ea) => HandleReceivedAsync(channel, ea, stoppingToken);
-
-            channel.BasicConsume(
-                queue: _options.IngestionReadingsQueueName,
-                autoAck: false,
-                consumer: consumer);
-            runtimeState.MarkReady("Prevention consumer is connected to RabbitMQ and consuming.");
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
-            }
-        }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-        {
-            // Normal host shutdown path.
+            channel?.Dispose();
         }
         catch (Exception ex)
         {
-            finalReadinessReason = $"Prevention consumer failed: {ex.GetType().Name}";
-            runtimeState.MarkNotReady(finalReadinessReason);
-            throw;
+            logger.LogDebug(
+                ex,
+                "RabbitMQ channel cleanup failed during reconnection.");
         }
-        finally
+
+        try
         {
-            runtimeState.MarkNotReady(finalReadinessReason);
-
-            if (channel?.IsOpen == true)
-            {
-                channel.Close();
-            }
-
-            if (connection?.IsOpen == true)
-            {
-                connection.Close();
-            }
-
-            channel?.Dispose();
             connection?.Dispose();
         }
+        catch (Exception ex)
+        {
+            logger.LogDebug(
+                ex,
+                "RabbitMQ connection cleanup failed during reconnection.");
+        }
     }
+
 
     /// <summary>
     /// Declara a topologia mínima exigida pelo fluxo de prevenção.
@@ -172,7 +303,8 @@ public sealed class PreventionWorker(
             UserName = options.UserName,
             Password = options.Password,
             VirtualHost = options.VirtualHost,
-            DispatchConsumersAsync = true
+            DispatchConsumersAsync = true,
+            AutomaticRecoveryEnabled = false
         };
 
         if (options.TlsEnabled)

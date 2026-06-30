@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -81,6 +82,63 @@ public sealed class PreventionWorkerTests
         Assert.DoesNotContain(recorder.Invocations, x => x.MethodName == "BasicNack");
         Assert.Single(inbox.Rejections);
         Assert.Equal("null_envelope", inbox.Rejections.Single().RejectionCode);
+    }
+
+    [Fact]
+    public void CreateConnectionFactory_DisablesClientAutomaticRecovery()
+    {
+        var options = new RabbitMqOptions
+        {
+            HostName = "rabbitmq",
+            Port = 5672,
+            UserName = "np_app",
+            Password = "not-a-real-secret"
+        };
+
+        var factory = PreventionWorker.CreateConnectionFactory(options);
+
+        Assert.False(factory.AutomaticRecoveryEnabled);
+    }
+
+    [Fact]
+    public void IsTransientRabbitMqConnectionFailure_RecognizesTimeout()
+    {
+        var result = PreventionWorker.IsTransientRabbitMqConnectionFailure(
+            new TimeoutException("RabbitMQ startup timeout."));
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsTransientRabbitMqConnectionFailure_RecognizesRabbitMqStartupEndOfStream()
+    {
+        var result = PreventionWorker.IsTransientRabbitMqConnectionFailure(
+            new RabbitMQ.Client.Exceptions.BrokerUnreachableException(
+                new IOException(
+                    "connection.start was never received, likely due to a network timeout",
+                    new EndOfStreamException("Reached the end of the stream."))));
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsTransientRabbitMqConnectionFailure_RecognizesAggregateSocketFailure()
+    {
+        var result = PreventionWorker.IsTransientRabbitMqConnectionFailure(
+            new RabbitMQ.Client.Exceptions.BrokerUnreachableException(
+                new AggregateException(
+                    new SocketException((int)SocketError.ConnectionRefused))));
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsTransientRabbitMqConnectionFailure_RejectsConfigurationFailure()
+    {
+        var result = PreventionWorker.IsTransientRabbitMqConnectionFailure(
+            new InvalidOperationException("Invalid RabbitMQ configuration."));
+
+        Assert.False(result);
     }
 
     [Fact]
