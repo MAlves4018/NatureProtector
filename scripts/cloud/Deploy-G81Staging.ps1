@@ -95,6 +95,22 @@ function Wait-CloudDeployRollout {
     throw "Timed out waiting for staging rollout for $Pipeline. Last rollout: $rolloutName"
 }
 
+function Get-CloudDeployRolloutId {
+    param(
+        [Parameter(Mandatory)][string]$Target,
+        [Parameter(Mandatory)][string]$SourceCommit
+    )
+
+    if ($SourceCommit -notmatch '^[0-9a-f]{40}$') { throw "Invalid source commit for rollout id." }
+    $targetId = $Target.ToLowerInvariant() -replace '[^a-z0-9-]', '-'
+    $targetId = $targetId.Trim('-')
+    if (-not $targetId) { throw "Invalid target for rollout id." }
+
+    $rolloutId = "r-$($SourceCommit.Substring(0, 12))-$targetId"
+    if ($rolloutId -notmatch '^[a-z][a-z0-9-]{0,62}$') { throw "Invalid generated Cloud Deploy rollout id." }
+    return $rolloutId
+}
+
 function Test-OperatorFoundationReady {
     param([Parameter(Mandatory)][string]$OutputDirectory)
 
@@ -249,7 +265,7 @@ foreach ($spec in $releaseSpecs) {
             --project=$PlatformProjectId --region=$Region `
             --delivery-pipeline=$pipeline `
             --source=$sourceRoot --skaffold-file=$skaffold `
-            --images=$imagesArg --enable-initial-rollout `
+            --images=$imagesArg --disable-initial-rollout `
             --annotations="sourceCommit=$($manifest.source_commit),buildRunId=$($manifest.build_run_id),environment=staging" `
             --quiet
         if ($LASTEXITCODE -ne 0) { throw "Cloud Deploy release failed: $pipeline" }
@@ -262,6 +278,25 @@ foreach ($spec in $releaseSpecs) {
     ) -OutputPath (Join-Path $EvidenceDirectory "$pipeline-release.json") | Out-Null
 
     $rolloutEvidence = Join-Path $EvidenceDirectory "$pipeline-staging-rollout.json"
+    $existingRollouts = Invoke-GcloudJson -Arguments @(
+        "deploy", "rollouts", "list",
+        "--project=$PlatformProjectId", "--region=$Region",
+        "--delivery-pipeline=$pipeline", "--release=$ReleaseName",
+        "--filter=targetId=$target", "--sort-by=~createTime", "--limit=1", "--format=json"
+    )
+    $existingRolloutItems = @($existingRollouts.output | ConvertFrom-Json)
+    if ($existingRolloutItems.Count -eq 0) {
+        $rolloutId = Get-CloudDeployRolloutId -Target $target -SourceCommit ([string]$manifest.source_commit)
+        & gcloud deploy releases promote `
+            --project=$PlatformProjectId --region=$Region `
+            --delivery-pipeline=$pipeline `
+            --release=$ReleaseName `
+            --to-target=$target `
+            --rollout-id=$rolloutId `
+            --quiet
+        if ($LASTEXITCODE -ne 0) { throw "Cloud Deploy rollout failed: $pipeline" }
+    }
+
     $rolloutName = Wait-CloudDeployRollout -Pipeline $pipeline -Target $target -OutputPath $rolloutEvidence
     $rolloutSummary += [ordered]@{ pipeline = $pipeline; target = $target; rollout = $rolloutName; state = "SUCCEEDED" }
 }
