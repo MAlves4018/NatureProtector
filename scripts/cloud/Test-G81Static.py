@@ -329,6 +329,7 @@ semantic_checks = {
     "staging-bootstrap-is-not-verified": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "$stagingVerified = $false"),
     "production-bootstrap-is-not-verified": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "$productionVerified = $false"),
     "staging-preserves-ready-operators": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "OPERATOR_FOUNDATION_ALREADY_READY"),
+    "staging-ready-operator-check-has-kubecontext": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "--dns-endpoint --quiet"),
     "staging-does-not-force-operator-conflicts": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "preserve-existing-operator-field-managers"),
     "release-waits-for-parallel-gates": (ROOT / ".github/workflows/gcp-g8-1-release.yml", "Waiting for $name on $SOURCE_SHA"),
     "release-gates-default-branch": (ROOT / ".github/workflows/gcp-g8-1-release.yml", ".headBranch==$branch"),
@@ -396,6 +397,9 @@ for name, (path, token) in semantic_checks.items():
 staging_script = (ROOT / "scripts/cloud/Deploy-G81Staging.ps1").read_text(encoding="utf-8")
 check(not re.search(r"\.Replace\(\"(?:API_|FRONTEND_|OTEL_|RUNTIME_|CLOUD_SQL_|POSTGRES_|JWT_|RABBITMQ_(?!IMAGE_BY_DIGEST))", staging_script), "semantic:staging-must-not-bake-target-values")
 check('Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference)' in staging_script, "semantic:rabbitmq-crd-image-must-use-signed-manifest-digest")
+credentials_index = staging_script.find("gcloud container clusters get-credentials")
+operator_ready_index = staging_script.find("Test-OperatorFoundationReady -OutputDirectory")
+check(credentials_index >= 0 and operator_ready_index >= 0 and credentials_index < operator_ready_index, "semantic:staging-operator-readiness-requires-kubecontext-first")
 check("CLOUD_RUN_SERVICE_URL'" not in scope_text and "CLOUD_RUN_SERVICE_URL/" not in scope_text, "semantic:singular-cloud-run-url-variable-is-invalid")
 ca_validator = (ROOT / "src/NatureProtector.Shared/Configuration/PrivateCertificateAuthorityValidator.cs").read_text(encoding="utf-8")
 check("policyErrors == SslPolicyErrors.None" not in ca_validator, "semantic:private-ca-must-not-fallback-to-system-trust")
