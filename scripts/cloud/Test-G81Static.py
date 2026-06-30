@@ -357,6 +357,8 @@ semantic_checks = {
     "platform-staging-execution-identity": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", 'account_id   = "np-deploy-staging"'),
     "platform-reuses-existing-deploy-identity": (ROOT / "infra/gcp/terraform/g8-1-platform/variables.tf", "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"),
     "platform-reuses-existing-artifact-repository": (ROOT / "infra/gcp/terraform/g8-1-platform/artifact_registry.tf", 'data "google_artifact_registry_repository" "images"'),
+    "platform-reuses-existing-cloud-deploy-bucket": (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf", 'data "google_storage_bucket" "cloud_deploy_source"'),
+    "platform-cloud-deploy-bucket-metadata-iam": (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf", 'google_storage_bucket_iam_member" "cloud_deploy_source_metadata"'),
     "platform-is-single-project-staging-only": (ROOT / "infra/gcp/terraform/g8-1-platform/outputs.tf", 'value = "single-project-staging-only"'),
     "edge-requires-domain": (ROOT / "infra/gcp/terraform/g8-1-environment/variables.tf", "At least one managed certificate domain is required"),
     "production-requires-alert-channel": (ROOT / "infra/gcp/terraform/g8-1-environment/variables.tf", "Production requires at least one Monitoring notification channel"),

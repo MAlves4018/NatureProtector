@@ -84,3 +84,28 @@ resource "google_storage_bucket_iam_member" "cloud_build_logs_metadata" {
   role   = "roles/storage.bucketViewer"
   member = "serviceAccount:${var.deploy_service_account_email}"
 }
+
+# Cloud Deploy stores release source archives in a service-managed bucket.
+# The workflow deployer creates releases, so it needs bucket metadata access
+# plus object write access without project-wide Storage Admin.
+data "google_storage_bucket" "cloud_deploy_source" {
+  count = var.create_delivery_pipelines ? 1 : 0
+
+  name = var.cloud_deploy_source_bucket_name
+}
+
+resource "google_storage_bucket_iam_member" "cloud_deploy_source_objects" {
+  count = var.create_delivery_pipelines ? 1 : 0
+
+  bucket = data.google_storage_bucket.cloud_deploy_source[0].name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${var.deploy_service_account_email}"
+}
+
+resource "google_storage_bucket_iam_member" "cloud_deploy_source_metadata" {
+  count = var.create_delivery_pipelines ? 1 : 0
+
+  bucket = data.google_storage_bucket.cloud_deploy_source[0].name
+  role   = "roles/storage.bucketViewer"
+  member = "serviceAccount:${var.deploy_service_account_email}"
+}

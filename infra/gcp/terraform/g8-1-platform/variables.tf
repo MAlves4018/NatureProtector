@@ -65,6 +65,16 @@ variable "cloud_build_logs_bucket_name" {
   }
 }
 
+variable "cloud_deploy_source_bucket_name" {
+  type    = string
+  default = "d09bb0b9ead342f0a6b38ecd9db4c11a_clouddeploy"
+
+  validation {
+    condition     = var.cloud_deploy_source_bucket_name == "d09bb0b9ead342f0a6b38ecd9db4c11a_clouddeploy"
+    error_message = "Unexpected Cloud Deploy source bucket."
+  }
+}
+
 variable "staging_cluster_name" {
   type    = string
   default = "np-staging"
