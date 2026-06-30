@@ -1,13 +1,17 @@
 apiVersion: skaffold/v4beta13
 kind: Config
+
 metadata:
   name: natureprotector-prevention
+
 manifests:
   kustomize:
     paths:
       - ../../../kubernetes/g8-1/overlays/staging
+
 deploy:
   kubectl: {}
+
 verify:
   - name: prevention-rollout
     container:
@@ -17,38 +21,84 @@ verify:
       args:
         - |
           set -eu
-          for secret in np-runtime-secrets np-rabbitmq-app-credentials np-rabbitmq-ca np-cloud-sql-ca; do
-            deadline=$((SECONDS + 600))
-            until kubectl get secret "$secret" >/dev/null 2>&1; do
-              if [ "$SECONDS" -ge "$deadline" ]; then
-                echo "Required secret $secret was not materialized within 10 minutes" >&2
+
+          namespace="natureprotector-staging"
+
+          wait_for_resource() {
+            resource="$1"
+            attempts=0
+            max_attempts=120
+
+            until kubectl get "${resource}" \
+              --namespace="${namespace}" \
+              >/dev/null 2>&1
+            do
+              attempts=$((attempts + 1))
+
+              if [ "${attempts}" -ge "${max_attempts}" ]; then
+                echo "Resource ${resource} was not available after 10 minutes" >&2
                 exit 1
               fi
+
               sleep 5
             done
+          }
+
+          for secret in \
+            np-runtime-secrets \
+            np-rabbitmq-app-credentials \
+            np-rabbitmq-ca \
+            np-cloud-sql-ca
+          do
+            echo "Waiting for secret/${secret}"
+            wait_for_resource "secret/${secret}"
           done
-          deadline=$((SECONDS + 600))
-          until kubectl get secret natureprotector-rabbitmq-default-user >/dev/null 2>&1; do
-            if [ "$SECONDS" -ge "$deadline" ]; then
-              echo "RabbitMQ default-user secret was not materialized within 10 minutes" >&2
-              exit 1
-            fi
-            sleep 5
-          done
+
+          echo "Waiting for RabbitMQ default-user secret"
+          wait_for_resource "secret/natureprotector-rabbitmq-default-user"
+
+          echo "Reconciling RabbitMQ topology connection URI"
+
           kubectl patch secret natureprotector-rabbitmq-default-user \
+            --namespace="${namespace}" \
             --type=merge \
             -p '{"stringData":{"uri":"http://natureprotector-rabbitmq.natureprotector-staging.svc:15672"}}'
-          kubectl wait --for=condition=Ready user/natureprotector-app --timeout=10m
-          kubectl wait --for=condition=Ready permission/natureprotector-app --timeout=10m
-          kubectl wait --for=condition=Ready policy/natureprotector-quorum-policy --timeout=10m
-          kubectl wait --for=condition=Ready scaledobject/natureprotector-prevention --timeout=10m
-          kubectl rollout status deployment/natureprotector-prevention --timeout=10m
+
+          echo "Waiting for RabbitMQ topology resources"
+
+          kubectl wait --for=condition=Ready user/natureprotector-app \
+            --namespace="${namespace}" \
+            --timeout=10m
+
+          kubectl wait --for=condition=Ready permission/natureprotector-app \
+            --namespace="${namespace}" \
+            --timeout=10m
+
+          kubectl wait --for=condition=Ready policy/natureprotector-quorum-policy \
+            --namespace="${namespace}" \
+            --timeout=10m
+
+          echo "Waiting for KEDA and Prevention"
+
+          kubectl wait --for=condition=Ready scaledobject/natureprotector-prevention \
+            --namespace="${namespace}" \
+            --timeout=10m
+
+          kubectl rollout status deployment/natureprotector-prevention \
+            --namespace="${namespace}" \
+            --timeout=10m
+
+          echo "Prevention verification completed successfully"
+
 profiles:
   - name: staging
     manifests:
       kustomize:
-        paths: ["../../../kubernetes/g8-1/overlays/staging"]
+        paths:
+          - ../../../kubernetes/g8-1/overlays/staging
+
   - name: production
     manifests:
       kustomize:
-        paths: ["../../../kubernetes/g8-1/overlays/production"]
+        paths:
+          - ../../../kubernetes/g8-1/overlays/production
