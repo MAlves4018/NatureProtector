@@ -221,6 +221,15 @@ if ($rabbitMqManifestText -notmatch "RABBITMQ_IMAGE_BY_DIGEST") {
 }
 $rabbitMqManifestText.Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference) |
     Set-Content -Encoding utf8 -LiteralPath $rabbitMqManifest
+
+& ./scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1 `
+    -ProjectId $StagingProjectId `
+    -Region $Region `
+    -ClusterName $ClusterName `
+    -Environment staging `
+    -Namespace natureprotector-staging `
+    -EvidenceDirectory (Join-Path $EvidenceDirectory "prevention-verifier-support")
+
 $releaseSpecs = @(
     [ordered]@{
         Pipeline = "natureprotector-api"

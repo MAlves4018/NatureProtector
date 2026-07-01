@@ -4,7 +4,6 @@ resources:
   - namespace.yaml
   - resource-governance.yaml
   - service-accounts.yaml
-  - deploy-verifier-rbac.yaml
   - secret-sync.yaml
   - otel-collector.yaml
   - prevention.yaml
@@ -13,7 +12,6 @@ resources:
   - rabbitmq.yaml
   - rabbitmq-topology.yaml
   - network-policy.yaml
-  - deploy-verifier-network-policy.yaml
 namespace: natureprotector
 images:
   - name: PREVENTION_IMAGE_BY_DIGEST

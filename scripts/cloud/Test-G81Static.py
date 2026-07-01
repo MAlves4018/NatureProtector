@@ -62,6 +62,13 @@ REQUIRED = [
     "infra/gcp/kubernetes/g8-1/base/rabbitmq.yaml",
     "infra/gcp/kubernetes/g8-1/base/network-policy.yaml",
     "infra/gcp/kubernetes/g8-1/base/otel-collector.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/base/kustomization.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/base/service-account.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/base/role.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/base/role-binding.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/base/network-policy.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/overlays/staging/kustomization.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/overlays/production/kustomization.yaml",
     "infra/gcp/cloud-deploy/g8-1/api/service.yaml",
     "infra/gcp/cloud-deploy/g8-1/api/skaffold.yaml",
     "infra/gcp/cloud-deploy/g8-1/frontend/skaffold.yaml",
@@ -84,12 +91,14 @@ REQUIRED = [
     "scripts/cloud/Build-G81Release.sh",
     "scripts/cloud/Test-BuildG81ReleaseStatic.py",
     "scripts/cloud/Install-G81ClusterDependencies.ps1",
+    "scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1",
     "scripts/cloud/Deploy-G81RuntimeJobs.ps1",
     "scripts/cloud/Invoke-G81FunctionalSmoke.ps1",
     "scripts/cloud/Deploy-G81Staging.ps1",
     "scripts/cloud/Promote-G81Production.ps1",
     "scripts/cloud/New-G81ReleaseManifest.py",
     "scripts/cloud/Test-G81ReleaseManifest.py",
+    "scripts/cloud/Test-PreventionInClusterVerifierStatic.py",
     "scripts/cloud/Test-LocalCloudConfigurationContract.py",
     "scripts/cloud/requirements-validation.txt",
     "infra/gcp/terraform/g8-1-environment/terraform.qualification.tfvars.example",
@@ -337,6 +346,8 @@ semantic_checks = {
     "release-waits-for-parallel-gates": (ROOT / ".github/workflows/gcp-g8-1-release.yml", "Waiting for $name on $SOURCE_SHA"),
     "release-gates-default-branch": (ROOT / ".github/workflows/gcp-g8-1-release.yml", ".headBranch==$branch"),
     "staging-verifies-release-attestation": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "gh attestation verify g81-release/release-manifest.json"),
+    "staging-auth-uses-standard-wif-var": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "workload_identity_provider: ${{ vars.WIF_PROVIDER }}"),
+    "staging-auth-uses-standard-deploy-sa-var": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}"),
     "staging-attests-sealed-checksums": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "g81-staging-evidence/checksums.sha256"),
     "production-verifies-staging-attestation": (ROOT / ".github/workflows/gcp-g8-1-promote-production.yml", "gh attestation verify g81-staging-evidence/checksums.sha256"),
     "production-attests-sealed-checksums": (ROOT / ".github/workflows/gcp-g8-1-promote-production.yml", "g81-production-evidence/checksums.sha256"),
@@ -391,6 +402,12 @@ semantic_checks = {
     "operator-assets-server-side-applied": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "--server-side --field-manager=natureprotector-g81-foundation"),
     "operator-lock-exact-keda-version": (ROOT / "infra/gcp/kubernetes/g8-1/operator-lock.json", '"tag": "v2.18.2"'),
     "staging-installs-cluster-dependencies": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Install-G81ClusterDependencies.ps1"),
+    "staging-ensures-prevention-verifier-support": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Ensure-G81PreventionVerifierSupport.ps1"),
+    "prevention-verifier-support-server-dry-run": (ROOT / "scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1", "--dry-run=server"),
+    "prevention-verifier-support-field-manager": (ROOT / "scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1", "natureprotector-verifier-support-foundation"),
+    "prevention-verifier-support-staging-namespace": (ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/overlays/staging/kustomization.yaml", "namespace: natureprotector-staging"),
+    "prevention-verifier-support-production-namespace": (ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/overlays/production/kustomization.yaml", "namespace: natureprotector-production"),
+    "prevention-verifier-support-role-binding": (ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/base/role-binding.yaml", "name: natureprotector-deploy-verifier"),
     "production-installs-cluster-dependencies": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Install-G81ClusterDependencies.ps1"),
     "cluster-bootstrap-uses-dns-endpoint": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "--dns-endpoint"),
     "workflow-cluster-bootstrap-role": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", "roles/container.admin"),
@@ -482,6 +499,9 @@ for policy_name in ("prevention-runtime", "rabbitmq-runtime", "otel-runtime"):
         )
 
 staging_script = (ROOT / "scripts/cloud/Deploy-G81Staging.ps1").read_text(encoding="utf-8")
+staging_workflow = (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml").read_text(encoding="utf-8")
+check("GCP_G81_STAGING_WIF_PROVIDER" not in staging_workflow, "semantic:staging-wif-provider-var-must-exist")
+check("GCP_G81_STAGING_SERVICE_ACCOUNT" not in staging_workflow, "semantic:staging-service-account-var-must-exist")
 check(not re.search(r"\.Replace\(\"(?:API_|FRONTEND_|OTEL_|RUNTIME_|CLOUD_SQL_|POSTGRES_|JWT_|RABBITMQ_(?!IMAGE_BY_DIGEST))", staging_script), "semantic:staging-must-not-bake-target-values")
 check('Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference)' in staging_script, "semantic:rabbitmq-crd-image-must-use-signed-manifest-digest")
 credentials_index = staging_script.find("gcloud container clusters get-credentials")
