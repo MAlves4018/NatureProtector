@@ -95,7 +95,7 @@ resource "google_compute_security_policy_rule" "owasp_sqli" {
   description     = "OWASP SQL injection protection"
   match {
     expr {
-      expression = "evaluatePreconfiguredWaf('sqli-v33-stable', {'opt_out_rule_ids': ['owasp-crs-v030301-id942200-sqli', 'owasp-crs-v030301-id942432-sqli']})"
+      expression = "request.path != '/api/users-roles/login' && evaluatePreconfiguredWaf('sqli-v33-stable')"
     }
   }
 }

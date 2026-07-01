@@ -12,3 +12,26 @@
 **/logs
 **/coverage
 **/TestResults
+
+# Local-only generated artifacts and caches
+artifacts
+.nuget
+.testbin
+coveragereport_*
+graphify-out
+BenchmarkDotNet.Artifacts
+**/BenchmarkDotNet.Artifacts
+
+# Python caches
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+
+# Terraform local cache, state and plans
+**/.terraform
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+**/terraform.tfplan
+**/crash.log
+**/crash.*.log

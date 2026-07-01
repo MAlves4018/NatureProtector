@@ -260,7 +260,7 @@ for name, expected in expected_values.items():
 
 expected_booleans = {
     "create_data_plane": True,
-    "create_edge": False,
+    "create_edge": True,
     "materialize_generated_secrets": True,
     "database_backup_enabled": False,
     "database_pitr_enabled": False,

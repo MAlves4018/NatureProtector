@@ -4,6 +4,8 @@ using NatureProtector.Infrastructure.Postgres.Configuration;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Postgres.Bootstrap;
 using NatureProtector.Shared.Observability;
+using Microsoft.AspNetCore.Identity;
+using NatureProtector.Infrastructure.Postgres.Users;
 
 /*
  * Este ponto de entrada executa o bootstrap da baseline PostgreSQL do projeto.
@@ -29,6 +31,22 @@ await using var dbContext = new NatureProtectorControlDbContext(optionsBuilder.O
 var bootstrapper = new ControlPlaneBootstrapper(dbContext, contentRoot, skipSchemaMigration);
 var summary = await bootstrapper.BootstrapPilotAreaAsync();
 
+var adminPassword =
+    Environment.GetEnvironmentVariable("NP_BOOTSTRAP_ADMIN_PASSWORD");
+
+if (string.IsNullOrWhiteSpace(adminPassword))
+{
+    throw new InvalidOperationException(
+        "NP_BOOTSTRAP_ADMIN_PASSWORD is required by the explicit bootstrap job.");
+}
+
+var passwordHasher = new PasswordHasher<UserRecord>();
+
+await AdminUserBootstrapper.EnsureAdminUserAsync(
+    dbContext,
+    passwordHasher,
+    adminPassword);
+
 Console.WriteLine("NatureProtector.Postgres.Bootstrap");
 Console.WriteLine($"Database: {settings.Database} @ {settings.Host}:{settings.Port}");
 Console.WriteLine($"Schema migration skipped: {skipSchemaMigration}");
@@ -40,3 +58,4 @@ Console.WriteLine($"Sensor nodes imported: {summary.SensorNodeCount}");
 Console.WriteLine($"Scenarios imported: {summary.ScenarioCount}");
 Console.WriteLine($"Dataset artifacts indexed: {summary.DatasetArtifactCount}");
 Console.WriteLine($"Scenario bindings created: {summary.ScenarioDatasetBindingCount}");
+Console.WriteLine($"Admin user ensured: {UserRecord.AdminUsername}");
