@@ -106,6 +106,21 @@ public class ProjectDependencyTests
         Assert.Empty(cycles);
     }
 
+    [Fact]
+    public void SourceProjects_DoNotReferenceTestProjects()
+    {
+        var offenders = Directory
+            .EnumerateFiles(Path.Combine(FindRepositoryRoot(), "src"), "*.csproj", SearchOption.AllDirectories)
+            .Where(path =>
+                !path.Split(Path.DirectorySeparatorChar).Contains("bin") &&
+                !path.Split(Path.DirectorySeparatorChar).Contains("obj"))
+            .SelectMany(FindTestProjectReferences)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Empty(offenders);
+    }
+
     private static string[] ReadProjectReferences(params string[] projectPathParts)
     {
         var projectPath = Path.Combine([FindRepositoryRoot(), .. projectPathParts]);
@@ -162,6 +177,30 @@ public class ProjectDependencyTests
                     .ToArray();
             },
             StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<string> FindTestProjectReferences(string projectPath)
+    {
+        var project = XDocument.Load(projectPath);
+        var projectDirectory = Path.GetDirectoryName(projectPath)!;
+
+        return project
+            .Descendants("ProjectReference")
+            .Select(reference => reference.Attribute("Include")?.Value)
+            .Where(include => !string.IsNullOrWhiteSpace(include))
+            .Select(include => Path.GetFullPath(Path.Combine(projectDirectory, include!)))
+            .Where(IsTestProjectPath)
+            .Select(referencePath =>
+                $"{RelativeToRepositoryRoot(projectPath)} -> {RelativeToRepositoryRoot(referencePath)}");
+    }
+
+    private static bool IsTestProjectPath(string projectPath)
+    {
+        var relativePath = RelativeToRepositoryRoot(projectPath).Replace(Path.DirectorySeparatorChar, '/');
+        var projectName = Path.GetFileNameWithoutExtension(projectPath);
+
+        return relativePath.StartsWith("tests/", StringComparison.OrdinalIgnoreCase) ||
+               projectName.Contains(".Tests", StringComparison.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyList<string[]> FindProjectReferenceCycles(IReadOnlyDictionary<string, string[]> projectGraph)
