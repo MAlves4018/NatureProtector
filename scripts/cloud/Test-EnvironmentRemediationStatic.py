@@ -11,6 +11,7 @@ ENV = ROOT / "infra/gcp/terraform/g8-1-environment"
 PLATFORM = ROOT / "infra/gcp/terraform/g8-1-platform"
 GKE_PATH = ENV / "gke.tf"
 G9_PATH = ROOT / "scripts/cloud/Test-G9Convergence.py"
+FUNCTIONAL_SMOKE_PATH = ROOT / "infra/gcp/smoke/smoke.sh"
 
 errors: list[str] = []
 checks = 0
@@ -65,8 +66,20 @@ postgres_bootstrapper = (
     ROOT
     / "src/NatureProtector.Infrastructure.Postgres/Bootstrap/ControlPlaneBootstrapper.cs"
 ).read_text(encoding="utf-8")
+postgres_admin_bootstrapper = (
+    ROOT
+    / "src/NatureProtector.Infrastructure.Postgres/Bootstrap/AdminUserBootstrapper.cs"
+).read_text(encoding="utf-8")
 deploy_runtime_jobs = (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1").read_text(
     encoding="utf-8"
+)
+functional_smoke = FUNCTIONAL_SMOKE_PATH.read_text(
+    encoding="utf-8"
+)
+functional_smoke_compact = re.sub(
+    r"[ \t]*\\\r?\n[ \t]*",
+    " ",
+    functional_smoke,
 )
 staging_kustomization = (
     ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml"
@@ -500,6 +513,42 @@ check(
     "postgres-bootstrap-program-skip-schema-wiring-missing",
 )
 check(
+    "NP_BOOTSTRAP_ADMIN_PASSWORD" in postgres_bootstrap_program
+    and "PasswordHasher<UserRecord>" in postgres_bootstrap_program
+    and "AdminUserBootstrapper.EnsureAdminUserAsync" in postgres_bootstrap_program
+    and "Admin user ensured:" in postgres_bootstrap_program,
+    "postgres-bootstrap-program-admin-wiring-missing",
+)
+
+control_plane_bootstrap_index = postgres_bootstrap_program.find(
+    "BootstrapPilotAreaAsync"
+)
+admin_bootstrap_index = postgres_bootstrap_program.find(
+    "AdminUserBootstrapper.EnsureAdminUserAsync"
+)
+
+check(
+    control_plane_bootstrap_index >= 0
+    and admin_bootstrap_index > control_plane_bootstrap_index,
+    "postgres-bootstrap-program-admin-must-run-after-control-plane-bootstrap",
+)
+
+check(
+    "entity => entity.Username == UserRecord.AdminUsername"
+    in postgres_admin_bootstrapper
+    and "entity.Email == UserRecord.AdminEmail"
+    in postgres_admin_bootstrapper
+    and (
+        "adminUser.PasswordHash = "
+        "passwordHasher.HashPassword(adminUser, adminPassword)"
+    )
+    in postgres_admin_bootstrapper
+    and "EnsureAdminRoleAsync" in postgres_admin_bootstrapper
+    and "await dbContext.SaveChangesAsync(cancellationToken)"
+    in postgres_admin_bootstrapper,
+    "postgres-admin-bootstrapper-reconciliation-contract-missing",
+)
+check(
     "bool skipSchemaMigration = false" in postgres_bootstrapper
     and "if (!_skipSchemaMigration)" in postgres_bootstrapper
     and "EnsureSchemaAsync" in postgres_bootstrapper
@@ -512,7 +561,84 @@ check(
     and "POSTGRES_MIGRATION_USER=np_migration" in deploy_runtime_jobs,
     "postgres-bootstrap-cloud-job-skip-schema-env-missing",
 )
+check(
+    (
+        "NP_BOOTSTRAP_ADMIN_PASSWORD="
+        "${BootstrapAdminPasswordSecret}:"
+        "${BootstrapAdminPasswordVersion}"
+    )
+    in deploy_runtime_jobs,
+    "postgres-bootstrap-cloud-job-admin-secret-mapping-missing",
+)
+check(
+    functional_smoke.endswith("\n"),
+    "functional-smoke-final-newline-missing",
+)
+check(
+    "--write-out '%{http_code}'" in functional_smoke
+    and "FUNCTIONAL_SMOKE_STAGE=${stage}_TRANSPORT_FAILED"
+    in functional_smoke
+    and "FUNCTIONAL_SMOKE_STAGE=${stage}_HTTP_FAILED"
+    in functional_smoke,
+    "functional-smoke-http-stage-diagnostics-missing",
+)
 
+smoke_stages = [
+    "FRONTEND_HEALTH",
+    "FRONTEND_INDEX",
+    "LOGIN",
+    "AREAS",
+    "USER_CREATE",
+    "USER_READ",
+    "USER_DELETE",
+]
+
+smoke_stage_positions: list[int] = []
+
+for smoke_stage in smoke_stages:
+    stage_call = f'http_request "{smoke_stage}"'
+    stage_count = functional_smoke_compact.count(stage_call)
+    smoke_stage_positions.append(
+        functional_smoke_compact.find(stage_call)
+    )
+
+    check(
+        stage_count == 1,
+        (
+            "functional-smoke-stage-missing-or-duplicated:"
+            f"{smoke_stage}:count={stage_count}"
+        ),
+    )
+
+check(
+    all(position >= 0 for position in smoke_stage_positions)
+    and smoke_stage_positions == sorted(smoke_stage_positions),
+    "functional-smoke-stage-order-invalid",
+)
+
+check(
+    "LOGIN_TOKEN_VALID=PASS" in functional_smoke
+    and "USER_CREATE_ID_VALID=PASS" in functional_smoke
+    and "USER_READ_VALID=PASS" in functional_smoke
+    and "FUNCTIONAL_SMOKE=PASS" in functional_smoke,
+    "functional-smoke-success-markers-missing",
+)
+
+check(
+    '.token | select(type=="string" and length>20)'
+    in functional_smoke
+    and "FUNCTIONAL_SMOKE_STAGE=LOGIN_TOKEN_MISSING"
+    in functional_smoke
+    and "LOGIN_TOKEN_VALID=PASS"
+    in functional_smoke,
+    "functional-smoke-login-token-validation-missing",
+)
+
+check(
+    "curl -fsS" not in functional_smoke
+    and "set -x" not in functional_smoke,
+    "functional-smoke-must-not-hide-http-status-or-enable-secret-tracing",
+)
 check(
     "cloud_sql_ca_secret_resources" not in (PLATFORM / "terraform.staging.tfvars").read_text(encoding="utf-8")
     and "rabbitmq_tls_secret_resources" not in (PLATFORM / "terraform.staging.tfvars").read_text(encoding="utf-8")

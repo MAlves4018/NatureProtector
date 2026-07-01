@@ -29,11 +29,11 @@ cloud_deploy_worker_machine_type = "e2-standard-4"
 cloud_deploy_worker_disk_size_gb = 100
 
 create_data_plane             = true
-create_edge                   = false
+create_edge                   = true
 materialize_generated_secrets = true
 secret_generation             = 1
 
-managed_certificate_domains      = []
+managed_certificate_domains      = ["8-232-226-0.sslip.io"]
 monitoring_notification_channels = []
 
 workflow_deployer_service_account = "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"
