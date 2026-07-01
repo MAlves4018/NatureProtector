@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: prevention-rollout
+  namespace: natureprotector-staging
+  labels:
+    app.kubernetes.io/name: natureprotector-deploy-verifier
+    app.kubernetes.io/part-of: natureprotector
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 3300
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: natureprotector-deploy-verifier
+        app.kubernetes.io/part-of: natureprotector
+        np.network/deploy-verifier: "true"
+    spec:
+      serviceAccountName: natureprotector-deploy-verifier
+      automountServiceAccountToken: true
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 10
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kubectl
+          image: CLOUDSDK_IMAGE_BY_DIGEST
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - echo "Verification command is supplied by Skaffold"
+          env:
+            - name: HOME
+              value: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
