@@ -12,7 +12,6 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  ingress: []
   egress:
     - to:
         - ipBlock:

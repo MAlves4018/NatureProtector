@@ -1,28 +1,94 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from pathlib import Path
+import subprocess
 import sys
+from pathlib import Path
+from typing import Iterable
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 failures: list[str] = []
 
+
 def require(condition: bool, message: str) -> None:
     if not condition:
         failures.append(message)
 
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def render_kustomize(path: Path) -> list[dict]:
+    result = subprocess.run(
+        ["kubectl", "kustomize", str(path)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    require(result.returncode == 0, f"render:{path.relative_to(ROOT)}:{result.stderr.strip()}")
+    if result.returncode != 0:
+        return []
+    try:
+        return [
+            document
+            for document in yaml.safe_load_all(result.stdout)
+            if isinstance(document, dict)
+        ]
+    except Exception as exc:  # noqa: BLE001
+        require(False, f"render-yaml:{path.relative_to(ROOT)}:{exc}")
+        return []
+
+
+def find_doc(docs: Iterable[dict], kind: str, name: str) -> dict | None:
+    return next(
+        (
+            document
+            for document in docs
+            if document.get("kind") == kind
+            and document.get("metadata", {}).get("name") == name
+        ),
+        None,
+    )
+
+
 skaffold_path = ROOT / "infra/gcp/cloud-deploy/g8-1/prevention/skaffold.yaml"
 job_path = ROOT / "infra/gcp/cloud-deploy/g8-1/prevention/verify-job-staging.yaml"
-rbac_path = ROOT / "infra/gcp/kubernetes/g8-1/base/deploy-verifier-rbac.yaml"
-network_path = ROOT / "infra/gcp/kubernetes/g8-1/base/deploy-verifier-network-policy.yaml"
-kustomization_path = ROOT / "infra/gcp/kubernetes/g8-1/base/kustomization.yaml"
+app_overlay_path = ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging"
+base_kustomization_path = ROOT / "infra/gcp/kubernetes/g8-1/base/kustomization.yaml"
+deploy_script_path = ROOT / "scripts/cloud/Deploy-G81Staging.ps1"
+ensure_script_path = ROOT / "scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1"
+support_base_path = ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/base"
+support_staging_overlay_path = ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/overlays/staging"
+support_production_overlay_path = ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/overlays/production"
 
-for path in (skaffold_path, job_path, rbac_path, network_path, kustomization_path):
-    require(path.is_file(), f"missing:{path.relative_to(ROOT)}")
+support_files = [
+    support_base_path / "kustomization.yaml",
+    support_base_path / "service-account.yaml",
+    support_base_path / "role.yaml",
+    support_base_path / "role-binding.yaml",
+    support_base_path / "network-policy.yaml",
+    support_staging_overlay_path / "kustomization.yaml",
+    support_production_overlay_path / "kustomization.yaml",
+]
+
+required_paths = [
+    skaffold_path,
+    job_path,
+    app_overlay_path / "kustomization.yaml",
+    base_kustomization_path,
+    deploy_script_path,
+    ensure_script_path,
+    *support_files,
+]
+for path in required_paths:
+    require(path.exists(), f"missing:{path.relative_to(ROOT)}")
 
 if not failures:
-    skaffold_text = skaffold_path.read_text(encoding="utf-8")
+    skaffold_text = read(skaffold_path)
     skaffold = yaml.safe_load(skaffold_text)
     verify = skaffold["verify"][0]
     cluster_mode = verify.get("executionMode", {}).get("kubernetesCluster", {})
@@ -92,14 +158,14 @@ if not failures:
         "skaffold:rabbitmq-secret-reconciliation-missing",
     )
 
-    job = yaml.safe_load(job_path.read_text(encoding="utf-8"))
+    job = yaml.safe_load(read(job_path))
     pod_spec = job["spec"]["template"]["spec"]
     container = pod_spec["containers"][0]
 
     require(job["metadata"].get("namespace") == "natureprotector-staging", "job:wrong-namespace")
     require(
         pod_spec.get("serviceAccountName") == "natureprotector-deploy-verifier",
-        "job:wrong-service-account",
+        "VERIFY_JOB_REFERENCES_EXISTING_SERVICE_ACCOUNT",
     )
     require(pod_spec.get("automountServiceAccountToken") is True, "job:token-not-mounted")
     require(job["spec"].get("backoffLimit") == 0, "job:backoff-must-be-zero")
@@ -110,7 +176,7 @@ if not failures:
         "job:root-filesystem-not-read-only",
     )
     require(
-        pod_spec["containers"][0].get("resources", {}).get("requests", {}).get("cpu") == "50m",
+        container.get("resources", {}).get("requests", {}).get("cpu") == "50m",
         "job:cpu-request-unexpected",
     )
     environment = {
@@ -119,51 +185,141 @@ if not failures:
     }
     require(environment.get("HOME") == "/tmp", "job:writable-home-missing")
 
-    docs = list(yaml.safe_load_all(rbac_path.read_text(encoding="utf-8")))
-    kinds = {doc["kind"] for doc in docs}
-    require({"ServiceAccount", "Role", "RoleBinding"} <= kinds, "rbac:objects-missing")
-    role = next(doc for doc in docs if doc["kind"] == "Role")
-    role_binding = next(doc for doc in docs if doc["kind"] == "RoleBinding")
-    service_account_subject = next(
-        subject
-        for subject in role_binding.get("subjects", [])
-        if subject.get("kind") == "ServiceAccount"
-        and subject.get("name") == "natureprotector-deploy-verifier"
+    support_render = render_kustomize(support_staging_overlay_path)
+    support_names = {
+        (document.get("kind"), document.get("metadata", {}).get("name"))
+        for document in support_render
+    }
+    expected_support = {
+        ("ServiceAccount", "natureprotector-deploy-verifier"),
+        ("Role", "natureprotector-deploy-verifier"),
+        ("RoleBinding", "natureprotector-deploy-verifier"),
+        ("NetworkPolicy", "natureprotector-deploy-verifier"),
+    }
+    require(expected_support <= support_names, "VERIFIER_SUPPORT_RENDER_VALID")
+    require(
+        all(
+            document.get("metadata", {}).get("namespace") == "natureprotector-staging"
+            for document in support_render
+        ),
+        "VERIFIER_SUPPORT_STAGING_NAMESPACE_CORRECT",
+    )
+
+    role = find_doc(support_render, "Role", "natureprotector-deploy-verifier")
+    role_binding = find_doc(support_render, "RoleBinding", "natureprotector-deploy-verifier")
+    network = find_doc(support_render, "NetworkPolicy", "natureprotector-deploy-verifier")
+    require(role is not None, "support-role:missing")
+    require(role_binding is not None, "support-role-binding:missing")
+    require(network is not None, "support-network-policy:missing")
+
+    if role is not None:
+        role_text = yaml.safe_dump(role)
+        for token in (
+            "secrets",
+            "rabbitmq.com",
+            "users",
+            "permissions",
+            "policies",
+            "keda.sh",
+            "scaledobjects",
+            "apps",
+            "deployments",
+            "patch",
+            "watch",
+        ):
+            require(token in role_text, f"support-role:missing:{token}")
+
+    if role_binding is not None:
+        service_account_subject = next(
+            (
+                subject
+                for subject in role_binding.get("subjects", [])
+                if subject.get("kind") == "ServiceAccount"
+                and subject.get("name") == "natureprotector-deploy-verifier"
+            ),
+            None,
+        )
+        require(
+            service_account_subject is not None
+            and service_account_subject.get("namespace") == "natureprotector-staging",
+            "VERIFIER_ROLE_BINDING_SUBJECT_CORRECT",
+        )
+        require(
+            role_binding.get("roleRef", {}).get("kind") == "Role"
+            and role_binding.get("roleRef", {}).get("name") == "natureprotector-deploy-verifier",
+            "support-role-binding:role-ref-mismatch",
+        )
+
+    if network is not None:
+        require(
+            network["spec"]["podSelector"]["matchLabels"].get("np.network/deploy-verifier")
+            == "true",
+            "support-network:selector-mismatch",
+        )
+        network_text = yaml.safe_dump(network)
+        require("0.0.0.0/0" in network_text and "443" in network_text, "support-network:api-egress-missing")
+
+    support_base_role_binding = yaml.safe_load(read(support_base_path / "role-binding.yaml"))
+    base_subject = support_base_role_binding.get("subjects", [])[0]
+    require(
+        "namespace" not in base_subject,
+        "support-base:service-account-subject-namespace-must-be-overlay-transformed",
+    )
+
+    base_kustomization = yaml.safe_load(read(base_kustomization_path))
+    base_resources = set(base_kustomization.get("resources", []))
+    require("deploy-verifier-rbac.yaml" not in base_resources, "application-base:rbac-still-included")
+    require(
+        "deploy-verifier-network-policy.yaml" not in base_resources,
+        "application-base:network-policy-still-included",
+    )
+
+    app_render = render_kustomize(app_overlay_path)
+    app_verifier_docs = [
+        document
+        for document in app_render
+        if document.get("metadata", {}).get("name") == "natureprotector-deploy-verifier"
+    ]
+    app_verifier_kinds = {document.get("kind") for document in app_verifier_docs}
+    require(
+        {"ServiceAccount", "Role", "RoleBinding"}.isdisjoint(app_verifier_kinds),
+        "APPLICATION_RENDER_EXCLUDES_VERIFIER_RBAC",
     )
     require(
-        "namespace" not in service_account_subject,
-        "rbac:service-account-subject-namespace-must-be-overlay-transformed",
+        "NetworkPolicy" not in app_verifier_kinds,
+        "APPLICATION_RENDER_EXCLUDES_VERIFIER_NETWORK_POLICY",
     )
-    role_text = yaml.safe_dump(role)
+
+    deploy_script = read(deploy_script_path)
+    ensure_index = deploy_script.find("Ensure-G81PreventionVerifierSupport.ps1")
+    prevention_index = deploy_script.find('Pipeline = "natureprotector-prevention"')
+    require(
+        ensure_index >= 0 and prevention_index >= 0 and ensure_index < prevention_index,
+        "STAGING_DEPLOY_ENSURES_SUPPORT_BEFORE_PREVENTION_RELEASE",
+    )
+    require("-Environment staging" in deploy_script, "deploy:staging-support-environment-missing")
+    require("-Environment production" not in deploy_script, "PRODUCTION_NOT_EXECUTED")
+    require("-AllowProduction" not in deploy_script, "PRODUCTION_NOT_EXECUTED")
+
+    ensure_script = read(ensure_script_path)
     for token in (
-        "secrets",
-        "rabbitmq.com",
-        "users",
-        "permissions",
-        "policies",
-        "keda.sh",
-        "scaledobjects",
-        "apps",
-        "deployments",
-        "patch",
-        "watch",
+        'ValidateSet("staging", "production")',
+        "AllowProduction",
+        "--dry-run=server",
+        "--field-manager=$fieldManager",
+        "kubectl auth can-i",
+        "kubectl apply",
+        "rolebinding/natureprotector-deploy-verifier",
+        "VERIFIER_SUPPORT_ENSURED",
     ):
-        require(token in role_text, f"rbac:missing:{token}")
-
-    network = yaml.safe_load(network_path.read_text(encoding="utf-8"))
+        require(token in ensure_script, f"ensure-script:missing:{token}")
     require(
-        network["spec"]["podSelector"]["matchLabels"].get("np.network/deploy-verifier") == "true",
-        "network:selector-mismatch",
+        "production verifier support apply requires -allowproduction" in ensure_script.lower(),
+        "ensure-script:production-guard-missing",
     )
-    network_text = yaml.safe_dump(network)
-    require("0.0.0.0/0" in network_text and "443" in network_text, "network:api-egress-missing")
-
-    kustomization = yaml.safe_load(kustomization_path.read_text(encoding="utf-8"))
-    resources = set(kustomization.get("resources", []))
-    require("deploy-verifier-rbac.yaml" in resources, "kustomize:rbac-not-included")
     require(
-        "deploy-verifier-network-policy.yaml" in resources,
-        "kustomize:network-policy-not-included",
+        "natureprotector-verifier-support-foundation" in ensure_script,
+        "ENSURE_SCRIPT_IS_IDEMPOTENT",
     )
 
 if failures:
