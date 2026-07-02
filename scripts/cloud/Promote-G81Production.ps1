@@ -42,6 +42,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot "EvidenceChecksums.ps1")
 if ($Confirmation -ne "PROMOTE_VERIFIED_RELEASE_TO_PRODUCTION") { throw "Invalid production confirmation." }
 if ($DeploymentMode -eq "services-only-bootstrap" -and $EdgeBootstrapConfirmation -ne "BOOTSTRAP_SERVICES_BEFORE_EDGE") {
     throw "Services-only bootstrap requires the explicit BOOTSTRAP_SERVICES_BEFORE_EDGE confirmation."
@@ -51,27 +52,12 @@ if ($PlatformProjectId -match "(?i)cn2526" -or $ProductionProjectId -match "(?i)
 if ($ReleaseName -notmatch '^[a-z][a-z0-9-]{0,62}$') { throw "Invalid release name." }
 
 
-function Test-EvidenceChecksums {
-    param([Parameter(Mandatory)][string]$Directory)
-    $checksumPath = Join-Path $Directory "checksums.sha256"
-    foreach ($line in Get-Content -LiteralPath $checksumPath) {
-        if ([string]::IsNullOrWhiteSpace($line)) { continue }
-        if ($line -notmatch '^([0-9a-fA-F]{64})  (.+)$') { throw "Malformed evidence checksum entry: $line" }
-        $relative = $Matches[2].Replace('\','/')
-        if ([IO.Path]::IsPathRooted($relative) -or $relative.Split('/') -contains '..') { throw "Unsafe evidence path: $relative" }
-        $path = Join-Path $Directory $relative
-        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Checksummed evidence file is missing: $relative" }
-        $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash
-        if ($actual -ne $Matches[1]) { throw "Evidence checksum mismatch: $relative" }
-    }
-}
-
 python scripts/cloud/Test-G81ReleaseManifest.py $ManifestPath
 if ($LASTEXITCODE -ne 0) { throw "Invalid manifest." }
 foreach ($required in @("release-manifest.json", "checksums.sha256", "staging-deployment-summary.json")) {
     if (-not (Test-Path (Join-Path $StagingEvidenceDirectory $required))) { throw "Missing staging evidence: $required" }
 }
-Test-EvidenceChecksums -Directory $StagingEvidenceDirectory
+Test-G81EvidenceChecksums -Directory $StagingEvidenceDirectory
 $stagingSummary = Get-Content -Raw (Join-Path $StagingEvidenceDirectory "staging-deployment-summary.json") | ConvertFrom-Json
 if (-not $stagingSummary.staging_verified) { throw "Staging was not verified." }
 if ($stagingSummary.release_name -ne $ReleaseName) { throw "Release name differs from staging evidence." }
@@ -261,7 +247,4 @@ Copy-Item $ManifestPath (Join-Path $EvidenceDirectory "release-manifest.json")
     production_deployed = $true
 } | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 (Join-Path $EvidenceDirectory "production-deployment-summary.json")
 
-Get-FileHash -Algorithm SHA256 (Get-ChildItem -File -Recurse $EvidenceDirectory | Where-Object Name -ne "checksums.sha256") |
-    Sort-Object Path |
-    ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path.Substring($EvidenceDirectory.Length).TrimStart('\\','/').Replace('\\','/'))" } |
-    Set-Content -Encoding utf8 (Join-Path $EvidenceDirectory "checksums.sha256")
+Write-G81EvidenceChecksums -EvidenceDirectory $EvidenceDirectory | Out-Null

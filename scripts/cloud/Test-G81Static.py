@@ -74,6 +74,8 @@ REQUIRED = [
     "infra/gcp/cloud-deploy/g8-1/frontend/skaffold.yaml",
     "infra/gcp/cloud-deploy/g8-1/prevention/skaffold.yaml",
     "infra/gcp/cloud-deploy-verifier/Dockerfile",
+    "scripts/cloud/EvidenceChecksums.ps1",
+    "tests/cloud/Test-EvidenceChecksumPortability.ps1",
     "src/NatureProtector.Backoffice.Api/Configuration/ApiRateLimitingOptions.cs",
     "src/NatureProtector.Backoffice.Api/Configuration/ApiRateLimitingExtensions.cs",
     "src/NatureProtector.Backoffice.Api/RuntimeOrchestration/CloudRunExecutionStore.cs",
@@ -207,6 +209,10 @@ for token in [
     "internal-and-cloud-load-balancing",
     "rate_based_ban",
     "evaluatePreconfiguredWaf",
+    "GetRelativePath",
+    "DirectorySeparatorChar",
+    "Write-G81EvidenceChecksums",
+    "CHECKSUM_PORTABILITY_RUNTIME_TEST=PASS",
     "request.path != '/api/users-roles/login'",
     "opt_out_rule_ids",
     "owasp-crs-v030301-id942200-sqli",
@@ -264,8 +270,29 @@ for forbidden in [
     "secret_data = ",
     'pass' + 'word = "',
     'required_version = "= 1.15.6"',
+    ".TrimStart('\\\\','/')",
+    'TrimStart("\\\\","/")',
 ]:
     check(forbidden.lower() not in deployable_text.lower(), f"forbidden:{forbidden}")
+
+checksum_scripts = [
+    ROOT / "scripts/cloud/Deploy-G81Staging.ps1",
+    ROOT / "scripts/cloud/Deploy-G81Staging-Autopilot.ps1",
+    ROOT / "scripts/cloud/Promote-G81Production.ps1",
+]
+checksum_helper = (ROOT / "scripts/cloud/EvidenceChecksums.ps1").read_text(encoding="utf-8")
+check("TrimStart" not in checksum_helper, "checksum-helper-uses-trimstart")
+check("GetRelativePath" in checksum_helper, "checksum-helper-getrelativepath")
+check("DirectorySeparatorChar" in checksum_helper, "checksum-helper-directoryseparatorchar")
+check("[char]'/'" in checksum_helper or "[char]\"/\"" in checksum_helper, "checksum-helper-forward-slash-char")
+for script in checksum_scripts:
+    text = script.read_text(encoding="utf-8", errors="ignore")
+    check("EvidenceChecksums.ps1" in text, f"checksum-helper-not-sourced:{script.name}")
+    check("Write-G81EvidenceChecksums -EvidenceDirectory $EvidenceDirectory" in text, f"checksum-helper-not-used:{script.name}")
+    check("TrimStart" not in text, f"checksum-script-uses-trimstart:{script.name}")
+
+np_text = (ROOT / "scripts/np.ps1").read_text(encoding="utf-8", errors="ignore")
+check("Test-EvidenceChecksumPortability.ps1" in np_text, "checksum-runtime-test-not-in-np-validate")
 
 for workflow in sorted((ROOT / ".github/workflows").glob("gcp-g8-1-*.yml")):
     text = workflow.read_text(encoding="utf-8")
@@ -397,7 +424,7 @@ semantic_checks = {
     "protected-state-bootstrap": (ROOT / "infra/gcp/terraform/g8-1-state-bootstrap/state.tf", "prevent_destroy = true"),
     "teardown-reinitializes-remote-state": (ROOT / "scripts/cloud/Remove-G81WeekEnvironment.ps1", "-backend-config=\"prefix=$TerraformStatePrefix\""),
     "teardown-verifies-evidence-checksums": (ROOT / "scripts/cloud/Remove-G81WeekEnvironment.ps1", "Test-EvidenceChecksums -Directory $EvidenceDirectory"),
-    "promotion-verifies-staging-checksums": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Test-EvidenceChecksums -Directory $StagingEvidenceDirectory"),
+    "promotion-verifies-staging-checksums": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Test-G81EvidenceChecksums -Directory $StagingEvidenceDirectory"),
     "teardown-disables-deletion-protection": (ROOT / "scripts/cloud/Remove-G81WeekEnvironment.ps1", "-var=\"deletion_protection=false\""),
     "generated-secrets-are-write-only": (ROOT / "infra/gcp/terraform/g8-1-environment/generated_secrets.tf", "secret_data_wo"),
     "cloud-sql-passwords-are-write-only": (ROOT / "infra/gcp/terraform/g8-1-environment/cloud_sql.tf", "password_wo"),

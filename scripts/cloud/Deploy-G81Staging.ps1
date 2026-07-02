@@ -39,6 +39,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot "EvidenceChecksums.ps1")
 
 if ($Region -ne "europe-southwest1") { throw "Unexpected region '$Region'." }
 if ($PlatformProjectId -match "(?i)cn2526" -or $StagingProjectId -match "(?i)cn2526") {
@@ -346,7 +347,4 @@ Copy-Item $ManifestPath (Join-Path $EvidenceDirectory "release-manifest.json")
     production_deployed = $false
 } | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 (Join-Path $EvidenceDirectory "staging-deployment-summary.json")
 
-Get-FileHash -Algorithm SHA256 (Get-ChildItem -File -Recurse $EvidenceDirectory | Where-Object Name -ne "checksums.sha256") |
-    Sort-Object Path |
-    ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path.Substring($EvidenceDirectory.Length).TrimStart('\\','/').Replace('\\','/'))" } |
-    Set-Content -Encoding utf8 (Join-Path $EvidenceDirectory "checksums.sha256")
+Write-G81EvidenceChecksums -EvidenceDirectory $EvidenceDirectory | Out-Null
