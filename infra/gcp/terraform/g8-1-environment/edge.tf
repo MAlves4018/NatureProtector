@@ -86,6 +86,29 @@ resource "google_compute_security_policy_rule" "api_rate_limit" {
   }
 }
 
+resource "google_compute_security_policy_rule" "owasp_sqli_user_create" {
+  count           = var.create_data_plane && var.create_edge ? 1 : 0
+  project         = var.project_id
+  security_policy = google_compute_security_policy.edge[0].name
+  priority        = 95
+  action          = "deny(403)"
+  description     = "OWASP SQL injection protection for user creation with scoped exclusions"
+  match {
+    expr {
+      expression = <<-EOT
+        request.method == 'POST' &&
+        request.path == '/api/users-roles/users' &&
+        evaluatePreconfiguredWaf(
+          'sqli-v33-stable',
+          {
+            'sensitivity': 1
+          }
+        )
+      EOT
+    }
+  }
+}
+
 resource "google_compute_security_policy_rule" "owasp_sqli" {
   count           = var.create_data_plane && var.create_edge ? 1 : 0
   project         = var.project_id
@@ -95,7 +118,23 @@ resource "google_compute_security_policy_rule" "owasp_sqli" {
   description     = "OWASP SQL injection protection"
   match {
     expr {
-      expression = "request.path != '/api/users-roles/login' && evaluatePreconfiguredWaf('sqli-v33-stable')"
+      expression = <<-EOT
+        request.path != '/api/users-roles/login' &&
+        !(
+          request.method == 'POST' &&
+          request.path == '/api/users-roles/users'
+        ) &&
+        evaluatePreconfiguredWaf(
+          'sqli-v33-stable',
+          {
+            'sensitivity': 4,
+            'opt_out_rule_ids': [
+              'owasp-crs-v030301-id942200-sqli',
+              'owasp-crs-v030301-id942432-sqli'
+            ]
+          }
+        )
+      EOT
     }
   }
 }
