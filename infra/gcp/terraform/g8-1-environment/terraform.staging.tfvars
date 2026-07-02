@@ -33,7 +33,7 @@ create_edge                   = true
 materialize_generated_secrets = true
 secret_generation             = 1
 
-managed_certificate_domains      = ["8-232-226-0.sslip.io"]
+managed_certificate_domains      = ["136-68-225-29.sslip.io"]
 monitoring_notification_channels = []
 
 workflow_deployer_service_account = "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"
