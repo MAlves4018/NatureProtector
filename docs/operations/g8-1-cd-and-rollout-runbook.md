@@ -9,6 +9,7 @@
 - WIF e service accounts criados pelo root platform;
 - roots environment aplicados com `create_data_plane=true`;
 - versões TLS/CA criadas pelo owner; credenciais de aplicação materializadas por write-only arguments quando explicitamente ativadas;
+- GitHub Environment `staging` aponta para versões Secret Manager explícitas e `ENABLED` para Cloud SQL CA, RabbitMQ CA, RabbitMQ TLS certificate e RabbitMQ TLS private key; `latest` não é aceite no preflight;
 - Cloud Run jobs de migrations/bootstrap preparados;
 - DNS e certificados disponíveis;
 - owner gate local integral aprovado.
@@ -49,13 +50,14 @@ para produção continua a exigir o perfil production-ready e os gates existente
 
 1. workflow automático ou manual recebe o run ID da release;
 2. valida path, conclusion e SHA do workflow de origem;
-3. executa migration expand;
-4. executa bootstrap duas vezes;
-5. cria ou reutiliza idempotentemente três releases Cloud Deploy;
-6. aguarda a conclusão dos rollouts;
-7. os verifies Cloud Deploy dos serviços Cloud Run confirmam apenas que o rollout publicou metadata `run.app`, porque o ingress direto está restrito a `internal-and-cloud-load-balancing`;
-8. executa o smoke funcional pelo hostname HTTPS protegido; URLs `run.app` são rejeitadas;
-9. arquiva evidence e checksums com `staging_verified=true`.
+3. valida que os secrets owner-managed existem, que as versões configuradas existem e estão `ENABLED`, e que as service accounts runtime têm `roles/secretmanager.secretAccessor`;
+4. executa migration expand;
+5. executa bootstrap duas vezes;
+6. cria ou reutiliza idempotentemente três releases Cloud Deploy;
+7. aguarda a conclusão dos rollouts;
+8. os verifies Cloud Deploy dos serviços Cloud Run confirmam apenas que o rollout publicou metadata `run.app`, porque o ingress direto está restrito a `internal-and-cloud-load-balancing`;
+9. executa o smoke funcional pelo hostname HTTPS protegido; URLs `run.app` são rejeitadas;
+10. arquiva evidence e checksums com `staging_verified=true`.
 
 Falha em migration, bootstrap, rollout ou smoke bloqueia promoção.
 

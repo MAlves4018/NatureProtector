@@ -379,6 +379,12 @@ semantic_checks = {
     "staging-preserves-ready-operators": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "OPERATOR_FOUNDATION_ALREADY_READY"),
     "staging-ready-operator-check-has-kubecontext": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "--dns-endpoint --quiet"),
     "staging-does-not-force-operator-conflicts": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "preserve-existing-operator-field-managers"),
+    "staging-secret-version-readiness-script": (ROOT / "scripts/cloud/Test-G81StagingFoundationReadiness.ps1", "STAGING_SECRET_VERSION_READINESS=PASS"),
+    "staging-secret-version-readiness-fail-closed": (ROOT / "scripts/cloud/Test-G81StagingFoundationReadiness.ps1", "MISSING_SECRET_VERSION="),
+    "staging-secret-access-readiness": (ROOT / "scripts/cloud/Test-G81StagingFoundationReadiness.ps1", "SECRET_ACCESS_DENIED="),
+    "staging-deploy-replaces-secret-version-placeholders": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "RABBITMQ_TLS_CERTIFICATE_VERSION"),
+    "staging-workflow-passes-rabbitmq-tls-cert-version": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "GCP_STAGING_RABBITMQ_TLS_CERTIFICATE_VERSION"),
+    "standard-workflow-passes-rabbitmq-tls-cert-version": (ROOT / ".github/workflows/_deploy.yml", "GCP_STAGING_RABBITMQ_TLS_CERTIFICATE_VERSION"),
     "release-waits-for-parallel-gates": (ROOT / ".github/workflows/gcp-g8-1-release.yml", "Waiting for $name on $SOURCE_SHA"),
     "release-gates-default-branch": (ROOT / ".github/workflows/gcp-g8-1-release.yml", ".headBranch==$branch"),
     "staging-verifies-release-attestation": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "gh attestation verify g81-release/release-manifest.json"),
@@ -492,6 +498,15 @@ for name, (path, token) in semantic_checks.items():
 staging_kustomization = yaml.safe_load(
     (ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml").read_text(encoding="utf-8")
 )
+staging_kustomization_text = (ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml").read_text(encoding="utf-8")
+check("/versions/latest" not in staging_kustomization_text, "staging-kustomization-must-not-use-latest-secret-versions")
+for placeholder in [
+    "CLOUD_SQL_CA_VERSION",
+    "RABBITMQ_CA_VERSION",
+    "RABBITMQ_TLS_CERTIFICATE_VERSION",
+    "RABBITMQ_TLS_PRIVATE_KEY_VERSION",
+]:
+    check(placeholder in staging_kustomization_text, f"staging-kustomization-secret-version-placeholder:{placeholder}")
 staging_patches = staging_kustomization.get("patches", [])
 selector_labels = {
     "environment": "staging",
@@ -563,7 +578,13 @@ staging_script = (ROOT / "scripts/cloud/Deploy-G81Staging.ps1").read_text(encodi
 staging_workflow = (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml").read_text(encoding="utf-8")
 check("GCP_G81_STAGING_WIF_PROVIDER" not in staging_workflow, "semantic:staging-wif-provider-var-must-exist")
 check("GCP_G81_STAGING_SERVICE_ACCOUNT" not in staging_workflow, "semantic:staging-service-account-var-must-exist")
-check(not re.search(r"\.Replace\(\"(?:API_|FRONTEND_|OTEL_|RUNTIME_|CLOUD_SQL_|POSTGRES_|JWT_|RABBITMQ_(?!IMAGE_BY_DIGEST))", staging_script), "semantic:staging-must-not-bake-target-values")
+check(
+    not re.search(
+        r"\.Replace\(\"(?:API_|FRONTEND_|OTEL_|RUNTIME_|CLOUD_SQL_(?!CA_VERSION)|POSTGRES_|JWT_|RABBITMQ_(?!IMAGE_BY_DIGEST|TLS_CERTIFICATE_VERSION|TLS_PRIVATE_KEY_VERSION|CA_VERSION))",
+        staging_script,
+    ),
+    "semantic:staging-must-not-bake-target-values",
+)
 check('Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference)' in staging_script, "semantic:rabbitmq-crd-image-must-use-signed-manifest-digest")
 credentials_index = staging_script.find("gcloud container clusters get-credentials")
 operator_ready_index = staging_script.find("Test-OperatorFoundationReady -OutputDirectory")

@@ -61,6 +61,12 @@ jobs:
           -ClusterName '${{ vars.GCP_STAGING_CLUSTER_NAME }}'
           -RuntimeNetwork '${{ vars.GCP_STAGING_NETWORK }}'
           -RuntimeSubnetwork '${{ vars.GCP_STAGING_SUBNETWORK }}'
+          -CloudSqlCaSecret '${{ vars.GCP_STAGING_CLOUD_SQL_CA_SECRET }}'
+          -CloudSqlCaVersion '${{ vars.GCP_STAGING_CLOUD_SQL_CA_VERSION }}'
+          -RabbitMqCaSecret '${{ vars.GCP_STAGING_RABBITMQ_CA_SECRET }}'
+          -RabbitMqCaVersion '${{ vars.GCP_STAGING_RABBITMQ_CA_VERSION }}'
+          -RabbitMqTlsCertificateVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_CERTIFICATE_VERSION }}'
+          -RabbitMqTlsPrivateKeyVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_PRIVATE_KEY_VERSION }}'
           -RequireActiveCertificate
       - uses: ./.github/actions/resolve-release
         with:
@@ -101,6 +107,8 @@ jobs:
           -RabbitMqPasswordVersion '${{ vars.GCP_STAGING_RABBITMQ_PASSWORD_VERSION }}'
           -RabbitMqCaSecret '${{ vars.GCP_STAGING_RABBITMQ_CA_SECRET }}'
           -RabbitMqCaVersion '${{ vars.GCP_STAGING_RABBITMQ_CA_VERSION }}'
+          -RabbitMqTlsCertificateVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_CERTIFICATE_VERSION }}'
+          -RabbitMqTlsPrivateKeyVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_PRIVATE_KEY_VERSION }}'
           -CloudSqlCaSecret '${{ vars.GCP_STAGING_CLOUD_SQL_CA_SECRET }}'
           -CloudSqlCaVersion '${{ vars.GCP_STAGING_CLOUD_SQL_CA_VERSION }}'
           -EvidenceDirectory '${{ runner.temp }}/standard-cd-staging-evidence'
