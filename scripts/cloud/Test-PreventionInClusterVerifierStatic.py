@@ -308,6 +308,8 @@ if not failures:
         "--dry-run=server",
         "--field-manager=$fieldManager",
         "kubectl auth can-i",
+        "kubectl create namespace $Namespace",
+        "pod-security.kubernetes.io/enforce=restricted",
         "kubectl apply",
         "rolebinding/natureprotector-deploy-verifier",
         "VERIFIER_SUPPORT_ENSURED",
