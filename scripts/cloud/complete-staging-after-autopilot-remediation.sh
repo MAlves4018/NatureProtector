@@ -909,6 +909,12 @@ values = {
     "RABBITMQ_CA_VERSION": latest_enabled_secret_version(
         "np-staging-rabbitmq-ca-certificate"
     ),
+    "RABBITMQ_TLS_CERTIFICATE_VERSION": latest_enabled_secret_version(
+        "np-staging-rabbitmq-tls-certificate"
+    ),
+    "RABBITMQ_TLS_PRIVATE_KEY_VERSION": latest_enabled_secret_version(
+        "np-staging-rabbitmq-tls-private-key"
+    ),
     "CLOUD_SQL_CA_SECRET": secret_name("cloud-sql-server-ca"),
     "CLOUD_SQL_CA_VERSION": latest_enabled_secret_version(
         "np-staging-cloud-sql-server-ca"
@@ -1101,6 +1107,8 @@ run_deployment() {
     -RabbitMqPasswordVersion "$RABBITMQ_PASSWORD_VERSION"
     -RabbitMqCaSecret "$RABBITMQ_CA_SECRET"
     -RabbitMqCaVersion "$RABBITMQ_CA_VERSION"
+    -RabbitMqTlsCertificateVersion "$RABBITMQ_TLS_CERTIFICATE_VERSION"
+    -RabbitMqTlsPrivateKeyVersion "$RABBITMQ_TLS_PRIVATE_KEY_VERSION"
     -CloudSqlCaSecret "$CLOUD_SQL_CA_SECRET"
     -CloudSqlCaVersion "$CLOUD_SQL_CA_VERSION"
     -EvidenceDirectory "$evidence_win"

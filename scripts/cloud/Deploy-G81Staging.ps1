@@ -30,6 +30,8 @@ param(
     [Parameter(Mandatory)][string]$RabbitMqPasswordVersion,
     [Parameter(Mandatory)][string]$RabbitMqCaSecret,
     [Parameter(Mandatory)][string]$RabbitMqCaVersion,
+    [Parameter(Mandatory)][string]$RabbitMqTlsCertificateVersion,
+    [Parameter(Mandatory)][string]$RabbitMqTlsPrivateKeyVersion,
     [Parameter(Mandatory)][string]$CloudSqlCaSecret,
     [Parameter(Mandatory)][string]$CloudSqlCaVersion,
     [Parameter(Mandatory)][string]$EvidenceDirectory,
@@ -62,7 +64,13 @@ New-Item -ItemType Directory -Force -Path $EvidenceDirectory | Out-Null
     -ClusterName $ClusterName `
     -RuntimeNetwork $RuntimeNetwork `
     -RuntimeSubnetwork $RuntimeSubnetwork `
-    -RequireActiveCertificate:($DeploymentMode -eq "verified")
+    -RequireActiveCertificate:($DeploymentMode -eq "verified") `
+    -CloudSqlCaSecret $CloudSqlCaSecret `
+    -CloudSqlCaVersion $CloudSqlCaVersion `
+    -RabbitMqCaSecret $RabbitMqCaSecret `
+    -RabbitMqCaVersion $RabbitMqCaVersion `
+    -RabbitMqTlsCertificateVersion $RabbitMqTlsCertificateVersion `
+    -RabbitMqTlsPrivateKeyVersion $RabbitMqTlsPrivateKeyVersion
 if ($LASTEXITCODE -ne 0) { throw "Staging foundation readiness failed before deployment." }
 
 function Invoke-GcloudJson {
@@ -231,6 +239,25 @@ if ($rabbitMqManifestText -notmatch "RABBITMQ_IMAGE_BY_DIGEST") {
 }
 $rabbitMqManifestText.Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference) |
     Set-Content -Encoding utf8 -LiteralPath $rabbitMqManifest
+
+$stagingKustomization = Join-Path $sourceRoot "kubernetes/g8-1/overlays/staging/kustomization.yaml"
+$stagingKustomizationText = Get-Content -Raw -LiteralPath $stagingKustomization
+$secretVersionReplacements = [ordered]@{
+    "RABBITMQ_TLS_CERTIFICATE_VERSION" = $RabbitMqTlsCertificateVersion
+    "RABBITMQ_TLS_PRIVATE_KEY_VERSION" = $RabbitMqTlsPrivateKeyVersion
+    "RABBITMQ_CA_VERSION" = $RabbitMqCaVersion
+    "CLOUD_SQL_CA_VERSION" = $CloudSqlCaVersion
+}
+foreach ($entry in $secretVersionReplacements.GetEnumerator()) {
+    if ($stagingKustomizationText -notmatch [regex]::Escape([string]$entry.Key)) {
+        throw "Staging kustomization does not contain expected secret version placeholder '$($entry.Key)'."
+    }
+    $stagingKustomizationText = $stagingKustomizationText.Replace([string]$entry.Key, [string]$entry.Value)
+}
+if ($stagingKustomizationText -match "/versions/latest") {
+    throw "Staging kustomization still contains a latest secret version reference."
+}
+$stagingKustomizationText | Set-Content -Encoding utf8 -LiteralPath $stagingKustomization
 
 & ./scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1 `
     -ProjectId $StagingProjectId `

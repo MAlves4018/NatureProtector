@@ -34,6 +34,23 @@ param(
         "np-staging-simulator@natureprotector-500518.iam.gserviceaccount.com",
         "np-staging-smoke@natureprotector-500518.iam.gserviceaccount.com"
     ),
+    [string[]]$SecretAccessorServiceAccounts = @(
+        "np-staging-api@natureprotector-500518.iam.gserviceaccount.com",
+        "np-staging-bootstrap@natureprotector-500518.iam.gserviceaccount.com",
+        "np-staging-migrations@natureprotector-500518.iam.gserviceaccount.com",
+        "np-staging-prevention@natureprotector-500518.iam.gserviceaccount.com",
+        "np-staging-secret-sync@natureprotector-500518.iam.gserviceaccount.com",
+        "np-staging-simulator@natureprotector-500518.iam.gserviceaccount.com",
+        "np-staging-smoke@natureprotector-500518.iam.gserviceaccount.com"
+    ),
+    [string]$CloudSqlCaSecret = "np-staging-cloud-sql-server-ca",
+    [string]$CloudSqlCaVersion = "",
+    [string]$RabbitMqCaSecret = "np-staging-rabbitmq-ca-certificate",
+    [string]$RabbitMqCaVersion = "",
+    [string]$RabbitMqTlsCertificateSecret = "np-staging-rabbitmq-tls-certificate",
+    [string]$RabbitMqTlsCertificateVersion = "",
+    [string]$RabbitMqTlsPrivateKeySecret = "np-staging-rabbitmq-tls-private-key",
+    [string]$RabbitMqTlsPrivateKeyVersion = "",
     [switch]$RequireActiveCertificate,
     [switch]$SkipKubeCredentials,
     [string]$GcloudCommand = "gcloud"
@@ -82,6 +99,61 @@ function Invoke-GcloudReadiness {
     catch {
         Add-Failure "INVALID_RESOURCE_JSON=$ResourceMarker"
         return $null
+    }
+}
+
+function Test-SecretVersionReadiness {
+    param(
+        [Parameter(Mandatory)][string]$SecretName,
+        [Parameter(Mandatory)][string]$Version
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Version) -or $Version -eq "latest") {
+        Add-Failure "MISSING_SECRET_VERSION=${SecretName}:${Version}"
+        return
+    }
+
+    $versionInfo = Invoke-GcloudReadiness -Json -ResourceMarker "SECRET_VERSION:${SecretName}:${Version}" -Arguments @(
+        "secrets", "versions", "describe", $Version,
+        "--secret=$SecretName", "--project=$ProjectId", "--format=json"
+    )
+    if (-not $versionInfo) {
+        Add-Failure "MISSING_SECRET_VERSION=${SecretName}:${Version}"
+        return
+    }
+
+    $state = [string]$versionInfo.state
+    if ($state -eq "ENABLED") { return }
+    if ($state -eq "DISABLED") {
+        Add-Failure "DISABLED_SECRET_VERSION=${SecretName}:${Version}"
+        return
+    }
+    if ($state -eq "DESTROYED") {
+        Add-Failure "DESTROYED_SECRET_VERSION=${SecretName}:${Version}"
+        return
+    }
+    Add-Failure "NOT_READY=SECRET_VERSION:${SecretName}:${Version}:$state"
+}
+
+function Test-SecretAccessorIam {
+    param(
+        [Parameter(Mandatory)][string]$ServiceAccount,
+        [Parameter(Mandatory)][string]$SecretName,
+        [Parameter(Mandatory)][string]$Version
+    )
+
+    $member = "serviceAccount:$ServiceAccount"
+    $arguments = @(
+        "projects", "get-iam-policy", $ProjectId,
+        "--flatten=bindings[].members",
+        "--filter=bindings.role:roles/secretmanager.secretAccessor AND bindings.members:$member",
+        "--format=value(bindings.members)"
+    )
+    $output = & $GcloudCommand @arguments 2>&1
+    $exitCode = $LASTEXITCODE
+    $text = ($output | ForEach-Object { [string]$_ }) -join "`n"
+    if ($exitCode -ne 0 -or $text -notmatch [regex]::Escape($member)) {
+        Add-Failure "SECRET_ACCESS_DENIED=${ServiceAccount}:${SecretName}:${Version}"
     }
 }
 
@@ -137,6 +209,26 @@ foreach ($secretName in $SecretNames) {
     ) | Out-Null
 }
 
+$requiredSecretVersions = @(
+    [ordered]@{ Secret = $CloudSqlCaSecret; Version = $CloudSqlCaVersion },
+    [ordered]@{ Secret = $RabbitMqCaSecret; Version = $RabbitMqCaVersion },
+    [ordered]@{ Secret = $RabbitMqTlsCertificateSecret; Version = $RabbitMqTlsCertificateVersion },
+    [ordered]@{ Secret = $RabbitMqTlsPrivateKeySecret; Version = $RabbitMqTlsPrivateKeyVersion }
+)
+
+foreach ($secretVersion in $requiredSecretVersions) {
+    Test-SecretVersionReadiness -SecretName $secretVersion.Secret -Version $secretVersion.Version
+}
+
+foreach ($serviceAccount in $SecretAccessorServiceAccounts) {
+    foreach ($secretVersion in $requiredSecretVersions) {
+        Test-SecretAccessorIam `
+            -ServiceAccount $serviceAccount `
+            -SecretName $secretVersion.Secret `
+            -Version $secretVersion.Version
+    }
+}
+
 foreach ($serviceAccount in $ServiceAccounts) {
     Invoke-GcloudReadiness -Json -ResourceMarker "SERVICE_ACCOUNT:$serviceAccount" -Arguments @(
         "iam", "service-accounts", "describe", $serviceAccount,
@@ -153,9 +245,11 @@ if (-not $SkipKubeCredentials) {
 
 if ($failures.Count -gt 0) {
     Write-Host "STAGING_FOUNDATION_READINESS=FAIL"
+    Write-Host "STAGING_SECRET_VERSION_READINESS=FAIL"
     Write-Host "STAGING_FOUNDATION_FAILURES=$($failures.Count)"
     exit 1
 }
 
 Write-Host "STAGING_FOUNDATION_READINESS=PASS"
+Write-Host "STAGING_SECRET_VERSION_READINESS=PASS"
 exit 0

@@ -92,6 +92,13 @@ Os limites são candidatos. Cloud Armor fornece proteção global por IP no edge
 - Cloud Armor, serverless NEGs, backends, URL map, certificado e HTTPS load balancer;
 - regras de login, lançamento de simulação, API geral, SQLi e XSS.
 
+O overlay staging usa placeholders para as versões owner-managed de Cloud SQL
+CA, RabbitMQ CA e RabbitMQ TLS. O workflow substitui esses placeholders na
+cópia de release com os números configurados no GitHub Environment `staging` e
+o preflight falha fechado se a versão exata não existir, não estiver `ENABLED`
+ou se a service account runtime esperada não tiver acesso Secret Manager. O
+manifesto fonte não usa `latest` para estes materiais.
+
 O runtime PostgreSQL usa o contrato `POSTGRES_*` com `POSTGRES_REQUIRE_EXPLICIT=true`,
 `POSTGRES_SSL_MODE=VerifyCA` e `POSTGRES_ROOT_CERTIFICATE` apontado para o CA
 montado a partir de Secret Manager. A implementação Npgsql constrói um

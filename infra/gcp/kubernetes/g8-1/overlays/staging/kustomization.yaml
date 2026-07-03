@@ -202,11 +202,11 @@ patches:
       - op: replace
         path: /spec/parameters/secrets
         value: |
-          - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-certificate/versions/latest"
+          - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-certificate/versions/RABBITMQ_TLS_CERTIFICATE_VERSION"
             path: "tls.crt"
-          - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-private-key/versions/latest"
+          - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-private-key/versions/RABBITMQ_TLS_PRIVATE_KEY_VERSION"
             path: "tls.key"
-          - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-ca-certificate/versions/latest"
+          - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-ca-certificate/versions/RABBITMQ_CA_VERSION"
             path: "ca.crt"
   - target:
       kind: SecretProviderClass
@@ -215,5 +215,5 @@ patches:
       - op: replace
         path: /spec/parameters/secrets
         value: |
-          - resourceName: "projects/natureprotector-500518/secrets/np-staging-cloud-sql-server-ca/versions/1"
+          - resourceName: "projects/natureprotector-500518/secrets/np-staging-cloud-sql-server-ca/versions/CLOUD_SQL_CA_VERSION"
             path: "server-ca.pem"

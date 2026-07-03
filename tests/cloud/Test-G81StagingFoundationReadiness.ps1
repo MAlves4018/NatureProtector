@@ -17,6 +17,21 @@ function Write-Json([string]$json) {
     exit 0
 }
 
+if ($args.Count -ge 2 -and $args[0] -eq "projects" -and $args[1] -eq "get-iam-policy") {
+    if ($scenario -eq "secret-access-denied") {
+        Write-Output ""
+        exit 0
+    }
+    Write-Output "serviceAccount:np-staging-migrations@natureprotector-500518.iam.gserviceaccount.com"
+    Write-Output "serviceAccount:np-staging-bootstrap@natureprotector-500518.iam.gserviceaccount.com"
+    Write-Output "serviceAccount:np-staging-api@natureprotector-500518.iam.gserviceaccount.com"
+    Write-Output "serviceAccount:np-staging-prevention@natureprotector-500518.iam.gserviceaccount.com"
+    Write-Output "serviceAccount:np-staging-secret-sync@natureprotector-500518.iam.gserviceaccount.com"
+    Write-Output "serviceAccount:np-staging-simulator@natureprotector-500518.iam.gserviceaccount.com"
+    Write-Output "serviceAccount:np-staging-smoke@natureprotector-500518.iam.gserviceaccount.com"
+    exit 0
+}
+
 if ($scenario -eq "missing-cluster" -and $joined -match "container clusters describe np-staging") {
     [Console]::Error.WriteLine("NOT_FOUND: cluster np-staging was not found")
     exit 1
@@ -35,6 +50,24 @@ if ($scenario -eq "multiple-missing" -and $joined -match "compute addresses desc
 if ($scenario -eq "multiple-missing" -and $joined -match "builds worker-pools describe np-staging-deploy") {
     [Console]::Error.WriteLine("NOT_FOUND: worker pool np-staging-deploy was not found")
     exit 1
+}
+
+if ($joined -match "secrets versions describe") {
+    if ($scenario -eq "secret-version-missing" -and $joined -match "np-staging-rabbitmq-ca-certificate") {
+        [Console]::Error.WriteLine("NOT_FOUND: secret version was not found")
+        exit 1
+    }
+    if ($scenario -eq "secret-version-disabled" -and $joined -match "np-staging-rabbitmq-ca-certificate") {
+        Write-Json '{"state":"DISABLED"}'
+    }
+    if ($scenario -eq "secret-version-destroyed" -and $joined -match "np-staging-rabbitmq-ca-certificate") {
+        Write-Json '{"state":"DESTROYED"}'
+    }
+    if ($scenario -eq "secret-version-permission-denied" -and $joined -match "np-staging-rabbitmq-ca-certificate") {
+        Write-Output "PERMISSION_DENIED: caller lacks secretmanager.versions.get"
+        exit 1
+    }
+    Write-Json '{"state":"ENABLED"}'
 }
 
 if ($joined -match "container clusters describe np-staging") {
@@ -74,7 +107,11 @@ function Invoke-Readiness {
         "-NoProfile",
         "-File", $scriptPath,
         "-GcloudCommand", $fakeGcloud,
-        "-SkipKubeCredentials"
+        "-SkipKubeCredentials",
+        "-CloudSqlCaVersion", "2",
+        "-RabbitMqCaVersion", "7",
+        "-RabbitMqTlsCertificateVersion", "8",
+        "-RabbitMqTlsPrivateKeyVersion", "9"
     )
     if ($RequireActiveCertificate) { $arguments += "-RequireActiveCertificate" }
     $output = & pwsh @arguments 2>&1
@@ -88,6 +125,9 @@ try {
     $pass = Invoke-Readiness -Scenario "pass" -RequireActiveCertificate
     if ($pass.ExitCode -ne 0 -or $pass.Output -notmatch "STAGING_FOUNDATION_READINESS=PASS") {
         throw "Expected pass readiness but got exit $($pass.ExitCode): $($pass.Output)"
+    }
+    if ($pass.Output -notmatch "STAGING_SECRET_VERSION_READINESS=PASS") {
+        throw "Expected secret version readiness pass marker: $($pass.Output)"
     }
 
     $missing = Invoke-Readiness -Scenario "missing-cluster"
@@ -121,6 +161,40 @@ try {
         $multi.Output -notmatch "STAGING_FOUNDATION_FAILURES=2"
     ) {
         throw "Expected aggregated missing resource markers: $($multi.Output)"
+    }
+
+    $missingVersion = Invoke-Readiness -Scenario "secret-version-missing"
+    if ($missingVersion.ExitCode -eq 0 -or $missingVersion.Output -notmatch "MISSING_SECRET_VERSION=np-staging-rabbitmq-ca-certificate:7") {
+        throw "Expected missing secret version marker: $($missingVersion.Output)"
+    }
+
+    $disabledVersion = Invoke-Readiness -Scenario "secret-version-disabled"
+    if ($disabledVersion.ExitCode -eq 0 -or $disabledVersion.Output -notmatch "DISABLED_SECRET_VERSION=np-staging-rabbitmq-ca-certificate:7") {
+        throw "Expected disabled secret version marker: $($disabledVersion.Output)"
+    }
+
+    $destroyedVersion = Invoke-Readiness -Scenario "secret-version-destroyed"
+    if ($destroyedVersion.ExitCode -eq 0 -or $destroyedVersion.Output -notmatch "DESTROYED_SECRET_VERSION=np-staging-rabbitmq-ca-certificate:7") {
+        throw "Expected destroyed secret version marker: $($destroyedVersion.Output)"
+    }
+
+    $versionDenied = Invoke-Readiness -Scenario "secret-version-permission-denied"
+    if ($versionDenied.ExitCode -eq 0 -or $versionDenied.Output -notmatch "PERMISSION_DENIED=SECRET_VERSION:np-staging-rabbitmq-ca-certificate:7") {
+        throw "Expected secret version permission marker: $($versionDenied.Output)"
+    }
+
+    $accessDenied = Invoke-Readiness -Scenario "secret-access-denied"
+    if ($accessDenied.ExitCode -eq 0 -or $accessDenied.Output -notmatch "SECRET_ACCESS_DENIED=np-staging-migrations@natureprotector-500518.iam.gserviceaccount.com:np-staging-rabbitmq-ca-certificate:7") {
+        throw "Expected secret accessor marker: $($accessDenied.Output)"
+    }
+
+    $latest = & pwsh -NoProfile -File $scriptPath -GcloudCommand $fakeGcloud -SkipKubeCredentials -CloudSqlCaVersion 2 -RabbitMqCaVersion latest -RabbitMqTlsCertificateVersion 8 -RabbitMqTlsPrivateKeyVersion 9 2>&1
+    $latestOutput = ($latest | ForEach-Object { [string]$_ }) -join "`n"
+    if ($LASTEXITCODE -eq 0 -or $latestOutput -notmatch "MISSING_SECRET_VERSION=np-staging-rabbitmq-ca-certificate:latest") {
+        throw "Expected latest to be rejected: $latestOutput"
+    }
+    if ($latestOutput -match "PRIVATE KEY|BEGIN") {
+        throw "Secret payload text must not appear in readiness logs."
     }
 
     Write-Host "G81_STAGING_FOUNDATION_READINESS_TEST=PASS"

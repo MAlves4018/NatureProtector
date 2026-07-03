@@ -646,10 +646,10 @@ check(
     "platform-gke-deploy-parameters-must-not-use-multiline-secret-resource-sets",
 )
 check(
-    "np-staging-cloud-sql-server-ca/versions/1" in staging_kustomization
-    and "np-staging-rabbitmq-tls-certificate/versions/latest" in staging_kustomization
-    and "np-staging-rabbitmq-tls-private-key/versions/latest" in staging_kustomization
-    and "np-staging-rabbitmq-ca-certificate/versions/latest" in staging_kustomization
+    "np-staging-cloud-sql-server-ca/versions/CLOUD_SQL_CA_VERSION" in staging_kustomization
+    and "np-staging-rabbitmq-tls-certificate/versions/RABBITMQ_TLS_CERTIFICATE_VERSION" in staging_kustomization
+    and "np-staging-rabbitmq-tls-private-key/versions/RABBITMQ_TLS_PRIVATE_KEY_VERSION" in staging_kustomization
+    and "np-staging-rabbitmq-ca-certificate/versions/RABBITMQ_CA_VERSION" in staging_kustomization
     and "np-staging-postgres-app-password/versions/1" in staging_kustomization,
     "staging-kustomization-secret-provider-resources-missing",
 )
