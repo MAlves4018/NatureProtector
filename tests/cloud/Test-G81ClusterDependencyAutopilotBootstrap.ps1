@@ -61,10 +61,20 @@ function Get-RealBash {
         return $gitBash
     }
 
-    $candidate = Get-Command bash -CommandType Application -ErrorAction SilentlyContinue |
-        Select-Object -First 1
-    if ($candidate -and $candidate.Source -notmatch "\\Windows\\(system32|System32|WindowsApps)\\bash\.exe$") {
-        return $candidate.Source
+    $shimDirectory = [IO.Path]::TrimEndingDirectorySeparator(
+        [IO.Path]::GetFullPath($bin)
+    )
+    $candidates = @(Get-Command bash -All -CommandType Application -ErrorAction SilentlyContinue)
+    foreach ($candidate in $candidates) {
+        $candidateDirectory = [IO.Path]::TrimEndingDirectorySeparator(
+            [IO.Path]::GetFullPath((Split-Path -Parent $candidate.Source))
+        )
+        if ($candidateDirectory -eq $shimDirectory) {
+            continue
+        }
+        if ($candidate.Source -notmatch "\\Windows\\(system32|System32|WindowsApps)\\bash\.exe$") {
+            return $candidate.Source
+        }
     }
 
     return $null
@@ -417,6 +427,8 @@ function Invoke-RealBashInstaller {
     $env:NP_FAKE_CLUSTER_MODE = "autopilot"
     $env:NP_FAKE_FOUNDATION_READY = "false"
     $env:NP_FAKE_POD_FAILURE = ""
+    Remove-Item Env:NP_FAKE_BASH_EXIT -ErrorAction SilentlyContinue
+    Remove-Item Env:NP_FAKE_BASH_RECORD -ErrorAction SilentlyContinue
     $env:NP_CLUSTER_DEPENDENCY_ROLLOUT_TIMEOUT_SECONDS = "300"
     $realEvidence = Join-Path $tempRoot "real-bash-evidence"
     New-Item -ItemType Directory -Force -Path $realEvidence | Out-Null
