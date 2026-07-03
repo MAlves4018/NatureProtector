@@ -196,6 +196,33 @@ function Test-FrontendOriginMatchesManagedCertificate {
     }
 }
 
+function Resolve-CurlExecutable {
+    $curlCommands = @(
+        Get-Command `
+            -Name "curl" `
+            -CommandType Application `
+            -ErrorAction SilentlyContinue
+    )
+
+    if ($curlCommands.Count -eq 0) {
+        throw "curl executable was not found in PATH."
+    }
+
+    $selectedCurl =
+        $curlCommands |
+        Where-Object {
+            $_.Source -and
+            (Test-Path -LiteralPath $_.Source)
+        } |
+        Select-Object -First 1
+
+    if ($null -eq $selectedCurl) {
+        throw "curl was found, but no executable curl path could be resolved."
+    }
+
+    return [string]$selectedCurl.Source
+}
+
 function Test-HttpPrecheck {
     param(
         [Parameter(Mandatory)][string]$Url,
@@ -204,15 +231,28 @@ function Test-HttpPrecheck {
     )
 
     New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+
     $bodyPath = Join-Path $OutputDirectory "$Name.body"
     $statusPath = Join-Path $OutputDirectory "$Name.status"
-    $curl = (Get-Command curl -CommandType Application -ErrorAction Stop).Source
-    $status = & $curl --fail --silent --show-error --location --max-time 30 `
+    $curlExecutable = Resolve-CurlExecutable
+
+    $status = & $curlExecutable `
+        --silent `
+        --show-error `
+        --location `
+        --connect-timeout "15" `
+        --max-time "60" `
         --output $bodyPath `
         --write-out "%{http_code}" `
         $Url
+
     $exit = $LASTEXITCODE
-    [string]$status | Set-Content -Encoding ascii -LiteralPath $statusPath
+
+    [string]$status |
+        Set-Content `
+            -Encoding ascii `
+            -LiteralPath $statusPath
+
     if ($exit -ne 0 -or [string]$status -notmatch '^2\d\d$') {
         throw "Pre-smoke HTTP check $Name failed with curl exit $exit and status $status."
     }
