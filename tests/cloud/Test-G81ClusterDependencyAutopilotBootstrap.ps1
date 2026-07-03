@@ -18,6 +18,15 @@ function New-CmdShim {
     $cmd = Join-Path $bin "$Name.cmd"
     "@echo off`r`npwsh -NoProfile -ExecutionPolicy Bypass -File `"$Target`" %*`r`nexit /b %ERRORLEVEL%`r`n" |
         Set-Content -LiteralPath $cmd -Encoding ascii
+
+    $posix = Join-Path $bin $Name
+    $escapedTarget = $Target.Replace("'", "'\''")
+    "#!/usr/bin/env bash`npwsh -NoProfile -ExecutionPolicy Bypass -File '$escapedTarget' ""`$@""`nexit `$?`n" |
+        Set-Content -LiteralPath $posix -Encoding utf8NoBOM
+    $chmod = Get-Command chmod -ErrorAction SilentlyContinue
+    if ($chmod) {
+        & $chmod.Source +x $posix
+    }
 }
 
 $fakeGcloud = Join-Path $tempRoot "fake-gcloud.ps1"
