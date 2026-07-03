@@ -176,11 +176,15 @@ verify:
 
           echo "Reconciling RabbitMQ topology connection URI"
 
+          rabbitmq_management_uri="http://natureprotector-rabbitmq.natureprotector-staging.svc:15672"
+          rabbitmq_management_uri_b64="$(
+            printf '%s' "${rabbitmq_management_uri}" | base64 | tr -d '\n'
+          )"
           kubectl patch secret natureprotector-rabbitmq-default-user \
             --namespace="${namespace}" \
             --request-timeout=30s \
             --type=merge \
-            -p '{"stringData":{"uri":"http://natureprotector-rabbitmq.natureprotector-staging.svc:15672"}}'
+            -p "{\"data\":{\"uri\":\"${rabbitmq_management_uri_b64}\"}}"
 
           echo "Waiting for RabbitMQ topology resources"
 
