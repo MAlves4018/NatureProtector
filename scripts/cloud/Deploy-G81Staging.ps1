@@ -156,6 +156,117 @@ function Write-CloudDeployRolloutFailureDiagnostics {
     Write-Host "CLOUD_DEPLOY_ROLLOUT_DIAGNOSTICS=$OutputDirectory"
 }
 
+function Test-CloudRunServiceReady {
+    param(
+        [Parameter(Mandatory)][string]$ServiceName,
+        [Parameter(Mandatory)][string]$OutputPath
+    )
+
+    $result = Invoke-GcloudJson -Arguments @(
+        "run", "services", "describe", $ServiceName,
+        "--project=$StagingProjectId", "--region=$Region", "--format=json"
+    ) -OutputPath $OutputPath
+    $service = $result.output | ConvertFrom-Json
+    $conditions = @($service.status.conditions)
+    $ready = $conditions | Where-Object { [string]$_.type -eq "Ready" } | Select-Object -First 1
+    if (-not $ready -or [string]$ready.status -ne "True") {
+        throw "Cloud Run service $ServiceName is not Ready."
+    }
+}
+
+function Test-FrontendOriginMatchesManagedCertificate {
+    param(
+        [Parameter(Mandatory)][Uri]$Origin,
+        [Parameter(Mandatory)][string]$OutputPath
+    )
+
+    $certificateName = "np-staging"
+    $result = Invoke-GcloudJson -Arguments @(
+        "compute", "ssl-certificates", "describe", $certificateName,
+        "--project=$StagingProjectId", "--global", "--format=json"
+    ) -OutputPath $OutputPath
+    $certificate = $result.output | ConvertFrom-Json
+    if ([string]$certificate.managed.status -ne "ACTIVE") {
+        throw "Managed certificate $certificateName is not ACTIVE."
+    }
+
+    $domains = @($certificate.managed.domains | ForEach-Object { [string]$_ })
+    if ($domains -notcontains $Origin.Host) {
+        throw "FrontendOrigin host '$($Origin.Host)' is not covered by managed certificate $certificateName."
+    }
+}
+
+function Test-HttpPrecheck {
+    param(
+        [Parameter(Mandatory)][string]$Url,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$OutputDirectory
+    )
+
+    New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+    $bodyPath = Join-Path $OutputDirectory "$Name.body"
+    $statusPath = Join-Path $OutputDirectory "$Name.status"
+    $curl = (Get-Command curl -CommandType Application -ErrorAction Stop).Source
+    $status = & $curl --fail --silent --show-error --location --max-time 30 `
+        --output $bodyPath `
+        --write-out "%{http_code}" `
+        $Url
+    $exit = $LASTEXITCODE
+    [string]$status | Set-Content -Encoding ascii -LiteralPath $statusPath
+    if ($exit -ne 0 -or [string]$status -notmatch '^2\d\d$') {
+        throw "Pre-smoke HTTP check $Name failed with curl exit $exit and status $status."
+    }
+}
+
+function Test-G81PreSmokeReadiness {
+    param(
+        [Parameter(Mandatory)][string]$OutputDirectory,
+        [Parameter(Mandatory)][object[]]$Rollouts
+    )
+
+    New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+    $rolloutStates = @{}
+    foreach ($rollout in $Rollouts) {
+        $rolloutStates[[string]$rollout.pipeline] = [string]$rollout.state
+    }
+    if ($rolloutStates["natureprotector-api"] -ne "SUCCEEDED") { throw "API rollout is not SUCCEEDED." }
+    if ($rolloutStates["natureprotector-frontend"] -ne "SUCCEEDED") { throw "Frontend rollout is not SUCCEEDED." }
+    if ($rolloutStates["natureprotector-prevention"] -ne "SUCCEEDED") { throw "Prevention rollout is not SUCCEEDED." }
+    Write-Host "API_ROLLOUT=PASS"
+    Write-Host "FRONTEND_ROLLOUT=PASS"
+    Write-Host "PREVENTION_ROLLOUT=PASS"
+
+    Test-CloudRunServiceReady -ServiceName "natureprotector-api" -OutputPath (Join-Path $OutputDirectory "api-service.json")
+    Test-CloudRunServiceReady -ServiceName "natureprotector-frontend" -OutputPath (Join-Path $OutputDirectory "frontend-service.json")
+
+    try { $frontendUri = [Uri]$FrontendOrigin } catch { throw "FrontendOrigin must be an absolute HTTPS origin." }
+    Test-FrontendOriginMatchesManagedCertificate -Origin $frontendUri -OutputPath (Join-Path $OutputDirectory "managed-certificate.json")
+
+    Test-HttpPrecheck -Url "$($FrontendOrigin.TrimEnd('/'))/healthz" -Name "frontend-healthz" -OutputDirectory $OutputDirectory
+    Write-Host "FRONTEND_HEALTH_PRECHECK=PASS"
+    Test-HttpPrecheck -Url "$($FrontendOrigin.TrimEnd('/'))/" -Name "frontend-index" -OutputDirectory $OutputDirectory
+    Write-Host "FRONTEND_INDEX_PRECHECK=PASS"
+
+    $kubectlExit = Invoke-DiagnosticCommand -FilePath "kubectl" -Arguments @(
+        "-n", "natureprotector-staging", "wait",
+        "--for=condition=Available", "deployment/natureprotector-prevention",
+        "--timeout=120s"
+    ) -OutputPath (Join-Path $OutputDirectory "prevention-available.txt")
+    if ($kubectlExit -ne 0) { throw "Prevention deployment is not Available before functional smoke." }
+
+    [ordered]@{
+        schema_version = 1
+        frontend_origin = $FrontendOrigin
+        api_rollout = "SUCCEEDED"
+        frontend_rollout = "SUCCEEDED"
+        prevention_rollout = "SUCCEEDED"
+        frontend_health_precheck = "PASS"
+        frontend_index_precheck = "PASS"
+        prevention_available = "PASS"
+    } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 (Join-Path $OutputDirectory "pre-smoke-readiness-summary.json")
+    Write-Host "PRE_SMOKE_READINESS=PASS"
+}
+
 function Wait-CloudDeployRollout {
     param(
         [Parameter(Mandatory)][string]$Pipeline,
@@ -452,6 +563,10 @@ $functionalSmokePassed = $false
 $stagingVerified = $false
 $edgeBootstrapPending = ($DeploymentMode -eq "services-only-bootstrap")
 if ($DeploymentMode -eq "verified") {
+    Test-G81PreSmokeReadiness `
+        -OutputDirectory (Join-Path $EvidenceDirectory "pre-smoke-readiness") `
+        -Rollouts $rolloutSummary
+
     & ./scripts/cloud/Invoke-G81FunctionalSmoke.ps1 `
         -EnvironmentName staging `
         -ManifestPath $ManifestPath `

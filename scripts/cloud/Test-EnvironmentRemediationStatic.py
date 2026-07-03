@@ -76,6 +76,9 @@ deploy_runtime_jobs = (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1").read_te
 functional_smoke = FUNCTIONAL_SMOKE_PATH.read_text(
     encoding="utf-8"
 )
+invoke_functional_smoke = (
+    ROOT / "scripts/cloud/Invoke-G81FunctionalSmoke.ps1"
+).read_text(encoding="utf-8")
 functional_smoke_compact = re.sub(
     r"[ \t]*\\\r?\n[ \t]*",
     " ",
@@ -418,6 +421,24 @@ if standard_deploy.is_file():
         and "--images=$imagesArg" in standard_deploy_text,
         "standard-deploy-must-render-rabbitmq-crd-image-from-signed-manifest",
     )
+    check(
+        "function Test-G81PreSmokeReadiness" in standard_deploy_text
+        and "API_ROLLOUT=PASS" in standard_deploy_text
+        and "FRONTEND_ROLLOUT=PASS" in standard_deploy_text
+        and "PREVENTION_ROLLOUT=PASS" in standard_deploy_text
+        and "FRONTEND_HEALTH_PRECHECK=PASS" in standard_deploy_text
+        and "FRONTEND_INDEX_PRECHECK=PASS" in standard_deploy_text
+        and "PRE_SMOKE_READINESS=PASS" in standard_deploy_text
+        and standard_deploy_text.index("Test-G81PreSmokeReadiness `")
+        < standard_deploy_text.index("Invoke-G81FunctionalSmoke.ps1 `"),
+        "standard-deploy-must-gate-functional-smoke-on-ready-services",
+    )
+    check(
+        "Test-FrontendOriginMatchesManagedCertificate" in standard_deploy_text
+        and '"ssl-certificates", "describe", $certificateName' in standard_deploy_text
+        and 'if ($domains -notcontains $Origin.Host)' in standard_deploy_text,
+        "standard-deploy-must-match-smoke-origin-to-managed-certificate",
+    )
 
 api_skaffold = (ROOT / "infra/gcp/cloud-deploy/g8-1/api/skaffold.yaml").read_text(
     encoding="utf-8"
@@ -643,6 +664,22 @@ check(
     "curl -fsS" not in functional_smoke
     and "set -x" not in functional_smoke,
     "functional-smoke-must-not-hide-http-status-or-enable-secret-tracing",
+)
+check(
+    "Write-FunctionalSmokeFailureDiagnostics" in invoke_functional_smoke
+    and "run\", \"jobs\", \"executions\", \"describe\"" in invoke_functional_smoke
+    and "logging\", \"read\", $filter" in invoke_functional_smoke
+    and "FUNCTIONAL_SMOKE_FAILURE_CLASS=" in invoke_functional_smoke
+    and "FUNCTIONAL_SMOKE_FAILED_STEP=" in invoke_functional_smoke
+    and "FUNCTIONAL_SMOKE_DIAGNOSTICS=" in invoke_functional_smoke
+    and "functional-smoke-failure-summary.json" in invoke_functional_smoke,
+    "functional-smoke-invoker-must-collect-execution-diagnostics-on-failure",
+)
+check(
+    "Test-SmokeOriginMatchesManagedCertificate" in invoke_functional_smoke
+    and '$failureClass = "SMOKE_CONFIGURATION"' in invoke_functional_smoke
+    and "managed-certificate.json" in invoke_functional_smoke,
+    "functional-smoke-frontend-transport-must-detect-origin-certificate-mismatch",
 )
 check(
     "cloud_sql_ca_secret_resources" not in (PLATFORM / "terraform.staging.tfvars").read_text(encoding="utf-8")

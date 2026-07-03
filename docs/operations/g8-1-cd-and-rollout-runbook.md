@@ -58,10 +58,21 @@ para produção continua a exigir o perfil production-ready e os gates existente
 8. cria ou reutiliza idempotentemente três releases Cloud Deploy;
 9. aguarda a conclusão dos rollouts;
 10. os verifies Cloud Deploy dos serviços Cloud Run confirmam apenas que o rollout publicou metadata `run.app`, porque o ingress direto está restrito a `internal-and-cloud-load-balancing`;
-11. executa o smoke funcional pelo hostname HTTPS protegido; URLs `run.app` são rejeitadas;
-12. arquiva evidence e checksums com `staging_verified=true`.
+11. antes do smoke, confirma rollouts `SUCCEEDED`, serviços Cloud Run `Ready`,
+    certificado gerido `ACTIVE`, domínio do certificado igual ao
+    `FrontendOrigin`, `/healthz` e `/` HTTP 2xx, e Deployment Prevention
+    `Available`;
+12. executa o smoke funcional pelo hostname HTTPS protegido; URLs `run.app` são rejeitadas;
+13. arquiva evidence e checksums com `staging_verified=true`.
 
 Falha em migration, bootstrap, rollout ou smoke bloqueia promoção.
+
+Se o smoke falhar em `FRONTEND_HEALTH_TRANSPORT_FAILED` com `curl` exit 35
+(`Broken pipe`, `handshake` ou reset antes de HTTP), validar primeiro o
+`GCP_STAGING_FUNCTIONAL_SMOKE_ORIGIN`: o host deve resolver para o forwarding
+rule `np-staging-https` e deve constar nos domains do certificado gerido
+`np-staging` com status `ACTIVE`. Não classificar como falha de login, API ou
+Prevention enquanto `/healthz` nem sequer chegou a HTTP.
 
 No rollout GKE, confirmar que `prevention-runtime` permite egress para o
 `cloud_sql_private_cidr` real e que os pods `Prevention.Host` recebem
