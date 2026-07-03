@@ -300,6 +300,7 @@ try {
                 @{ name="standard-staging-configuration"; cmd="python"; args=@("scripts/cloud/Test-StandardStagingConfiguration.py") },
                 @{ name="standard-platform-configuration"; cmd="python"; args=@("scripts/cloud/Test-StandardPlatformConfiguration.py") },
                 @{ name="environment-remediation-static"; cmd="python"; args=@("scripts/cloud/Test-EnvironmentRemediationStatic.py") },
+                @{ name="staging-foundation-readiness"; cmd="pwsh"; args=@("-NoProfile", "-File", "tests/cloud/Test-G81StagingFoundationReadiness.ps1") },
                 @{ name="evidence-checksum-portability"; cmd="pwsh"; args=@("-NoProfile", "-File", "tests/cloud/Test-EvidenceChecksumPortability.ps1") }
             )
             $results = @()

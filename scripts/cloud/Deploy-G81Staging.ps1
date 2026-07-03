@@ -56,6 +56,15 @@ $manifest = Get-Content -Raw $ManifestPath | ConvertFrom-Json -AsHashtable
 $images = $manifest.images
 New-Item -ItemType Directory -Force -Path $EvidenceDirectory | Out-Null
 
+& ./scripts/cloud/Test-G81StagingFoundationReadiness.ps1 `
+    -ProjectId $StagingProjectId `
+    -Region $Region `
+    -ClusterName $ClusterName `
+    -RuntimeNetwork $RuntimeNetwork `
+    -RuntimeSubnetwork $RuntimeSubnetwork `
+    -RequireActiveCertificate:($DeploymentMode -eq "verified")
+if ($LASTEXITCODE -ne 0) { throw "Staging foundation readiness failed before deployment." }
+
 function Invoke-GcloudJson {
     param([Parameter(Mandatory)][string[]]$Arguments, [string]$OutputPath, [switch]$AllowFailure)
     $output = & gcloud @Arguments
