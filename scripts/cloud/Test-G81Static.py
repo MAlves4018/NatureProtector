@@ -439,6 +439,11 @@ semantic_checks = {
     "operator-lock-exact-keda-version": (ROOT / "infra/gcp/kubernetes/g8-1/operator-lock.json", '"tag": "v2.18.2"'),
     "staging-installs-cluster-dependencies": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Install-G81ClusterDependencies.ps1"),
     "staging-ensures-prevention-verifier-support": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Ensure-G81PreventionVerifierSupport.ps1"),
+    "staging-foundation-readiness-script": (ROOT / "scripts/cloud/Test-G81StagingFoundationReadiness.ps1", "STAGING_FOUNDATION_READINESS=PASS"),
+    "staging-deploy-runs-foundation-readiness": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Test-G81StagingFoundationReadiness.ps1"),
+    "staging-workflow-runs-foundation-readiness": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "Verify staging foundation readiness"),
+    "standard-deploy-runs-foundation-readiness": (ROOT / ".github/workflows/_deploy.yml", "Verify staging foundation readiness"),
+    "np-validate-runs-foundation-readiness": (ROOT / "scripts/np.ps1", "Test-G81StagingFoundationReadiness.ps1"),
     "prevention-verifier-support-server-dry-run": (ROOT / "scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1", "--dry-run=server"),
     "prevention-verifier-support-field-manager": (ROOT / "scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1", "natureprotector-verifier-support-foundation"),
     "prevention-verifier-support-staging-namespace": (ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/overlays/staging/kustomization.yaml", "namespace: natureprotector-staging"),
@@ -543,6 +548,15 @@ check('Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference)' 
 credentials_index = staging_script.find("gcloud container clusters get-credentials")
 operator_ready_index = staging_script.find("Test-OperatorFoundationReady -OutputDirectory")
 check(credentials_index >= 0 and operator_ready_index >= 0 and credentials_index < operator_ready_index, "semantic:staging-operator-readiness-requires-kubecontext-first")
+readiness_index = staging_script.find("Test-G81StagingFoundationReadiness.ps1")
+check(readiness_index >= 0 and credentials_index >= 0 and readiness_index < credentials_index, "semantic:staging-foundation-readiness-precedes-kubecontext")
+workflow_readiness_index = staging_workflow.find("Verify staging foundation readiness")
+workflow_deploy_index = staging_workflow.find("Deploy runtime prerequisites and verified staging rollouts")
+check(workflow_readiness_index >= 0 and workflow_deploy_index >= 0 and workflow_readiness_index < workflow_deploy_index, "semantic:staging-workflow-readiness-precedes-deploy")
+standard_deploy_workflow = (ROOT / ".github/workflows/_deploy.yml").read_text(encoding="utf-8")
+standard_readiness_index = standard_deploy_workflow.find("Verify staging foundation readiness")
+standard_deploy_index = standard_deploy_workflow.find("Deploy by digest authority")
+check(standard_readiness_index >= 0 and standard_deploy_index >= 0 and standard_readiness_index < standard_deploy_index, "semantic:standard-deploy-readiness-precedes-deploy")
 check("$spec.Images" not in staging_script and "$spec.Pipeline" not in staging_script and "$spec.Skaffold" not in staging_script, "semantic:cloud-deploy-release-specs-use-explicit-indexers")
 check("CLOUD_RUN_SERVICE_URL'" not in scope_text and "CLOUD_RUN_SERVICE_URL/" not in scope_text, "semantic:singular-cloud-run-url-variable-is-invalid")
 ca_validator = (ROOT / "src/NatureProtector.Shared/Configuration/PrivateCertificateAuthorityValidator.cs").read_text(encoding="utf-8")

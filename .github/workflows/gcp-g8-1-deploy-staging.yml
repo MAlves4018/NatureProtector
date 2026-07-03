@@ -110,6 +110,17 @@ jobs:
       - name: Install GKE client components
         shell: bash
         run: gcloud components install --quiet gke-gcloud-auth-plugin kubectl
+      - name: Verify staging foundation readiness
+        shell: pwsh
+        working-directory: source
+        run: >-
+          ./scripts/cloud/Test-G81StagingFoundationReadiness.ps1
+          -ProjectId '${{ vars.GCP_STAGING_PROJECT_ID }}'
+          -Region '${{ vars.GCP_REGION }}'
+          -ClusterName '${{ vars.GCP_STAGING_CLUSTER_NAME }}'
+          -RuntimeNetwork '${{ vars.GCP_STAGING_NETWORK }}'
+          -RuntimeSubnetwork '${{ vars.GCP_STAGING_SUBNETWORK }}'
+          -RequireActiveCertificate:('${{ steps.mode.outputs.mode }}' -eq 'verified')
       - name: Deploy runtime prerequisites and verified staging rollouts
         shell: pwsh
         working-directory: source
