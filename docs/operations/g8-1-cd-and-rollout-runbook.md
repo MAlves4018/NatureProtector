@@ -83,6 +83,12 @@ job-runs, events, describe e logs Kubernetes. Erros de TLS KEDA do tipo
 `certificate is valid for ... not ...svc.cluster.local` indicam SAN RabbitMQ
 incompativel com o host AMQPS usado pelo `ScaledObject`; nao usar `unsafeSsl`
 como correcao normal.
+Se KEDA estiver `Ready=True` mas Prevention continuar com readiness 503 e logs
+`RabbitMQ is temporarily unavailable` / `RemoteCertificateValidationCallback`,
+comparar a hora de arranque do pod com a rotação dos Secrets TLS. O worker
+recria o `ConnectionFactory` em cada retry para reler a CA privada montada; se
+uma imagem anterior estiver ativa, reiniciar a release e verificar que o pod
+carregou a CA atual.
 
 ## Produção
 

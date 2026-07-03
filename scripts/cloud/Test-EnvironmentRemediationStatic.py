@@ -99,6 +99,11 @@ gke_prevention_scaling = (
 prevention_worker_text = (
     ROOT / "src/NatureProtector.Prevention.Host/PreventionWorker.cs"
 ).read_text(encoding="utf-8")
+prevention_worker_before_yield = prevention_worker_text.split("await Task.Yield();", 1)[0]
+prevention_worker_retry_body = prevention_worker_text.split(
+    "while (!stoppingToken.IsCancellationRequested)",
+    1,
+)[1]
 rabbitmq_options_text = (
     ROOT / "src/NatureProtector.Shared/Configuration/RabbitMqOptions.cs"
 ).read_text(encoding="utf-8")
@@ -715,6 +720,13 @@ check(
     and "factory.Ssl = new SslOption" in simulator_publisher_text
     and "PrivateCertificateAuthorityValidator.Create(options.TlsCertificateAuthorityPath)" in simulator_publisher_text,
     "rabbitmq-clients-must-enable-tls-with-private-ca",
+)
+check(
+    "var factory = CreateConnectionFactory(_options);" not in prevention_worker_before_yield
+    and "var factory = CreateConnectionFactory(_options);" in prevention_worker_retry_body
+    and prevention_worker_retry_body.index("var factory = CreateConnectionFactory(_options);")
+    < prevention_worker_retry_body.index("connection = factory.CreateConnection();"),
+    "prevention-worker-must-reload-rabbitmq-private-ca-on-each-retry",
 )
 check(
     "cidr: 127.0.0.1/32 # from-param: ${cloud_sql_private_cidr}" not in gke_network_policy
