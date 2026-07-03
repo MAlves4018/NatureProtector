@@ -692,6 +692,9 @@ check(
 check(
     "kubectl patch secret natureprotector-rabbitmq-default-user" in prevention_skaffold_text
     and "http://natureprotector-rabbitmq.natureprotector-staging.svc:15672" in prevention_skaffold_text
+    and '\\"data\\":{\\"uri\\"' in prevention_skaffold_text
+    and "rabbitmq_management_uri_b64" in prevention_skaffold_text
+    and "stringData" not in prevention_skaffold_text
     and "kubectl wait --for=condition=Ready user/natureprotector-app" in prevention_skaffold_text
     and "kubectl wait --for=condition=Ready permission/natureprotector-app" in prevention_skaffold_text
     and "kubectl wait --for=condition=Ready policy/natureprotector-quorum-policy" in prevention_skaffold_text,

@@ -157,6 +157,12 @@ if not failures:
         "kubectl patch secret natureprotector-rabbitmq-default-user" in skaffold_text,
         "skaffold:rabbitmq-secret-reconciliation-missing",
     )
+    require(
+        '\\"data\\":{\\"uri\\"' in skaffold_text
+        and "rabbitmq_management_uri_b64" in skaffold_text
+        and "stringData" not in skaffold_text,
+        "skaffold:rabbitmq-secret-uri-must-patch-data",
+    )
 
     job = yaml.safe_load(read(job_path))
     pod_spec = job["spec"]["template"]["spec"]

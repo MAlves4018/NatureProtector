@@ -94,6 +94,7 @@ REQUIRED = [
     "scripts/cloud/Test-BuildG81ReleaseStatic.py",
     "scripts/cloud/Install-G81ClusterDependencies.ps1",
     "scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1",
+    "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1",
     "scripts/cloud/Deploy-G81RuntimeJobs.ps1",
     "scripts/cloud/Invoke-G81FunctionalSmoke.ps1",
     "scripts/cloud/Deploy-G81Staging.ps1",
@@ -465,6 +466,8 @@ semantic_checks = {
     "operator-lock-exact-keda-version": (ROOT / "infra/gcp/kubernetes/g8-1/operator-lock.json", '"tag": "v2.18.2"'),
     "staging-installs-cluster-dependencies": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Install-G81ClusterDependencies.ps1"),
     "staging-ensures-prevention-verifier-support": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Ensure-G81PreventionVerifierSupport.ps1"),
+    "staging-runs-prevention-pre-rollout-qualification": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Test-G81PreventionPreRolloutQualification.ps1"),
+    "staging-rollout-failure-diagnostics": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Write-CloudDeployRolloutFailureDiagnostics"),
     "staging-foundation-readiness-script": (ROOT / "scripts/cloud/Test-G81StagingFoundationReadiness.ps1", "STAGING_FOUNDATION_READINESS=PASS"),
     "staging-deploy-runs-foundation-readiness": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Test-G81StagingFoundationReadiness.ps1"),
     "staging-workflow-runs-foundation-readiness": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "Verify staging foundation readiness"),
@@ -475,6 +478,12 @@ semantic_checks = {
     "prevention-verifier-support-staging-namespace": (ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/overlays/staging/kustomization.yaml", "namespace: natureprotector-staging"),
     "prevention-verifier-support-production-namespace": (ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/overlays/production/kustomization.yaml", "namespace: natureprotector-production"),
     "prevention-verifier-support-role-binding": (ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/base/role-binding.yaml", "name: natureprotector-deploy-verifier"),
+    "prevention-pre-rollout-target-contract": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "PREVENTION_DEPENDENCY_CONTRACT=PASS"),
+    "prevention-pre-rollout-render-validation": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "PREVENTION_RENDER_VALIDATION=PASS"),
+    "prevention-pre-rollout-server-dry-run": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "kubectl apply --server-side --dry-run=server"),
+    "prevention-pre-rollout-qualification-marker": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "PREVENTION_PRE_ROLLOUT_QUALIFICATION=PASS"),
+    "prevention-pre-rollout-rabbitmq-san": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "natureprotector-rabbitmq.natureprotector-staging.svc.cluster.local"),
+    "prevention-pre-rollout-cloudsql-ip": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "Assert-CloudSqlPrivateIp"),
     "production-installs-cluster-dependencies": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Install-G81ClusterDependencies.ps1"),
     "cluster-bootstrap-uses-dns-endpoint": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "--dns-endpoint"),
     "workflow-cluster-bootstrap-role": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", "roles/container.admin"),
@@ -598,6 +607,9 @@ standard_deploy_workflow = (ROOT / ".github/workflows/_deploy.yml").read_text(en
 standard_readiness_index = standard_deploy_workflow.find("Verify staging foundation readiness")
 standard_deploy_index = standard_deploy_workflow.find("Deploy by digest authority")
 check(standard_readiness_index >= 0 and standard_deploy_index >= 0 and standard_readiness_index < standard_deploy_index, "semantic:standard-deploy-readiness-precedes-deploy")
+prevention_qualification_index = staging_script.find("Test-G81PreventionPreRolloutQualification.ps1")
+prevention_promote_index = staging_script.find("gcloud deploy releases promote")
+check(prevention_qualification_index >= 0 and prevention_promote_index >= 0 and prevention_qualification_index < prevention_promote_index, "semantic:prevention-pre-rollout-qualification-precedes-promote")
 check("$spec.Images" not in staging_script and "$spec.Pipeline" not in staging_script and "$spec.Skaffold" not in staging_script, "semantic:cloud-deploy-release-specs-use-explicit-indexers")
 check("CLOUD_RUN_SERVICE_URL'" not in scope_text and "CLOUD_RUN_SERVICE_URL/" not in scope_text, "semantic:singular-cloud-run-url-variable-is-invalid")
 ca_validator = (ROOT / "src/NatureProtector.Shared/Configuration/PrivateCertificateAuthorityValidator.cs").read_text(encoding="utf-8")

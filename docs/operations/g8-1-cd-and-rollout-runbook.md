@@ -54,11 +54,12 @@ para produção continua a exigir o perfil production-ready e os gates existente
 4. executa migration expand;
 5. executa bootstrap duas vezes;
 6. garante idempotentemente o namespace `natureprotector-staging` e o support RBAC/NetworkPolicy do verifier antes da release Prevention;
-7. cria ou reutiliza idempotentemente três releases Cloud Deploy;
-8. aguarda a conclusão dos rollouts;
-9. os verifies Cloud Deploy dos serviços Cloud Run confirmam apenas que o rollout publicou metadata `run.app`, porque o ingress direto está restrito a `internal-and-cloud-load-balancing`;
-10. executa o smoke funcional pelo hostname HTTPS protegido; URLs `run.app` são rejeitadas;
-11. arquiva evidence e checksums com `staging_verified=true`.
+7. antes de promover o rollout Prevention, executa `Test-G81PreventionPreRolloutQualification.ps1`;
+8. cria ou reutiliza idempotentemente três releases Cloud Deploy;
+9. aguarda a conclusão dos rollouts;
+10. os verifies Cloud Deploy dos serviços Cloud Run confirmam apenas que o rollout publicou metadata `run.app`, porque o ingress direto está restrito a `internal-and-cloud-load-balancing`;
+11. executa o smoke funcional pelo hostname HTTPS protegido; URLs `run.app` são rejeitadas;
+12. arquiva evidence e checksums com `staging_verified=true`.
 
 Falha em migration, bootstrap, rollout ou smoke bloqueia promoção.
 
@@ -66,9 +67,22 @@ No rollout GKE, confirmar que `prevention-runtime` permite egress para o
 `cloud_sql_private_cidr` real e que os pods `Prevention.Host` recebem
 `RabbitMq__TlsEnabled=true`, `RabbitMq__TlsServerName` e
 `RabbitMq__TlsCertificateAuthorityPath=/var/run/secrets/rabbitmq/ca.crt`.
+O gate pre-rollout da Prevention falha fechado se os deploy parameters do alvo
+`np-gke-staging` tiverem `cloud_sql_private_ip`,
+`cloud_sql_private_cidr` ou `rabbitmq_tls_server_name` diferentes dos valores
+runtime, se o render continuar com placeholders, se o server-side dry-run for
+rejeitado, ou se dependencias live como SecretProvider-synced secrets, SAN do
+certificado RabbitMQ ou IP privado Cloud SQL nao baterem com o contrato.
 Se o `ScaledObject` KEDA reportar `no queue 'np.ingestion.readings'`, primeiro
 validar que o pod Prevention ficou Ready; a fila é declarada pelo worker no
 arranque e a ausência da fila pode ser sintoma de falha de ligação anterior.
+Se o rollout terminal falhar com `ProgressDeadlineExceeded` ou readiness 503,
+classificar como `PREVENTION_ROLLOUT_FAILURE_CLASS=READINESS_OR_LIVENESS` ate
+prova em contrario e consultar `*-rollout-failure-diagnostics/` para rollout,
+job-runs, events, describe e logs Kubernetes. Erros de TLS KEDA do tipo
+`certificate is valid for ... not ...svc.cluster.local` indicam SAN RabbitMQ
+incompativel com o host AMQPS usado pelo `ScaledObject`; nao usar `unsafeSsl`
+como correcao normal.
 
 ## Produção
 

@@ -82,11 +82,86 @@ function Invoke-GcloudJson {
     return [ordered]@{ exit_code = $exit; output = ($output -join "`n") }
 }
 
+function Invoke-DiagnosticCommand {
+    param(
+        [Parameter(Mandatory)][string]$FilePath,
+        [Parameter(Mandatory)][string[]]$Arguments,
+        [Parameter(Mandatory)][string]$OutputPath
+    )
+
+    $output = & $FilePath @Arguments 2>&1
+    $exit = $LASTEXITCODE
+    $output | Set-Content -Encoding utf8 -LiteralPath $OutputPath
+    return $exit
+}
+
+function Write-CloudDeployRolloutFailureDiagnostics {
+    param(
+        [Parameter(Mandatory)][string]$Pipeline,
+        [Parameter(Mandatory)][string]$Target,
+        [Parameter(Mandatory)][string]$RolloutName,
+        [Parameter(Mandatory)][string]$OutputDirectory
+    )
+
+    New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+
+    Invoke-DiagnosticCommand -FilePath "gcloud" -Arguments @(
+        "deploy", "rollouts", "describe", $RolloutName,
+        "--project=$PlatformProjectId", "--region=$Region",
+        "--delivery-pipeline=$Pipeline", "--release=$ReleaseName", "--format=json"
+    ) -OutputPath (Join-Path $OutputDirectory "rollout.json") | Out-Null
+
+    $jobRunsPath = Join-Path $OutputDirectory "job-runs.json"
+    Invoke-DiagnosticCommand -FilePath "gcloud" -Arguments @(
+        "deploy", "job-runs", "list",
+        "--project=$PlatformProjectId", "--region=$Region",
+        "--delivery-pipeline=$Pipeline", "--release=$ReleaseName", "--rollout=$RolloutName", "--format=json"
+    ) -OutputPath $jobRunsPath | Out-Null
+
+    try {
+        $jobRuns = @(Get-Content -Raw -LiteralPath $jobRunsPath | ConvertFrom-Json)
+        foreach ($jobRun in $jobRuns) {
+            $jobRunName = [string]$jobRun.name
+            if (-not $jobRunName) { continue }
+            $jobRunId = ($jobRunName -split '/')[-1]
+            Invoke-DiagnosticCommand -FilePath "gcloud" -Arguments @(
+                "deploy", "job-runs", "describe", $jobRunId,
+                "--project=$PlatformProjectId", "--region=$Region",
+                "--delivery-pipeline=$Pipeline", "--release=$ReleaseName", "--rollout=$RolloutName", "--format=json"
+            ) -OutputPath (Join-Path $OutputDirectory "job-run-$jobRunId.json") | Out-Null
+        }
+    }
+    catch {
+        $_.Exception.Message | Set-Content -Encoding utf8 -LiteralPath (Join-Path $OutputDirectory "job-run-diagnostics-error.txt")
+    }
+
+    if ($Target -eq "np-gke-staging") {
+        Invoke-DiagnosticCommand -FilePath "kubectl" -Arguments @(
+            "-n", "natureprotector-staging", "get",
+            "deploy,pods,svc,scaledobject,triggerauthentication,users.rabbitmq.com,permissions.rabbitmq.com,policies.rabbitmq.com",
+            "-o", "wide"
+        ) -OutputPath (Join-Path $OutputDirectory "k8s-workloads.txt") | Out-Null
+        Invoke-DiagnosticCommand -FilePath "kubectl" -Arguments @(
+            "-n", "natureprotector-staging", "get", "events", "--sort-by=.lastTimestamp"
+        ) -OutputPath (Join-Path $OutputDirectory "k8s-events.txt") | Out-Null
+        Invoke-DiagnosticCommand -FilePath "kubectl" -Arguments @(
+            "-n", "natureprotector-staging", "describe", "deployment/natureprotector-prevention"
+        ) -OutputPath (Join-Path $OutputDirectory "prevention-describe.txt") | Out-Null
+        Invoke-DiagnosticCommand -FilePath "kubectl" -Arguments @(
+            "-n", "natureprotector-staging", "logs", "-l", "app=natureprotector-prevention",
+            "--all-containers=true", "--tail=200"
+        ) -OutputPath (Join-Path $OutputDirectory "prevention-logs.txt") | Out-Null
+    }
+
+    Write-Host "CLOUD_DEPLOY_ROLLOUT_DIAGNOSTICS=$OutputDirectory"
+}
+
 function Wait-CloudDeployRollout {
     param(
         [Parameter(Mandatory)][string]$Pipeline,
         [Parameter(Mandatory)][string]$Target,
         [Parameter(Mandatory)][string]$OutputPath,
+        [Parameter(Mandatory)][string]$FailureDiagnosticsDirectory,
         [int]$TimeoutMinutes = 60
     )
     $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
@@ -105,7 +180,12 @@ function Wait-CloudDeployRollout {
             $result.output | Set-Content -Encoding utf8 $OutputPath
             if ($state -eq "SUCCEEDED") { return $rolloutName }
             if ($state -in @("FAILED", "CANCELLED", "HALTED")) {
-                throw "Staging rollout for $Pipeline reached terminal state $state."
+                Write-CloudDeployRolloutFailureDiagnostics `
+                    -Pipeline $Pipeline `
+                    -Target $Target `
+                    -RolloutName $rolloutName `
+                    -OutputDirectory $FailureDiagnosticsDirectory
+                throw "Staging rollout for $Pipeline reached terminal state $state. Diagnostics: $FailureDiagnosticsDirectory"
             }
         }
         Start-Sleep -Seconds 15
@@ -323,6 +403,23 @@ foreach ($spec in $releaseSpecs) {
         "--delivery-pipeline=$pipeline", "--format=json"
     ) -OutputPath (Join-Path $EvidenceDirectory "$pipeline-release.json") | Out-Null
 
+    if ($pipeline -eq "natureprotector-prevention") {
+        & ./scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1 `
+            -ManifestPath $ManifestPath `
+            -SourceRoot $sourceRoot `
+            -PlatformProjectId $PlatformProjectId `
+            -StagingProjectId $StagingProjectId `
+            -Region $Region `
+            -ClusterName $ClusterName `
+            -Target $target `
+            -Namespace natureprotector-staging `
+            -CloudSqlPrivateIp $CloudSqlPrivateIp `
+            -RabbitMqTlsServerName $RabbitMqTlsServerName `
+            -RabbitMqTlsCertificateVersion $RabbitMqTlsCertificateVersion `
+            -EvidenceDirectory (Join-Path $EvidenceDirectory "prevention-pre-rollout-qualification")
+        if ($LASTEXITCODE -ne 0) { throw "Prevention pre-rollout qualification failed." }
+    }
+
     $rolloutEvidence = Join-Path $EvidenceDirectory "$pipeline-staging-rollout.json"
     $existingRollouts = Invoke-GcloudJson -Arguments @(
         "deploy", "rollouts", "list",
@@ -343,7 +440,11 @@ foreach ($spec in $releaseSpecs) {
         if ($LASTEXITCODE -ne 0) { throw "Cloud Deploy rollout failed: $pipeline" }
     }
 
-    $rolloutName = Wait-CloudDeployRollout -Pipeline $pipeline -Target $target -OutputPath $rolloutEvidence
+    $rolloutName = Wait-CloudDeployRollout `
+        -Pipeline $pipeline `
+        -Target $target `
+        -OutputPath $rolloutEvidence `
+        -FailureDiagnosticsDirectory (Join-Path $EvidenceDirectory "$pipeline-rollout-failure-diagnostics")
     $rolloutSummary += [ordered]@{ pipeline = $pipeline; target = $target; rollout = $rolloutName; state = "SUCCEEDED" }
 }
 
