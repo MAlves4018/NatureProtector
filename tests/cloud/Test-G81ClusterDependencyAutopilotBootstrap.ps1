@@ -22,8 +22,12 @@ function New-CmdShim {
 
     $posix = Join-Path $bin $Name
     $escapedTarget = $Target.Replace("'", "'\''")
-    "#!/usr/bin/env bash`npwsh -NoProfile -ExecutionPolicy Bypass -File '$escapedTarget' ""`$@""`nexit `$?`n" |
-        Set-Content -LiteralPath $posix -Encoding utf8NoBOM
+    $posixContent = @(
+        "#!/bin/sh",
+        "exec pwsh -NoProfile -ExecutionPolicy Bypass -File '$escapedTarget' ""`$@""",
+        ""
+    ) -join "`n"
+    [IO.File]::WriteAllText($posix, $posixContent, [Text.UTF8Encoding]::new($false))
     $chmod = Get-Command chmod -ErrorAction SilentlyContinue
     if ($chmod) {
         & $chmod.Source +x $posix

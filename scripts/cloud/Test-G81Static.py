@@ -454,7 +454,7 @@ semantic_checks = {
     "autopilot-bootstrap-keeps-node-artifact-reader-declarative": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "terraform:g8-1-platform/google_artifact_registry_repository_iam_member.runtime_readers"),
     "autopilot-bootstrap-verifies-node-artifact-reader": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "gke_node_service_account_can_pull_artifacts"),
     "np-validate-runs-autopilot-bootstrap-test": (ROOT / "scripts/np.ps1", "Test-G81ClusterDependencyAutopilotBootstrap.ps1"),
-    "autopilot-bootstrap-test-uses-posix-command-shims": (ROOT / "tests/cloud/Test-G81ClusterDependencyAutopilotBootstrap.ps1", "#!/usr/bin/env bash"),
+    "autopilot-bootstrap-test-uses-posix-command-shims": (ROOT / "tests/cloud/Test-G81ClusterDependencyAutopilotBootstrap.ps1", "#!/bin/sh"),
     "autopilot-bootstrap-test-runs-real-bash": (ROOT / "tests/cloud/Test-G81ClusterDependencyAutopilotBootstrap.ps1", "REAL_BASH_TEST=PASS"),
     "operator-lock-exact-keda-version": (ROOT / "infra/gcp/kubernetes/g8-1/operator-lock.json", '"tag": "v2.18.2"'),
     "staging-installs-cluster-dependencies": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Install-G81ClusterDependencies.ps1"),
