@@ -53,11 +53,12 @@ para produção continua a exigir o perfil production-ready e os gates existente
 3. valida que os secrets owner-managed existem, que as versões configuradas existem e estão `ENABLED`, e que as service accounts runtime têm `roles/secretmanager.secretAccessor`;
 4. executa migration expand;
 5. executa bootstrap duas vezes;
-6. cria ou reutiliza idempotentemente três releases Cloud Deploy;
-7. aguarda a conclusão dos rollouts;
-8. os verifies Cloud Deploy dos serviços Cloud Run confirmam apenas que o rollout publicou metadata `run.app`, porque o ingress direto está restrito a `internal-and-cloud-load-balancing`;
-9. executa o smoke funcional pelo hostname HTTPS protegido; URLs `run.app` são rejeitadas;
-10. arquiva evidence e checksums com `staging_verified=true`.
+6. garante idempotentemente o namespace `natureprotector-staging` e o support RBAC/NetworkPolicy do verifier antes da release Prevention;
+7. cria ou reutiliza idempotentemente três releases Cloud Deploy;
+8. aguarda a conclusão dos rollouts;
+9. os verifies Cloud Deploy dos serviços Cloud Run confirmam apenas que o rollout publicou metadata `run.app`, porque o ingress direto está restrito a `internal-and-cloud-load-balancing`;
+10. executa o smoke funcional pelo hostname HTTPS protegido; URLs `run.app` são rejeitadas;
+11. arquiva evidence e checksums com `staging_verified=true`.
 
 Falha em migration, bootstrap, rollout ou smoke bloqueia promoção.
 

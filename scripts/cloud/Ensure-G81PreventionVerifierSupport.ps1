@@ -96,15 +96,35 @@ function Assert-CanI {
     }
 }
 
+function Ensure-Namespace {
+    $namespaceExists = Invoke-Captured -Name "kubectl-get-namespace" -Command {
+        kubectl get namespace $Namespace -o name
+    } -AllowFailure
+
+    if ($namespaceExists.exit_code -ne 0) {
+        Invoke-Captured -Name "kubectl-create-namespace" -Command {
+            kubectl create namespace $Namespace
+        } | Out-Null
+    }
+
+    Invoke-Captured -Name "kubectl-label-namespace" -Command {
+        kubectl label namespace $Namespace `
+            app.kubernetes.io/part-of=natureprotector `
+            phase=g8-1 `
+            pod-security.kubernetes.io/enforce=restricted `
+            pod-security.kubernetes.io/audit=restricted `
+            pod-security.kubernetes.io/warn=restricted `
+            --overwrite
+    } | Out-Null
+}
+
 $startedAt = (Get-Date).ToUniversalTime().ToString("o")
 
 $context = Invoke-Captured -Name "kubectl-current-context" -Command {
     kubectl config current-context
 }
 
-Invoke-Captured -Name "kubectl-get-namespace" -Command {
-    kubectl get namespace $Namespace -o name
-} | Out-Null
+Ensure-Namespace
 
 foreach ($resource in @(
     "serviceaccounts",
