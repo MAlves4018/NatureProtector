@@ -15,6 +15,15 @@ DEPLOY_SERVICE_ACCOUNT="np-cd-deploy@${PROJECT_ID}.iam.gserviceaccount.com"
 MIRROR_ATTEMPT_ID="operator-mirror-r3-amd64-$(date -u +%Y%m%d%H%M%S)-${BASHPID}"
 MIRROR_ROOT="${ARTIFACT_HOST}/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${MIRROR_ATTEMPT_ID}"
 FIELD_MANAGER="natureprotector-g81-autopilot-r3"
+ROLLOUT_TIMEOUT_SECONDS="${NP_CLUSTER_DEPENDENCY_ROLLOUT_TIMEOUT_SECONDS:-1800}"
+[[ "$ROLLOUT_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || {
+  echo "ERROR: NP_CLUSTER_DEPENDENCY_ROLLOUT_TIMEOUT_SECONDS must be numeric." >&2
+  exit 2
+}
+if (( ROLLOUT_TIMEOUT_SECONDS < 300 || ROLLOUT_TIMEOUT_SECONDS > 3600 )); then
+  echo "ERROR: NP_CLUSTER_DEPENDENCY_ROLLOUT_TIMEOUT_SECONDS must be between 300 and 3600." >&2
+  exit 2
+fi
 
 mkdir -p "$EVIDENCE_DIR"/{downloads,patched,release-metadata,diagnostics,mirror}
 exec > >(tee "$EVIDENCE_DIR/operator-bootstrap.log") 2>&1
@@ -133,6 +142,9 @@ trap 'on_interrupt TERM' TERM
 echo "OPERATOR_FOUNDATION_PROJECT=$PROJECT_ID"
 echo "OPERATOR_FOUNDATION_REGION=$REGION"
 echo "OPERATOR_FOUNDATION_CLUSTER=$CLUSTER_NAME"
+echo "CLUSTER_DEPENDENCY=cert-manager"
+echo "CLUSTER_DEPENDENCY_STATUS=WAITING"
+echo "CLUSTER_DEPENDENCY_ROLLOUT_TIMEOUT_SECONDS=$ROLLOUT_TIMEOUT_SECONDS"
 
 gcloud container clusters get-credentials "$CLUSTER_NAME" \
   --project="$PROJECT_ID" \
@@ -337,6 +349,44 @@ gcloud artifacts repositories get-iam-policy "$ARTIFACT_REPOSITORY" \
   --format=json \
   > "$EVIDENCE_DIR/mirror/artifact-repository-policy.json"
 
+gcloud container clusters describe "$CLUSTER_NAME" \
+  --project="$PROJECT_ID" \
+  --region="$REGION" \
+  --format=json \
+  > "$EVIDENCE_DIR/mirror/cluster.json"
+
+GKE_NODE_SERVICE_ACCOUNT="$(
+  py -3.12 - "$EVIDENCE_DIR/mirror/cluster.json" <<'PY'
+from pathlib import Path
+import json, sys
+cluster=json.loads(Path(sys.argv[1]).read_text(encoding="utf-8-sig"))
+service_account=cluster.get("nodeConfig", {}).get("serviceAccount") or ""
+if not service_account:
+    pools=cluster.get("nodePools", [])
+    if pools:
+        service_account=pools[0].get("config", {}).get("serviceAccount") or ""
+if not service_account or service_account == "default":
+    raise SystemExit("GKE node service account could not be resolved")
+print(service_account)
+PY
+)"
+printf '%s\n' "$GKE_NODE_SERVICE_ACCOUNT" > "$EVIDENCE_DIR/mirror/gke-node-service-account.txt"
+
+gcloud artifacts repositories add-iam-policy-binding "$ARTIFACT_REPOSITORY" \
+  --project="$PROJECT_ID" \
+  --location="$REGION" \
+  --member="serviceAccount:${GKE_NODE_SERVICE_ACCOUNT}" \
+  --role="roles/artifactregistry.reader" \
+  --condition=None \
+  --quiet \
+  > "$EVIDENCE_DIR/mirror/gke-node-artifact-reader-iam.txt"
+
+gcloud artifacts repositories get-iam-policy "$ARTIFACT_REPOSITORY" \
+  --project="$PROJECT_ID" \
+  --location="$REGION" \
+  --format=json \
+  > "$EVIDENCE_DIR/mirror/artifact-repository-policy-after-node-reader.json"
+
 gcloud storage buckets describe "gs://${EVIDENCE_BUCKET}" \
   --project="$PROJECT_ID" \
   --format=json \
@@ -363,11 +413,12 @@ gcloud projects get-iam-policy "$PROJECT_ID" \
 
 py -3.12 - \
   "$EVIDENCE_DIR/mirror/artifact-repository.json" \
-  "$EVIDENCE_DIR/mirror/artifact-repository-policy.json" \
+  "$EVIDENCE_DIR/mirror/artifact-repository-policy-after-node-reader.json" \
   "$EVIDENCE_DIR/mirror/evidence-bucket.json" \
   "$EVIDENCE_DIR/mirror/evidence-bucket-policy.json" \
   "$EVIDENCE_DIR/mirror/project-iam-policy.json" \
   "$DEPLOY_SERVICE_ACCOUNT" \
+  "$GKE_NODE_SERVICE_ACCOUNT" \
   "$EVIDENCE_DIR/mirror/mirror-preflight.json" <<'PY'
 from pathlib import Path
 import json, sys
@@ -377,18 +428,21 @@ bucket=json.loads(Path(sys.argv[3]).read_text(encoding="utf-8-sig"))
 bucket_policy=json.loads(Path(sys.argv[4]).read_text(encoding="utf-8-sig"))
 project_policy=json.loads(Path(sys.argv[5]).read_text(encoding="utf-8-sig"))
 service_account=sys.argv[6]
-member=f"serviceAccount:{service_account}"
+node_service_account=sys.argv[7]
+service_account_member=f"serviceAccount:{service_account}"
+node_service_account_member=f"serviceAccount:{node_service_account}"
 
-def roles_for(policy):
+def roles_for(policy, member):
     return {
         binding.get("role", "")
         for binding in policy.get("bindings", [])
         if member in binding.get("members", [])
     }
 
-project_roles=roles_for(project_policy)
-repository_roles=roles_for(repo_policy)
-bucket_roles=roles_for(bucket_policy)
+project_roles=roles_for(project_policy, service_account_member)
+repository_roles=roles_for(repo_policy, service_account_member)
+bucket_roles=roles_for(bucket_policy, service_account_member)
+node_repository_roles=roles_for(repo_policy, node_service_account_member)
 artifact_roles=project_roles | repository_roles
 writer_roles={
     "roles/artifactregistry.writer",
@@ -409,18 +463,21 @@ checks={
     "evidence_bucket_present": bool(bucket.get("name")),
     "deploy_service_account_can_write_artifacts": bool(artifact_roles & writer_roles),
     "deploy_service_account_can_write_evidence": bool((project_roles | bucket_roles) & evidence_writer_roles),
+    "gke_node_service_account_can_pull_artifacts": "roles/artifactregistry.reader" in node_repository_roles,
 }
 errors=[name for name, passed in checks.items() if not passed]
 result={
     "status":"PASS" if not errors else "FAIL",
     "service_account":service_account,
+    "gke_node_service_account":node_service_account,
     "project_roles":sorted(project_roles),
     "repository_roles":sorted(repository_roles),
     "evidence_bucket_roles":sorted(bucket_roles),
+    "gke_node_repository_roles":sorted(node_repository_roles),
     "checks":checks,
     "errors":errors,
 }
-Path(sys.argv[7]).write_text(json.dumps(result, indent=2)+"\n", encoding="utf-8")
+Path(sys.argv[8]).write_text(json.dumps(result, indent=2)+"\n", encoding="utf-8")
 print(json.dumps(result, indent=2))
 if errors:
     raise SystemExit("Operator mirror preflight failed")
@@ -912,8 +969,8 @@ for path in source_root.iterdir():
             for container in pod_spec.get("containers", []):
                 resources=container.setdefault("resources", {})
                 resources["requests"]={
-                    "cpu":"500m",
-                    "memory":"512Mi",
+                    "cpu":"100m",
+                    "memory":"128Mi",
                     "ephemeral-storage":"1Gi",
                 }
                 resources["limits"]={"ephemeral-storage":"1Gi"}
@@ -1013,6 +1070,8 @@ wait_deployment_ready() {
   local fatal_streak=0
 
   while (( $(date +%s) < deadline )); do
+    echo "CLUSTER_DEPENDENCY=${namespace}/${name}"
+    echo "CLUSTER_DEPENDENCY_STATUS=WAITING"
     if kubectl -n "$namespace" get deployment "$name" -o json > "$deployment_snapshot" 2>/dev/null; then
       kubectl -n "$namespace" get pods -o json > "$pods_snapshot" 2>/dev/null || printf '{"items":[]}\n' > "$pods_snapshot"
       probe_rc=0
@@ -1039,6 +1098,7 @@ for pod in pods.get("items", []):
 
 fatal=[]
 summary=[]
+failure_classes=[]
 fatal_wait={
     "ImagePullBackOff", "ErrImagePull", "InvalidImageName",
     "CreateContainerConfigError", "CreateContainerError", "RunContainerError",
@@ -1062,10 +1122,19 @@ for pod in matching:
         summary.append(f"{pod_name}/{name}:reason={reason}:restarts={restarts}:image={image}:imageID={image_id}")
         if waiting.get("reason") in fatal_wait:
             fatal.append(f"{pod_name}/{name}:{waiting.get('reason')}")
+            if waiting.get("reason") in {"ImagePullBackOff", "ErrImagePull", "InvalidImageName"}:
+                failure_classes.append("IMAGE_PULL")
+            else:
+                failure_classes.append("RESOURCE_REQUEST_OR_ADMISSION")
         if waiting.get("reason")=="CrashLoopBackOff" and restarts >= 2:
             fatal.append(f"{pod_name}/{name}:CrashLoopBackOff:{restarts}")
+            failure_classes.append("CONTAINER_CRASH")
         if terminated.get("reason") in {"Error", "OOMKilled", "ContainerCannotRun"} and restarts >= 2:
             fatal.append(f"{pod_name}/{name}:{terminated.get('reason')}:{restarts}")
+            if terminated.get("reason")=="OOMKilled":
+                failure_classes.append("RESOURCE_REQUEST_OR_ADMISSION")
+            else:
+                failure_classes.append("CONTAINER_CRASH")
 
 ok=(
     desired >= 1
@@ -1085,6 +1154,8 @@ if ok:
     raise SystemExit(0)
 if fatal:
     print("FATAL_POD_STATES="+",".join(fatal))
+    if failure_classes:
+        print("CLUSTER_DEPENDENCY_FAILURE_CLASS="+failure_classes[0])
     raise SystemExit(42)
 raise SystemExit(1)
 PY
@@ -1098,6 +1169,12 @@ PY
       fi
       if (( fatal_streak >= 3 )); then
         capture_namespace "$namespace" "fatal-${name}"
+        echo "CLUSTER_DEPENDENCY=${namespace}/${name}"
+        echo "CLUSTER_DEPENDENCY_STATUS=FAILED"
+        echo "CLUSTER_DEPENDENCY_DIAGNOSTICS_BEGIN"
+        kubectl -n "$namespace" get deployments,replicasets,pods,services,endpoints,events -o wide || true
+        kubectl -n "$namespace" describe pods || true
+        echo "CLUSTER_DEPENDENCY_DIAGNOSTICS_END"
         echo "ERROR: deployment ${namespace}/${name} entered a persistent fatal Pod state." >&2
         return 1
       fi
@@ -1107,6 +1184,13 @@ PY
   done
 
   capture_namespace "$namespace" "timeout-${name}"
+  echo "CLUSTER_DEPENDENCY=${namespace}/${name}"
+  echo "CLUSTER_DEPENDENCY_STATUS=FAILED"
+  echo "CLUSTER_DEPENDENCY_FAILURE_CLASS=UNKNOWN"
+  echo "CLUSTER_DEPENDENCY_DIAGNOSTICS_BEGIN"
+  kubectl -n "$namespace" get deployments,replicasets,pods,services,endpoints,events -o wide || true
+  kubectl -n "$namespace" describe pods || true
+  echo "CLUSTER_DEPENDENCY_DIAGNOSTICS_END"
   echo "ERROR: deployment ${namespace}/${name} did not become ready." >&2
   return 1
 }
@@ -1232,9 +1316,9 @@ while IFS=$'\t' read -r name repository tag asset namespace rollouts; do
     wait_crd_established issuers.cert-manager.io
     wait_crd_established clusterissuers.cert-manager.io
 
-    wait_deployment_ready cert-manager cert-manager 1800
-    wait_deployment_ready cert-manager cert-manager-cainjector 1800
-    wait_deployment_ready cert-manager cert-manager-webhook 1800
+    wait_deployment_ready cert-manager cert-manager "$ROLLOUT_TIMEOUT_SECONDS"
+    wait_deployment_ready cert-manager cert-manager-cainjector "$ROLLOUT_TIMEOUT_SECONDS"
+    wait_deployment_ready cert-manager cert-manager-webhook "$ROLLOUT_TIMEOUT_SECONDS"
 
     kubectl -n cert-manager get deployment cert-manager cert-manager-cainjector -o json \
       > "$EVIDENCE_DIR/diagnostics/cert-manager-deployments-final.json"
@@ -1264,7 +1348,7 @@ PY
         echo "ERROR: unsupported rollout kind: $rollout" >&2
         exit 4
       }
-      wait_deployment_ready "$namespace" "$deployment_name" 1800
+      wait_deployment_ready "$namespace" "$deployment_name" "$ROLLOUT_TIMEOUT_SECONDS"
     done
   fi
 
@@ -1324,4 +1408,6 @@ capture_all_operator_diagnostics final
 trap - ERR
 
 echo "OPERATOR_FOUNDATION_PROVED"
+echo "CLUSTER_DEPENDENCY=cert-manager"
+echo "CLUSTER_DEPENDENCY_STATUS=READY"
 trap - ERR INT TERM
