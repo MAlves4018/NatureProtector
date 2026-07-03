@@ -60,12 +60,6 @@ public sealed class PreventionWorker(
 
         runtimeState.MarkNotReady("Prevention consumer is starting.");
 
-        // A validação de configuração continua a falhar cedo. A ligação ao broker,
-        // contudo, é feita depois de o BackgroundService devolver controlo ao host,
-        // permitindo que /health/live fique disponível mesmo durante uma falha
-        // transitória do RabbitMQ.
-        var factory = CreateConnectionFactory(_options);
-
         await Task.Yield();
 
         var reconnectDelay = InitialReconnectDelay;
@@ -80,6 +74,9 @@ public sealed class PreventionWorker(
                 runtimeState.MarkNotReady(
                     "Prevention consumer is connecting to RabbitMQ.");
 
+                // Recreate the factory on every retry so mounted private CA
+                // rotations are picked up without restarting the pod.
+                var factory = CreateConnectionFactory(_options);
                 connection = factory.CreateConnection();
                 channel = connection.CreateModel();
 
