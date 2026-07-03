@@ -76,6 +76,7 @@ REQUIRED = [
     "infra/gcp/cloud-deploy-verifier/Dockerfile",
     "scripts/cloud/EvidenceChecksums.ps1",
     "tests/cloud/Test-EvidenceChecksumPortability.ps1",
+    "tests/cloud/Test-G81HttpPrecheckCurlResolution.ps1",
     "src/NatureProtector.Backoffice.Api/Configuration/ApiRateLimitingOptions.cs",
     "src/NatureProtector.Backoffice.Api/Configuration/ApiRateLimitingExtensions.cs",
     "src/NatureProtector.Backoffice.Api/RuntimeOrchestration/CloudRunExecutionStore.cs",
@@ -371,6 +372,10 @@ semantic_checks = {
     "staging-pre-smoke-readiness": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "PRE_SMOKE_READINESS=PASS"),
     "staging-pre-smoke-rollout-gates": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "API_ROLLOUT=PASS"),
     "staging-pre-smoke-health-gate": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "FRONTEND_HEALTH_PRECHECK=PASS"),
+    "staging-http-precheck-resolves-curl": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Resolve-CurlExecutable"),
+    "staging-http-precheck-uses-curl-application": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "CommandType Application"),
+    "staging-http-precheck-selects-single-curl": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Select-Object -First 1"),
+    "staging-http-precheck-test-in-np-validate": (ROOT / "scripts/np.ps1", "Test-G81HttpPrecheckCurlResolution.ps1"),
     "production-functional-smoke": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Invoke-G81FunctionalSmoke.ps1"),
     "smoke-uses-edge-https": (ROOT / "scripts/cloud/Invoke-G81FunctionalSmoke.ps1", "FrontendOrigin must be an absolute HTTPS origin"),
     "smoke-rejects-direct-run-app": (ROOT / "scripts/cloud/Invoke-G81FunctionalSmoke.ps1", "not a direct Cloud Run run.app URL"),
@@ -589,6 +594,51 @@ for policy_name in ("prevention-runtime", "rabbitmq-runtime", "otel-runtime"):
         )
 
 staging_script = (ROOT / "scripts/cloud/Deploy-G81Staging.ps1").read_text(encoding="utf-8")
+check(
+    "function Resolve-CurlExecutable" in staging_script
+    and "CommandType Application" in staging_script
+    and "Select-Object -First 1" in staging_script,
+    "semantic:staging-http-precheck-curl-resolution-must-select-single-executable",
+)
+
+check(
+    "/usr/bin/curl /bin/curl" not in staging_script,
+    "semantic:staging-http-precheck-must-not-join-multiple-curl-paths",
+)
+
+test_http_precheck_match = re.search(
+    r"function\s+Test-HttpPrecheck\s*\{(?P<body>.*?)\n\}",
+    staging_script,
+    re.DOTALL,
+)
+
+test_http_precheck_body = (
+    test_http_precheck_match.group("body")
+    if test_http_precheck_match
+    else ""
+)
+
+check(
+    test_http_precheck_match is not None,
+    "semantic:staging-test-http-precheck-function-missing",
+)
+
+check(
+    len(re.findall(r"&\s+\$curlExecutable", test_http_precheck_body)) == 1,
+    "semantic:staging-http-precheck-must-invoke-curl-once",
+)
+
+check(
+    "$exit = $LASTEXITCODE" in test_http_precheck_body,
+    "semantic:staging-http-precheck-captures-curl-exit-code",
+)
+
+check(
+    "--connect-timeout" in test_http_precheck_body
+    and "--max-time" in test_http_precheck_body
+    and "--write-out" in test_http_precheck_body,
+    "semantic:staging-http-precheck-curl-timeouts-and-status-missing",
+)
 staging_workflow = (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml").read_text(encoding="utf-8")
 check("GCP_G81_STAGING_WIF_PROVIDER" not in staging_workflow, "semantic:staging-wif-provider-var-must-exist")
 check("GCP_G81_STAGING_SERVICE_ACCOUNT" not in staging_workflow, "semantic:staging-service-account-var-must-exist")
