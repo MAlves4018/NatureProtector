@@ -251,7 +251,7 @@ function Start-LoggedPowerShell {
     $scriptPath = Join-Path (Split-Path -Parent $LogPath) ("start-" + ($Name -replace '[^A-Za-z0-9_.-]', '-') + ".ps1")
     Set-Content -Path $scriptPath -Value $script -Encoding UTF8
 
-    $process = Start-Process -FilePath 'powershell.exe' `
+    $process = Start-Process -FilePath 'pwsh.exe' `
         -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $scriptPath) `
         -WorkingDirectory $WorkingDirectory `
         -RedirectStandardOutput $LogPath `

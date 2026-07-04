@@ -92,7 +92,7 @@ Set-Location $ProjectRoot
 $WorkspaceScript = Join-Path $ProjectRoot "scripts\workspace.ps1"
 if (-not $SkipWorkspacePreparation -and (Test-Path -LiteralPath $WorkspaceScript)) {
     $workspaceOutput = Invoke-CheckedExternalCommand `
-        "powershell" `
+        "pwsh" `
         @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $WorkspaceScript, "setup") `
         "Workspace setup failed before Docker infrastructure startup." `
         $ProjectRoot
@@ -123,7 +123,7 @@ if (-not (Test-Path ".env")) {
 $InfluxAdminTokenScript = Join-Path $ProjectRoot "scripts\influx\Ensure-InfluxAdminTokenFile.ps1"
 if (Test-Path $InfluxAdminTokenScript) {
     $tokenOutput = Invoke-CheckedExternalCommand `
-        "powershell" `
+        "pwsh" `
         @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $InfluxAdminTokenScript) `
         "Influx admin token script failed."
 
