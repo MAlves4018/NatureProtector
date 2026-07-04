@@ -1,6 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+resolve_release_run_attempt() {
+  local release_run_attempt
+  if [[ ${GITHUB_RUN_ATTEMPT+x} == x ]]; then
+    release_run_attempt="$GITHUB_RUN_ATTEMPT"
+  else
+    release_run_attempt="1"
+  fi
+
+  [[ "$release_run_attempt" =~ ^[1-9][0-9]*$ ]] || {
+    echo "Invalid GitHub run attempt" >&2
+    return 1
+  }
+
+  printf '%s\n' "$release_run_attempt"
+}
+
+build_release_tag() {
+  local source_sha="${1:?}"
+  local run_id="${2:?}"
+  local release_run_attempt="${3:?}"
+
+  [[ "$release_run_attempt" =~ ^[1-9][0-9]*$ ]] || {
+    echo "Invalid GitHub run attempt" >&2
+    return 1
+  }
+
+  printf 'git-%s-run-%s-attempt-%s\n' "$source_sha" "$run_id" "$release_run_attempt"
+}
+
+main() {
 : "${GCP_PLATFORM_PROJECT_ID:?}"
 : "${GCP_REGION:?}"
 : "${GCP_ARTIFACT_REPOSITORY:?}"
@@ -19,7 +49,8 @@ set -euo pipefail
 out="${G81_RELEASE_DIR:-g81-release}"
 mkdir -p "$out"
 registry="${GCP_REGION}-docker.pkg.dev/${GCP_PLATFORM_PROJECT_ID}/${GCP_ARTIFACT_REPOSITORY}"
-tag="git-${GITHUB_SHA}-run-${GITHUB_RUN_ID}"
+release_run_attempt="$(resolve_release_run_attempt)"
+tag="$(build_release_tag "$GITHUB_SHA" "$GITHUB_RUN_ID" "$release_run_attempt")"
 identity="$COSIGN_CERTIFICATE_IDENTITY"
 
 declare -A dockerfiles=(
@@ -92,3 +123,8 @@ python3 scripts/cloud/New-G81ReleaseManifest.py \
   --policy-run-id "$POLICY_RUN_ID"
 python3 scripts/cloud/Test-G81ReleaseManifest.py "$out/release-manifest.json"
 sha256sum "$out"/* > "$out/checksums.sha256"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

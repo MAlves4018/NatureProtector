@@ -38,10 +38,10 @@ public sealed class DockerPublishedRuntimeProcessTests
         var seeded = await SeedProcessSmokeControlPlaneAsync(database);
         var postgresSettings = DockerIntegrationSettings.CreatePostgresSettings(database.DatabaseName);
         var apiPort = GetFreeTcpPort();
+        var preventionPort = GetFreeTcpPort();
         var environment = CreateRuntimeEnvironment(
             postgresSettings,
             rabbitMqOptions,
-            apiPort,
             seeded.AreaId);
 
         var apiPublishDir = Path.Combine(runRoot, "api");
@@ -74,7 +74,7 @@ public sealed class DockerPublishedRuntimeProcessTests
                 "Backoffice API",
                 apiPublishDir,
                 "NatureProtector.Backoffice.Api.dll",
-                environment,
+                WithAspNetCoreUrl(environment, apiPort),
                 Path.Combine(runRoot, "api"));
             var apiBaseUrl = $"http://127.0.0.1:{apiPort}";
             await WaitForHttpSuccessAsync(apiBaseUrl + "/health", apiProcess, TimeSpan.FromSeconds(60));
@@ -88,7 +88,7 @@ public sealed class DockerPublishedRuntimeProcessTests
                 "Prevention Host",
                 preventionPublishDir,
                 "NatureProtector.Prevention.Host.dll",
-                environment,
+                WithAspNetCoreUrl(environment, preventionPort),
                 Path.Combine(runRoot, "prevention"));
             await WaitForConsumerAsync(
                 virtualHost.CreateConnectionFactory(),
@@ -135,6 +135,213 @@ public sealed class DockerPublishedRuntimeProcessTests
         AssertProcessStopped(simulatorProcess);
         AssertProcessStopped(preventionProcess);
         AssertProcessStopped(apiProcess);
+    }
+
+    [Fact]
+    [Trait("Category", "DockerIntegration")]
+    public async Task PublishedPreventionHost_RemainsLiveAndBecomesReadyWhenRabbitMqStartsLate()
+    {
+        await using var database =
+            await TemporaryPostgresDatabase.CreateAsync();
+
+        var exchangeName =
+            $"np.it.prevention.late-rabbitmq.{Guid.NewGuid():N}";
+
+        var baseRabbitMqOptions =
+            DockerIntegrationSettings.CreateRabbitMqOptions(exchangeName);
+
+        await using var virtualHost =
+            await TemporaryRabbitMqVirtualHost.CreateAsync(
+                baseRabbitMqOptions,
+                CancellationToken.None);
+
+        var rabbitMqOptions =
+            virtualHost.CreateOptions(exchangeName);
+
+        var rabbitMqConnectionFactory =
+            virtualHost.CreateConnectionFactory();
+
+        rabbitMqConnectionFactory.RequestedConnectionTimeout =
+            TimeSpan.FromSeconds(2);
+
+        var rabbitMqContainer =
+            GetRequiredRabbitMqContainerName();
+
+        var repositoryRoot =
+            ResolveRepositoryRoot();
+
+        var runRoot = Path.Combine(
+            repositoryRoot,
+            "artifacts",
+            "tests",
+            "prevention-late-rabbitmq",
+            Guid.NewGuid().ToString("N"));
+
+        Directory.CreateDirectory(runRoot);
+
+        var preventionPublishDirectory =
+            Path.Combine(runRoot, "prevention");
+
+        await PublishProjectAsync(
+            repositoryRoot,
+            "src/NatureProtector.Prevention.Host/NatureProtector.Prevention.Host.csproj",
+            preventionPublishDirectory,
+            Path.Combine(runRoot, "publish-prevention"));
+
+        var postgresSettings =
+            DockerIntegrationSettings.CreatePostgresSettings(
+                database.DatabaseName);
+
+        var preventionPort =
+            GetFreeTcpPort();
+
+        var environment =
+            WithAspNetCoreUrl(
+                CreateRuntimeEnvironment(
+                    postgresSettings,
+                    rabbitMqOptions,
+                    Guid.NewGuid()),
+                preventionPort);
+
+        StartedProcess? preventionProcess = null;
+
+        try
+        {
+            await RunRequiredDockerCommandAsync(
+                "stop",
+                "--time",
+                "10",
+                rabbitMqContainer);
+
+            preventionProcess = StartPublishedProcess(
+                "Prevention Host with delayed RabbitMQ",
+                preventionPublishDirectory,
+                "NatureProtector.Prevention.Host.dll",
+                environment,
+                Path.Combine(runRoot, "prevention"));
+
+            var originalProcessId =
+                preventionProcess.Id;
+
+            var preventionBaseUrl =
+                $"http://127.0.0.1:{preventionPort}";
+
+            /*
+            * O processo tem de abrir o servidor HTTP mesmo quando o RabbitMQ
+            * ainda não está disponível.
+            */
+            await WaitForHttpStatusAsync(
+                preventionBaseUrl + "/health/live",
+                HttpStatusCode.OK,
+                preventionProcess,
+                TimeSpan.FromSeconds(30));
+
+            /*
+            * Vivo, mas ainda não operacional: o consumidor não está ligado
+            * ao broker, portanto readiness deve indicar 503.
+            */
+            await WaitForHttpStatusAsync(
+                preventionBaseUrl + "/health/ready",
+                HttpStatusCode.ServiceUnavailable,
+                preventionProcess,
+                TimeSpan.FromSeconds(30));
+
+            Assert.False(
+                preventionProcess.HasExited,
+                "The Prevention process terminated while RabbitMQ was unavailable.");
+
+            Assert.Equal(
+                originalProcessId,
+                preventionProcess.Id);
+
+            /*
+            * O RabbitMQ começa depois do Prevention, tal como aconteceu no
+            * rollout do GKE.
+            */
+            await RunRequiredDockerCommandAsync(
+                "start",
+                rabbitMqContainer);
+
+            await WaitForRabbitMqConnectableAsync(
+                rabbitMqConnectionFactory,
+                TimeSpan.FromSeconds(60));
+
+            /*
+            * O mesmo processo deve recuperar sozinho, criar o consumidor
+            * e passar a Ready.
+            */
+            await WaitForHttpStatusAsync(
+                preventionBaseUrl + "/health/ready",
+                HttpStatusCode.OK,
+                preventionProcess,
+                TimeSpan.FromSeconds(90));
+
+            await WaitForConsumerAsync(
+                rabbitMqConnectionFactory,
+                rabbitMqOptions.IngestionReadingsQueueName);
+
+            Assert.False(
+                preventionProcess.HasExited,
+                "The Prevention process exited instead of recovering after RabbitMQ started.");
+
+            Assert.Equal(
+                originalProcessId,
+                preventionProcess.Id);
+
+            /*
+            * Evita um falso positivo em que readiness sobe e o processo
+            * termina imediatamente depois.
+            */
+            await Task.Delay(TimeSpan.FromSeconds(2));
+
+            Assert.False(
+                preventionProcess.HasExited,
+                "The Prevention process became ready but terminated immediately afterwards.");
+        }
+        finally
+        {
+            try
+            {
+                if (preventionProcess is not null)
+                {
+                    await preventionProcess.StopAsync();
+                }
+            }
+            finally
+            {
+                /*
+                * Garante que os restantes testes recebem novamente o
+                * RabbitMQ ativo, mesmo quando este teste falha.
+                */
+                await EnsureDockerContainerRunningAsync(
+                    rabbitMqContainer);
+
+                await WaitForRabbitMqConnectableAsync(
+                    rabbitMqConnectionFactory,
+                    TimeSpan.FromSeconds(60));
+            }
+        }
+
+        AssertProcessStopped(preventionProcess);
+
+        Assert.NotNull(preventionProcess);
+
+        var combinedLogs =
+            (await File.ReadAllTextAsync(
+                preventionProcess.StandardOutputPath)) +
+            Environment.NewLine +
+            (await File.ReadAllTextAsync(
+                preventionProcess.StandardErrorPath));
+
+        Assert.DoesNotContain(
+            "Hosting failed to start",
+            combinedLogs,
+            StringComparison.OrdinalIgnoreCase);
+
+        Assert.DoesNotContain(
+            "Unhandled exception",
+            combinedLogs,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task PublishProjectAsync(
@@ -185,14 +392,12 @@ public sealed class DockerPublishedRuntimeProcessTests
     private static IReadOnlyDictionary<string, string> CreateRuntimeEnvironment(
         NatureProtector.Infrastructure.Postgres.Configuration.PostgresControlPlaneConnectionSettings postgres,
         NatureProtector.Shared.Configuration.RabbitMqOptions rabbitMq,
-        int apiPort,
         Guid areaId)
     {
         return new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["DOTNET_ENVIRONMENT"] = "Development",
             ["ASPNETCORE_ENVIRONMENT"] = "Development",
-            ["ASPNETCORE_URLS"] = $"http://127.0.0.1:{apiPort}",
             ["POSTGRES_HOST"] = postgres.Host,
             ["POSTGRES_PORT"] = postgres.Port.ToString(),
             ["POSTGRES_DB"] = postgres.Database,
@@ -225,6 +430,242 @@ public sealed class DockerPublishedRuntimeProcessTests
             ["Simulator__RunOverrides__OrchestratorCorrelationId"] = $"process-smoke-{Guid.NewGuid():N}"
         };
     }
+
+    private static IReadOnlyDictionary<string, string> WithAspNetCoreUrl(
+        IReadOnlyDictionary<string, string> environment,
+        int port)
+    {
+        var copy = new Dictionary<string, string>(environment, StringComparer.Ordinal)
+        {
+            ["ASPNETCORE_URLS"] = $"http://127.0.0.1:{port}"
+        };
+        return copy;
+    }
+
+    private static string GetRequiredRabbitMqContainerName()
+    {
+        var containerName =
+            Environment.GetEnvironmentVariable(
+                "NP_TEST_RABBITMQ_CONTAINER");
+
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            throw new InvalidOperationException(
+                "NP_TEST_RABBITMQ_CONTAINER must identify the Docker " +
+                "RabbitMQ container for the delayed-start integration test.");
+        }
+
+        return containerName;
+    }
+
+    private static async Task WaitForHttpStatusAsync(
+        string url,
+        HttpStatusCode expectedStatusCode,
+        StartedProcess process,
+        TimeSpan timeout)
+    {
+        using var client = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(3)
+        };
+
+        var deadline =
+            DateTimeOffset.UtcNow.Add(timeout);
+
+        Exception? lastFailure = null;
+        HttpStatusCode? lastStatusCode = null;
+        string? lastResponseBody = null;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (process.HasExited)
+            {
+                await process.CaptureLogsAsync();
+
+                throw new InvalidOperationException(
+                    $"{process.Name} exited before '{url}' returned " +
+                    $"HTTP {(int)expectedStatusCode}. " +
+                    $"ExitCode={process.ExitCode}. " +
+                    $"Logs: {process.StandardOutputPath} / " +
+                    $"{process.StandardErrorPath}");
+            }
+
+            try
+            {
+                using var response =
+                    await client.GetAsync(url);
+
+                lastStatusCode =
+                    response.StatusCode;
+
+                lastResponseBody =
+                    await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode == expectedStatusCode)
+                {
+                    return;
+                }
+
+                lastFailure = new HttpRequestException(
+                    $"Expected HTTP {(int)expectedStatusCode}, " +
+                    $"but received HTTP {(int)response.StatusCode}. " +
+                    $"Body: {lastResponseBody}");
+            }
+            catch (Exception ex)
+            {
+                lastFailure = ex;
+            }
+
+            await Task.Delay(
+                TimeSpan.FromMilliseconds(250));
+        }
+
+        throw new TimeoutException(
+            $"'{url}' did not return HTTP {(int)expectedStatusCode} " +
+            $"within {timeout}. " +
+            $"LastStatusCode={lastStatusCode?.ToString() ?? "<none>"}. " +
+            $"LastBody={lastResponseBody ?? "<none>"}. " +
+            $"LastFailure={lastFailure?.Message ?? "<none>"}");
+    }
+
+    private static async Task WaitForRabbitMqConnectableAsync(
+        ConnectionFactory connectionFactory,
+        TimeSpan timeout)
+    {
+        var deadline =
+            DateTimeOffset.UtcNow.Add(timeout);
+
+        Exception? lastFailure = null;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            try
+            {
+                using var connection =
+                    connectionFactory.CreateConnection(
+                        "natureprotector-late-rabbitmq-readiness");
+
+                if (connection.IsOpen)
+                {
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                lastFailure = ex;
+            }
+
+            await Task.Delay(
+                TimeSpan.FromMilliseconds(500));
+        }
+
+        throw new TimeoutException(
+            $"RabbitMQ did not become connectable within {timeout}.",
+            lastFailure);
+    }
+
+    private static async Task EnsureDockerContainerRunningAsync(
+        string containerName)
+    {
+        var inspectResult =
+            await RunDockerCommandAsync(
+                "inspect",
+                "--format",
+                "{{.State.Running}}",
+                containerName);
+
+        if (inspectResult.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"Could not inspect Docker container '{containerName}'. " +
+                $"stdout: {inspectResult.StandardOutput.Trim()} " +
+                $"stderr: {inspectResult.StandardError.Trim()}");
+        }
+
+        if (string.Equals(
+            inspectResult.StandardOutput.Trim(),
+            "true",
+            StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        await RunRequiredDockerCommandAsync(
+            "start",
+            containerName);
+    }
+
+    private static async Task RunRequiredDockerCommandAsync(
+        params string[] arguments)
+    {
+        var result =
+            await RunDockerCommandAsync(arguments);
+
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"Docker command failed with exit code {result.ExitCode}. " +
+                $"Command: docker {string.Join(" ", arguments)}. " +
+                $"stdout: {result.StandardOutput.Trim()} " +
+                $"stderr: {result.StandardError.Trim()}");
+        }
+    }
+
+    private static async Task<DockerCommandResult> RunDockerCommandAsync(
+        params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo("docker")
+        {
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        using var process =
+            Process.Start(startInfo)
+            ?? throw new InvalidOperationException(
+                "Failed to start the Docker CLI.");
+
+        var standardOutputTask =
+            process.StandardOutput.ReadToEndAsync();
+
+        var standardErrorTask =
+            process.StandardError.ReadToEndAsync();
+
+        try
+        {
+            await process
+                .WaitForExitAsync()
+                .WaitAsync(TimeSpan.FromSeconds(60));
+        }
+        catch (TimeoutException)
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync();
+            }
+
+            throw new TimeoutException(
+                $"Docker command did not finish within 60 seconds: " +
+                $"docker {string.Join(" ", arguments)}");
+        }
+
+        return new DockerCommandResult(
+            process.ExitCode,
+            await standardOutputTask,
+            await standardErrorTask);
+    }
+
+    private sealed record DockerCommandResult(
+        int ExitCode,
+        string StandardOutput,
+        string StandardError);
 
     private static async Task WaitForConsumerAsync(ConnectionFactory factory, string queueName)
     {

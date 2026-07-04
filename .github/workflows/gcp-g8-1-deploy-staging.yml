@@ -101,8 +101,8 @@ jobs:
       - name: Authenticate with staging identity
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
         with:
-          workload_identity_provider: ${{ vars.GCP_G81_STAGING_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_G81_STAGING_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
       - name: Install gcloud
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
         with:
@@ -110,6 +110,23 @@ jobs:
       - name: Install GKE client components
         shell: bash
         run: gcloud components install --quiet gke-gcloud-auth-plugin kubectl
+      - name: Verify staging foundation readiness
+        shell: pwsh
+        working-directory: source
+        run: >-
+          ./scripts/cloud/Test-G81StagingFoundationReadiness.ps1
+          -ProjectId '${{ vars.GCP_STAGING_PROJECT_ID }}'
+          -Region '${{ vars.GCP_REGION }}'
+          -ClusterName '${{ vars.GCP_STAGING_CLUSTER_NAME }}'
+          -RuntimeNetwork '${{ vars.GCP_STAGING_NETWORK }}'
+          -RuntimeSubnetwork '${{ vars.GCP_STAGING_SUBNETWORK }}'
+          -CloudSqlCaSecret '${{ vars.GCP_STAGING_CLOUD_SQL_CA_SECRET }}'
+          -CloudSqlCaVersion '${{ vars.GCP_STAGING_CLOUD_SQL_CA_VERSION }}'
+          -RabbitMqCaSecret '${{ vars.GCP_STAGING_RABBITMQ_CA_SECRET }}'
+          -RabbitMqCaVersion '${{ vars.GCP_STAGING_RABBITMQ_CA_VERSION }}'
+          -RabbitMqTlsCertificateVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_CERTIFICATE_VERSION }}'
+          -RabbitMqTlsPrivateKeyVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_PRIVATE_KEY_VERSION }}'
+          -RequireActiveCertificate:('${{ steps.mode.outputs.mode }}' -eq 'verified')
       - name: Deploy runtime prerequisites and verified staging rollouts
         shell: pwsh
         working-directory: source
@@ -145,6 +162,8 @@ jobs:
           -RabbitMqPasswordVersion '${{ vars.GCP_STAGING_RABBITMQ_PASSWORD_VERSION }}'
           -RabbitMqCaSecret '${{ vars.GCP_STAGING_RABBITMQ_CA_SECRET }}'
           -RabbitMqCaVersion '${{ vars.GCP_STAGING_RABBITMQ_CA_VERSION }}'
+          -RabbitMqTlsCertificateVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_CERTIFICATE_VERSION }}'
+          -RabbitMqTlsPrivateKeyVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_PRIVATE_KEY_VERSION }}'
           -CloudSqlCaSecret '${{ vars.GCP_STAGING_CLOUD_SQL_CA_SECRET }}'
           -CloudSqlCaVersion '${{ vars.GCP_STAGING_CLOUD_SQL_CA_VERSION }}'
           -EvidenceDirectory '${{ runner.temp }}/g81-staging-evidence'

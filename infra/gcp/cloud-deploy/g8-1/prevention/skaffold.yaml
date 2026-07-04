@@ -1,40 +1,229 @@
 apiVersion: skaffold/v4beta13
 kind: Config
+
 metadata:
   name: natureprotector-prevention
+
 manifests:
   kustomize:
     paths:
       - ../../../kubernetes/g8-1/overlays/staging
+
 deploy:
   kubectl: {}
+
 verify:
   - name: prevention-rollout
     container:
       name: kubectl
       image: CLOUDSDK_IMAGE_BY_DIGEST
       command: ["/bin/sh", "-c"]
+      env:
+        - name: HOME
+          value: /tmp
+        - name: KUBECONFIG
+          value: /tmp/natureprotector-verifier-kubeconfig
       args:
         - |
           set -eu
-          for secret in np-runtime-secrets np-rabbitmq-app-credentials np-rabbitmq-ca np-cloud-sql-ca; do
-            deadline=$((SECONDS + 600))
-            until kubectl get secret "$secret" >/dev/null 2>&1; do
-              if [ "$SECONDS" -ge "$deadline" ]; then
-                echo "Required secret $secret was not materialized within 10 minutes" >&2
-                exit 1
+
+          service_account_dir="/var/run/secrets/kubernetes.io/serviceaccount"
+          namespace_file="${service_account_dir}/namespace"
+          token_file="${service_account_dir}/token"
+          ca_file="${service_account_dir}/ca.crt"
+
+          for required_file in \
+            "${namespace_file}" \
+            "${token_file}" \
+            "${ca_file}"
+          do
+            if [ ! -r "${required_file}" ]; then
+              echo "Required Kubernetes service-account file is unavailable: ${required_file}" >&2
+              exit 1
+            fi
+          done
+
+          namespace="$(cat "${namespace_file}")"
+
+          if [ "${namespace}" != "natureprotector-staging" ]; then
+            echo "Unexpected verification namespace: ${namespace}" >&2
+            exit 1
+          fi
+
+          api_host="${KUBERNETES_SERVICE_HOST:-}"
+          api_port="${KUBERNETES_SERVICE_PORT_HTTPS:-${KUBERNETES_SERVICE_PORT:-443}}"
+
+          if [ -z "${api_host}" ]; then
+            echo "KUBERNETES_SERVICE_HOST is unavailable inside the verification pod" >&2
+            exit 1
+          fi
+
+          case "${api_host}" in
+            *:*)
+              api_server="https://[${api_host}]:${api_port}"
+              ;;
+            *)
+              api_server="https://${api_host}:${api_port}"
+              ;;
+          esac
+
+          export HOME="${HOME:-/tmp}"
+          export KUBECONFIG="${KUBECONFIG:-/tmp/natureprotector-verifier-kubeconfig}"
+
+          umask 077
+          rm -f "${KUBECONFIG}"
+
+          kubectl config set-cluster natureprotector-in-cluster \
+            --server="${api_server}" \
+            --certificate-authority="${ca_file}" \
+            --embed-certs=true
+
+          kubectl config set-credentials natureprotector-deploy-verifier \
+            --token="$(cat "${token_file}")"
+
+          kubectl config set-context natureprotector-deploy-verifier \
+            --cluster=natureprotector-in-cluster \
+            --user=natureprotector-deploy-verifier \
+            --namespace="${namespace}"
+
+          kubectl config use-context natureprotector-deploy-verifier
+
+          echo "Verifying Prevention in namespace ${namespace}"
+          echo "Kubernetes API server: ${api_server}"
+          kubectl version --client=true
+          kubectl get secret/np-runtime-secrets \
+            --namespace="${namespace}" \
+            --request-timeout=30s \
+            -o name
+
+          is_fatal_kubectl_error() {
+            error_text="$1"
+
+            case "${error_text}" in
+              *"localhost:8080"*|*"connection refused"*|\
+              *"Unable to connect to the server"*|\
+              *"no configuration has been provided"*)
+                return 0
+                ;;
+              *"Unauthorized"*|*"Forbidden"*|\
+              *"certificate signed by unknown authority"*|*"x509:"*)
+                return 0
+                ;;
+              *)
+                return 1
+                ;;
+            esac
+          }
+
+          wait_for_resources() {
+            attempts=0
+            max_attempts=120
+            last_error=""
+
+            while true; do
+              missing=""
+              last_error=""
+
+              for resource do
+                if ! output="$(
+                  kubectl get "${resource}" \
+                    --namespace="${namespace}" \
+                    --request-timeout=30s \
+                    -o name 2>&1
+                )"; then
+                  missing="${missing} ${resource}"
+                  last_error="${output}"
+
+                  if is_fatal_kubectl_error "${output}"; then
+                    echo "Fatal kubectl error while reading ${resource}: ${output}" >&2
+                    return 1
+                  fi
+                fi
+              done
+
+              if [ -z "${missing}" ]; then
+                echo "All required resources are available"
+                return 0
               fi
+
+              attempts=$((attempts + 1))
+
+              if [ "${attempts}" -eq 1 ] || [ $((attempts % 12)) -eq 0 ]; then
+                echo "Still waiting for:${missing}" >&2
+                if [ -n "${last_error}" ]; then
+                  echo "Last kubectl error: ${last_error}" >&2
+                fi
+              fi
+
+              if [ "${attempts}" -ge "${max_attempts}" ]; then
+                echo "Required resources were not available after 10 minutes:${missing}" >&2
+                if [ -n "${last_error}" ]; then
+                  echo "Final kubectl error: ${last_error}" >&2
+                fi
+                return 1
+              fi
+
               sleep 5
             done
-          done
-          kubectl wait --for=condition=Ready scaledobject/natureprotector-prevention --timeout=10m
-          kubectl rollout status deployment/natureprotector-prevention --timeout=10m
+          }
+
+          wait_for_resources \
+            secret/np-runtime-secrets \
+            secret/np-rabbitmq-app-credentials \
+            secret/np-rabbitmq-ca \
+            secret/np-cloud-sql-ca \
+            secret/natureprotector-rabbitmq-default-user
+
+          echo "Reconciling RabbitMQ topology connection URI"
+
+          rabbitmq_management_uri="http://natureprotector-rabbitmq.natureprotector-staging.svc:15672"
+          rabbitmq_management_uri_b64="$(
+            printf '%s' "${rabbitmq_management_uri}" | base64 | tr -d '\n'
+          )"
+          kubectl patch secret natureprotector-rabbitmq-default-user \
+            --namespace="${namespace}" \
+            --request-timeout=30s \
+            --type=merge \
+            -p "{\"data\":{\"uri\":\"${rabbitmq_management_uri_b64}\"}}"
+
+          echo "Waiting for RabbitMQ topology resources"
+
+          kubectl wait --for=condition=Ready user/natureprotector-app \
+            --namespace="${namespace}" \
+            --timeout=5m
+
+          kubectl wait --for=condition=Ready permission/natureprotector-app \
+            --namespace="${namespace}" \
+            --timeout=5m
+
+          kubectl wait --for=condition=Ready policy/natureprotector-quorum-policy \
+            --namespace="${namespace}" \
+            --timeout=5m
+
+          echo "Waiting for KEDA and Prevention"
+
+          kubectl wait --for=condition=Ready scaledobject/natureprotector-prevention \
+            --namespace="${namespace}" \
+            --timeout=5m
+
+          kubectl rollout status deployment/natureprotector-prevention \
+            --namespace="${namespace}" \
+            --timeout=5m
+
+          echo "Prevention verification completed successfully"
+    executionMode:
+      kubernetesCluster:
+        jobManifestPath: verify-job-staging.yaml
+
 profiles:
   - name: staging
     manifests:
       kustomize:
-        paths: ["../../../kubernetes/g8-1/overlays/staging"]
+        paths:
+          - ../../../kubernetes/g8-1/overlays/staging
+
   - name: production
     manifests:
       kustomize:
-        paths: ["../../../kubernetes/g8-1/overlays/production"]
+        paths:
+          - ../../../kubernetes/g8-1/overlays/production

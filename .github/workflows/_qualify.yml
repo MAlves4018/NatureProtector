@@ -11,6 +11,7 @@ on:
         type: string
 
 permissions:
+  actions: read
   contents: read
   id-token: write
 
@@ -22,6 +23,11 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: ./.github/actions/setup-toolchain
+      - name: Download signed release artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: standard-cd-release
+          path: g81-release
       - name: Verify staging release
         shell: pwsh
         run: ./scripts/np.ps1 staging verify -ManifestPath '${{ inputs.manifest_path }}'

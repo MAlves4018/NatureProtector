@@ -143,9 +143,26 @@ function Test-PythonValidationModules {
     param([Parameter(Mandatory)][string[]]$CommandPrefix)
     $exe = $CommandPrefix[0]
     $prefix = if ($CommandPrefix.Count -gt 1) { @($CommandPrefix[1..($CommandPrefix.Count - 1)]) } else { @() }
-    $arguments = @($prefix + @("-c", "import yaml, jsonschema, hcl2"))
+    $arguments = @($prefix + @("-c", "import yaml, hcl2; from jsonschema import Draft202012Validator"))
     & $exe @arguments *> $null
     return $LASTEXITCODE -eq 0
+}
+
+function New-ValidationPythonVenv {
+    param(
+        [Parameter(Mandatory)][string]$Venv,
+        [Parameter(Mandatory)][string]$PyLauncher
+    )
+    $resolvedTemp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+    $resolvedVenv = [IO.Path]::GetFullPath($Venv)
+    if (-not $resolvedVenv.StartsWith($resolvedTemp, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to recreate validation Python environment outside temp: $resolvedVenv"
+    }
+    if (Test-Path -LiteralPath $resolvedVenv) {
+        Remove-Item -LiteralPath $resolvedVenv -Recurse -Force
+    }
+    & $PyLauncher -3.12 -m venv $resolvedVenv 2>&1 | ForEach-Object { Write-Host ([string]$_) }
+    if ($LASTEXITCODE -ne 0) { throw "Failed to create validation Python environment." }
 }
 
 function Get-ValidationPython {
@@ -163,12 +180,20 @@ function Get-ValidationPython {
     $venvPython = Join-Path $venv "Scripts/python.exe"
     if (-not (Test-Path -LiteralPath $venvPython -PathType Leaf)) {
         if (-not $py) { throw "Python validation dependencies are missing and py launcher is unavailable." }
-        & $py.Source -3.12 -m venv $venv 2>&1 | ForEach-Object { Write-Host ([string]$_) }
-        if ($LASTEXITCODE -ne 0) { throw "Failed to create validation Python environment." }
+        New-ValidationPythonVenv -Venv $venv -PyLauncher $py.Source
     }
     if (-not (Test-PythonValidationModules @($venvPython))) {
+        & $venvPython -m ensurepip --upgrade 2>&1 | ForEach-Object { Write-Host ([string]$_) }
+        if ($LASTEXITCODE -ne 0) { throw "Failed to bootstrap validation Python pip." }
         & $venvPython -m pip install --disable-pip-version-check --no-cache-dir -r (Join-Path $RepoRoot "scripts/cloud/requirements-validation.txt") 2>&1 | ForEach-Object { Write-Host ([string]$_) }
-        if ($LASTEXITCODE -ne 0) { throw "Failed to install validation Python dependencies." }
+        if ($LASTEXITCODE -ne 0) {
+            if (-not $py) { throw "Failed to install validation Python dependencies." }
+            New-ValidationPythonVenv -Venv $venv -PyLauncher $py.Source
+            & $venvPython -m ensurepip --upgrade 2>&1 | ForEach-Object { Write-Host ([string]$_) }
+            if ($LASTEXITCODE -ne 0) { throw "Failed to bootstrap validation Python pip." }
+            & $venvPython -m pip install --disable-pip-version-check --no-cache-dir -r (Join-Path $RepoRoot "scripts/cloud/requirements-validation.txt") 2>&1 | ForEach-Object { Write-Host ([string]$_) }
+            if ($LASTEXITCODE -ne 0) { throw "Failed to install validation Python dependencies." }
+        }
     }
     return @($venvPython)
 }
@@ -311,7 +336,11 @@ try {
                 @{ name="local-cloud-contract"; cmd="python"; args=@("scripts/cloud/Test-LocalCloudConfigurationContract.py") },
                 @{ name="standard-staging-configuration"; cmd="python"; args=@("scripts/cloud/Test-StandardStagingConfiguration.py") },
                 @{ name="standard-platform-configuration"; cmd="python"; args=@("scripts/cloud/Test-StandardPlatformConfiguration.py") },
-                @{ name="environment-remediation-static"; cmd="python"; args=@("scripts/cloud/Test-EnvironmentRemediationStatic.py") }
+                @{ name="environment-remediation-static"; cmd="python"; args=@("scripts/cloud/Test-EnvironmentRemediationStatic.py") },
+                @{ name="staging-foundation-readiness"; cmd="pwsh"; args=@("-NoProfile", "-File", "tests/cloud/Test-G81StagingFoundationReadiness.ps1") },
+                @{ name="cluster-dependency-autopilot-bootstrap"; cmd="pwsh"; args=@("-NoProfile", "-File", "tests/cloud/Test-G81ClusterDependencyAutopilotBootstrap.ps1") },
+                @{ name="http-precheck-curl-resolution"; cmd="pwsh"; args=@("-NoProfile", "-File", "tests/cloud/Test-G81HttpPrecheckCurlResolution.ps1") },
+                @{ name="evidence-checksum-portability"; cmd="pwsh"; args=@("-NoProfile", "-File", "tests/cloud/Test-EvidenceChecksumPortability.ps1") }
             )
             $results = @()
             foreach ($item in $commands) {

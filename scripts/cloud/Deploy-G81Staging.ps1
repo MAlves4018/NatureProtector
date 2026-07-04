@@ -30,6 +30,8 @@ param(
     [Parameter(Mandatory)][string]$RabbitMqPasswordVersion,
     [Parameter(Mandatory)][string]$RabbitMqCaSecret,
     [Parameter(Mandatory)][string]$RabbitMqCaVersion,
+    [Parameter(Mandatory)][string]$RabbitMqTlsCertificateVersion,
+    [Parameter(Mandatory)][string]$RabbitMqTlsPrivateKeyVersion,
     [Parameter(Mandatory)][string]$CloudSqlCaSecret,
     [Parameter(Mandatory)][string]$CloudSqlCaVersion,
     [Parameter(Mandatory)][string]$EvidenceDirectory,
@@ -39,6 +41,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot "EvidenceChecksums.ps1")
 
 if ($Region -ne "europe-southwest1") { throw "Unexpected region '$Region'." }
 if ($PlatformProjectId -match "(?i)cn2526" -or $StagingProjectId -match "(?i)cn2526") {
@@ -55,6 +58,21 @@ $manifest = Get-Content -Raw $ManifestPath | ConvertFrom-Json -AsHashtable
 $images = $manifest.images
 New-Item -ItemType Directory -Force -Path $EvidenceDirectory | Out-Null
 
+& ./scripts/cloud/Test-G81StagingFoundationReadiness.ps1 `
+    -ProjectId $StagingProjectId `
+    -Region $Region `
+    -ClusterName $ClusterName `
+    -RuntimeNetwork $RuntimeNetwork `
+    -RuntimeSubnetwork $RuntimeSubnetwork `
+    -RequireActiveCertificate:($DeploymentMode -eq "verified") `
+    -CloudSqlCaSecret $CloudSqlCaSecret `
+    -CloudSqlCaVersion $CloudSqlCaVersion `
+    -RabbitMqCaSecret $RabbitMqCaSecret `
+    -RabbitMqCaVersion $RabbitMqCaVersion `
+    -RabbitMqTlsCertificateVersion $RabbitMqTlsCertificateVersion `
+    -RabbitMqTlsPrivateKeyVersion $RabbitMqTlsPrivateKeyVersion
+if ($LASTEXITCODE -ne 0) { throw "Staging foundation readiness failed before deployment." }
+
 function Invoke-GcloudJson {
     param([Parameter(Mandatory)][string[]]$Arguments, [string]$OutputPath, [switch]$AllowFailure)
     $output = & gcloud @Arguments
@@ -64,11 +82,237 @@ function Invoke-GcloudJson {
     return [ordered]@{ exit_code = $exit; output = ($output -join "`n") }
 }
 
+function Invoke-DiagnosticCommand {
+    param(
+        [Parameter(Mandatory)][string]$FilePath,
+        [Parameter(Mandatory)][string[]]$Arguments,
+        [Parameter(Mandatory)][string]$OutputPath
+    )
+
+    $output = & $FilePath @Arguments 2>&1
+    $exit = $LASTEXITCODE
+    $output | Set-Content -Encoding utf8 -LiteralPath $OutputPath
+    return $exit
+}
+
+function Write-CloudDeployRolloutFailureDiagnostics {
+    param(
+        [Parameter(Mandatory)][string]$Pipeline,
+        [Parameter(Mandatory)][string]$Target,
+        [Parameter(Mandatory)][string]$RolloutName,
+        [Parameter(Mandatory)][string]$OutputDirectory
+    )
+
+    New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+
+    Invoke-DiagnosticCommand -FilePath "gcloud" -Arguments @(
+        "deploy", "rollouts", "describe", $RolloutName,
+        "--project=$PlatformProjectId", "--region=$Region",
+        "--delivery-pipeline=$Pipeline", "--release=$ReleaseName", "--format=json"
+    ) -OutputPath (Join-Path $OutputDirectory "rollout.json") | Out-Null
+
+    $jobRunsPath = Join-Path $OutputDirectory "job-runs.json"
+    Invoke-DiagnosticCommand -FilePath "gcloud" -Arguments @(
+        "deploy", "job-runs", "list",
+        "--project=$PlatformProjectId", "--region=$Region",
+        "--delivery-pipeline=$Pipeline", "--release=$ReleaseName", "--rollout=$RolloutName", "--format=json"
+    ) -OutputPath $jobRunsPath | Out-Null
+
+    try {
+        $jobRuns = @(Get-Content -Raw -LiteralPath $jobRunsPath | ConvertFrom-Json)
+        foreach ($jobRun in $jobRuns) {
+            $jobRunName = [string]$jobRun.name
+            if (-not $jobRunName) { continue }
+            $jobRunId = ($jobRunName -split '/')[-1]
+            Invoke-DiagnosticCommand -FilePath "gcloud" -Arguments @(
+                "deploy", "job-runs", "describe", $jobRunId,
+                "--project=$PlatformProjectId", "--region=$Region",
+                "--delivery-pipeline=$Pipeline", "--release=$ReleaseName", "--rollout=$RolloutName", "--format=json"
+            ) -OutputPath (Join-Path $OutputDirectory "job-run-$jobRunId.json") | Out-Null
+        }
+    }
+    catch {
+        $_.Exception.Message | Set-Content -Encoding utf8 -LiteralPath (Join-Path $OutputDirectory "job-run-diagnostics-error.txt")
+    }
+
+    if ($Target -eq "np-gke-staging") {
+        Invoke-DiagnosticCommand -FilePath "kubectl" -Arguments @(
+            "-n", "natureprotector-staging", "get",
+            "deploy,pods,svc,scaledobject,triggerauthentication,users.rabbitmq.com,permissions.rabbitmq.com,policies.rabbitmq.com",
+            "-o", "wide"
+        ) -OutputPath (Join-Path $OutputDirectory "k8s-workloads.txt") | Out-Null
+        Invoke-DiagnosticCommand -FilePath "kubectl" -Arguments @(
+            "-n", "natureprotector-staging", "get", "events", "--sort-by=.lastTimestamp"
+        ) -OutputPath (Join-Path $OutputDirectory "k8s-events.txt") | Out-Null
+        Invoke-DiagnosticCommand -FilePath "kubectl" -Arguments @(
+            "-n", "natureprotector-staging", "describe", "deployment/natureprotector-prevention"
+        ) -OutputPath (Join-Path $OutputDirectory "prevention-describe.txt") | Out-Null
+        Invoke-DiagnosticCommand -FilePath "kubectl" -Arguments @(
+            "-n", "natureprotector-staging", "logs", "-l", "app=natureprotector-prevention",
+            "--all-containers=true", "--tail=200"
+        ) -OutputPath (Join-Path $OutputDirectory "prevention-logs.txt") | Out-Null
+    }
+
+    Write-Host "CLOUD_DEPLOY_ROLLOUT_DIAGNOSTICS=$OutputDirectory"
+}
+
+function Test-CloudRunServiceReady {
+    param(
+        [Parameter(Mandatory)][string]$ServiceName,
+        [Parameter(Mandatory)][string]$OutputPath
+    )
+
+    $result = Invoke-GcloudJson -Arguments @(
+        "run", "services", "describe", $ServiceName,
+        "--project=$StagingProjectId", "--region=$Region", "--format=json"
+    ) -OutputPath $OutputPath
+    $service = $result.output | ConvertFrom-Json
+    $conditions = @($service.status.conditions)
+    $ready = $conditions | Where-Object { [string]$_.type -eq "Ready" } | Select-Object -First 1
+    if (-not $ready -or [string]$ready.status -ne "True") {
+        throw "Cloud Run service $ServiceName is not Ready."
+    }
+}
+
+function Test-FrontendOriginMatchesManagedCertificate {
+    param(
+        [Parameter(Mandatory)][Uri]$Origin,
+        [Parameter(Mandatory)][string]$OutputPath
+    )
+
+    $certificateName = "np-staging"
+    $result = Invoke-GcloudJson -Arguments @(
+        "compute", "ssl-certificates", "describe", $certificateName,
+        "--project=$StagingProjectId", "--global", "--format=json"
+    ) -OutputPath $OutputPath
+    $certificate = $result.output | ConvertFrom-Json
+    if ([string]$certificate.managed.status -ne "ACTIVE") {
+        throw "Managed certificate $certificateName is not ACTIVE."
+    }
+
+    $domains = @($certificate.managed.domains | ForEach-Object { [string]$_ })
+    if ($domains -notcontains $Origin.Host) {
+        throw "FrontendOrigin host '$($Origin.Host)' is not covered by managed certificate $certificateName."
+    }
+}
+
+function Resolve-CurlExecutable {
+    $curlCommands = @(
+        Get-Command `
+            -Name "curl" `
+            -CommandType Application `
+            -ErrorAction SilentlyContinue
+    )
+
+    if ($curlCommands.Count -eq 0) {
+        throw "curl executable was not found in PATH."
+    }
+
+    $selectedCurl =
+        $curlCommands |
+        Where-Object {
+            $_.Source -and
+            (Test-Path -LiteralPath $_.Source)
+        } |
+        Select-Object -First 1
+
+    if ($null -eq $selectedCurl) {
+        throw "curl was found, but no executable curl path could be resolved."
+    }
+
+    return [string]$selectedCurl.Source
+}
+
+function Test-HttpPrecheck {
+    param(
+        [Parameter(Mandatory)][string]$Url,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$OutputDirectory
+    )
+
+    New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+
+    $bodyPath = Join-Path $OutputDirectory "$Name.body"
+    $statusPath = Join-Path $OutputDirectory "$Name.status"
+    $curlExecutable = Resolve-CurlExecutable
+
+    $status = & $curlExecutable `
+        --silent `
+        --show-error `
+        --location `
+        --connect-timeout "15" `
+        --max-time "60" `
+        --output $bodyPath `
+        --write-out "%{http_code}" `
+        $Url
+
+    $exit = $LASTEXITCODE
+
+    [string]$status |
+        Set-Content `
+            -Encoding ascii `
+            -LiteralPath $statusPath
+
+    if ($exit -ne 0 -or [string]$status -notmatch '^2\d\d$') {
+        throw "Pre-smoke HTTP check $Name failed with curl exit $exit and status $status."
+    }
+}
+
+function Test-G81PreSmokeReadiness {
+    param(
+        [Parameter(Mandatory)][string]$OutputDirectory,
+        [Parameter(Mandatory)][object[]]$Rollouts
+    )
+
+    New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+    $rolloutStates = @{}
+    foreach ($rollout in $Rollouts) {
+        $rolloutStates[[string]$rollout.pipeline] = [string]$rollout.state
+    }
+    if ($rolloutStates["natureprotector-api"] -ne "SUCCEEDED") { throw "API rollout is not SUCCEEDED." }
+    if ($rolloutStates["natureprotector-frontend"] -ne "SUCCEEDED") { throw "Frontend rollout is not SUCCEEDED." }
+    if ($rolloutStates["natureprotector-prevention"] -ne "SUCCEEDED") { throw "Prevention rollout is not SUCCEEDED." }
+    Write-Host "API_ROLLOUT=PASS"
+    Write-Host "FRONTEND_ROLLOUT=PASS"
+    Write-Host "PREVENTION_ROLLOUT=PASS"
+
+    Test-CloudRunServiceReady -ServiceName "natureprotector-api" -OutputPath (Join-Path $OutputDirectory "api-service.json")
+    Test-CloudRunServiceReady -ServiceName "natureprotector-frontend" -OutputPath (Join-Path $OutputDirectory "frontend-service.json")
+
+    try { $frontendUri = [Uri]$FrontendOrigin } catch { throw "FrontendOrigin must be an absolute HTTPS origin." }
+    Test-FrontendOriginMatchesManagedCertificate -Origin $frontendUri -OutputPath (Join-Path $OutputDirectory "managed-certificate.json")
+
+    Test-HttpPrecheck -Url "$($FrontendOrigin.TrimEnd('/'))/healthz" -Name "frontend-healthz" -OutputDirectory $OutputDirectory
+    Write-Host "FRONTEND_HEALTH_PRECHECK=PASS"
+    Test-HttpPrecheck -Url "$($FrontendOrigin.TrimEnd('/'))/" -Name "frontend-index" -OutputDirectory $OutputDirectory
+    Write-Host "FRONTEND_INDEX_PRECHECK=PASS"
+
+    $kubectlExit = Invoke-DiagnosticCommand -FilePath "kubectl" -Arguments @(
+        "-n", "natureprotector-staging", "wait",
+        "--for=condition=Available", "deployment/natureprotector-prevention",
+        "--timeout=120s"
+    ) -OutputPath (Join-Path $OutputDirectory "prevention-available.txt")
+    if ($kubectlExit -ne 0) { throw "Prevention deployment is not Available before functional smoke." }
+
+    [ordered]@{
+        schema_version = 1
+        frontend_origin = $FrontendOrigin
+        api_rollout = "SUCCEEDED"
+        frontend_rollout = "SUCCEEDED"
+        prevention_rollout = "SUCCEEDED"
+        frontend_health_precheck = "PASS"
+        frontend_index_precheck = "PASS"
+        prevention_available = "PASS"
+    } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 (Join-Path $OutputDirectory "pre-smoke-readiness-summary.json")
+    Write-Host "PRE_SMOKE_READINESS=PASS"
+}
+
 function Wait-CloudDeployRollout {
     param(
         [Parameter(Mandatory)][string]$Pipeline,
         [Parameter(Mandatory)][string]$Target,
         [Parameter(Mandatory)][string]$OutputPath,
+        [Parameter(Mandatory)][string]$FailureDiagnosticsDirectory,
         [int]$TimeoutMinutes = 60
     )
     $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
@@ -87,7 +331,12 @@ function Wait-CloudDeployRollout {
             $result.output | Set-Content -Encoding utf8 $OutputPath
             if ($state -eq "SUCCEEDED") { return $rolloutName }
             if ($state -in @("FAILED", "CANCELLED", "HALTED")) {
-                throw "Staging rollout for $Pipeline reached terminal state $state."
+                Write-CloudDeployRolloutFailureDiagnostics `
+                    -Pipeline $Pipeline `
+                    -Target $Target `
+                    -RolloutName $rolloutName `
+                    -OutputDirectory $FailureDiagnosticsDirectory
+                throw "Staging rollout for $Pipeline reached terminal state $state. Diagnostics: $FailureDiagnosticsDirectory"
             }
         }
         Start-Sleep -Seconds 15
@@ -95,16 +344,82 @@ function Wait-CloudDeployRollout {
     throw "Timed out waiting for staging rollout for $Pipeline. Last rollout: $rolloutName"
 }
 
+function Get-CloudDeployRolloutId {
+    param(
+        [Parameter(Mandatory)][string]$Target,
+        [Parameter(Mandatory)][string]$SourceCommit
+    )
+
+    if ($SourceCommit -notmatch '^[0-9a-f]{40}$') { throw "Invalid source commit for rollout id." }
+    $targetId = $Target.ToLowerInvariant() -replace '[^a-z0-9-]', '-'
+    $targetId = $targetId.Trim('-')
+    if (-not $targetId) { throw "Invalid target for rollout id." }
+
+    $rolloutId = "r-$($SourceCommit.Substring(0, 12))-$targetId"
+    if ($rolloutId -notmatch '^[a-z][a-z0-9-]{0,62}$') { throw "Invalid generated Cloud Deploy rollout id." }
+    return $rolloutId
+}
+
+function Test-OperatorFoundationReady {
+    param([Parameter(Mandatory)][string]$OutputDirectory)
+
+    New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+
+    $rollouts = @(
+        @{ Namespace = "cert-manager"; Resource = "deployment/cert-manager" },
+        @{ Namespace = "cert-manager"; Resource = "deployment/cert-manager-cainjector" },
+        @{ Namespace = "cert-manager"; Resource = "deployment/cert-manager-webhook" },
+        @{ Namespace = "rabbitmq-system"; Resource = "deployment/rabbitmq-cluster-operator" },
+        @{ Namespace = "rabbitmq-system"; Resource = "deployment/messaging-topology-operator" },
+        @{ Namespace = "keda"; Resource = "deployment/keda-operator" },
+        @{ Namespace = "keda"; Resource = "deployment/keda-metrics-apiserver" },
+        @{ Namespace = "keda"; Resource = "deployment/keda-admission" }
+    )
+
+    foreach ($rollout in $rollouts) {
+        $namespace = [string]$rollout.Namespace
+        $resource = [string]$rollout.Resource
+        & kubectl -n $namespace rollout status $resource --timeout=10s
+        if ($LASTEXITCODE -ne 0) { return $false }
+    }
+
+    & kubectl get deploy -n cert-manager -o json |
+        Set-Content -Encoding utf8 (Join-Path $OutputDirectory "cert-manager-deployments.json")
+    & kubectl get deploy -n rabbitmq-system -o json |
+        Set-Content -Encoding utf8 (Join-Path $OutputDirectory "rabbitmq-operator-deployments.json")
+    & kubectl get deploy -n keda -o json |
+        Set-Content -Encoding utf8 (Join-Path $OutputDirectory "keda-deployments.json")
+
+    [ordered]@{
+        schema_version = 1
+        status = "already-ready"
+        manager_policy = "preserve-existing-operator-field-managers"
+        rollouts = $rollouts
+    } | ConvertTo-Json -Depth 5 |
+        Set-Content -Encoding utf8 (Join-Path $OutputDirectory "operator-foundation.json")
+
+    return $true
+}
+
 # Cluster-scoped controllers are a separately sealed dependency layer.
 # Exact tagged release assets are resolved through the GitHub API and their
 # published SHA-256 digests are verified before server-side apply.
-& ./scripts/cloud/Install-G81ClusterDependencies.ps1 `
-    -ProjectId $StagingProjectId `
-    -Region $Region `
-    -ClusterName $ClusterName `
-    -LockPath "infra/gcp/kubernetes/g8-1/operator-lock.json" `
-    -EvidenceDirectory (Join-Path $EvidenceDirectory "cluster-dependencies")
-if ($LASTEXITCODE -ne 0) { throw "G8.1 cluster dependency bootstrap failed." }
+$operatorEvidence = Join-Path $EvidenceDirectory "cluster-dependencies"
+& gcloud container clusters get-credentials $ClusterName `
+    --project=$StagingProjectId --region=$Region --dns-endpoint --quiet
+if ($LASTEXITCODE -ne 0) { throw "Unable to acquire DNS-endpoint GKE credentials." }
+if (Test-OperatorFoundationReady -OutputDirectory $operatorEvidence) {
+    Write-Host "OPERATOR_FOUNDATION_ALREADY_READY"
+}
+else {
+    & ./scripts/cloud/Install-G81ClusterDependencies.ps1 `
+        -ProjectId $StagingProjectId `
+        -Region $Region `
+        -ClusterName $ClusterName `
+        -LockPath "infra/gcp/kubernetes/g8-1/operator-lock.json" `
+        -EvidenceDirectory $operatorEvidence
+    if ($LASTEXITCODE -ne 0) { throw "G8.1 cluster dependency bootstrap failed." }
+}
 
 # Schema, bootstrap and Simulator are explicit immutable-image gates. They are
 # deployed before services so the cloud API never points to a missing job.
@@ -140,8 +455,49 @@ if ($LASTEXITCODE -ne 0) { throw "G8.1 cluster dependency bootstrap failed." }
 if ($LASTEXITCODE -ne 0) { throw "Runtime job preparation failed." }
 
 # Cloud Deploy target parameters inject environment-specific values after
-# rendering. The source remains identical for staging and production.
-$sourceRoot = "infra/gcp"
+# rendering. RabbitmqCluster.spec.image is a CRD field, so Skaffold image
+# substitution does not rewrite it. Prepare a release-scoped source copy and
+# replace only that CRD placeholder with the signed manifest digest.
+$sourceRoot = Join-Path $EvidenceDirectory "cloud-deploy-source"
+if (Test-Path -LiteralPath $sourceRoot) {
+    Remove-Item -Recurse -Force -LiteralPath $sourceRoot
+}
+Copy-Item -Recurse -Force -LiteralPath "infra/gcp" -Destination $sourceRoot
+$rabbitMqManifest = Join-Path $sourceRoot "kubernetes/g8-1/base/rabbitmq.yaml"
+$rabbitMqManifestText = Get-Content -Raw -LiteralPath $rabbitMqManifest
+if ($rabbitMqManifestText -notmatch "RABBITMQ_IMAGE_BY_DIGEST") {
+    throw "RabbitMQ manifest does not contain the digest placeholder."
+}
+$rabbitMqManifestText.Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference) |
+    Set-Content -Encoding utf8 -LiteralPath $rabbitMqManifest
+
+$stagingKustomization = Join-Path $sourceRoot "kubernetes/g8-1/overlays/staging/kustomization.yaml"
+$stagingKustomizationText = Get-Content -Raw -LiteralPath $stagingKustomization
+$secretVersionReplacements = [ordered]@{
+    "RABBITMQ_TLS_CERTIFICATE_VERSION" = $RabbitMqTlsCertificateVersion
+    "RABBITMQ_TLS_PRIVATE_KEY_VERSION" = $RabbitMqTlsPrivateKeyVersion
+    "RABBITMQ_CA_VERSION" = $RabbitMqCaVersion
+    "CLOUD_SQL_CA_VERSION" = $CloudSqlCaVersion
+}
+foreach ($entry in $secretVersionReplacements.GetEnumerator()) {
+    if ($stagingKustomizationText -notmatch [regex]::Escape([string]$entry.Key)) {
+        throw "Staging kustomization does not contain expected secret version placeholder '$($entry.Key)'."
+    }
+    $stagingKustomizationText = $stagingKustomizationText.Replace([string]$entry.Key, [string]$entry.Value)
+}
+if ($stagingKustomizationText -match "/versions/latest") {
+    throw "Staging kustomization still contains a latest secret version reference."
+}
+$stagingKustomizationText | Set-Content -Encoding utf8 -LiteralPath $stagingKustomization
+
+& ./scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1 `
+    -ProjectId $StagingProjectId `
+    -Region $Region `
+    -ClusterName $ClusterName `
+    -Environment staging `
+    -Namespace natureprotector-staging `
+    -EvidenceDirectory (Join-Path $EvidenceDirectory "prevention-verifier-support")
+
 $releaseSpecs = @(
     [ordered]@{
         Pipeline = "natureprotector-api"
@@ -165,44 +521,92 @@ $releaseSpecs = @(
 
 $rolloutSummary = @()
 foreach ($spec in $releaseSpecs) {
+    $pipeline = [string]$spec["Pipeline"]
+    $target = [string]$spec["Target"]
+    $skaffold = [string]$spec["Skaffold"]
+    $imagesArg = [string]$spec["Images"]
     $existing = Invoke-GcloudJson -Arguments @(
         "deploy", "releases", "describe", $ReleaseName,
         "--project=$PlatformProjectId", "--region=$Region",
-        "--delivery-pipeline=$($spec.Pipeline)", "--format=json"
+        "--delivery-pipeline=$pipeline", "--format=json"
     ) -AllowFailure
 
     if ($existing.exit_code -eq 0) {
         $release = $existing.output | ConvertFrom-Json
         if ([string]$release.annotations.sourceCommit -ne [string]$manifest.source_commit -or
             [string]$release.annotations.buildRunId -ne [string]$manifest.build_run_id) {
-            throw "Existing Cloud Deploy release $ReleaseName for $($spec.Pipeline) is bound to different source evidence."
+            throw "Existing Cloud Deploy release $ReleaseName for $pipeline is bound to different source evidence."
         }
     } else {
         & gcloud deploy releases create $ReleaseName `
             --project=$PlatformProjectId --region=$Region `
-            --delivery-pipeline=$spec.Pipeline `
-            --source=$sourceRoot --skaffold-file=$spec.Skaffold `
-            --images=$spec.Images --enable-initial-rollout `
+            --delivery-pipeline=$pipeline `
+            --source=$sourceRoot --skaffold-file=$skaffold `
+            --images=$imagesArg --disable-initial-rollout `
             --annotations="sourceCommit=$($manifest.source_commit),buildRunId=$($manifest.build_run_id),environment=staging" `
             --quiet
-        if ($LASTEXITCODE -ne 0) { throw "Cloud Deploy release failed: $($spec.Pipeline)" }
+        if ($LASTEXITCODE -ne 0) { throw "Cloud Deploy release failed: $pipeline" }
     }
 
     Invoke-GcloudJson -Arguments @(
         "deploy", "releases", "describe", $ReleaseName,
         "--project=$PlatformProjectId", "--region=$Region",
-        "--delivery-pipeline=$($spec.Pipeline)", "--format=json"
-    ) -OutputPath (Join-Path $EvidenceDirectory "$($spec.Pipeline)-release.json") | Out-Null
+        "--delivery-pipeline=$pipeline", "--format=json"
+    ) -OutputPath (Join-Path $EvidenceDirectory "$pipeline-release.json") | Out-Null
 
-    $rolloutEvidence = Join-Path $EvidenceDirectory "$($spec.Pipeline)-staging-rollout.json"
-    $rolloutName = Wait-CloudDeployRollout -Pipeline $spec.Pipeline -Target $spec.Target -OutputPath $rolloutEvidence
-    $rolloutSummary += [ordered]@{ pipeline = $spec.Pipeline; target = $spec.Target; rollout = $rolloutName; state = "SUCCEEDED" }
+    if ($pipeline -eq "natureprotector-prevention") {
+        & ./scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1 `
+            -ManifestPath $ManifestPath `
+            -SourceRoot $sourceRoot `
+            -PlatformProjectId $PlatformProjectId `
+            -StagingProjectId $StagingProjectId `
+            -Region $Region `
+            -ClusterName $ClusterName `
+            -Target $target `
+            -Namespace natureprotector-staging `
+            -CloudSqlPrivateIp $CloudSqlPrivateIp `
+            -RabbitMqTlsServerName $RabbitMqTlsServerName `
+            -RabbitMqTlsCertificateVersion $RabbitMqTlsCertificateVersion `
+            -EvidenceDirectory (Join-Path $EvidenceDirectory "prevention-pre-rollout-qualification")
+        if ($LASTEXITCODE -ne 0) { throw "Prevention pre-rollout qualification failed." }
+    }
+
+    $rolloutEvidence = Join-Path $EvidenceDirectory "$pipeline-staging-rollout.json"
+    $existingRollouts = Invoke-GcloudJson -Arguments @(
+        "deploy", "rollouts", "list",
+        "--project=$PlatformProjectId", "--region=$Region",
+        "--delivery-pipeline=$pipeline", "--release=$ReleaseName",
+        "--filter=targetId=$target", "--sort-by=~createTime", "--limit=1", "--format=json"
+    )
+    $existingRolloutItems = @($existingRollouts.output | ConvertFrom-Json)
+    if ($existingRolloutItems.Count -eq 0) {
+        $rolloutId = Get-CloudDeployRolloutId -Target $target -SourceCommit ([string]$manifest.source_commit)
+        & gcloud deploy releases promote `
+            --project=$PlatformProjectId --region=$Region `
+            --delivery-pipeline=$pipeline `
+            --release=$ReleaseName `
+            --to-target=$target `
+            --rollout-id=$rolloutId `
+            --quiet
+        if ($LASTEXITCODE -ne 0) { throw "Cloud Deploy rollout failed: $pipeline" }
+    }
+
+    $rolloutName = Wait-CloudDeployRollout `
+        -Pipeline $pipeline `
+        -Target $target `
+        -OutputPath $rolloutEvidence `
+        -FailureDiagnosticsDirectory (Join-Path $EvidenceDirectory "$pipeline-rollout-failure-diagnostics")
+    $rolloutSummary += [ordered]@{ pipeline = $pipeline; target = $target; rollout = $rolloutName; state = "SUCCEEDED" }
 }
 
 $functionalSmokePassed = $false
 $stagingVerified = $false
 $edgeBootstrapPending = ($DeploymentMode -eq "services-only-bootstrap")
 if ($DeploymentMode -eq "verified") {
+    Test-G81PreSmokeReadiness `
+        -OutputDirectory (Join-Path $EvidenceDirectory "pre-smoke-readiness") `
+        -Rollouts $rolloutSummary
+
     & ./scripts/cloud/Invoke-G81FunctionalSmoke.ps1 `
         -EnvironmentName staging `
         -ManifestPath $ManifestPath `
@@ -235,7 +639,4 @@ Copy-Item $ManifestPath (Join-Path $EvidenceDirectory "release-manifest.json")
     production_deployed = $false
 } | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 (Join-Path $EvidenceDirectory "staging-deployment-summary.json")
 
-Get-FileHash -Algorithm SHA256 (Get-ChildItem -File -Recurse $EvidenceDirectory | Where-Object Name -ne "checksums.sha256") |
-    Sort-Object Path |
-    ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path.Substring($EvidenceDirectory.Length).TrimStart('\\','/').Replace('\\','/'))" } |
-    Set-Content -Encoding utf8 (Join-Path $EvidenceDirectory "checksums.sha256")
+Write-G81EvidenceChecksums -EvidenceDirectory $EvidenceDirectory | Out-Null

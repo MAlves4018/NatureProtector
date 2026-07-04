@@ -65,6 +65,36 @@ variable "cloud_build_logs_bucket_name" {
   }
 }
 
+variable "cloud_deploy_source_bucket_name" {
+  type    = string
+  default = "d09bb0b9ead342f0a6b38ecd9db4c11a_clouddeploy"
+
+  validation {
+    condition     = var.cloud_deploy_source_bucket_name == "d09bb0b9ead342f0a6b38ecd9db4c11a_clouddeploy"
+    error_message = "Unexpected Cloud Deploy API source bucket."
+  }
+}
+
+variable "cloud_deploy_frontend_source_bucket_name" {
+  type    = string
+  default = "0055c8c327b743efbfa1809f2a4363ef_clouddeploy"
+
+  validation {
+    condition     = var.cloud_deploy_frontend_source_bucket_name == "0055c8c327b743efbfa1809f2a4363ef_clouddeploy"
+    error_message = "Unexpected Cloud Deploy frontend source bucket."
+  }
+}
+
+variable "cloud_deploy_prevention_source_bucket_name" {
+  type    = string
+  default = "c31effabdcbc4c0895cf09390ae59db0_clouddeploy"
+
+  validation {
+    condition     = var.cloud_deploy_prevention_source_bucket_name == "c31effabdcbc4c0895cf09390ae59db0_clouddeploy"
+    error_message = "Unexpected Cloud Deploy prevention source bucket."
+  }
+}
+
 variable "staging_cluster_name" {
   type    = string
   default = "np-staging"

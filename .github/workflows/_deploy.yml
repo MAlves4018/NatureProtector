@@ -14,9 +14,10 @@ on:
         type: string
 
 permissions:
+  actions: read
   contents: read
   id-token: write
-  attestations: read
+  attestations: write
 
 jobs:
   deploy:
@@ -28,6 +29,11 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: ./.github/actions/setup-toolchain
+      - name: Download signed release artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: standard-cd-release
+          path: g81-release
 
       - name: Generate canonical Terraform backend files
         shell: pwsh
@@ -37,9 +43,82 @@ jobs:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
           project_id: ${{ vars.GCP_PROJECT_ID }}
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          version: ">= 552.0.0"
+      - name: Install GKE client components
+        shell: bash
+        run: gcloud components install --quiet gke-gcloud-auth-plugin kubectl
+      - name: Verify staging foundation readiness
+        if: inputs.environment == 'staging'
+        shell: pwsh
+        run: >-
+          ./scripts/cloud/Test-G81StagingFoundationReadiness.ps1
+          -ProjectId '${{ vars.GCP_PROJECT_ID }}'
+          -Region '${{ vars.GCP_REGION }}'
+          -ClusterName '${{ vars.GCP_STAGING_CLUSTER_NAME }}'
+          -RuntimeNetwork '${{ vars.GCP_STAGING_NETWORK }}'
+          -RuntimeSubnetwork '${{ vars.GCP_STAGING_SUBNETWORK }}'
+          -CloudSqlCaSecret '${{ vars.GCP_STAGING_CLOUD_SQL_CA_SECRET }}'
+          -CloudSqlCaVersion '${{ vars.GCP_STAGING_CLOUD_SQL_CA_VERSION }}'
+          -RabbitMqCaSecret '${{ vars.GCP_STAGING_RABBITMQ_CA_SECRET }}'
+          -RabbitMqCaVersion '${{ vars.GCP_STAGING_RABBITMQ_CA_VERSION }}'
+          -RabbitMqTlsCertificateVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_CERTIFICATE_VERSION }}'
+          -RabbitMqTlsPrivateKeyVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_PRIVATE_KEY_VERSION }}'
+          -RequireActiveCertificate
       - uses: ./.github/actions/resolve-release
         with:
           manifest_path: ${{ inputs.manifest_path }}
       - name: Deploy by digest authority
         shell: pwsh
-        run: ./scripts/np.ps1 staging deploy -ManifestPath '${{ inputs.manifest_path }}' -ReleaseId '${{ inputs.release_id }}'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          ./scripts/cloud/Deploy-G81Staging.ps1
+          -ManifestPath '${{ inputs.manifest_path }}'
+          -PlatformProjectId '${{ vars.GCP_PROJECT_ID }}'
+          -StagingProjectId '${{ vars.GCP_PROJECT_ID }}'
+          -Region '${{ vars.GCP_REGION }}'
+          -ClusterName '${{ vars.GCP_STAGING_CLUSTER_NAME }}'
+          -ReleaseName '${{ inputs.release_id }}'
+          -RuntimeNetwork '${{ vars.GCP_STAGING_NETWORK }}'
+          -RuntimeSubnetwork '${{ vars.GCP_STAGING_SUBNETWORK }}'
+          -CloudSqlPrivateIp '${{ vars.GCP_STAGING_CLOUD_SQL_PRIVATE_IP }}'
+          -RabbitMqHost '${{ vars.GCP_STAGING_RABBITMQ_HOST }}'
+          -RabbitMqTlsServerName '${{ vars.GCP_STAGING_RABBITMQ_TLS_SERVER_NAME }}'
+          -OtelEndpoint '${{ vars.GCP_STAGING_OTEL_ENDPOINT }}'
+          -SimulatorServiceAccount '${{ vars.GCP_STAGING_SIMULATOR_SERVICE_ACCOUNT }}'
+          -MigrationServiceAccount '${{ vars.GCP_STAGING_MIGRATION_SERVICE_ACCOUNT }}'
+          -BootstrapServiceAccount '${{ vars.GCP_STAGING_BOOTSTRAP_SERVICE_ACCOUNT }}'
+          -SmokeServiceAccount '${{ vars.GCP_STAGING_SMOKE_SERVICE_ACCOUNT }}'
+          -FrontendOrigin '${{ vars.GCP_STAGING_FUNCTIONAL_SMOKE_ORIGIN }}'
+          -BootstrapAdminUsername '${{ vars.GCP_STAGING_BOOTSTRAP_ADMIN_USERNAME }}'
+          -PostgresAppPasswordSecret '${{ vars.GCP_STAGING_POSTGRES_APP_PASSWORD_SECRET }}'
+          -PostgresAppPasswordVersion '${{ vars.GCP_STAGING_POSTGRES_APP_PASSWORD_VERSION }}'
+          -PostgresMigrationPasswordSecret '${{ vars.GCP_STAGING_POSTGRES_MIGRATION_PASSWORD_SECRET }}'
+          -PostgresMigrationPasswordVersion '${{ vars.GCP_STAGING_POSTGRES_MIGRATION_PASSWORD_VERSION }}'
+          -BootstrapAdminPasswordSecret '${{ vars.GCP_STAGING_BOOTSTRAP_ADMIN_PASSWORD_SECRET }}'
+          -BootstrapAdminPasswordVersion '${{ vars.GCP_STAGING_BOOTSTRAP_ADMIN_PASSWORD_VERSION }}'
+          -RabbitMqUsernameSecret '${{ vars.GCP_STAGING_RABBITMQ_USERNAME_SECRET }}'
+          -RabbitMqUsernameVersion '${{ vars.GCP_STAGING_RABBITMQ_USERNAME_VERSION }}'
+          -RabbitMqPasswordSecret '${{ vars.GCP_STAGING_RABBITMQ_PASSWORD_SECRET }}'
+          -RabbitMqPasswordVersion '${{ vars.GCP_STAGING_RABBITMQ_PASSWORD_VERSION }}'
+          -RabbitMqCaSecret '${{ vars.GCP_STAGING_RABBITMQ_CA_SECRET }}'
+          -RabbitMqCaVersion '${{ vars.GCP_STAGING_RABBITMQ_CA_VERSION }}'
+          -RabbitMqTlsCertificateVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_CERTIFICATE_VERSION }}'
+          -RabbitMqTlsPrivateKeyVersion '${{ vars.GCP_STAGING_RABBITMQ_TLS_PRIVATE_KEY_VERSION }}'
+          -CloudSqlCaSecret '${{ vars.GCP_STAGING_CLOUD_SQL_CA_SECRET }}'
+          -CloudSqlCaVersion '${{ vars.GCP_STAGING_CLOUD_SQL_CA_VERSION }}'
+          -EvidenceDirectory '${{ runner.temp }}/standard-cd-staging-evidence'
+      - name: Attest sealed staging evidence checksums
+        if: success()
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: ${{ runner.temp }}/standard-cd-staging-evidence/checksums.sha256
+      - uses: ./.github/actions/collect-evidence
+        if: success()
+        with:
+          evidence_path: ${{ runner.temp }}/standard-cd-staging-evidence
+          artifact_name: standard-cd-staging-evidence

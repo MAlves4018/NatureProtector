@@ -260,7 +260,7 @@ for name, expected in expected_values.items():
 
 expected_booleans = {
     "create_data_plane": True,
-    "create_edge": False,
+    "create_edge": True,
     "materialize_generated_secrets": True,
     "database_backup_enabled": False,
     "database_pitr_enabled": False,
@@ -337,6 +337,16 @@ check(
     'resource "google_project_iam_member" "workflow_environment_roles"'
     not in iam_text,
     "workflow-project-roles-must-be-platform-owned",
+)
+
+check(
+    'resource "google_project_iam_custom_role" "cloud_deploy_run_policy_setter"'
+    in iam_text
+    and '"run.services.setIamPolicy"' in iam_text
+    and 'resource "google_project_iam_member" "cloud_deploy_run_policy_setter"'
+    in iam_text
+    and '"roles/run.admin"' not in iam_text,
+    "cloud-deploy-run-invoker-policy-permission-must-be-minimal",
 )
 
 check(

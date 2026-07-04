@@ -270,18 +270,41 @@ from pathlib import Path
 import sys
 
 allowed = {
+    "docs/implementation/cloud/g8-1-cloud-production-architecture-cd-hardening.md",
+    "docs/operations/g8-1-cd-and-rollout-runbook.md",
+    "infra/gcp/cloud-deploy/g8-1/api/service.yaml",
+    "infra/gcp/cloud-deploy/g8-1/api/skaffold.yaml",
+    "infra/gcp/cloud-deploy/g8-1/frontend/skaffold.yaml",
+    "infra/gcp/cloud-deploy/g8-1/prevention/skaffold.yaml",
+    "infra/gcp/kubernetes/g8-1/base/network-policy.yaml",
+    "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml",
+    "infra/gcp/kubernetes/g8-1/base/prevention.yaml",
+    "infra/gcp/kubernetes/g8-1/base/rabbitmq.yaml",
+    "infra/gcp/kubernetes/g8-1/base/rabbitmq-topology.yaml",
+    "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml",
     "infra/gcp/kubernetes/g8-1/operator-lock.json",
+    "infra/gcp/terraform/g8-1-environment/iam.tf",
     "infra/gcp/terraform/g8-1-platform/cloud_deploy.tf",
     "infra/gcp/terraform/g8-1-platform/evidence.tf",
     "infra/gcp/terraform/g8-1-platform/terraform.staging.tfvars",
     "infra/gcp/terraform/g8-1-platform/terraform.tfvars.example",
     "infra/gcp/terraform/g8-1-platform/variables.tf",
     "scripts/cloud/Deploy-G81Staging-Autopilot.ps1",
+    "scripts/cloud/Deploy-G81Staging.ps1",
     "scripts/cloud/Test-EnvironmentRemediationStatic.py",
+    "scripts/cloud/Test-G81Static.py",
     "scripts/cloud/Test-StandardPlatformConfiguration.py",
+    "scripts/cloud/Test-StandardStagingConfiguration.py",
     "scripts/cloud/complete-staging-after-autopilot-remediation.sh",
     "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh",
     "scripts/np.ps1",
+    "src/NatureProtector.Prevention.Host/PreventionWorker.cs",
+    "src/NatureProtector.Shared/Configuration/RabbitMqOptions.cs",
+    "src/NatureProtector.Simulator.Host/ControlledValidation/RabbitMqControlledValidationMessagePublisher.cs",
+    "src/NatureProtector.Simulator.Host/Publishing/RabbitMqReadingPublisher.cs",
+    "tests/NatureProtector.Prevention.Host.Tests/Processing/PreventionWorkerTests.cs",
+    "tests/NatureProtector.Shared.Tests/Configuration/RabbitMqOptionsTests.cs",
+    "tests/NatureProtector.Simulator.Host.Tests/Publishing/RabbitMqReadingPublisherTests.cs",
 }
 
 unexpected = []
@@ -824,7 +847,12 @@ for name in secret_names:
         for item in raw
         if item.get("state") == "ENABLED"
     )
-    if name == "np-staging-cloud-sql-server-ca":
+    if name in {
+        "np-staging-cloud-sql-server-ca",
+        "np-staging-rabbitmq-tls-certificate",
+        "np-staging-rabbitmq-tls-private-key",
+        "np-staging-rabbitmq-ca-certificate",
+    }:
         if not versions:
             raise SystemExit(f"{name}: expected at least one enabled version")
         continue
@@ -878,7 +906,15 @@ values = {
     "RABBITMQ_PASSWORD_SECRET": secret_name("rabbitmq-app-password"),
     "RABBITMQ_PASSWORD_VERSION": versions["rabbitmq-app-password"],
     "RABBITMQ_CA_SECRET": secret_name("rabbitmq-ca-certificate"),
-    "RABBITMQ_CA_VERSION": "1",
+    "RABBITMQ_CA_VERSION": latest_enabled_secret_version(
+        "np-staging-rabbitmq-ca-certificate"
+    ),
+    "RABBITMQ_TLS_CERTIFICATE_VERSION": latest_enabled_secret_version(
+        "np-staging-rabbitmq-tls-certificate"
+    ),
+    "RABBITMQ_TLS_PRIVATE_KEY_VERSION": latest_enabled_secret_version(
+        "np-staging-rabbitmq-tls-private-key"
+    ),
     "CLOUD_SQL_CA_SECRET": secret_name("cloud-sql-server-ca"),
     "CLOUD_SQL_CA_VERSION": latest_enabled_secret_version(
         "np-staging-cloud-sql-server-ca"
@@ -992,7 +1028,31 @@ export NP_G81_OPERATOR_EVIDENCE
 NP_G81_OPERATOR_EVIDENCE="$(cygpath -w "$OPERATOR_EVIDENCE")"
 mark_checkpoint "04B_AUTOPILOT_OPERATOR_FOUNDATION_READY"
 
-RELEASE_NAME="git-${HEAD_SHA:0:12}-r${RELEASE_RUN_ID}-s3"
+RELEASE_NAME=""
+for suffix in $(seq -f 's%g' 3 30); do
+  candidate="git-${HEAD_SHA:0:12}-r${RELEASE_RUN_ID}-${suffix}"
+  candidate_exists=false
+  for pipeline in natureprotector-api natureprotector-frontend natureprotector-prevention; do
+    if gcloud deploy releases describe "$candidate" \
+      --project="$PROJECT_ID" \
+      --region="$REGION" \
+      --delivery-pipeline="$pipeline" \
+      --format="value(name)" >/dev/null 2>&1; then
+      candidate_exists=true
+      break
+    fi
+  done
+
+  if [[ "$candidate_exists" == false ]]; then
+    RELEASE_NAME="$candidate"
+    break
+  fi
+done
+
+if [[ -z "$RELEASE_NAME" ]]; then
+  echo "NO_AVAILABLE_CLOUD_DEPLOY_RELEASE_SUFFIX" >&2
+  exit 1
+fi
 echo "RELEASE_NAME=$RELEASE_NAME"
 printf '%s\n' "$RELEASE_NAME" > "$RESULT_DIR/checkpoints/RELEASE_NAME"
 DIRECT_FRONTEND_ORIGIN="https://natureprotector-frontend-${PROJECT_NUMBER}.${REGION}.run.app"
@@ -1047,6 +1107,8 @@ run_deployment() {
     -RabbitMqPasswordVersion "$RABBITMQ_PASSWORD_VERSION"
     -RabbitMqCaSecret "$RABBITMQ_CA_SECRET"
     -RabbitMqCaVersion "$RABBITMQ_CA_VERSION"
+    -RabbitMqTlsCertificateVersion "$RABBITMQ_TLS_CERTIFICATE_VERSION"
+    -RabbitMqTlsPrivateKeyVersion "$RABBITMQ_TLS_PRIVATE_KEY_VERSION"
     -CloudSqlCaSecret "$CLOUD_SQL_CA_SECRET"
     -CloudSqlCaVersion "$CLOUD_SQL_CA_VERSION"
     -EvidenceDirectory "$evidence_win"

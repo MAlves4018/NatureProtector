@@ -1,0 +1,36 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: natureprotector-deploy-verifier
+  labels:
+    app.kubernetes.io/name: natureprotector-deploy-verifier
+    app.kubernetes.io/part-of: natureprotector
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - np-runtime-secrets
+      - np-rabbitmq-app-credentials
+      - np-rabbitmq-ca
+      - np-cloud-sql-ca
+      - natureprotector-rabbitmq-default-user
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - natureprotector-rabbitmq-default-user
+    verbs: ["patch"]
+  - apiGroups: ["rabbitmq.com"]
+    resources:
+      - users
+      - permissions
+      - policies
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["keda.sh"]
+    resources:
+      - scaledobjects
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+    verbs: ["get", "list", "watch"]

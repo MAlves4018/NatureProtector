@@ -10,3 +10,16 @@ bfb8662544ff11d6b6029f7e0a2ebe4d77b35320:webUI/src/app/ui-v2/theme/ui-v2.css:gen
 # The source fixture was replaced by deterministic runtime-generated test material.
 d9d96a6a5a2b92ae24e87c405958b0f003457b72:tests/NatureProtector.IntegrationTests/UserPlane/PostgresUserRolePlaneServiceTests.cs:generic-api-key:31
 d9d96a6a5a2b92ae24e87c405958b0f003457b72:tests/NatureProtector.IntegrationTests/UserPlane/PostgresUserRolePlaneServiceTests.cs:generic-api-key:282
+
+# Historical documentation evidence hashes detected as generic API keys.
+# These are exact commit/file/line fingerprints, not broad path exclusions.
+b2ebc39db4afa4b20f8eb26a647fe8d375d025de:docs/implementation/maintainability/frontend-decomposition-migration-proof-phase6.json:generic-api-key:8
+b2ebc39db4afa4b20f8eb26a647fe8d375d025de:docs/implementation/maintainability/canonical-deployment-authority-2026-06-28.json:generic-api-key:13
+b2ebc39db4afa4b20f8eb26a647fe8d375d025de:docs/implementation/maintainability/canonical-deployment-authority-2026-06-28.json:generic-api-key:14
+b2ebc39db4afa4b20f8eb26a647fe8d375d025de:docs/implementation/maintainability/canonical-deployment-authority-2026-06-28.json:generic-api-key:139
+b2ebc39db4afa4b20f8eb26a647fe8d375d025de:docs/implementation/maintainability/canonical-deployment-authority-2026-06-28.json:generic-api-key:146
+b2ebc39db4afa4b20f8eb26a647fe8d375d025de:docs/implementation/maintainability/canonical-deployment-authority-2026-06-28.json:generic-api-key:186
+b2ebc39db4afa4b20f8eb26a647fe8d375d025de:docs/implementation/maintainability/canonical-deployment-authority-2026-06-28.json:generic-api-key:238
+
+# Historical synthetic JWT signing key used only by the Backoffice API test factory.
+b2ebc39db4afa4b20f8eb26a647fe8d375d025de:tests/NatureProtector.Backoffice.Api.Tests/ControlPlaneApiWebApplicationFactory.cs:generic-api-key:20

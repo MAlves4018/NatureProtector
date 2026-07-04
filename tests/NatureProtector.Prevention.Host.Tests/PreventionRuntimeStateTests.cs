@@ -40,4 +40,38 @@ public sealed class PreventionRuntimeStateTests
         Assert.Equal(HealthStatus.Unhealthy, result.Status);
         Assert.Equal("consumer stopped", result.Description);
     }
+
+    [Fact]
+    public void Host_ExposesKubernetesHealthEndpointsBackedByRuntimeReadiness()
+    {
+        var root = FindRepositoryRoot();
+        var program = File.ReadAllText(
+            Path.Combine(root, "src", "NatureProtector.Prevention.Host", "Program.cs"));
+        var project = File.ReadAllText(
+            Path.Combine(root, "src", "NatureProtector.Prevention.Host", "NatureProtector.Prevention.Host.csproj"));
+
+        Assert.Contains("WebApplication.CreateBuilder(args)", program);
+        Assert.Contains("AddSingleton<PreventionRuntimeState>()", program);
+        Assert.Contains("AddCheck<PreventionReadinessHealthCheck>(\"prevention-ready\")", program);
+        Assert.Contains("MapHealthChecks(\"/health/live\"", program);
+        Assert.Contains("Predicate = _ => false", program);
+        Assert.Contains("MapHealthChecks(\"/health/ready\")", program);
+        Assert.Contains("Microsoft.AspNetCore.App", project);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "NatureProtector.sln")))
+            {
+                return current.FullName;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new InvalidOperationException("Repository root could not be found.");
+    }
 }

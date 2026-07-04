@@ -62,11 +62,21 @@ REQUIRED = [
     "infra/gcp/kubernetes/g8-1/base/rabbitmq.yaml",
     "infra/gcp/kubernetes/g8-1/base/network-policy.yaml",
     "infra/gcp/kubernetes/g8-1/base/otel-collector.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/base/kustomization.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/base/service-account.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/base/role.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/base/role-binding.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/base/network-policy.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/overlays/staging/kustomization.yaml",
+    "infra/gcp/kubernetes/g8-1/verifier-support/overlays/production/kustomization.yaml",
     "infra/gcp/cloud-deploy/g8-1/api/service.yaml",
     "infra/gcp/cloud-deploy/g8-1/api/skaffold.yaml",
     "infra/gcp/cloud-deploy/g8-1/frontend/skaffold.yaml",
     "infra/gcp/cloud-deploy/g8-1/prevention/skaffold.yaml",
     "infra/gcp/cloud-deploy-verifier/Dockerfile",
+    "scripts/cloud/EvidenceChecksums.ps1",
+    "tests/cloud/Test-EvidenceChecksumPortability.ps1",
+    "tests/cloud/Test-G81HttpPrecheckCurlResolution.ps1",
     "src/NatureProtector.Backoffice.Api/Configuration/ApiRateLimitingOptions.cs",
     "src/NatureProtector.Backoffice.Api/Configuration/ApiRateLimitingExtensions.cs",
     "src/NatureProtector.Backoffice.Api/RuntimeOrchestration/CloudRunExecutionStore.cs",
@@ -82,13 +92,17 @@ REQUIRED = [
     ".github/workflows/gcp-g8-1-promote-production.yml",
     ".github/workflows/gcp-g8-1-teardown.yml",
     "scripts/cloud/Build-G81Release.sh",
+    "scripts/cloud/Test-BuildG81ReleaseStatic.py",
     "scripts/cloud/Install-G81ClusterDependencies.ps1",
+    "scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1",
+    "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1",
     "scripts/cloud/Deploy-G81RuntimeJobs.ps1",
     "scripts/cloud/Invoke-G81FunctionalSmoke.ps1",
     "scripts/cloud/Deploy-G81Staging.ps1",
     "scripts/cloud/Promote-G81Production.ps1",
     "scripts/cloud/New-G81ReleaseManifest.py",
     "scripts/cloud/Test-G81ReleaseManifest.py",
+    "scripts/cloud/Test-PreventionInClusterVerifierStatic.py",
     "scripts/cloud/Test-LocalCloudConfigurationContract.py",
     "scripts/cloud/requirements-validation.txt",
     "infra/gcp/terraform/g8-1-environment/terraform.qualification.tfvars.example",
@@ -197,6 +211,19 @@ for token in [
     "internal-and-cloud-load-balancing",
     "rate_based_ban",
     "evaluatePreconfiguredWaf",
+    "GetRelativePath",
+    "DirectorySeparatorChar",
+    "Write-G81EvidenceChecksums",
+    "CHECKSUM_PORTABILITY_RUNTIME_TEST=PASS",
+    "request.path != '/api/users-roles/login'",
+    "opt_out_rule_ids",
+    "owasp-crs-v030301-id942200-sqli",
+    "request.method == 'POST'",
+    "request.path == '/api/users-roles/users'",
+    "owasp_sqli_user_create",
+    "'sensitivity': 1",
+    "'sensitivity': 4",
+    "owasp-crs-v030301-id942432-sqli",
     "kind: ScaledObject",
     "type: rabbitmq",
     "kind: TriggerAuthentication",
@@ -245,8 +272,29 @@ for forbidden in [
     "secret_data = ",
     'pass' + 'word = "',
     'required_version = "= 1.15.6"',
+    ".TrimStart('\\\\','/')",
+    'TrimStart("\\\\","/")',
 ]:
     check(forbidden.lower() not in deployable_text.lower(), f"forbidden:{forbidden}")
+
+checksum_scripts = [
+    ROOT / "scripts/cloud/Deploy-G81Staging.ps1",
+    ROOT / "scripts/cloud/Deploy-G81Staging-Autopilot.ps1",
+    ROOT / "scripts/cloud/Promote-G81Production.ps1",
+]
+checksum_helper = (ROOT / "scripts/cloud/EvidenceChecksums.ps1").read_text(encoding="utf-8")
+check("TrimStart" not in checksum_helper, "checksum-helper-uses-trimstart")
+check("GetRelativePath" in checksum_helper, "checksum-helper-getrelativepath")
+check("DirectorySeparatorChar" in checksum_helper, "checksum-helper-directoryseparatorchar")
+check("[char]'/'" in checksum_helper or "[char]\"/\"" in checksum_helper, "checksum-helper-forward-slash-char")
+for script in checksum_scripts:
+    text = script.read_text(encoding="utf-8", errors="ignore")
+    check("EvidenceChecksums.ps1" in text, f"checksum-helper-not-sourced:{script.name}")
+    check("Write-G81EvidenceChecksums -EvidenceDirectory $EvidenceDirectory" in text, f"checksum-helper-not-used:{script.name}")
+    check("TrimStart" not in text, f"checksum-script-uses-trimstart:{script.name}")
+
+np_text = (ROOT / "scripts/np.ps1").read_text(encoding="utf-8", errors="ignore")
+check("Test-EvidenceChecksumPortability.ps1" in np_text, "checksum-runtime-test-not-in-np-validate")
 
 for workflow in sorted((ROOT / ".github/workflows").glob("gcp-g8-1-*.yml")):
     text = workflow.read_text(encoding="utf-8")
@@ -314,22 +362,45 @@ semantic_checks = {
     "private-worker-pool": (ROOT / "infra/gcp/terraform/g8-1-environment/cloud_deploy_execution.tf", "no_external_ip = true"),
     "target-deploy-parameters": (ROOT / "infra/gcp/terraform/g8-1-platform/cloud_deploy.tf", "deploy_parameters ="),
     "staging-waits-rollout": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Wait-CloudDeployRollout"),
+    "staging-rollout-id-is-explicit": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Get-CloudDeployRolloutId"),
+    "staging-disables-oversized-auto-rollout-id": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "--disable-initial-rollout"),
+    "staging-promotes-with-short-rollout-id": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "--rollout-id=$rolloutId"),
     "production-waits-rollout": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Wait-ProductionRollout"),
     "staging-runtime-jobs": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Deploy-G81RuntimeJobs.ps1"),
     "production-runtime-jobs": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Deploy-G81RuntimeJobs.ps1"),
     "staging-functional-smoke": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Invoke-G81FunctionalSmoke.ps1"),
+    "staging-pre-smoke-readiness": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "PRE_SMOKE_READINESS=PASS"),
+    "staging-pre-smoke-rollout-gates": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "API_ROLLOUT=PASS"),
+    "staging-pre-smoke-health-gate": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "FRONTEND_HEALTH_PRECHECK=PASS"),
+    "staging-http-precheck-resolves-curl": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Resolve-CurlExecutable"),
+    "staging-http-precheck-uses-curl-application": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "CommandType Application"),
+    "staging-http-precheck-selects-single-curl": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Select-Object -First 1"),
+    "staging-http-precheck-test-in-np-validate": (ROOT / "scripts/np.ps1", "Test-G81HttpPrecheckCurlResolution.ps1"),
     "production-functional-smoke": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Invoke-G81FunctionalSmoke.ps1"),
     "smoke-uses-edge-https": (ROOT / "scripts/cloud/Invoke-G81FunctionalSmoke.ps1", "FrontendOrigin must be an absolute HTTPS origin"),
     "smoke-rejects-direct-run-app": (ROOT / "scripts/cloud/Invoke-G81FunctionalSmoke.ps1", "not a direct Cloud Run run.app URL"),
+    "smoke-failure-diagnostics": (ROOT / "scripts/cloud/Invoke-G81FunctionalSmoke.ps1", "FUNCTIONAL_SMOKE_DIAGNOSTICS="),
+    "smoke-failure-class-marker": (ROOT / "scripts/cloud/Invoke-G81FunctionalSmoke.ps1", "FUNCTIONAL_SMOKE_FAILURE_CLASS="),
     "staging-edge-bootstrap-is-explicit": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "BOOTSTRAP_SERVICES_BEFORE_EDGE"),
     "production-edge-bootstrap-is-explicit": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "BOOTSTRAP_SERVICES_BEFORE_EDGE"),
     "staging-release-is-idempotent": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Existing Cloud Deploy release"),
     "production-rollout-is-idempotent": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "reused_existing_rollout"),
     "staging-bootstrap-is-not-verified": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "$stagingVerified = $false"),
     "production-bootstrap-is-not-verified": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "$productionVerified = $false"),
+    "staging-preserves-ready-operators": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "OPERATOR_FOUNDATION_ALREADY_READY"),
+    "staging-ready-operator-check-has-kubecontext": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "--dns-endpoint --quiet"),
+    "staging-does-not-force-operator-conflicts": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "preserve-existing-operator-field-managers"),
+    "staging-secret-version-readiness-script": (ROOT / "scripts/cloud/Test-G81StagingFoundationReadiness.ps1", "STAGING_SECRET_VERSION_READINESS=PASS"),
+    "staging-secret-version-readiness-fail-closed": (ROOT / "scripts/cloud/Test-G81StagingFoundationReadiness.ps1", "MISSING_SECRET_VERSION="),
+    "staging-secret-access-readiness": (ROOT / "scripts/cloud/Test-G81StagingFoundationReadiness.ps1", "SECRET_ACCESS_DENIED="),
+    "staging-deploy-replaces-secret-version-placeholders": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "RABBITMQ_TLS_CERTIFICATE_VERSION"),
+    "staging-workflow-passes-rabbitmq-tls-cert-version": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "GCP_STAGING_RABBITMQ_TLS_CERTIFICATE_VERSION"),
+    "standard-workflow-passes-rabbitmq-tls-cert-version": (ROOT / ".github/workflows/_deploy.yml", "GCP_STAGING_RABBITMQ_TLS_CERTIFICATE_VERSION"),
     "release-waits-for-parallel-gates": (ROOT / ".github/workflows/gcp-g8-1-release.yml", "Waiting for $name on $SOURCE_SHA"),
     "release-gates-default-branch": (ROOT / ".github/workflows/gcp-g8-1-release.yml", ".headBranch==$branch"),
     "staging-verifies-release-attestation": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "gh attestation verify g81-release/release-manifest.json"),
+    "staging-auth-uses-standard-wif-var": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "workload_identity_provider: ${{ vars.WIF_PROVIDER }}"),
+    "staging-auth-uses-standard-deploy-sa-var": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}"),
     "staging-attests-sealed-checksums": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "g81-staging-evidence/checksums.sha256"),
     "production-verifies-staging-attestation": (ROOT / ".github/workflows/gcp-g8-1-promote-production.yml", "gh attestation verify g81-staging-evidence/checksums.sha256"),
     "production-attests-sealed-checksums": (ROOT / ".github/workflows/gcp-g8-1-promote-production.yml", "g81-production-evidence/checksums.sha256"),
@@ -338,6 +409,8 @@ semantic_checks = {
     "random-provider-pin-current": (ROOT / "infra/gcp/terraform/g8-1-environment/versions.tf", 'version = "= 3.9.0"'),
     "frontend-healthz": (ROOT / "infra/gcp/cloud-deploy/g8-1/frontend/skaffold.yaml", "/healthz"),
     "cloud-run-verify-url-variable": (ROOT / "infra/gcp/cloud-deploy/g8-1/api/skaffold.yaml", "CLOUD_RUN_SERVICE_URLS"),
+    "cloud-run-verify-defers-http-to-edge": (ROOT / "infra/gcp/cloud-deploy/g8-1/api/skaffold.yaml", "protected edge smoke"),
+    "frontend-verify-defers-http-to-edge": (ROOT / "infra/gcp/cloud-deploy/g8-1/frontend/skaffold.yaml", "protected edge smoke"),
     "eleven-images": (ROOT / "scripts/cloud/Build-G81Release.sh", "cloud-deploy-verifier"),
     "custom-root-trust": (ROOT / "src/NatureProtector.Shared/Configuration/PrivateCertificateAuthorityValidator.cs", "X509ChainTrustMode.CustomRootTrust"),
     "rate-limit-health-bypass": (ROOT / "src/NatureProtector.Backoffice.Api/Configuration/ApiRateLimitingExtensions.cs", "unrestricted-health"),
@@ -351,6 +424,14 @@ semantic_checks = {
     "platform-staging-execution-identity": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", 'account_id   = "np-deploy-staging"'),
     "platform-reuses-existing-deploy-identity": (ROOT / "infra/gcp/terraform/g8-1-platform/variables.tf", "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com"),
     "platform-reuses-existing-artifact-repository": (ROOT / "infra/gcp/terraform/g8-1-platform/artifact_registry.tf", 'data "google_artifact_registry_repository" "images"'),
+    "platform-reuses-existing-cloud-deploy-bucket": (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf", 'data "google_storage_bucket" "cloud_deploy_source"'),
+    "platform-reuses-existing-cloud-deploy-frontend-bucket": (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf", 'data "google_storage_bucket" "cloud_deploy_frontend_source"'),
+    "platform-reuses-existing-cloud-deploy-prevention-bucket": (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf", 'data "google_storage_bucket" "cloud_deploy_prevention_source"'),
+    "platform-cloud-deploy-bucket-metadata-iam": (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf", 'google_storage_bucket_iam_member" "cloud_deploy_source_metadata"'),
+    "platform-cloud-deploy-frontend-bucket-metadata-iam": (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf", 'google_storage_bucket_iam_member" "cloud_deploy_frontend_source_metadata"'),
+    "platform-cloud-deploy-prevention-bucket-metadata-iam": (ROOT / "infra/gcp/terraform/g8-1-platform/evidence.tf", 'google_storage_bucket_iam_member" "cloud_deploy_prevention_source_metadata"'),
+    "platform-cloud-deploy-bucket-get-custom-role": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", '"storage.buckets.get"'),
+    "platform-cloud-deploy-bucket-list-custom-role": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", '"storage.buckets.list"'),
     "platform-is-single-project-staging-only": (ROOT / "infra/gcp/terraform/g8-1-platform/outputs.tf", 'value = "single-project-staging-only"'),
     "edge-requires-domain": (ROOT / "infra/gcp/terraform/g8-1-environment/variables.tf", "At least one managed certificate domain is required"),
     "production-requires-alert-channel": (ROOT / "infra/gcp/terraform/g8-1-environment/variables.tf", "Production requires at least one Monitoring notification channel"),
@@ -360,37 +441,254 @@ semantic_checks = {
     "protected-state-bootstrap": (ROOT / "infra/gcp/terraform/g8-1-state-bootstrap/state.tf", "prevent_destroy = true"),
     "teardown-reinitializes-remote-state": (ROOT / "scripts/cloud/Remove-G81WeekEnvironment.ps1", "-backend-config=\"prefix=$TerraformStatePrefix\""),
     "teardown-verifies-evidence-checksums": (ROOT / "scripts/cloud/Remove-G81WeekEnvironment.ps1", "Test-EvidenceChecksums -Directory $EvidenceDirectory"),
-    "promotion-verifies-staging-checksums": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Test-EvidenceChecksums -Directory $StagingEvidenceDirectory"),
+    "promotion-verifies-staging-checksums": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Test-G81EvidenceChecksums -Directory $StagingEvidenceDirectory"),
     "teardown-disables-deletion-protection": (ROOT / "scripts/cloud/Remove-G81WeekEnvironment.ps1", "-var=\"deletion_protection=false\""),
     "generated-secrets-are-write-only": (ROOT / "infra/gcp/terraform/g8-1-environment/generated_secrets.tf", "secret_data_wo"),
     "cloud-sql-passwords-are-write-only": (ROOT / "infra/gcp/terraform/g8-1-environment/cloud_sql.tf", "password_wo"),
     "migration-job-uses-contract-env": (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1", "POSTGRES_MIGRATION_USER=np_migration"),
     "migration-password-uses-contract-env": (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1", "POSTGRES_MIGRATION_" + "PASS" + "WORD="),
     "keda-rabbitmq-autoscaling": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "queueName: np.ingestion.readings"),
+    "keda-rabbitmq-host-uses-cluster-fqdn": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "amqps://natureprotector-rabbitmq.natureprotector-staging.svc.cluster.local:5671/"),
     "keda-private-ca-authentication": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "parameter: ca"),
     "keda-safe-fallback": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml", "failureThreshold: 3"),
     "operator-assets-use-github-digests": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "GitHub did not publish a sha256 digest"),
     "operator-assets-server-side-applied": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "--server-side --field-manager=natureprotector-g81-foundation"),
+    "operator-bootstrap-detects-autopilot": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "autopilot.enabled"),
+    "operator-bootstrap-delegates-autopilot-mirror": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "install-g81-cluster-dependencies-autopilot.sh"),
+    "operator-bootstrap-autopilot-timeout-is-configurable": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "NP_CLUSTER_DEPENDENCY_ROLLOUT_TIMEOUT_SECONDS"),
+    "operator-bootstrap-classifies-failures": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "CLUSTER_DEPENDENCY_FAILURE_CLASS"),
+    "operator-bootstrap-emits-diagnostics-markers": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "CLUSTER_DEPENDENCY_DIAGNOSTICS_BEGIN"),
+    "operator-bootstrap-preserves-ready-autopilot-foundation": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "OPERATOR_FOUNDATION_ALREADY_READY"),
+    "operator-bootstrap-records-ready-foundation-reuse": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "reused_existing_operator_foundation"),
+    "autopilot-bootstrap-uses-fresh-amd64-mirror": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "FRESH_LINUX_AMD64_OPERATOR_MIRROR_PROVED"),
+    "autopilot-bootstrap-resolves-portable-python": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "resolve_python()"),
+    "autopilot-bootstrap-validates-pyyaml": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "PYYAML_IMPORT=PASS"),
+    "autopilot-bootstrap-records-image-map-digest": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "image-map-digest.json"),
+    "autopilot-bootstrap-classifies-failures": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "CLUSTER_DEPENDENCY_FAILURE_CLASS"),
+    "autopilot-bootstrap-emits-ready-marker": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "CLUSTER_DEPENDENCY_STATUS=READY"),
+    "autopilot-bootstrap-scopes-low-requests-to-keda": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "KEDA_EXPLICIT_RESOURCE_REQUESTS_CONFIRMED"),
+    "autopilot-bootstrap-resolves-gke-node-service-account": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "GKE_NODE_SERVICE_ACCOUNT"),
+    "autopilot-bootstrap-keeps-node-artifact-reader-declarative": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "terraform:g8-1-platform/google_artifact_registry_repository_iam_member.runtime_readers"),
+    "autopilot-bootstrap-verifies-node-artifact-reader": (ROOT / "scripts/cloud/install-g81-cluster-dependencies-autopilot.sh", "gke_node_service_account_can_pull_artifacts"),
+    "np-validate-runs-autopilot-bootstrap-test": (ROOT / "scripts/np.ps1", "Test-G81ClusterDependencyAutopilotBootstrap.ps1"),
+    "autopilot-bootstrap-test-uses-posix-command-shims": (ROOT / "tests/cloud/Test-G81ClusterDependencyAutopilotBootstrap.ps1", "#!/bin/sh"),
+    "autopilot-bootstrap-test-runs-real-bash": (ROOT / "tests/cloud/Test-G81ClusterDependencyAutopilotBootstrap.ps1", "REAL_BASH_TEST=PASS"),
     "operator-lock-exact-keda-version": (ROOT / "infra/gcp/kubernetes/g8-1/operator-lock.json", '"tag": "v2.18.2"'),
     "staging-installs-cluster-dependencies": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Install-G81ClusterDependencies.ps1"),
+    "staging-ensures-prevention-verifier-support": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Ensure-G81PreventionVerifierSupport.ps1"),
+    "staging-runs-prevention-pre-rollout-qualification": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Test-G81PreventionPreRolloutQualification.ps1"),
+    "staging-rollout-failure-diagnostics": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Write-CloudDeployRolloutFailureDiagnostics"),
+    "staging-foundation-readiness-script": (ROOT / "scripts/cloud/Test-G81StagingFoundationReadiness.ps1", "STAGING_FOUNDATION_READINESS=PASS"),
+    "staging-deploy-runs-foundation-readiness": (ROOT / "scripts/cloud/Deploy-G81Staging.ps1", "Test-G81StagingFoundationReadiness.ps1"),
+    "staging-workflow-runs-foundation-readiness": (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml", "Verify staging foundation readiness"),
+    "standard-deploy-runs-foundation-readiness": (ROOT / ".github/workflows/_deploy.yml", "Verify staging foundation readiness"),
+    "np-validate-runs-foundation-readiness": (ROOT / "scripts/np.ps1", "Test-G81StagingFoundationReadiness.ps1"),
+    "prevention-verifier-support-server-dry-run": (ROOT / "scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1", "--dry-run=server"),
+    "prevention-verifier-support-field-manager": (ROOT / "scripts/cloud/Ensure-G81PreventionVerifierSupport.ps1", "natureprotector-verifier-support-foundation"),
+    "prevention-verifier-support-staging-namespace": (ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/overlays/staging/kustomization.yaml", "namespace: natureprotector-staging"),
+    "prevention-verifier-support-production-namespace": (ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/overlays/production/kustomization.yaml", "namespace: natureprotector-production"),
+    "prevention-verifier-support-role-binding": (ROOT / "infra/gcp/kubernetes/g8-1/verifier-support/base/role-binding.yaml", "name: natureprotector-deploy-verifier"),
+    "prevention-pre-rollout-target-contract": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "PREVENTION_DEPENDENCY_CONTRACT=PASS"),
+    "prevention-pre-rollout-render-validation": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "PREVENTION_RENDER_VALIDATION=PASS"),
+    "prevention-pre-rollout-server-dry-run": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "kubectl apply --server-side --dry-run=server"),
+    "prevention-pre-rollout-qualification-marker": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "PREVENTION_PRE_ROLLOUT_QUALIFICATION=PASS"),
+    "prevention-pre-rollout-rabbitmq-san": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "natureprotector-rabbitmq.natureprotector-staging.svc.cluster.local"),
+    "prevention-pre-rollout-cloudsql-ip": (ROOT / "scripts/cloud/Test-G81PreventionPreRolloutQualification.ps1", "Assert-CloudSqlPrivateIp"),
     "production-installs-cluster-dependencies": (ROOT / "scripts/cloud/Promote-G81Production.ps1", "Install-G81ClusterDependencies.ps1"),
     "cluster-bootstrap-uses-dns-endpoint": (ROOT / "scripts/cloud/Install-G81ClusterDependencies.ps1", "--dns-endpoint"),
     "workflow-cluster-bootstrap-role": (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf", "roles/container.admin"),
     "removed-gke-vulnerability-scanning-disabled": (ROOT / "infra/gcp/terraform/g8-1-environment/gke.tf", 'vulnerability_mode = "VULNERABILITY_DISABLED"'),
     "prevention-postgres-explicit": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "POSTGRES_REQUIRE_EXPLICIT"),
     "prevention-postgres-cloudsql-ip": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "${cloud_sql_private_ip}"),
+    "prevention-rabbitmq-private-ca": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "RabbitMq__TlsCertificateAuthorityPath"),
     "prevention-influx-explicitly-disabled": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "InfluxDb__Enabled"),
+    "prevention-host-uses-web-health-server": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", "WebApplication.CreateBuilder(args)"),
+    "prevention-host-registers-runtime-readiness": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", "AddSingleton<PreventionRuntimeState>()"),
+    "prevention-host-registers-readiness-check": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", 'AddCheck<PreventionReadinessHealthCheck>("prevention-ready")'),
+    "prevention-host-exposes-liveness": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", 'MapHealthChecks("/health/live"'),
+    "prevention-host-exposes-readiness": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", 'MapHealthChecks("/health/ready")'),
+    "prevention-host-uses-aspnet-runtime": (ROOT / "src/NatureProtector.Prevention.Host/NatureProtector.Prevention.Host.csproj", "Microsoft.AspNetCore.App"),
     "staging-is-qualification-profile": (ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml", "deployment-profile: qualification"),
     "production-cloudsql-guardrail": (ROOT / "infra/gcp/terraform/g8-1-environment/cloud_sql.tf", "Production requires regional Cloud SQL"),
 }
 for name, (path, token) in semantic_checks.items():
     check(token in path.read_text(encoding="utf-8"), f"semantic:{name}")
 
+staging_kustomization = yaml.safe_load(
+    (ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml").read_text(encoding="utf-8")
+)
+staging_kustomization_text = (ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml").read_text(encoding="utf-8")
+check("/versions/latest" not in staging_kustomization_text, "staging-kustomization-must-not-use-latest-secret-versions")
+for placeholder in [
+    "CLOUD_SQL_CA_VERSION",
+    "RABBITMQ_CA_VERSION",
+    "RABBITMQ_TLS_CERTIFICATE_VERSION",
+    "RABBITMQ_TLS_PRIVATE_KEY_VERSION",
+]:
+    check(placeholder in staging_kustomization_text, f"staging-kustomization-secret-version-placeholder:{placeholder}")
+staging_patches = staging_kustomization.get("patches", [])
+selector_labels = {
+    "environment": "staging",
+    "phase": "g8-1",
+    "deployment-profile": "qualification",
+}
+for deployment_name in ("natureprotector-prevention", "natureprotector-otel"):
+    deployment_patches = [
+        patch
+        for patch in staging_patches
+        if patch.get("target", {}).get("kind") == "Deployment"
+        and patch.get("target", {}).get("name") == deployment_name
+    ]
+    check(deployment_patches, f"semantic:staging-selector-patch-present:{deployment_name}")
+    patch_ops = []
+    for deployment_patch in deployment_patches:
+        patch_ops.extend(yaml.safe_load(deployment_patch.get("patch", "[]")))
+    for label_name, label_value in selector_labels.items():
+        check(
+            any(
+                op.get("op") == "add"
+                and op.get("path") == f"/spec/selector/matchLabels/{label_name}"
+                and op.get("value") == label_value
+                for op in patch_ops
+            ),
+            f"semantic:staging-preserves-immutable-selector:{deployment_name}:{label_name}",
+        )
+        check(
+            any(
+                op.get("op") == "add"
+                and op.get("path")
+                == f"/spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/{label_name}"
+                and op.get("value") == label_value
+                for op in patch_ops
+            ),
+            f"semantic:staging-preserves-topology-selector:{deployment_name}:{label_name}",
+        )
+
+network_policy_documents = [
+    document
+    for document in yaml.safe_load_all(
+        (ROOT / "infra/gcp/kubernetes/g8-1/base/network-policy.yaml").read_text(encoding="utf-8")
+    )
+    if isinstance(document, dict) and document.get("kind") == "NetworkPolicy"
+]
+for policy_name in ("prevention-runtime", "rabbitmq-runtime", "otel-runtime"):
+    policy = next(
+        (document for document in network_policy_documents if document.get("metadata", {}).get("name") == policy_name),
+        None,
+    )
+    check(policy is not None, f"semantic:network-policy-present:{policy_name}")
+    egress_rules = policy.get("spec", {}).get("egress", []) if policy else []
+    dns_rules = [
+        rule
+        for rule in egress_rules
+        if any(target.get("ipBlock", {}).get("cidr") == "169.254.20.10/32" for target in rule.get("to", []))
+    ]
+    check(dns_rules, f"semantic:gke-node-local-dns-egress-present:{policy_name}")
+    for protocol in ("UDP", "TCP"):
+        check(
+            any(
+                any(port.get("protocol") == protocol and port.get("port") == 53 for port in rule.get("ports", []))
+                for rule in dns_rules
+            ),
+            f"semantic:gke-node-local-dns-egress-port:{policy_name}:{protocol}",
+        )
+
 staging_script = (ROOT / "scripts/cloud/Deploy-G81Staging.ps1").read_text(encoding="utf-8")
-check(not re.search(r"\.Replace\(\"(?:API_|FRONTEND_|OTEL_|RUNTIME_|CLOUD_SQL_|POSTGRES_|JWT_|RABBITMQ_)", staging_script), "semantic:staging-must-not-bake-target-values")
+check(
+    "function Resolve-CurlExecutable" in staging_script
+    and "CommandType Application" in staging_script
+    and "Select-Object -First 1" in staging_script,
+    "semantic:staging-http-precheck-curl-resolution-must-select-single-executable",
+)
+
+check(
+    "/usr/bin/curl /bin/curl" not in staging_script,
+    "semantic:staging-http-precheck-must-not-join-multiple-curl-paths",
+)
+
+test_http_precheck_match = re.search(
+    r"function\s+Test-HttpPrecheck\s*\{(?P<body>.*?)\n\}",
+    staging_script,
+    re.DOTALL,
+)
+
+test_http_precheck_body = (
+    test_http_precheck_match.group("body")
+    if test_http_precheck_match
+    else ""
+)
+
+check(
+    test_http_precheck_match is not None,
+    "semantic:staging-test-http-precheck-function-missing",
+)
+
+check(
+    len(re.findall(r"&\s+\$curlExecutable", test_http_precheck_body)) == 1,
+    "semantic:staging-http-precheck-must-invoke-curl-once",
+)
+
+check(
+    "$exit = $LASTEXITCODE" in test_http_precheck_body,
+    "semantic:staging-http-precheck-captures-curl-exit-code",
+)
+
+check(
+    "--connect-timeout" in test_http_precheck_body
+    and "--max-time" in test_http_precheck_body
+    and "--write-out" in test_http_precheck_body,
+    "semantic:staging-http-precheck-curl-timeouts-and-status-missing",
+)
+staging_workflow = (ROOT / ".github/workflows/gcp-g8-1-deploy-staging.yml").read_text(encoding="utf-8")
+check("GCP_G81_STAGING_WIF_PROVIDER" not in staging_workflow, "semantic:staging-wif-provider-var-must-exist")
+check("GCP_G81_STAGING_SERVICE_ACCOUNT" not in staging_workflow, "semantic:staging-service-account-var-must-exist")
+check(
+    not re.search(
+        r"\.Replace\(\"(?:API_|FRONTEND_|OTEL_|RUNTIME_|CLOUD_SQL_(?!CA_VERSION)|POSTGRES_|JWT_|RABBITMQ_(?!IMAGE_BY_DIGEST|TLS_CERTIFICATE_VERSION|TLS_PRIVATE_KEY_VERSION|CA_VERSION))",
+        staging_script,
+    ),
+    "semantic:staging-must-not-bake-target-values",
+)
+check('Replace("RABBITMQ_IMAGE_BY_DIGEST", [string]$images.rabbitmq.reference)' in staging_script, "semantic:rabbitmq-crd-image-must-use-signed-manifest-digest")
+credentials_index = staging_script.find("gcloud container clusters get-credentials")
+operator_ready_index = staging_script.find("Test-OperatorFoundationReady -OutputDirectory")
+check(credentials_index >= 0 and operator_ready_index >= 0 and credentials_index < operator_ready_index, "semantic:staging-operator-readiness-requires-kubecontext-first")
+readiness_index = staging_script.find("Test-G81StagingFoundationReadiness.ps1")
+check(readiness_index >= 0 and credentials_index >= 0 and readiness_index < credentials_index, "semantic:staging-foundation-readiness-precedes-kubecontext")
+workflow_readiness_index = staging_workflow.find("Verify staging foundation readiness")
+workflow_deploy_index = staging_workflow.find("Deploy runtime prerequisites and verified staging rollouts")
+check(workflow_readiness_index >= 0 and workflow_deploy_index >= 0 and workflow_readiness_index < workflow_deploy_index, "semantic:staging-workflow-readiness-precedes-deploy")
+standard_deploy_workflow = (ROOT / ".github/workflows/_deploy.yml").read_text(encoding="utf-8")
+standard_readiness_index = standard_deploy_workflow.find("Verify staging foundation readiness")
+standard_deploy_index = standard_deploy_workflow.find("Deploy by digest authority")
+check(standard_readiness_index >= 0 and standard_deploy_index >= 0 and standard_readiness_index < standard_deploy_index, "semantic:standard-deploy-readiness-precedes-deploy")
+prevention_qualification_index = staging_script.find("Test-G81PreventionPreRolloutQualification.ps1")
+prevention_promote_index = staging_script.find("gcloud deploy releases promote")
+check(prevention_qualification_index >= 0 and prevention_promote_index >= 0 and prevention_qualification_index < prevention_promote_index, "semantic:prevention-pre-rollout-qualification-precedes-promote")
+check("$spec.Images" not in staging_script and "$spec.Pipeline" not in staging_script and "$spec.Skaffold" not in staging_script, "semantic:cloud-deploy-release-specs-use-explicit-indexers")
 check("CLOUD_RUN_SERVICE_URL'" not in scope_text and "CLOUD_RUN_SERVICE_URL/" not in scope_text, "semantic:singular-cloud-run-url-variable-is-invalid")
 ca_validator = (ROOT / "src/NatureProtector.Shared/Configuration/PrivateCertificateAuthorityValidator.cs").read_text(encoding="utf-8")
 check("policyErrors == SslPolicyErrors.None" not in ca_validator, "semantic:private-ca-must-not-fallback-to-system-trust")
+platform_identity = (ROOT / "infra/gcp/terraform/g8-1-platform/identity.tf").read_text(encoding="utf-8")
+role_match = re.search(
+    r'resource\s+"google_project_iam_custom_role"\s+"cloud_deploy_source_bucket_lister"\s*\{(?P<body>.*?)\n\}',
+    platform_identity,
+    re.DOTALL,
+)
+check(role_match is not None, "semantic:cloud-deploy-source-bucket-lister-role-present")
+role_body = role_match.group("body") if role_match else ""
+for forbidden_permission in ['"storage.admin"', '"storage.buckets.delete"', '"storage.objects.delete"']:
+    check(forbidden_permission not in role_body, f"semantic:cloud-deploy-source-bucket-lister-forbids:{forbidden_permission}")
+
+build_release_static = subprocess.run(
+    [sys.executable, str(ROOT / "scripts/cloud/Test-BuildG81ReleaseStatic.py")],
+    cwd=ROOT,
+    capture_output=True,
+    text=True,
+    check=False,
+)
+build_release_output = (build_release_static.stdout + "\n" + build_release_static.stderr).strip().replace("\n", " | ")
+check(build_release_static.returncode == 0, f"build-g81-release-static:{build_release_output}")
 
 result = {
     "phase": "G8.1",

@@ -120,6 +120,10 @@ for required in [
     '"roles/clouddeploy.jobRunner"',
     '"roles/clouddeploy.admin"',
     '"deploy_pipeline_roles"',
+    'resource "google_project_iam_custom_role" "cloud_deploy_source_bucket_lister"',
+    '"storage.buckets.get"',
+    '"storage.buckets.list"',
+    'resource "google_project_iam_member" "cloud_deploy_source_bucket_lister"',
     '"roles/cloudbuild.workerPoolOwner"',
     '"roles/serviceusage.serviceUsageAdmin"',
     '"roles/resourcemanager.projectIamAdmin"',
@@ -128,8 +132,21 @@ for required in [
     'data "google_artifact_registry_repository" "images"',
     'resource "google_storage_bucket" "g82_evidence"',
     'data "google_storage_bucket" "cloud_build_logs"',
+    'data "google_storage_bucket" "cloud_deploy_source"',
+    'data "google_storage_bucket" "cloud_deploy_frontend_source"',
+    'data "google_storage_bucket" "cloud_deploy_prevention_source"',
     "cloud_build_logs_bucket_name",
+    "cloud_deploy_source_bucket_name",
+    "cloud_deploy_frontend_source_bucket_name",
+    "cloud_deploy_prevention_source_bucket_name",
     '"np-cloudbuild-logs-22505444922"',
+    '"d09bb0b9ead342f0a6b38ecd9db4c11a_clouddeploy"',
+    '"0055c8c327b743efbfa1809f2a4363ef_clouddeploy"',
+    '"c31effabdcbc4c0895cf09390ae59db0_clouddeploy"',
+    'google_storage_bucket_iam_member" "cloud_deploy_frontend_source_metadata"',
+    'google_storage_bucket_iam_member" "cloud_deploy_frontend_source_objects"',
+    'google_storage_bucket_iam_member" "cloud_deploy_prevention_source_metadata"',
+    'google_storage_bucket_iam_member" "cloud_deploy_prevention_source_objects"',
     '"roles/storage.objectAdmin"',
     '"roles/storage.bucketViewer"',
     "retention_period = 31536000",
@@ -141,6 +158,38 @@ for required in [
         f"missing-platform-token:{required}",
     )
 
+check(
+    '"roles/storage.admin"' not in terraform_text,
+    "platform-must-not-use-project-wide-storage-admin",
+)
+
+custom_role_match = re.search(
+    r'resource\s+"google_project_iam_custom_role"\s+"cloud_deploy_source_bucket_lister"\s*\{(?P<body>.*?)\n\}',
+    terraform_text,
+    re.DOTALL,
+)
+check(custom_role_match is not None, "cloud-deploy-source-bucket-lister-role-missing")
+custom_role_body = custom_role_match.group("body") if custom_role_match else ""
+
+for required_permission in [
+    '"storage.buckets.get"',
+    '"storage.buckets.list"',
+]:
+    check(
+        required_permission in custom_role_body,
+        f"cloud-deploy-source-bucket-lister-missing:{required_permission}",
+    )
+
+for forbidden_permission in [
+    '"storage.admin"',
+    '"storage.buckets.delete"',
+    '"storage.objects.delete"',
+]:
+    check(
+        forbidden_permission not in custom_role_body,
+        f"cloud-deploy-source-bucket-lister-forbidden:{forbidden_permission}",
+    )
+
 for required_service in [
     "artifactregistry.googleapis.com",
     "binaryauthorization.googleapis.com",
@@ -150,6 +199,7 @@ for required_service in [
     "compute.googleapis.com",
     "container.googleapis.com",
     "containeranalysis.googleapis.com",
+    "ondemandscanning.googleapis.com",
     "dns.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
@@ -177,33 +227,31 @@ check(
     "platform-authorization-must-not-be-committed",
 )
 
-for required in [
-    'platform_project_id = "natureprotector-500518"',
-    'staging_project_id  = "natureprotector-500518"',
-    'artifact_repository_id       = "np-releases"',
-    (
-        'terraform_state_bucket_name  = '
-        '"np-tfstate-migkxl-202606"'
-    ),
-    (
-        'g82_evidence_bucket_name     = '
-        '"np-g82-evidence-22505444922"'
-    ),
-    (
-        'cloud_build_logs_bucket_name = '
-        '"np-cloudbuild-logs-22505444922"'
-    ),
-    (
-        'deploy_service_account_email = '
-        '"np-cd-deploy@natureprotector-500518.'
-        'iam.gserviceaccount.com"'
-    ),
-    "create_delivery_control_plane = true",
-    "create_delivery_pipelines     = true",
+for key, value in {
+    "platform_project_id": "natureprotector-500518",
+    "staging_project_id": "natureprotector-500518",
+    "artifact_repository_id": "np-releases",
+    "terraform_state_bucket_name": "np-tfstate-migkxl-202606",
+    "g82_evidence_bucket_name": "np-g82-evidence-22505444922",
+    "cloud_build_logs_bucket_name": "np-cloudbuild-logs-22505444922",
+    "cloud_deploy_source_bucket_name": "d09bb0b9ead342f0a6b38ecd9db4c11a_clouddeploy",
+    "cloud_deploy_frontend_source_bucket_name": "0055c8c327b743efbfa1809f2a4363ef_clouddeploy",
+    "cloud_deploy_prevention_source_bucket_name": "c31effabdcbc4c0895cf09390ae59db0_clouddeploy",
+    "deploy_service_account_email": "np-cd-deploy@natureprotector-500518.iam.gserviceaccount.com",
+}.items():
+    check(
+        re.search(rf"(?m)^\s*{key}\s*=\s*\"{re.escape(value)}\"\s*$", tfvars_text)
+        is not None,
+        f"missing-platform-tfvars-assignment:{key}",
+    )
+
+for key in [
+    "create_delivery_control_plane",
+    "create_delivery_pipelines",
 ]:
     check(
-        required in tfvars_text,
-        f"missing-platform-tfvars-token:{required}",
+        re.search(rf"(?m)^\s*{key}\s*=\s*true\s*$", tfvars_text) is not None,
+        f"missing-platform-tfvars-bool:{key}",
     )
 
 
@@ -231,22 +279,18 @@ RUN_PARAMETER_KEYS = {
     "rabbitmq_ca_version",
     "rabbitmq_private_host",
     "rabbitmq_tls_server_name",
-    "runtime_network_interfaces",
     "runtime_project_id",
     "runtime_region",
 }
 
 GKE_PARAMETER_KEYS = {
-    "cloud_sql_ca_secret_resources",
     "cloud_sql_private_cidr",
     "cloud_sql_private_ip",
     "otel_gsa",
     "otel_load_balancer_ip",
     "prevention_gsa",
     "rabbitmq_load_balancer_ip",
-    "rabbitmq_tls_secret_resources",
     "rabbitmq_tls_server_name",
-    "runtime_secret_resources",
     "runtime_subnet_cidr",
     "secret_sync_gsa",
 }

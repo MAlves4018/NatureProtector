@@ -10,10 +10,13 @@ platform_project_id = "natureprotector-500518"
 staging_project_id  = "natureprotector-500518"
 region              = "europe-southwest1"
 
-artifact_repository_id       = "np-releases"
-terraform_state_bucket_name  = "np-tfstate-migkxl-202606"
-g82_evidence_bucket_name     = "np-g82-evidence-22505444922"
-cloud_build_logs_bucket_name = "np-cloudbuild-logs-22505444922"
+artifact_repository_id                     = "np-releases"
+terraform_state_bucket_name                = "np-tfstate-migkxl-202606"
+g82_evidence_bucket_name                   = "np-g82-evidence-22505444922"
+cloud_build_logs_bucket_name               = "np-cloudbuild-logs-22505444922"
+cloud_deploy_source_bucket_name            = "d09bb0b9ead342f0a6b38ecd9db4c11a_clouddeploy"
+cloud_deploy_frontend_source_bucket_name   = "0055c8c327b743efbfa1809f2a4363ef_clouddeploy"
+cloud_deploy_prevention_source_bucket_name = "c31effabdcbc4c0895cf09390ae59db0_clouddeploy"
 
 staging_cluster_name = "np-staging"
 
@@ -32,8 +35,8 @@ staging_run_deploy_parameters = {
   api_min_scale                  = "0"
   api_service_account_email      = "np-staging-api@natureprotector-500518.iam.gserviceaccount.com"
   cloud_sql_ca_secret            = "np-staging-cloud-sql-server-ca"
-  cloud_sql_ca_version           = "1"
-  cloud_sql_private_ip           = "10.196.1.3"
+  cloud_sql_ca_version           = "2"
+  cloud_sql_private_ip           = "10.196.1.6"
   frontend_max_scale             = "2"
   frontend_min_scale             = "0"
   frontend_service_account_email = "np-staging-frontend@natureprotector-500518.iam.gserviceaccount.com"
@@ -47,46 +50,22 @@ staging_run_deploy_parameters = {
   rabbitmq_app_username_secret   = "np-staging-rabbitmq-app-username"
   rabbitmq_app_username_version  = "1"
   rabbitmq_ca_secret             = "np-staging-rabbitmq-ca-certificate"
-  rabbitmq_ca_version            = "1"
+  rabbitmq_ca_version            = "2"
   rabbitmq_private_host          = "rabbitmq.staging.natureprotector.internal"
   rabbitmq_tls_server_name       = "rabbitmq.staging.natureprotector.internal"
-  runtime_network_interfaces     = "[{\"network\":\"np-staging\",\"subnetwork\":\"np-staging-europe-southwest1\"}]"
   runtime_project_id             = "natureprotector-500518"
   runtime_region                 = "europe-southwest1"
 }
 
 staging_gke_deploy_parameters = {
-  cloud_sql_ca_secret_resources = <<-EOT
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-cloud-sql-server-ca/versions/1"
-      path: "server-ca.pem"
-  EOT
-
-  cloud_sql_private_cidr    = "10.196.1.3/32"
-  cloud_sql_private_ip      = "10.196.1.3"
+  cloud_sql_private_cidr    = "10.196.1.6/32"
+  cloud_sql_private_ip      = "10.196.1.6"
   otel_gsa                  = "np-staging-otel@natureprotector-500518.iam.gserviceaccount.com"
   otel_load_balancer_ip     = "10.20.0.2"
   prevention_gsa            = "np-staging-prevention@natureprotector-500518.iam.gserviceaccount.com"
   rabbitmq_load_balancer_ip = "10.20.0.3"
 
-  rabbitmq_tls_secret_resources = <<-EOT
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-certificate/versions/1"
-      path: "tls.crt"
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-private-key/versions/1"
-      path: "tls.key"
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-ca-certificate/versions/1"
-      path: "ca.crt"
-  EOT
-
   rabbitmq_tls_server_name = "rabbitmq.staging.natureprotector.internal"
-
-  runtime_secret_resources = <<-EOT
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-postgres-app-password/versions/1"
-      path: "postgres-app-password"
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-app-username/versions/1"
-      path: "rabbitmq-username"
-    - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-app-password/versions/1"
-      path: "rabbitmq-password"
-  EOT
 
   runtime_subnet_cidr = "10.20.0.0/24"
   secret_sync_gsa     = "np-staging-secret-sync@natureprotector-500518.iam.gserviceaccount.com"

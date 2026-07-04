@@ -4,10 +4,13 @@ resources:
   - ../../base
 namespace: natureprotector-staging
 namePrefix: ""
-commonLabels:
-  environment: staging
-  phase: g8-1
-  deployment-profile: qualification
+labels:
+  - includeSelectors: false
+    includeTemplates: true
+    pairs:
+      environment: staging
+      phase: g8-1
+      deployment-profile: qualification
 commonAnnotations:
   natureprotector.io/claim-level: non-production-qualification
 patches:
@@ -22,6 +25,24 @@ patches:
       kind: Deployment
       name: natureprotector-prevention
     patch: |-
+      - op: add
+        path: /spec/selector/matchLabels/environment
+        value: staging
+      - op: add
+        path: /spec/selector/matchLabels/phase
+        value: g8-1
+      - op: add
+        path: /spec/selector/matchLabels/deployment-profile
+        value: qualification
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/environment
+        value: staging
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/phase
+        value: g8-1
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/deployment-profile
+        value: qualification
       - op: replace
         path: /spec/replicas
         value: 1
@@ -75,13 +96,13 @@ patches:
         value: 250m
       - op: replace
         path: /spec/resources/requests/memory
-        value: 768Mi
+        value: 512Mi
       - op: replace
         path: /spec/resources/limits/cpu
         value: "1"
       - op: replace
         path: /spec/resources/limits/memory
-        value: 1536Mi
+        value: 512Mi
       - op: replace
         path: /spec/rabbitmq/additionalConfig
         value: |
@@ -91,7 +112,7 @@ patches:
           quorum_queue.initial_cluster_size = 1
           disk_free_limit.absolute = 1GB
           vm_memory_high_watermark.relative = 0.6
-          management.tcp.port = none
+          ssl_options.fail_if_no_peer_cert = false
           management.ssl.port = 15671
           consumer_timeout = 900000
   - target:
@@ -105,6 +126,24 @@ patches:
       kind: Deployment
       name: natureprotector-otel
     patch: |-
+      - op: add
+        path: /spec/selector/matchLabels/environment
+        value: staging
+      - op: add
+        path: /spec/selector/matchLabels/phase
+        value: g8-1
+      - op: add
+        path: /spec/selector/matchLabels/deployment-profile
+        value: qualification
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/environment
+        value: staging
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/phase
+        value: g8-1
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints/0/labelSelector/matchLabels/deployment-profile
+        value: qualification
       - op: replace
         path: /spec/replicas
         value: 1
@@ -143,3 +182,38 @@ patches:
       - op: replace
         path: /spec/hard/limits.memory
         value: 16Gi
+  - target:
+      kind: SecretProviderClass
+      name: natureprotector-runtime
+    patch: |-
+      - op: replace
+        path: /spec/parameters/secrets
+        value: |
+          - resourceName: "projects/natureprotector-500518/secrets/np-staging-postgres-app-password/versions/1"
+            path: "postgres-app-password"
+          - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-app-username/versions/1"
+            path: "rabbitmq-username"
+          - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-app-password/versions/1"
+            path: "rabbitmq-password"
+  - target:
+      kind: SecretProviderClass
+      name: natureprotector-rabbitmq-tls
+    patch: |-
+      - op: replace
+        path: /spec/parameters/secrets
+        value: |
+          - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-certificate/versions/RABBITMQ_TLS_CERTIFICATE_VERSION"
+            path: "tls.crt"
+          - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-tls-private-key/versions/RABBITMQ_TLS_PRIVATE_KEY_VERSION"
+            path: "tls.key"
+          - resourceName: "projects/natureprotector-500518/secrets/np-staging-rabbitmq-ca-certificate/versions/RABBITMQ_CA_VERSION"
+            path: "ca.crt"
+  - target:
+      kind: SecretProviderClass
+      name: natureprotector-cloud-sql-ca
+    patch: |-
+      - op: replace
+        path: /spec/parameters/secrets
+        value: |
+          - resourceName: "projects/natureprotector-500518/secrets/np-staging-cloud-sql-server-ca/versions/CLOUD_SQL_CA_VERSION"
+            path: "server-ca.pem"

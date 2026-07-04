@@ -12,7 +12,7 @@ spec:
         autoscaling.knative.dev/minScale: "2" # from-param: ${api_min_scale}
         autoscaling.knative.dev/maxScale: "20" # from-param: ${api_max_scale}
         run.googleapis.com/startup-cpu-boost: "true"
-        run.googleapis.com/network-interfaces: '[]' # from-param: ${runtime_network_interfaces}
+        run.googleapis.com/network-interfaces: '[{"network":"np-staging","subnetwork":"np-staging-europe-southwest1"}]'
         run.googleapis.com/vpc-access-egress: private-ranges-only
     spec:
       serviceAccountName: missing-api-service-account # from-param: ${api_service_account_email}

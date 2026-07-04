@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using NatureProtector.Prevention.Host.Configuration;
 using NatureProtector.Prevention.Host.Processing;
+using NatureProtector.Prevention.Host.Runtime;
 using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Contracts.Readings;
 using NatureProtector.Shared.Messaging;
@@ -10,6 +11,8 @@ using RabbitMQ.Client.Events;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Text;
+using RabbitMQ.Client.Exceptions;
+using System.Net.Sockets;
 
 namespace NatureProtector.Prevention.Host;
 
@@ -35,10 +38,14 @@ public sealed class PreventionWorker(
     IOptions<RabbitMqOptions> rabbitMqOptions,
     IOptions<PreventionHostOptions> preventionHostOptions,
     IReadingEventInbox readingEventInbox,
-    ReadingEventProcessingService processingService) : BackgroundService
+    ReadingEventProcessingService processingService,
+    PreventionRuntimeState runtimeState) : BackgroundService
 {
     private const string SupportedSchemaVersion = "1.0";
 
+    private static readonly TimeSpan ConnectionMonitorInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan InitialReconnectDelay = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan MaximumReconnectDelay = TimeSpan.FromSeconds(30);
     private readonly RabbitMqOptions _options = rabbitMqOptions.Value;
     private readonly PreventionHostOptions _preventionHostOptions = preventionHostOptions.Value;
 
@@ -47,66 +54,195 @@ public sealed class PreventionWorker(
     /// </summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("Prevention worker started at: {Time}", DateTimeOffset.Now);
+        logger.LogInformation(
+            "Prevention worker started at: {Time}",
+            DateTimeOffset.Now);
 
-        var factory = new ConnectionFactory
+        runtimeState.MarkNotReady("Prevention consumer is starting.");
+
+        await Task.Yield();
+
+        var reconnectDelay = InitialReconnectDelay;
+
+        while (!stoppingToken.IsCancellationRequested)
         {
-            HostName = _options.HostName,
-            Port = _options.Port,
-            UserName = _options.UserName,
-            Password = _options.Password,
-            VirtualHost = _options.VirtualHost,
-            DispatchConsumersAsync = true
-        };
+            IConnection? connection = null;
+            IModel? channel = null;
 
-        var connection = factory.CreateConnection();
-        var channel = connection.CreateModel();
+            try
+            {
+                runtimeState.MarkNotReady(
+                    "Prevention consumer is connecting to RabbitMQ.");
+
+                // Recreate the factory on every retry so mounted private CA
+                // rotations are picked up without restarting the pod.
+                var factory = CreateConnectionFactory(_options);
+                connection = factory.CreateConnection();
+                channel = connection.CreateModel();
+
+                DeclareTopology(channel, _options);
+
+                channel.BasicQos(
+                    prefetchSize: 0,
+                    prefetchCount: _preventionHostOptions.ConsumerPrefetchCount,
+                    global: false);
+
+                var consumer = new AsyncEventingBasicConsumer(channel);
+
+                consumer.Received += (_, ea) =>
+                    HandleReceivedAsync(channel, ea, stoppingToken);
+
+                channel.BasicConsume(
+                    queue: _options.IngestionReadingsQueueName,
+                    autoAck: false,
+                    consumer: consumer);
+
+                runtimeState.MarkReady(
+                    "Prevention consumer is connected to RabbitMQ and consuming.");
+
+                logger.LogInformation(
+                    "Prevention consumer connected to RabbitMQ host {Host}:{Port}.",
+                    _options.HostName,
+                    _options.Port);
+
+                reconnectDelay = InitialReconnectDelay;
+
+                while (!stoppingToken.IsCancellationRequested &&
+                       connection.IsOpen &&
+                       channel.IsOpen)
+                {
+                    await Task.Delay(
+                        ConnectionMonitorInterval,
+                        stoppingToken);
+                }
+
+                if (!stoppingToken.IsCancellationRequested)
+                {
+                    runtimeState.MarkNotReady(
+                        "RabbitMQ connection or channel closed. Reconnection is pending.");
+
+                    logger.LogWarning(
+                        "RabbitMQ connection or channel closed. " +
+                        "The Prevention worker will reconnect.");
+                }
+            }
+            catch (OperationCanceledException)
+                when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+                when (IsTransientRabbitMqConnectionFailure(ex))
+            {
+                var reason =
+                    $"RabbitMQ is temporarily unavailable. " +
+                    $"Retrying in {reconnectDelay.TotalSeconds:0} seconds.";
+
+                runtimeState.MarkNotReady(reason);
+
+                logger.LogWarning(
+                    ex,
+                    "RabbitMQ is temporarily unavailable. " +
+                    "The Prevention host remains alive and will retry in " +
+                    "{ReconnectDelaySeconds} seconds.",
+                    reconnectDelay.TotalSeconds);
+            }
+            catch (Exception ex)
+            {
+                runtimeState.MarkNotReady(
+                    $"Prevention consumer failed permanently: {ex.GetType().Name}");
+
+                logger.LogCritical(
+                    ex,
+                    "Prevention consumer encountered a non-transient failure.");
+
+                throw;
+            }
+            finally
+            {
+                DisposeRabbitMqResources(channel, connection);
+            }
+
+            if (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            try
+            {
+                await Task.Delay(reconnectDelay, stoppingToken);
+            }
+            catch (OperationCanceledException)
+                when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            reconnectDelay = TimeSpan.FromSeconds(
+                Math.Min(
+                    reconnectDelay.TotalSeconds * 2,
+                    MaximumReconnectDelay.TotalSeconds));
+        }
+
+        runtimeState.MarkNotReady("Prevention consumer stopped.");
+    }
+
+internal static bool IsTransientRabbitMqConnectionFailure(Exception exception)
+{
+    if (exception is ConnectFailureException or
+        EndOfStreamException or
+        IOException or
+        TimeoutException or
+        SocketException)
+    {
+        return true;
+    }
+
+    if (exception is AggregateException aggregateException)
+    {
+        return aggregateException.InnerExceptions.Any(
+            IsTransientRabbitMqConnectionFailure);
+    }
+
+    if (exception is BrokerUnreachableException brokerException)
+    {
+        return brokerException.InnerException is null ||
+               IsTransientRabbitMqConnectionFailure(
+                   brokerException.InnerException);
+    }
+
+    return exception.InnerException is not null &&
+           IsTransientRabbitMqConnectionFailure(
+               exception.InnerException);
+}
+
+    private void DisposeRabbitMqResources(
+        IModel? channel,
+        IConnection? connection)
+    {
+        try
+        {
+            channel?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(
+                ex,
+                "RabbitMQ channel cleanup failed during reconnection.");
+        }
 
         try
         {
-            DeclareTopology(channel, _options);
-
-            // Um prefetch baixo limita o backlog invisivel de mensagens por
-            // materializar quando o inbox ou a base de dados abrandam.
-            channel.BasicQos(
-                prefetchSize: 0,
-                prefetchCount: _preventionHostOptions.ConsumerPrefetchCount,
-                global: false);
-
-            var consumer = new AsyncEventingBasicConsumer(channel);
-
-            consumer.Received += (_, ea) => HandleReceivedAsync(channel, ea, stoppingToken);
-
-            channel.BasicConsume(
-                queue: _options.IngestionReadingsQueueName,
-                autoAck: false,
-                consumer: consumer);
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
-            }
+            connection?.Dispose();
         }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        catch (Exception ex)
         {
-            // Normal host shutdown path.
-        }
-        finally
-        {
-            if (channel.IsOpen)
-            {
-                channel.Close();
-            }
-
-            if (connection.IsOpen)
-            {
-                connection.Close();
-            }
-
-            channel.Dispose();
-            connection.Dispose();
+            logger.LogDebug(
+                ex,
+                "RabbitMQ connection cleanup failed during reconnection.");
         }
     }
+
 
     /// <summary>
     /// Declara a topologia mínima exigida pelo fluxo de prevenção.
@@ -138,6 +274,58 @@ public sealed class PreventionWorker(
                 exchange: options.ExchangeName,
                 routingKey: routingKey);
         }
+    }
+
+    internal static ConnectionFactory CreateConnectionFactory(RabbitMqOptions options)
+    {
+        if (string.IsNullOrWhiteSpace(options.HostName))
+        {
+            throw new InvalidOperationException("RabbitMQ HostName is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.UserName))
+        {
+            throw new InvalidOperationException("RabbitMQ UserName is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Password))
+        {
+            throw new InvalidOperationException("RabbitMQ Password is not configured.");
+        }
+
+        var factory = new ConnectionFactory
+        {
+            HostName = options.HostName,
+            Port = options.Port,
+            UserName = options.UserName,
+            Password = options.Password,
+            VirtualHost = options.VirtualHost,
+            DispatchConsumersAsync = true,
+            AutomaticRecoveryEnabled = false
+        };
+
+        if (options.TlsEnabled)
+        {
+            if (string.IsNullOrWhiteSpace(options.TlsServerName))
+            {
+                throw new InvalidOperationException("RabbitMQ TlsServerName is required when TLS is enabled.");
+            }
+
+            if (string.IsNullOrWhiteSpace(options.TlsCertificateAuthorityPath))
+            {
+                throw new InvalidOperationException("RabbitMQ TlsCertificateAuthorityPath is required when TLS is enabled.");
+            }
+
+            var validator = PrivateCertificateAuthorityValidator.Create(options.TlsCertificateAuthorityPath);
+            factory.Ssl = new SslOption
+            {
+                Enabled = true,
+                ServerName = options.TlsServerName,
+                CertificateValidationCallback = validator is null ? null : validator.Validate
+            };
+        }
+
+        return factory;
     }
 
     private async Task HandleReceivedAsync(
