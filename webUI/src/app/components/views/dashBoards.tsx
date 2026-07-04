@@ -7,10 +7,11 @@ import { AreaCellResponse, SensorNodeResponse } from '../../types';
 import { useParams } from 'react-router-dom';
 import { api } from '../../services/api';
 
-export function DashBoards({ isDark }: { isDark: boolean }) {
+export function DashBoards({ isDark, areaCode: areaCodeProp }: { isDark: boolean; areaCode?: string }) {
   const c = getColors(isDark);
 
   const { areaCode: areaCodeParam } = useParams<{ areaCode: string }>();
+  const areaCode = areaCodeProp ?? areaCodeParam;
   const [curAreaId, setAreaId] = useState<string>('');
 
   const [geoJSON, setGeoJSON] = useState<any>(null);
@@ -18,40 +19,38 @@ export function DashBoards({ isDark }: { isDark: boolean }) {
   const [sensorNodes, setSensorNodes] = useState<SensorNodeResponse[]>([]);
 
   useEffect(() => {
-    if (areaCodeParam) {
-      //console.log('Fetching GeoJSON for area:', areaCodeParam);
-      api.getAreaGeoJSON(areaCodeParam).then((response) => {
+    if (areaCode) {
+      api.getAreaGeoJSON(areaCode).then((response) => {
         if (!response.id) {
-          console.error('Failed to fetch id for area:', areaCodeParam);
+          console.error('Failed to fetch id for area:', areaCode);
           return;
         }
         setAreaId(response.id);
         setGeoJSON(JSON.parse(response.geometryGeoJson || '{}'));
       });
       api
-        .getAreaCells(areaCodeParam)
+        .getAreaCells(areaCode)
         .then((response) => {
           setCells(response);
-          //console.log('Cells set:', response);
         })
         .catch((error) => {
-          console.error('Failed to fetch cells for area:', areaCodeParam, error);
+          console.error('Failed to fetch cells for area:', areaCode, error);
         });
       api
-        .getAreaSensorNodes(areaCodeParam)
+        .getAreaSensorNodes(areaCode)
         .then((response) => {
           setSensorNodes(response);
         })
         .catch((error) => {
-          console.error('Failed to fetch sensor nodes for area:', areaCodeParam, error);
+          console.error('Failed to fetch sensor nodes for area:', areaCode, error);
         });
     }
-  }, [areaCodeParam]);
+  }, [areaCode]);
 
   return (
     <Flex direction="column" bg={c.pageBg} transition="background 0.2s" minH="100vh">
-      <GrafanaStrip isDark={isDark} areaId={curAreaId} {...c} />
       <AreaRisk isDark={isDark} areaId={curAreaId} {...c} />
+      <GrafanaStrip isDark={isDark} areaId={curAreaId} {...c} />
       <Box w="100%" h="800px" flexShrink={0}>
         <AreaMap
           areaId={curAreaId}

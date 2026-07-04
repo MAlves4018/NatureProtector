@@ -23,7 +23,7 @@
     "typecheck:strict": "tsc --noEmit --strict true"
   },
   "engines": {
-    "node": ">=20.17.0 <21 || >=22.16.0 <23",
+    "node": ">=20.17.0",
     "npm": ">=10.8.2"
   },
   "dependencies": {

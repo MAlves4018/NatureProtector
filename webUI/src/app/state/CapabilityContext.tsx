@@ -1,0 +1,145 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { api } from '../services/api';
+import { useToken } from '../context/TokenContext';
+import { getUiCapabilities, hasUiCapability, type UiCapability, type UiNavTarget } from '../capabilities';
+import { defaultPageFor, getUiPages, type UiPageDefinition } from '../navigation/pageRegistry';
+
+interface UiCapabilityContextValue {
+  user: ReturnType<typeof useToken>['user'];
+  capabilities: Set<UiCapability>;
+  capabilityAuthority: string;
+  capabilitiesLoading: boolean;
+  pages: readonly UiPageDefinition[];
+  activePage: UiNavTarget;
+  setActivePage: (page: UiNavTarget) => void;
+  isPublic: boolean;
+  isDark: boolean;
+  canReadArea: boolean;
+  canReadRisk: boolean;
+  canReadRun: boolean;
+  canReadScenario: boolean;
+  canExecuteSimulation: boolean;
+  canReadPipeline: boolean;
+  canReadEvidence: boolean;
+  canReadProtectedP3: boolean;
+  canExecuteFullQa: boolean;
+}
+
+const UiCapabilityContext = createContext<UiCapabilityContextValue | null>(null);
+
+export function UiCapabilityProvider({ children, isDark = false }: { children: ReactNode; isDark?: boolean }) {
+  const { user } = useToken();
+  const [activePage, setActivePage] = useState<UiNavTarget>('demo');
+  const [serverCapabilities, setServerCapabilities] = useState<Set<UiCapability> | null>(null);
+  const [capabilityAuthority, setCapabilityAuthority] = useState('frontend-fallback');
+  const [capabilitiesLoading, setCapabilitiesLoading] = useState(false);
+
+  const fallbackCapabilities = useMemo(() => getUiCapabilities(user), [user]);
+  const capabilities = useMemo(() => {
+    if (!serverCapabilities) return fallbackCapabilities;
+    const merged = new Set(fallbackCapabilities);
+    for (const cap of serverCapabilities) {
+      merged.add(cap);
+    }
+    return merged;
+  }, [fallbackCapabilities, serverCapabilities]);
+  const pages = useMemo(() => getUiPages(capabilities), [capabilities]);
+  const isPublic = !user;
+
+  const canReadArea = hasUiCapability(capabilities, 'area.read');
+  const canReadRisk = hasUiCapability(capabilities, 'risk.read');
+  const canReadRun = hasUiCapability(capabilities, 'run.read');
+  const canReadScenario = hasUiCapability(capabilities, 'scenario.read');
+  const canExecuteSimulation = hasUiCapability(capabilities, 'simulation.execute');
+  const canReadPipeline = hasUiCapability(capabilities, 'pipeline.read');
+  const canReadEvidence = hasUiCapability(capabilities, 'evidence.read');
+  const canReadProtectedP3 = hasUiCapability(capabilities, 'p3.read');
+  const canExecuteFullQa = hasUiCapability(capabilities, 'quality.execute.full');
+
+  const capabilityFlags = useMemo(
+    () => ({
+      canReadArea,
+      canReadRisk,
+      canReadRun,
+      canReadScenario,
+      canExecuteSimulation,
+      canReadPipeline,
+      canReadEvidence,
+      canReadProtectedP3,
+      canExecuteFullQa,
+    }),
+    [canReadArea, canReadRisk, canReadRun, canReadScenario, canExecuteSimulation, canReadPipeline, canReadEvidence, canReadProtectedP3, canExecuteFullQa],
+  );
+
+  useEffect(() => {
+    if (!user) {
+      setServerCapabilities(null);
+      setCapabilityAuthority('public-fallback');
+      setCapabilitiesLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCapabilitiesLoading(true);
+    api
+      .getCurrentCapabilities()
+      .then((profile) => {
+        if (cancelled) return;
+        const allowed = new Set(profile.capabilities.filter(isUiCapability));
+        setServerCapabilities(allowed);
+        setCapabilityAuthority(profile.authority || 'backend-role-capability-policy');
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setServerCapabilities(null);
+          setCapabilityAuthority('frontend-fallback-after-backend-error');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCapabilitiesLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    const fallback = defaultPageFor(capabilities);
+    if (!pages.some((page) => page.id === activePage)) {
+      setActivePage(fallback);
+    }
+  }, [activePage, capabilities, pages]);
+
+  const value = useMemo(
+    () => ({
+      user,
+      capabilities,
+      capabilityAuthority,
+      capabilitiesLoading,
+      pages,
+      activePage,
+      setActivePage,
+      isPublic,
+      isDark,
+      ...capabilityFlags,
+    }),
+    [user, capabilities, capabilityAuthority, capabilitiesLoading, pages, activePage, isPublic, isDark, capabilityFlags],
+  );
+
+  return <UiCapabilityContext.Provider value={value}>{children}</UiCapabilityContext.Provider>;
+}
+
+export function useUiCapabilities() {
+  const context = useContext(UiCapabilityContext);
+  if (!context) {
+    throw new Error('useUiCapabilities must be used within UiCapabilityProvider');
+  }
+  return context;
+}
+
+function isUiCapability(value: string): value is UiCapability {
+  return getUiCapabilities({ roles: ['Pipeline', 'Sim', 'QA', 'Operations', 'ReleaseApprover', 'Admin'] }).has(
+    value as UiCapability,
+  );
+}

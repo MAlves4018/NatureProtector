@@ -1,0 +1,156 @@
+import type { HelpTopic, HelpTopicId } from '../types';
+
+export const HELP_TOPICS: readonly HelpTopic[] = [
+  topic(
+    'overview',
+    'Visao geral',
+    'Overview',
+    'Mostra o estado do protótipo e os próximos passos seguros.',
+    'Shows prototype status and safe next steps.',
+    'A página não substitui a beta nem declara operação real.',
+    'This page does not replace beta or claim real operation.',
+  ),
+  topic(
+    'risk',
+    'Risco',
+    'Risk',
+    'Resultado calculado pelo protótipo quando existem dados elegíveis.',
+    'Prototype-calculated output when eligible data exists.',
+    'Não é um alerta oficial nem uma calibração científica final.',
+    'It is not an official alert or final scientific calibration.',
+  ),
+  topic(
+    'origin',
+    'Origem dos dados',
+    'Data origin',
+    'Identifica se o valor vem do catálogo, do runtime ou de uma projeção persistida.',
+    'Identifies whether a value comes from catalog, runtime or persisted projection.',
+    'A origem não implica validação externa.',
+    'Origin does not imply external validation.',
+  ),
+  topic(
+    'freshness',
+    'Atualidade',
+    'Freshness',
+    'Indica se o dado parece atual, parcial ou desatualizado.',
+    'Indicates whether data appears current, partial or stale.',
+    'Depende dos campos expostos pelo contrato atual.',
+    'Depends on fields exposed by the current contract.',
+  ),
+  topic(
+    'coverage',
+    'Cobertura',
+    'Coverage',
+    'Resume a cobertura de sensores, células ou leituras quando disponível.',
+    'Summarizes sensor, cell or reading coverage when available.',
+    'A cobertura baixa não deve ser escondida.',
+    'Low coverage must not be hidden.',
+  ),
+  topic(
+    'eligibility',
+    'Elegibilidade',
+    'Eligibility',
+    'Explica se ha condicoes suficientes para apresentar assessment.',
+    'Explains whether conditions are sufficient to present an assessment.',
+    'Blocked não é score zero.',
+    'Blocked is not score zero.',
+  ),
+  topic(
+    'provenance',
+    'Proveniencia',
+    'Provenance',
+    'Mostra a origem metodologica ou tecnica de uma decisao apresentada.',
+    'Shows the methodological or technical origin of a displayed decision.',
+    'Não transforma parâmetros candidatos em validação científica.',
+    'Does not turn candidate parameters into scientific validation.',
+  ),
+  topic(
+    'requestedResolved',
+    'Requested/resolved',
+    'Requested/resolved',
+    'Compara o pedido submetido com a configuração resolvida pelo backend.',
+    'Compares the submitted request with backend-resolved configuration.',
+    'O backend continua a ser a fonte de verdade.',
+    'The backend remains the source of truth.',
+  ),
+  topic(
+    'degradationProfile',
+    'Perfil de degradação',
+    'Degradation profile',
+    'Perfil controlado usado para simular degradação de observações.',
+    'Controlled profile used to simulate observation degradation.',
+    'Não representa uma falha operacional real.',
+    'It does not represent a real operational failure.',
+  ),
+  topic(
+    'runState',
+    'Estado da run',
+    'Run state',
+    'Mostra o estado persistido da execução selecionada.',
+    'Shows persisted state for the selected run.',
+    'Estados antigos podem ficar desatualizados.',
+    'Old states may become stale.',
+  ),
+  topic(
+    'pipeline',
+    'Pipeline',
+    'Pipeline',
+    'Resume ingestão, tentativas, rejeições e quarentena quando expostos.',
+    'Summarizes ingestion, attempts, rejections and quarantine when exposed.',
+    'Não cria métricas novas.',
+    'Does not create new metrics.',
+  ),
+  topic(
+    'qa',
+    'Qualidade',
+    'Quality',
+    'Distingue testes, execução e evidência de qualidade.',
+    'Distinguishes tests, execution and quality evidence.',
+    'Resultados históricos podem estar desatualizados.',
+    'Historical results may be stale.',
+  ),
+  topic(
+    'evidence',
+    'Evidencia',
+    'Evidence',
+    'Mostra artefactos e claims suportadas por dados existentes.',
+    'Shows artifacts and claims supported by existing data.',
+    'Os caminhos internos ficam nos detalhes técnicos.',
+    'Internal paths stay in technical details.',
+  ),
+  topic(
+    'p3',
+    'P3 experimental',
+    'Experimental P3',
+    'Contexto experimental separado do runtime principal.',
+    'Experimental context separated from the main runtime.',
+    'Não integrado em scoring, alertas, schema ou runtime.',
+    'Not integrated into scoring, alerts, schema or runtime.',
+  ),
+];
+
+function topic(
+  id: HelpTopicId,
+  ptTitle: string,
+  enTitle: string,
+  ptSummary: string,
+  enSummary: string,
+  ptLimitation: string,
+  enLimitation: string,
+): HelpTopic {
+  return {
+    id,
+    title: { 'pt-PT': ptTitle, en: enTitle },
+    summary: { 'pt-PT': ptSummary, en: enSummary },
+    explanation: { 'pt-PT': ptSummary, en: enSummary },
+    source: { 'pt-PT': 'Interface baseada em contratos existentes.', en: 'Interface based on existing contracts.' },
+    limitation: { 'pt-PT': ptLimitation, en: enLimitation },
+    profiles: ['Public', 'Pipeline', 'Sim', 'Admin'],
+  };
+}
+
+export function findHelpTopic(id: HelpTopicId) {
+  return HELP_TOPICS.find((topic) => topic.id === id) ?? HELP_TOPICS[0];
+}
+
+
