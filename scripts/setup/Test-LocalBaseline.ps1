@@ -15,25 +15,10 @@ param(
     [switch]$Full
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Continue"
 $ProgressPreference = "SilentlyContinue"
-
-function Find-RepositoryRoot {
-    $current = Get-Item -LiteralPath $PSScriptRoot
-
-    while ($null -ne $current) {
-        $solution = Join-Path $current.FullName "NatureProtector.sln"
-        $compose = Join-Path $current.FullName "docker-compose.yml"
-
-        if ((Test-Path -LiteralPath $solution) -and (Test-Path -LiteralPath $compose)) {
-            return $current.FullName
-        }
-
-        $current = $current.Parent
-    }
-
-    throw "Could not locate repository root from $PSScriptRoot."
-}
 
 $script:Results = @()
 
@@ -55,71 +40,6 @@ function Add-Result {
 
     $label = ("[{0}]" -f $Status).PadRight(7)
     Write-Host "$label $Name - $Detail"
-}
-
-function Read-DotEnv {
-    param([string]$Path)
-
-    $values = @{}
-    if (-not (Test-Path -LiteralPath $Path)) {
-        return $values
-    }
-
-    foreach ($rawLine in Get-Content -LiteralPath $Path) {
-        $line = $rawLine.Trim()
-        if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("#") -or -not $line.Contains("=")) {
-            continue
-        }
-
-        $parts = $line.Split("=", 2)
-        $values[$parts[0].Trim()] = $parts[1].Trim().Trim('"')
-    }
-
-    return $values
-}
-
-function Get-ConfigValue {
-    param(
-        [hashtable]$Values,
-        [string]$Name,
-        [string]$Fallback
-    )
-
-    $fromEnvironment = [Environment]::GetEnvironmentVariable($Name)
-    if (-not [string]::IsNullOrWhiteSpace($fromEnvironment)) {
-        return $fromEnvironment
-    }
-
-    if ($Values.ContainsKey($Name) -and -not [string]::IsNullOrWhiteSpace([string]$Values[$Name])) {
-        return [string]$Values[$Name]
-    }
-
-    return $Fallback
-}
-
-function Test-TcpPort {
-    param(
-        [string]$HostName,
-        [int]$Port,
-        [int]$TimeoutMilliseconds = 2000
-    )
-
-    $client = New-Object System.Net.Sockets.TcpClient
-    try {
-        $async = $client.BeginConnect($HostName, $Port, $null, $null)
-        if (-not $async.AsyncWaitHandle.WaitOne($TimeoutMilliseconds, $false)) {
-            return $false
-        }
-
-        $client.EndConnect($async)
-        return $true
-    }
-    catch {
-        return $false
-    }
-    finally {
-        $client.Close()
-    }
 }
 
 function Invoke-HttpCheck {
@@ -164,71 +84,13 @@ function Get-BasicAuthHeader {
     }
 }
 
-function Invoke-ExternalCommand {
-    param(
-        [string]$Name,
-        [string[]]$Arguments,
-        [hashtable]$Environment = @{}
-    )
-
-    try {
-        $command = Get-Command $Name -ErrorAction Stop
-        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $startInfo.FileName = $command.Source
-        $startInfo.UseShellExecute = $false
-        $startInfo.RedirectStandardOutput = $true
-        $startInfo.RedirectStandardError = $true
-
-        foreach ($entry in $Environment.GetEnumerator()) {
-            $startInfo.Environment[$entry.Key] = [string]$entry.Value
-        }
-
-        if ($Arguments.Count -gt 0) {
-            $quotedArguments = foreach ($argument in $Arguments) {
-                if ($argument -match '\s|"' ) {
-                    '"' + ($argument -replace '"', '\"') + '"'
-                }
-                else {
-                    $argument
-                }
-            }
-
-            $startInfo.Arguments = ($quotedArguments -join " ")
-        }
-
-        $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $startInfo
-        [void]$process.Start()
-        $standardOutput = $process.StandardOutput.ReadToEnd()
-        $standardError = $process.StandardError.ReadToEnd()
-        $process.WaitForExit()
-
-        $text = (($standardOutput + $standardError) | Out-String).Trim()
-        $exitCode = $process.ExitCode
-        if ($text -match "error during connect|Acesso negado|Access is denied|permission denied|Cannot connect") {
-            $exitCode = 1
-        }
-
-        return [pscustomobject]@{
-            ExitCode = $exitCode
-            Output = $text
-        }
-    }
-    catch {
-        return [pscustomobject]@{
-            ExitCode = 1
-            Output = $_.Exception.Message
-        }
-    }
-}
-
 function Test-DockerContainerRunning {
     param(
         [string]$ContainerName,
         [string]$Name
     )
 
-    $result = Invoke-ExternalCommand "docker" @(
+    $result = Invoke-NpExternalCommand "docker" @(
         "inspect",
         "-f",
         "{{.State.Running}}",
@@ -253,7 +115,7 @@ function Test-PostgresTable {
         [string]$Database
     )
 
-    $result = Invoke-ExternalCommand "docker" @(
+    $result = Invoke-NpExternalCommand "docker" @(
         "exec",
         $ContainerName,
         "psql",
@@ -297,7 +159,7 @@ function Test-InfluxDatabase {
         return
     }
 
-    $result = Invoke-ExternalCommand `
+    $result = Invoke-NpExternalCommand `
         -Name "docker" `
         -Arguments @("exec", "-e", "INFLUXDB3_AUTH_TOKEN", $ContainerName, "influxdb3", "show", "databases", "-H", "http://127.0.0.1:8181", "--format", "csv") `
         -Environment @{ INFLUXDB3_AUTH_TOKEN = $Token }
@@ -336,7 +198,7 @@ function Test-ControlPlaneCounts {
     )
 
     foreach ($query in $queries) {
-        $result = Invoke-ExternalCommand "docker" @(
+        $result = Invoke-NpExternalCommand "docker" @(
             "exec",
             $ContainerName,
             "psql",
@@ -364,7 +226,7 @@ function Test-ControlPlaneCounts {
     }
 }
 
-$repoRoot = Find-RepositoryRoot
+$repoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln', 'docker-compose.yml')
 Set-Location $repoRoot
 
 if (-not $InfrastructureOnly -and -not $Runtime -and -not $Full) {
@@ -380,7 +242,7 @@ Write-Host "Mode: $(if ($Full) { 'Full' } elseif ($Runtime) { 'Runtime' } else {
 Write-Host ""
 
 $dotEnvPath = Join-Path $repoRoot ".env"
-$envValues = Read-DotEnv $dotEnvPath
+$envValues = Read-NpDotEnv -Path $dotEnvPath -QuoteHandling Double
 if (Test-Path -LiteralPath $dotEnvPath) {
     Add-Result "OK" ".env" "found" $false
 }
@@ -388,31 +250,31 @@ else {
     Add-Result "WARN" ".env" "missing; using documented defaults for checks" $false
 }
 
-$rabbitUser = Get-ConfigValue $envValues "RABBITMQ_DEFAULT_USER" "np"
-$rabbitPass = Get-ConfigValue $envValues "RABBITMQ_DEFAULT_PASS" "np_dev_pass"
-$rabbitAmqpPort = [int](Get-ConfigValue $envValues "RABBITMQ_AMQP_PORT" "5672")
-$rabbitManagementPort = [int](Get-ConfigValue $envValues "RABBITMQ_MANAGEMENT_PORT" "15672")
-$rabbitContainer = Get-ConfigValue $envValues "RABBITMQ_CONTAINER" "np-rabbitmq"
+$rabbitUser = Get-NpConfigValue $envValues "RABBITMQ_DEFAULT_USER" "np" -EnvironmentFirst
+$rabbitPass = Get-NpConfigValue $envValues "RABBITMQ_DEFAULT_PASS" "np_dev_pass" -EnvironmentFirst
+$rabbitAmqpPort = [int](Get-NpConfigValue $envValues "RABBITMQ_AMQP_PORT" "5672" -EnvironmentFirst)
+$rabbitManagementPort = [int](Get-NpConfigValue $envValues "RABBITMQ_MANAGEMENT_PORT" "15672" -EnvironmentFirst)
+$rabbitContainer = Get-NpConfigValue $envValues "RABBITMQ_CONTAINER" "np-rabbitmq" -EnvironmentFirst
 
-$postgresDb = Get-ConfigValue $envValues "POSTGRES_DB" "natureprotector"
-$postgresUser = Get-ConfigValue $envValues "POSTGRES_USER" "np"
-$postgresPort = [int](Get-ConfigValue $envValues "POSTGRES_PORT" "5432")
-$postgresContainer = Get-ConfigValue $envValues "POSTGRES_CONTAINER" "np-postgres"
+$postgresDb = Get-NpConfigValue $envValues "POSTGRES_DB" "natureprotector" -EnvironmentFirst
+$postgresUser = Get-NpConfigValue $envValues "POSTGRES_USER" "np" -EnvironmentFirst
+$postgresPort = [int](Get-NpConfigValue $envValues "POSTGRES_PORT" "5432" -EnvironmentFirst)
+$postgresContainer = Get-NpConfigValue $envValues "POSTGRES_CONTAINER" "np-postgres" -EnvironmentFirst
 
-$influxPort = [int](Get-ConfigValue $envValues "INFLUXDB_PORT" "8181")
-$influxUrl = Get-ConfigValue $envValues "INFLUXDB_URL" "http://localhost:$influxPort"
-$influxToken = Get-ConfigValue $envValues "INFLUXDB_TOKEN" ""
-$influxDatabase = Get-ConfigValue $envValues "INFLUXDB_DATABASE" ""
-$influxContainer = Get-ConfigValue $envValues "INFLUXDB_CONTAINER" "np-influxdb"
+$influxPort = [int](Get-NpConfigValue $envValues "INFLUXDB_PORT" "8181" -EnvironmentFirst)
+$influxUrl = Get-NpConfigValue $envValues "INFLUXDB_URL" "http://localhost:$influxPort" -EnvironmentFirst
+$influxToken = Get-NpConfigValue $envValues "INFLUXDB_TOKEN" "" -EnvironmentFirst
+$influxDatabase = Get-NpConfigValue $envValues "INFLUXDB_DATABASE" "" -EnvironmentFirst
+$influxContainer = Get-NpConfigValue $envValues "INFLUXDB_CONTAINER" "np-influxdb" -EnvironmentFirst
 
-$grafanaPort = [int](Get-ConfigValue $envValues "GRAFANA_PORT" "3000")
-$grafanaContainer = Get-ConfigValue $envValues "GRAFANA_CONTAINER" "np-grafana"
+$grafanaPort = [int](Get-NpConfigValue $envValues "GRAFANA_PORT" "3000" -EnvironmentFirst)
+$grafanaContainer = Get-NpConfigValue $envValues "GRAFANA_CONTAINER" "np-grafana" -EnvironmentFirst
 
-$apiPort = [int](Get-ConfigValue $envValues "BACKOFFICE_API_PORT" "5254")
-$webPort = [int](Get-ConfigValue $envValues "WEBUI_PORT" "5173")
+$apiPort = [int](Get-NpConfigValue $envValues "BACKOFFICE_API_PORT" "5254" -EnvironmentFirst)
+$webPort = [int](Get-NpConfigValue $envValues "WEBUI_PORT" "5173" -EnvironmentFirst)
 
 if ($checkInfrastructure) {
-    $dockerInfo = Invoke-ExternalCommand "docker" @("info", "--format", "{{.ServerVersion}}")
+    $dockerInfo = Invoke-NpExternalCommand "docker" @("info", "--format", "{{.ServerVersion}}")
     if ($dockerInfo.ExitCode -eq 0) {
         Add-Result "OK" "Docker daemon" $dockerInfo.Output $true
     }
@@ -425,7 +287,7 @@ if ($checkInfrastructure) {
     Test-DockerContainerRunning $influxContainer "InfluxDB container" | Out-Null
     Test-DockerContainerRunning $grafanaContainer "Grafana container" | Out-Null
 
-    if (Test-TcpPort "localhost" $rabbitAmqpPort) {
+    if (Test-NpTcpEndpoint "localhost" $rabbitAmqpPort) {
         Add-Result "OK" "RabbitMQ AMQP" "localhost:$rabbitAmqpPort accepts TCP connections" $true
     }
     else {
@@ -442,7 +304,7 @@ if ($checkInfrastructure) {
         Add-Result "FAIL" "RabbitMQ management" "$rabbitUri failed: $($rabbitHttp.Error)" $true
     }
 
-    $pgReady = Invoke-ExternalCommand "docker" @(
+    $pgReady = Invoke-NpExternalCommand "docker" @(
         "exec",
         $postgresContainer,
         "pg_isready",
@@ -455,7 +317,7 @@ if ($checkInfrastructure) {
     if ($pgReady.ExitCode -eq 0) {
         Add-Result "OK" "PostgreSQL" $pgReady.Output $true
     }
-    elseif (Test-TcpPort "localhost" $postgresPort) {
+    elseif (Test-NpTcpEndpoint "localhost" $postgresPort) {
         Add-Result "FAIL" "PostgreSQL" "TCP localhost:$postgresPort is open, but pg_isready failed: $($pgReady.Output)" $true
     }
     else {
@@ -473,7 +335,7 @@ if ($checkInfrastructure) {
     if ($influxHttp.Success) {
         Add-Result "OK" "InfluxDB" "$influxUrl/health returned HTTP $($influxHttp.StatusCode)" $true
     }
-    elseif (Test-TcpPort "localhost" $influxPort) {
+    elseif (Test-NpTcpEndpoint "localhost" $influxPort) {
         Add-Result "FAIL" "InfluxDB" "localhost:$influxPort accepts TCP connections, but authenticated /health failed: $($influxHttp.Error)" $true
     }
     else {

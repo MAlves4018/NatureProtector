@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Miguel Alves" />
+  <meta name="dcterms.date" content="2026-06-28" />
+  <title>NatureProtector - Current-State Report Supplement</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="report.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">NatureProtector - Current-State Report Supplement</h1>
+<p class="author">Miguel Alves</p>
+<p class="date">28 June 2026</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#purpose-and-authority"
+id="toc-purpose-and-authority">Purpose and authority</a></li>
+<li><a href="#delta-summary" id="toc-delta-summary">Delta
+summary</a></li>
+<li><a href="#architecture-integration"
+id="toc-architecture-integration">Architecture integration</a></li>
+<li><a href="#roles-and-separation-of-powers"
+id="toc-roles-and-separation-of-powers">Roles and separation of
+powers</a></li>
+<li><a href="#quality-and-evidence"
+id="toc-quality-and-evidence">Quality and evidence</a></li>
+<li><a href="#cloud-and-deployment" id="toc-cloud-and-deployment">Cloud
+and deployment</a></li>
+<li><a href="#scientific-and-operational-boundary"
+id="toc-scientific-and-operational-boundary">Scientific and operational
+boundary</a></li>
+<li><a href="#chapter-integration-map"
+id="toc-chapter-integration-map">Chapter integration map</a></li>
+<li><a href="#wording-controls" id="toc-wording-controls">Wording
+controls</a></li>
+<li><a href="#remaining-integration-requirement"
+id="toc-remaining-integration-requirement">Remaining integration
+requirement</a></li>
+</ul>
+</nav>
+<h1 id="purpose-and-authority">Purpose and authority</h1>
+<p>This supplement records the factual delta between the report state
+labelled <strong>R13</strong> and the repository snapshot that includes
+the Unified Operations Control Plane. It is an integration aid, not a
+replacement for the 379-page report and not evidence that staging or
+production were completed.</p>
+<p>The supplied report presents the project as an experimental auditable
+platform and already distinguishes implementation, static verification,
+current result, historical execution, blocked attempt, reproduction and
+validation. The current repository extends that same evidence discipline
+to engineering operations.</p>
+<h1 id="delta-summary">Delta summary</h1>
+<p>The repository now contains server-side capability policies; the
+roles <code>QA</code>, <code>Operations</code> and
+<code>ReleaseApprover</code>; Mission Control, Quality Runs, Evidence
+Explorer, Deployments, Cloud Resources, Approvals and User/Role
+Administration; a closed operation catalog; operation records,
+confirmation and approval; GitHub workflow wrappers; and authenticated
+callback/artifact handling.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/container-architecture-a4.png"
+alt="Current container architecture" />
+<figcaption aria-hidden="true">Current container
+architecture</figcaption>
+</figure>
+<h1 id="architecture-integration">Architecture integration</h1>
+<p>The report architecture should now distinguish three planes:</p>
+<ol type="1">
+<li>runtime/data processing;</li>
+<li>user and control APIs;</li>
+<li>engineering operations and evidence.</li>
+</ol>
+<p>The browser remains outside the provider trust boundary. It selects a
+closed operation identifier; the backend authorises and records it;
+specialised runners hold the provider identity.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/operations-lifecycle-a4.png"
+alt="Operations lifecycle" />
+<figcaption aria-hidden="true">Operations lifecycle</figcaption>
+</figure>
+<h1 id="roles-and-separation-of-powers">Roles and separation of
+powers</h1>
+<p>The current role model adds QA, Operations and ReleaseApprover.
+<code>Admin</code> manages application users and roles but does not
+automatically receive production deploy or destroy capability. The
+distinction remains meaningful even when one academic project owner
+holds several roles, because confirmation and approval steps remain
+separately recorded.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/roles-ui-journeys-a4.png"
+alt="Roles and UI journeys" />
+<figcaption aria-hidden="true">Roles and UI journeys</figcaption>
+</figure>
+<h1 id="quality-and-evidence">Quality and evidence</h1>
+<p>Quality and evidence operations are selected from a bounded catalog
+and dispatched to authoritative workflows. A provider success status is
+not enough for a <code>PROVED</code> claim. The expected artifacts,
+snapshot reference, environment, producer and SHA-256 must be present
+and the scope must match the claim.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/quality-evidence-flow-a4.png"
+alt="Quality and evidence flow" />
+<figcaption aria-hidden="true">Quality and evidence flow</figcaption>
+</figure>
+<h1 id="cloud-and-deployment">Cloud and deployment</h1>
+<p>The implementation contains Terraform, GKE/Autopilot, Cloud Deploy,
+Artifact Registry, WIF and release/deployment workflows. The correct
+factual statement remains that the source implementation is advanced but
+the supplied artifacts do not prove a signed release for the final head,
+a qualified staging deployment or production.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/deployment-and-promotion-a4.png"
+alt="Deployment and promotion" />
+<figcaption aria-hidden="true">Deployment and promotion</figcaption>
+</figure>
+<h1 id="scientific-and-operational-boundary">Scientific and operational
+boundary</h1>
+<p>The current engineering progress does not change the report’s
+scientific limits. Candidate FWI, KBDI and NatureProtector calculations
+remain technical comparison components rather than official, calibrated
+or validated operational methods.</p>
+<figure>
+<img
+src="../../NatureProtector-Documentation-System-2026-06-28/docs/architecture/diagrams/current/render/data-provenance-authority-a4.png"
+alt="Data provenance and authority" />
+<figcaption aria-hidden="true">Data provenance and
+authority</figcaption>
+</figure>
+<h1 id="chapter-integration-map">Chapter integration map</h1>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Target</th>
+<th>Integration</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Chapter 4</td>
+<td>Add operations plane, runner/provider boundary and environment
+views</td>
+</tr>
+<tr class="even">
+<td>Chapter 5</td>
+<td>Add the unified convergence loop and documentation governance</td>
+</tr>
+<tr class="odd">
+<td>Chapter 6</td>
+<td>Add capabilities, operation catalog, pages, workflows and
+callback</td>
+</tr>
+<tr class="even">
+<td>Chapter 8</td>
+<td>Add closed quality/evidence dispatch and hashed-artifact
+classification</td>
+</tr>
+<tr class="odd">
+<td>Chapter 9</td>
+<td>Discuss separation of administrative and release authority</td>
+</tr>
+<tr class="even">
+<td>Chapter 10</td>
+<td>Remove already-implemented Operations UI from future work; retain
+runtime/cloud/scientific proof</td>
+</tr>
+<tr class="odd">
+<td>Chapter 11</td>
+<td>Extend auditability contribution without claiming production
+proof</td>
+</tr>
+<tr class="even">
+<td>Appendix E</td>
+<td>Update components, endpoints, roles and repository structure</td>
+</tr>
+<tr class="odd">
+<td>Appendix H</td>
+<td>Update quality/evidence tooling and open execution gates</td>
+</tr>
+<tr class="even">
+<td>Appendix I</td>
+<td>Update administration and capabilities</td>
+</tr>
+<tr class="odd">
+<td>Appendix J</td>
+<td>Update cloud/CD implementation and proof boundary</td>
+</tr>
+<tr class="even">
+<td>Appendix K</td>
+<td>Use promoted current diagrams and current UI captures when
+available</td>
+</tr>
+</tbody>
+</table>
+<h1 id="wording-controls">Wording controls</h1>
+<p>Use: implemented, statically verified, identified execution,
+historical evidence, current snapshot, partial, blocked, candidate,
+experimental.</p>
+<p>Do not use without current proof: production-ready, live, real-time,
+validated, calibrated, official alert, operational system, real
+data.</p>
+<h1 id="remaining-integration-requirement">Remaining integration
+requirement</h1>
+<p>The editable source of the 379-page current report was not included.
+A future editorial operation must insert the supplied LaTeX addendum and
+chapter-level deltas into that source, recompile the report and perform
+a full visual and claim-traceability review.</p>
+</body>
+</html>

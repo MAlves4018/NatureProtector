@@ -22,6 +22,8 @@ param(
     [switch]$DryRun
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
@@ -45,39 +47,6 @@ $tracesDirectory = Join-Path $runDirectory "traces"
 $metricsDirectory = Join-Path $runDirectory "metrics"
 $runsDirectory = Join-Path $runDirectory "runs"
 New-Item -ItemType Directory -Force -Path $logsDirectory, $tracesDirectory, $metricsDirectory, $runsDirectory | Out-Null
-
-function Write-JsonFile {
-    param(
-        [string]$Path,
-        [object]$Value
-    )
-
-    $json = ConvertTo-Json -InputObject $Value -Depth $jsonDepth
-    if ([string]::IsNullOrWhiteSpace($json)) {
-        $json = "null"
-    }
-
-    $json | Set-Content -Path $Path -Encoding UTF8
-}
-
-function Get-CommandLineVersion {
-    param(
-        [string]$Command,
-        [string[]]$Arguments = @()
-    )
-
-    try {
-        $output = & $Command @Arguments 2>$null | Select-Object -First 1
-        if ([string]::IsNullOrWhiteSpace($output)) {
-            return "Not available"
-        }
-
-        return "$output".Trim()
-    }
-    catch {
-        return "Not available"
-    }
-}
 
 function Get-ProfileSpec {
     param([string]$Name)
@@ -136,22 +105,6 @@ function Get-ProfileSpec {
             }
         }
     }
-}
-
-function Get-PercentileNearestRank {
-    param(
-        [double[]]$Values,
-        [double]$Percentile
-    )
-
-    if ($null -eq $Values -or $Values.Count -eq 0) {
-        return $null
-    }
-
-    $sorted = @($Values | Sort-Object)
-    $rank = [Math]::Ceiling(($Percentile / 100.0) * $sorted.Count) - 1
-    $rank = [Math]::Max(0, [Math]::Min($rank, $sorted.Count - 1))
-    return [Math]::Round([double]$sorted[$rank], 2)
 }
 
 function Invoke-ApiJson {
@@ -503,7 +456,7 @@ function Save-ApiSnapshot {
     }
 
     $path = Join-Path $metricsDirectory "$Name.json"
-    Write-JsonFile -Path $path -Value $snapshot
+    Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path $path -Value $snapshot
     return $snapshot
 }
 
@@ -561,17 +514,17 @@ $environment = [ordered]@{
     repoRoot = $repoRoot
     machineName = $env:COMPUTERNAME
     osVersion = [System.Environment]::OSVersion.VersionString
-    dotnet = Get-CommandLineVersion -Command "dotnet" -Arguments @("--version")
-    node = Get-CommandLineVersion -Command "node" -Arguments @("--version")
-    npm = Get-CommandLineVersion -Command "npm" -Arguments @("--version")
-    dockerClient = Get-CommandLineVersion -Command "docker" -Arguments @("version", "--format", "{{.Client.Version}}")
-    dockerServer = Get-CommandLineVersion -Command "docker" -Arguments @("version", "--format", "{{.Server.Version}}")
+    dotnet = Get-NpCommandLineVersion -Command "dotnet" -Arguments @("--version")
+    node = Get-NpCommandLineVersion -Command "node" -Arguments @("--version")
+    npm = Get-NpCommandLineVersion -Command "npm" -Arguments @("--version")
+    dockerClient = Get-NpCommandLineVersion -Command "docker" -Arguments @("version", "--format", "{{.Client.Version}}")
+    dockerServer = Get-NpCommandLineVersion -Command "docker" -Arguments @("version", "--format", "{{.Server.Version}}")
     authentication = if (-not [string]::IsNullOrWhiteSpace($AuthToken)) { "bearer-token" } elseif ($UseDevelopmentAdminDefault) { "development-admin-default" } else { "username-password" }
     secretsPrinted = $false
 }
 
-Write-JsonFile -Path (Join-Path $runDirectory "environment.json") -Value $environment
-Write-JsonFile -Path (Join-Path $runDirectory "workload.json") -Value $workload
+Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "environment.json") -Value $environment
+Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "workload.json") -Value $workload
 
 if ($DryRun) {
     $summary = [ordered]@{
@@ -584,8 +537,8 @@ if ($DryRun) {
         workload = $workload
         limitations = @("Dry-run only validates parameters, artifact layout and workload profile resolution.")
     }
-    Write-JsonFile -Path (Join-Path $runDirectory "summary.json") -Value $summary
-    Write-JsonFile -Path (Join-Path $runDirectory "run-failures.json") -Value @()
+    Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "summary.json") -Value $summary
+    Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "run-failures.json") -Value @()
     @(
         "# System capacity workload dry run",
         "",
@@ -640,7 +593,7 @@ for ($iteration = 1; $iteration -le [int]$profileSpec.repetitions; $iteration++)
 
     try {
         $runResponse = Invoke-ApiJson -Method "POST" -Path "/api/control/runtime/runs" -Body $request -Token $token -ExpectedStatusCodes @(200)
-        Write-JsonFile -Path (Join-Path $runsDirectory "$iterationLabel-response.json") -Value $runResponse.Json
+        Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runsDirectory "$iterationLabel-response.json") -Value $runResponse.Json
         $status = [string]$runResponse.Json.status
         if ($null -ne $runResponse.Json.run) {
             $runIdFromApi = [string]$runResponse.Json.run.id
@@ -655,8 +608,8 @@ for ($iteration = 1; $iteration -le [int]$profileSpec.repetitions; $iteration++)
                 -TimeoutSeconds $effectiveObservationWaitSeconds
             $audit = $evidence.audit
             $timings = $evidence.timings
-            Write-JsonFile -Path (Join-Path $runsDirectory "$iterationLabel-audit.json") -Value $audit
-            Write-JsonFile -Path (Join-Path $runsDirectory "$iterationLabel-timings.json") -Value $timings
+            Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runsDirectory "$iterationLabel-audit.json") -Value $audit
+            Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runsDirectory "$iterationLabel-timings.json") -Value $timings
             if (-not $evidence.complete) {
                 if ([string]::IsNullOrWhiteSpace($evidence.lastError)) {
                     $errorMessage = "Timed out waiting $effectiveObservationWaitSeconds seconds for persisted run evidence to reach $expectedEventsPerRun expected event(s)."
@@ -749,8 +702,8 @@ for ($iteration = 1; $iteration -le [int]$profileSpec.repetitions; $iteration++)
 $snapshotAfter = Save-ApiSnapshot -Name "after" -Token $token
 
 $measurements | Export-Csv -Path (Join-Path $runDirectory "measurements.csv") -NoTypeInformation -Encoding UTF8
-Write-JsonFile -Path (Join-Path $runDirectory "measurements.json") -Value $measurements
-Write-JsonFile -Path (Join-Path $runDirectory "run-failures.json") -Value $runFailures
+Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "measurements.json") -Value $measurements
+Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "run-failures.json") -Value $runFailures
 
 $elapsedValues = @($measurements | ForEach-Object { [double]$_.elapsedMs })
 $drainValues = @($measurements | Where-Object { $null -ne $_.backlogDrainTimeMs } | ForEach-Object { [double]$_.backlogDrainTimeMs })
@@ -776,16 +729,16 @@ $summary = [ordered]@{
     lostEventsTotal = @($measurements | Where-Object { $null -ne $_.lostEvents } | Measure-Object -Property lostEvents -Sum).Sum
     elapsedMs = [ordered]@{
         min = if ($elapsedValues.Count -gt 0) { [Math]::Round(($elapsedValues | Measure-Object -Minimum).Minimum, 2) } else { $null }
-        p50 = Get-PercentileNearestRank -Values $elapsedValues -Percentile 50
-        p95 = Get-PercentileNearestRank -Values $elapsedValues -Percentile 95
-        p99 = Get-PercentileNearestRank -Values $elapsedValues -Percentile 99
+        p50 = Get-NpPercentileNearestRank -Values $elapsedValues -Percentile 50
+        p95 = Get-NpPercentileNearestRank -Values $elapsedValues -Percentile 95
+        p99 = Get-NpPercentileNearestRank -Values $elapsedValues -Percentile 99
         max = if ($elapsedValues.Count -gt 0) { [Math]::Round(($elapsedValues | Measure-Object -Maximum).Maximum, 2) } else { $null }
     }
     backlogDrainMs = [ordered]@{
         min = if ($drainValues.Count -gt 0) { [Math]::Round(($drainValues | Measure-Object -Minimum).Minimum, 2) } else { $null }
-        p50 = Get-PercentileNearestRank -Values $drainValues -Percentile 50
-        p95 = Get-PercentileNearestRank -Values $drainValues -Percentile 95
-        p99 = Get-PercentileNearestRank -Values $drainValues -Percentile 99
+        p50 = Get-NpPercentileNearestRank -Values $drainValues -Percentile 50
+        p95 = Get-NpPercentileNearestRank -Values $drainValues -Percentile 95
+        p99 = Get-NpPercentileNearestRank -Values $drainValues -Percentile 99
         max = if ($drainValues.Count -gt 0) { [Math]::Round(($drainValues | Measure-Object -Maximum).Maximum, 2) } else { $null }
     }
     queueTotalAfter = [ordered]@{
@@ -806,7 +759,7 @@ $summary = [ordered]@{
     )
 }
 
-Write-JsonFile -Path (Join-Path $runDirectory "summary.json") -Value $summary
+Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "summary.json") -Value $summary
 
 $summaryLines = New-Object System.Collections.Generic.List[string]
 $summaryLines.Add("# System capacity workload summary")

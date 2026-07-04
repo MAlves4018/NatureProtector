@@ -1,0 +1,21 @@
+digraph G { rankdir=LR; graph [fontname="Arial", bgcolor="white", pad="0.25", nodesep="0.45", ranksep="0.7", splines=ortho];
+node [fontname="Arial", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F7FAFC", color="#334155", penwidth=1.2, margin="0.14,0.09"];
+edge [fontname="Arial", fontsize=9, color="#475569", arrowsize=0.75, penwidth=1.1];
+user [label="Students / evaluators / public reader", shape=person, fillcolor="#E0F2FE"];
+operator [label="Simulator, QA, operations and release roles", shape=person, fillcolor="#DBEAFE"];
+np [label="NatureProtector
+Experimental auditable platform", shape=box3d, fillcolor="#DCFCE7", penwidth=2];
+auth [label="Portuguese authorities and official products
+External reference - not replaced", fillcolor="#FEF3C7"];
+gh [label="GitHub Actions
+CI, release and dispatch", fillcolor="#F3E8FF"];
+gcp [label="Google Cloud
+Staging / production infrastructure", fillcolor="#EDE9FE"];
+data [label="Environmental and territorial source data", fillcolor="#FFEDD5"];
+user -> np [label="learns, reviews and demonstrates"];
+operator -> np [label="simulates, validates and operates"];
+data -> np [label="curated inputs / provenance"];
+np -> gh [label="closed engineering operations"];
+gh -> gcp [label="WIF, release and deployment"];
+np -> auth [label="compares/consumes context; no official authority", style=dashed];
+}

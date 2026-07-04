@@ -9,16 +9,9 @@ param(
     [string] $MarkdownSubset = "all"
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
-
-function Get-AbsolutePath {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $Path
-    )
-
-    return [System.IO.Path]::GetFullPath($Path)
-}
 
 function Convert-ToDoxygenPath {
     param(
@@ -26,32 +19,7 @@ function Convert-ToDoxygenPath {
         [string] $Path
     )
 
-    return (Get-AbsolutePath -Path $Path).Replace('\', '/')
-}
-
-function Assert-PathExists {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $Path,
-        [Parameter(Mandatory = $true)]
-        [string] $Description,
-        [Parameter(Mandatory = $true)]
-        [bool] $ExpectDirectory
-    )
-
-    if (-not (Test-Path -LiteralPath $Path)) {
-        throw "$Description not found: $Path"
-    }
-
-    $item = Get-Item -LiteralPath $Path
-
-    if ($ExpectDirectory -and -not $item.PSIsContainer) {
-        throw "$Description must be a directory: $Path"
-    }
-
-    if (-not $ExpectDirectory -and $item.PSIsContainer) {
-        throw "$Description must be a file: $Path"
-    }
+    return (Get-NpAbsolutePath -Path $Path).Replace('\', '/')
 }
 
 function Clear-DirectoryContents {
@@ -78,7 +46,7 @@ function Test-IsExcludedInputPath {
         [string[]] $ExcludedPrefixes
     )
 
-    $normalizedPath = (Get-AbsolutePath -Path $Path).Replace('\', '/')
+    $normalizedPath = (Get-NpAbsolutePath -Path $Path).Replace('\', '/')
 
     foreach ($prefix in $ExcludedPrefixes) {
         if ($normalizedPath.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -125,8 +93,8 @@ function Convert-ToRepoRelativePath {
         [string] $RepoRoot
     )
 
-    $absolutePath = Get-AbsolutePath -Path $Path
-    $absoluteRepoRoot = (Get-AbsolutePath -Path $RepoRoot).TrimEnd('\')
+    $absolutePath = Get-NpAbsolutePath -Path $Path
+    $absoluteRepoRoot = (Get-NpAbsolutePath -Path $RepoRoot).TrimEnd('\')
 
     if ($absolutePath.StartsWith($absoluteRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
         $relativePath = $absolutePath.Substring($absoluteRepoRoot.Length).TrimStart('\', '/')
@@ -162,7 +130,7 @@ function Resolve-MarkdownSubset {
 
     foreach ($markdownFile in $sortedMarkdownFiles) {
         $relativePath = Convert-ToRepoRelativePath -Path $markdownFile -RepoRoot $RepoRoot
-        $absolutePath = (Get-AbsolutePath -Path $markdownFile).Replace('\', '/')
+        $absolutePath = (Get-NpAbsolutePath -Path $markdownFile).Replace('\', '/')
         $markdownByRelativePath[$relativePath] = $markdownFile
         $markdownByAbsolutePath[$absolutePath] = $markdownFile
     }
@@ -190,7 +158,7 @@ function Resolve-MarkdownSubset {
             }
 
             $normalizedRequestedPath = $requestedPath.Replace('\', '/').Trim()
-            $candidateAbsolutePath = (Get-AbsolutePath -Path (Join-Path $RepoRoot $requestedPath)).Replace('\', '/')
+            $candidateAbsolutePath = (Get-NpAbsolutePath -Path (Join-Path $RepoRoot $requestedPath)).Replace('\', '/')
 
             if ($markdownByRelativePath.ContainsKey($normalizedRequestedPath)) {
                 @($markdownByRelativePath[$normalizedRequestedPath])
@@ -222,7 +190,7 @@ function Resolve-MarkdownSubset {
 
             foreach ($requestedPath in $requestedPaths) {
                 $normalizedRequestedPath = $requestedPath.Replace('\', '/').Trim()
-                $candidateAbsolutePath = (Get-AbsolutePath -Path (Join-Path $RepoRoot $requestedPath)).Replace('\', '/')
+                $candidateAbsolutePath = (Get-NpAbsolutePath -Path (Join-Path $RepoRoot $requestedPath)).Replace('\', '/')
 
                 if ($markdownByRelativePath.ContainsKey($normalizedRequestedPath)) {
                     $resolvedSelection.Add($markdownByRelativePath[$normalizedRequestedPath])
@@ -398,7 +366,7 @@ if ($SrcOnly -and $DocsOnly) {
 
 $overallStart = Get-Date
 $invocationWorkingDirectory = (Get-Location).Path
-$repoRoot = Get-AbsolutePath -Path (Join-Path $PSScriptRoot "..\..")
+$repoRoot = Get-NpAbsolutePath -Path (Join-Path $PSScriptRoot "..\..")
 $docsRoot = Join-Path $repoRoot "docs"
 $doxygenRoot = Join-Path $docsRoot "doxygen"
 $doxyConfig = Join-Path $doxygenRoot "config\Doxyfile"
@@ -409,8 +377,8 @@ $mainPage = Join-Path $doxygenRoot "pages\mainpage.md"
 $docfxRoot = Join-Path $docsRoot "docfx"
 $structurizrOutputRoot = Join-Path $docsRoot "structurizr\output"
 
-Assert-PathExists -Path $repoRoot -Description "Repository root" -ExpectDirectory $true
-Assert-PathExists -Path $doxyConfig -Description "Base Doxygen configuration" -ExpectDirectory $false
+Assert-NpPathExists -Path $repoRoot -Description "Repository root" -ExpectDirectory $true
+Assert-NpPathExists -Path $doxyConfig -Description "Base Doxygen configuration" -ExpectDirectory $false
 
 foreach ($directory in @($doxygenRoot, $doxyOutput)) {
     New-Item -ItemType Directory -Force -Path $directory | Out-Null
@@ -434,12 +402,12 @@ else {
 }
 
 foreach ($inputRoot in $selectedInputRoots) {
-    Assert-PathExists -Path $inputRoot.Path -Description "INPUT $($inputRoot.Label)" -ExpectDirectory $inputRoot.ExpectDirectory
+    Assert-NpPathExists -Path $inputRoot.Path -Description "INPUT $($inputRoot.Label)" -ExpectDirectory $inputRoot.ExpectDirectory
 }
 
 $pagesIncluded = @($selectedInputRoots | Where-Object { $_.Label -eq "docs/doxygen/pages" }).Count -gt 0
 if ($pagesIncluded) {
-    Assert-PathExists -Path $mainPage -Description "Doxygen main page" -ExpectDirectory $false
+    Assert-NpPathExists -Path $mainPage -Description "Doxygen main page" -ExpectDirectory $false
 }
 
 $excludedPrefixes = @(
@@ -475,7 +443,7 @@ foreach ($inputRoot in $selectedInputRoots) {
             throw "INPUT $($inputRoot.Label) resolved to an excluded file: $($inputRoot.Path)"
         }
 
-        $resolvedInputFiles.Add((Get-AbsolutePath -Path $inputRoot.Path))
+        $resolvedInputFiles.Add((Get-NpAbsolutePath -Path $inputRoot.Path))
     }
 }
 

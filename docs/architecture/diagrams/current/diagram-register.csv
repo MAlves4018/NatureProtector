@@ -1,0 +1,11 @@
+id,title,status,variants,primary_render,sidecar
+system-context,NatureProtector system context,CURRENT,web+16:9,render/system-context.svg,sidecars/system-context.json
+container-architecture,Current logical/container architecture,CURRENT,web+16:9,render/container-architecture.svg,sidecars/container-architecture.json
+runtime-risk-pipeline,"Runtime reading, quality and risk pipeline",CURRENT,web+16:9,render/runtime-risk-pipeline.svg,sidecars/runtime-risk-pipeline.json
+operations-lifecycle,Auditable engineering operation lifecycle,CURRENT,web+16:9,render/operations-lifecycle.svg,sidecars/operations-lifecycle.json
+quality-evidence-flow,Quality execution and evidence promotion,CURRENT,web+16:9,render/quality-evidence-flow.svg,sidecars/quality-evidence-flow.json
+data-provenance-authority,Data provenance and authority boundaries,CURRENT,web+16:9,render/data-provenance-authority.svg,sidecars/data-provenance-authority.json
+security-trust-boundaries,Security and trust boundaries,CURRENT,web+16:9,render/security-trust-boundaries.svg,sidecars/security-trust-boundaries.json
+deployment-and-promotion,"Immutable release, staging and production promotion",CURRENT,web+16:9,render/deployment-and-promotion.svg,sidecars/deployment-and-promotion.json
+roles-ui-journeys,"Roles, capabilities and UI journeys",CURRENT,web+16:9,render/roles-ui-journeys.svg,sidecars/roles-ui-journeys.json
+claims-evidence-maturity,"Claims, evidence and maturity ladder",CURRENT,web+16:9,render/claims-evidence-maturity.svg,sidecars/claims-evidence-maturity.json

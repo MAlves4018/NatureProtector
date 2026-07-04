@@ -23,11 +23,17 @@ public sealed class UserRecord
 public sealed class RoleRecord
 {
     public const string Admin = "Admin";
-    internal const string Sim = "Sim";
-    internal const string Pipeline = "Pipeline";
+    public const string Sim = "Sim";
+    public const string Pipeline = "Pipeline";
+    public const string QA = "QA";
+    public const string Operations = "Operations";
+    public const string ReleaseApprover = "ReleaseApprover";
     public const short AdminId = 1;
-    internal const short SimId = 2;
-    internal const short PipelineId = 3;
+    public const short SimId = 2;
+    public const short PipelineId = 3;
+    public const short QAId = 4;
+    public const short OperationsId = 5;
+    public const short ReleaseApproverId = 6;
 
     public short Id { get; init; }
     public string Name { get; set; } = string.Empty;

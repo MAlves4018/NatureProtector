@@ -27,9 +27,27 @@ type ResolvedCellSensor = {
 };
 
 const CELL_DASHBOARD_METRICS: CellDashboardMetric[] = [
-  { key: 'temperature', label: 'Temperature', missingText: 'No temperature sensor exposed for this cell', placeholder: '?t?', sensorTypes: ['temperature', 'temp'] },
-  { key: 'humidity', label: 'Humidity', missingText: 'No humidity sensor exposed for this cell', placeholder: '?h?', sensorTypes: ['humidity', 'hum'] },
-  { key: 'wind', label: 'Wind', missingText: 'No wind sensor exposed for this cell', placeholder: '?w?', sensorTypes: ['wind'] },
+  {
+    key: 'temperature',
+    label: 'Temperature',
+    missingText: 'No temperature sensor exposed for this cell',
+    placeholder: '?t?',
+    sensorTypes: ['temperature', 'temp'],
+  },
+  {
+    key: 'humidity',
+    label: 'Humidity',
+    missingText: 'No humidity sensor exposed for this cell',
+    placeholder: '?h?',
+    sensorTypes: ['humidity', 'hum'],
+  },
+  {
+    key: 'wind',
+    label: 'Wind',
+    missingText: 'No wind sensor exposed for this cell',
+    placeholder: '?w?',
+    sensorTypes: ['wind'],
+  },
 ];
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -52,8 +70,15 @@ export function AreaMap({ areaId, mapType, geoJSON, cells, sensorNodes }: MapPro
 
   useEffect(() => {
     fetch('/cell_dashboards_links.txt')
-      .then(response => response.text())
-      .then(text => setDashboardLinks(text.split('\n').map(line => line.trim()).filter(Boolean)))
+      .then((response) => response.text())
+      .then((text) =>
+        setDashboardLinks(
+          text
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean),
+        ),
+      )
       .catch(() => setDashboardLinks([]));
   }, []);
 
@@ -97,7 +122,9 @@ export function AreaMap({ areaId, mapType, geoJSON, cells, sensorNodes }: MapPro
       window.clearTimeout(resizeTimer);
       map.stop();
       map.off();
-      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current.forEach((marker) => {
+        marker.remove();
+      });
       markersRef.current = [];
       geoJSONLayerRef.current?.remove();
       tileRef.current?.remove();
@@ -126,7 +153,9 @@ export function AreaMap({ areaId, mapType, geoJSON, cells, sensorNodes }: MapPro
     }
 
     geoJSONLayerRef.current?.remove();
-    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current.forEach((marker) => {
+      marker.remove();
+    });
     markersRef.current = [];
 
     try {
@@ -142,11 +171,12 @@ export function AreaMap({ areaId, mapType, geoJSON, cells, sensorNodes }: MapPro
       geoJSONLayerRef.current = geoJSONLayer;
 
       cells
-        ?.filter(cell => cell.sensorNodeCount > 0)
-        .forEach(cell => {
-          const cellCentroid: LatLngExpression = cell.altitudeMeters != null
-            ? new LatLng(cell.centroidLatitude, cell.centroidLongitude, cell.altitudeMeters)
-            : new LatLng(cell.centroidLatitude, cell.centroidLongitude);
+        ?.filter((cell) => cell.sensorNodeCount > 0)
+        .forEach((cell) => {
+          const cellCentroid: LatLngExpression =
+            cell.altitudeMeters != null
+              ? new LatLng(cell.centroidLatitude, cell.centroidLongitude, cell.altitudeMeters)
+              : new LatLng(cell.centroidLatitude, cell.centroidLongitude);
           const marker = L.circleMarker(cellCentroid, {
             radius: 6,
             color: '#f63b3b',
@@ -191,24 +221,57 @@ export function AreaMap({ areaId, mapType, geoJSON, cells, sensorNodes }: MapPro
           zIndex="1000"
           onClick={() => setIsModalOpen(false)}
         >
-          <Box bg="white" borderRadius="md" boxShadow="lg" maxH="90vh" maxW="92vw" overflow="auto" onClick={event => event.stopPropagation()}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" p={6} borderBottom="1px solid #e2e8f0">
+          <Box
+            bg="white"
+            borderRadius="md"
+            boxShadow="lg"
+            maxH="90vh"
+            maxW="92vw"
+            overflow="auto"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              p={6}
+              borderBottom="1px solid #e2e8f0"
+            >
               <Box>
-                <Text fontSize="lg" fontWeight="bold">Cell {cellCode} dashboards</Text>
-                <Text fontSize="sm" color="#64748b">Dashboards are rendered only when a valid sensor mapping is exposed.</Text>
+                <Text fontSize="lg" fontWeight="bold">
+                  Cell {cellCode} dashboards
+                </Text>
+                <Text fontSize="sm" color="#64748b">
+                  Dashboards are rendered only when a valid sensor mapping is exposed.
+                </Text>
               </Box>
-              <Button bg="transparent" onClick={() => setIsModalOpen(false)} _hover={{ bg: 'gray.100' }} p={0} minW="auto">
+              <Button
+                bg="transparent"
+                onClick={() => setIsModalOpen(false)}
+                _hover={{ bg: 'gray.100' }}
+                p={0}
+                minW="auto"
+              >
                 <X size={24} />
               </Button>
             </Box>
 
             <Box p={6} overflow="auto" minW="720px" maxW="88vw">
               <Box display="grid" gridTemplateColumns="repeat(3, minmax(220px, 1fr))" gap={4}>
-                {dashboardItems.map(item => (
-                  <Box key={item.key} border="1px solid #e2e8f0" borderRadius="md" overflow="hidden" minH="420px" bg="#f8fafc">
+                {dashboardItems.map((item) => (
+                  <Box
+                    key={item.key}
+                    border="1px solid #e2e8f0"
+                    borderRadius="md"
+                    overflow="hidden"
+                    minH="420px"
+                    bg="#f8fafc"
+                  >
                     <Box p={3} borderBottom="1px solid #e2e8f0">
                       <Text fontWeight="bold">{item.label}</Text>
-                      <Text fontSize="sm" color="#64748b">Sensor: {item.sensorLabel || 'Not available'}</Text>
+                      <Text fontSize="sm" color="#64748b">
+                        Sensor: {item.sensorLabel || 'Not available'}
+                      </Text>
                     </Box>
                     {item.url ? (
                       <iframe
@@ -221,7 +284,9 @@ export function AreaMap({ areaId, mapType, geoJSON, cells, sensorNodes }: MapPro
                       />
                     ) : (
                       <Box p={4} h="360px" display="grid" placeItems="center">
-                        <Text color="#64748b" textAlign="center">{item.message}</Text>
+                        <Text color="#64748b" textAlign="center">
+                          {item.message}
+                        </Text>
                       </Box>
                     )}
                   </Box>
@@ -235,10 +300,16 @@ export function AreaMap({ areaId, mapType, geoJSON, cells, sensorNodes }: MapPro
   );
 }
 
-function buildCellDashboards(areaId: string, cellCode: string, cells: MapProps['cells'], dashboardLinks: string[], sensorNodes?: SensorNodeResponse[]) {
-  const sensors = cells?.find(cell => cell.cellCode === cellCode)?.sensorNodeIds ?? [];
+function buildCellDashboards(
+  areaId: string,
+  cellCode: string,
+  cells: MapProps['cells'],
+  dashboardLinks: string[],
+  sensorNodes?: SensorNodeResponse[],
+) {
+  const sensors = cells?.find((cell) => cell.cellCode === cellCode)?.sensorNodeIds ?? [];
   if (sensors.length === 0) {
-    return CELL_DASHBOARD_METRICS.map(metric => ({
+    return CELL_DASHBOARD_METRICS.map((metric) => ({
       ...metric,
       sensorId: null,
       sensorLabel: null,
@@ -247,7 +318,7 @@ function buildCellDashboards(areaId: string, cellCode: string, cells: MapProps['
     }));
   }
 
-  return CELL_DASHBOARD_METRICS.map(metric => {
+  return CELL_DASHBOARD_METRICS.map((metric) => {
     const sensor = resolveSensor(sensors, metric, cellCode, sensorNodes);
     const sensorId = sensor?.sensorId ?? null;
     const template = getTemplate(dashboardLinks, metric.placeholder);
@@ -257,7 +328,13 @@ function buildCellDashboards(areaId: string, cellCode: string, cells: MapProps['
     }
 
     if (!template || !areaId) {
-      return { ...metric, sensorId, sensorLabel: sensor?.displayName ?? sensorId, url: null, message: 'Grafana dashboard not configured' };
+      return {
+        ...metric,
+        sensorId,
+        sensorLabel: sensor?.displayName ?? sensorId,
+        url: null,
+        message: 'Grafana dashboard not configured',
+      };
     }
 
     const rawUrl = template
@@ -267,7 +344,13 @@ function buildCellDashboards(areaId: string, cellCode: string, cells: MapProps['
 
     return url
       ? { ...metric, sensorId, sensorLabel: sensor?.displayName ?? sensorId, url, message: null }
-      : { ...metric, sensorId, sensorLabel: sensor?.displayName ?? sensorId, url: null, message: 'Grafana dashboard not configured' };
+      : {
+          ...metric,
+          sensorId,
+          sensorLabel: sensor?.displayName ?? sensorId,
+          url: null,
+          message: 'Grafana dashboard not configured',
+        };
   });
 }
 
@@ -285,11 +368,9 @@ function resolveSensor(
       continue;
     }
 
-    const matchesMetric = metric.sensorTypes.some(expected => candidate.haystack.includes(expected));
-    const matchesCell = !suffix ||
-      candidate.cellCode === cellCode ||
-      candidate.haystack.includes(suffix) ||
-      candidate.fromCellScopedList;
+    const matchesMetric = metric.sensorTypes.some((expected) => candidate.haystack.includes(expected));
+    const matchesCell =
+      !suffix || candidate.cellCode === cellCode || candidate.haystack.includes(suffix) || candidate.fromCellScopedList;
 
     if (matchesMetric && matchesCell) {
       return {
@@ -319,7 +400,16 @@ function normalizeSensorCandidate(sensor: SensorInfo, sensorNodes: SensorNodeRes
   const lookup = rawId ? findSensorNode(rawId, sensorNodes) : null;
   const rawType = sensor.type ?? sensor.sensorType ?? sensor.metric ?? sensor.item2 ?? null;
   const rawName = sensor.name ?? sensor.sensorName ?? sensor.code ?? null;
-  const haystack = buildHaystack(rawId, rawName, rawType, sensor.metric, lookup?.id, lookup?.name, lookup?.type, lookup?.cellCode);
+  const haystack = buildHaystack(
+    rawId,
+    rawName,
+    rawType,
+    sensor.metric,
+    lookup?.id,
+    lookup?.name,
+    lookup?.type,
+    lookup?.cellCode,
+  );
 
   return {
     sensorId: lookup?.id ?? rawId,
@@ -332,10 +422,10 @@ function normalizeSensorCandidate(sensor: SensorInfo, sensorNodes: SensorNodeRes
 
 function findSensorNode(value: string, sensorNodes: SensorNodeResponse[]) {
   const normalized = value.toLowerCase();
-  return sensorNodes.find(sensor =>
-    sensor.id.toLowerCase() === normalized ||
-    sensor.name.toLowerCase() === normalized,
-  ) ?? null;
+  return (
+    sensorNodes.find((sensor) => sensor.id.toLowerCase() === normalized || sensor.name.toLowerCase() === normalized) ??
+    null
+  );
 }
 
 function buildHaystack(...values: Array<string | null | undefined>) {
@@ -363,7 +453,7 @@ function validateGrafanaTemplate(template: string | undefined, placeholder: stri
 }
 
 function getTemplate(dashboardLinks: string[], placeholder: string) {
-  return dashboardLinks.find(link => validateGrafanaTemplate(link, placeholder));
+  return dashboardLinks.find((link) => validateGrafanaTemplate(link, placeholder));
 }
 
 function hasUnresolvedPlaceholder(url: string) {

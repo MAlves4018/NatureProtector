@@ -1,0 +1,18 @@
+digraph G { graph [size="13.33,7.5!", ratio=fill]; rankdir=LR; graph [fontname="Arial", bgcolor="white", pad="0.25", nodesep="0.45", ranksep="0.7", splines=ortho];
+node [fontname="Arial", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F7FAFC", color="#334155", penwidth=1.2, margin="0.14,0.09"];
+edge [fontname="Arial", fontsize=9, color="#475569", arrowsize=0.75, penwidth=1.1];
+sources [label="External sources
+territory, weather, fire history",fillcolor="#FFEDD5"];
+curation [label="Acquisition and curation scripts",fillcolor="#DBEAFE"];
+manifest [label="Manifest, rights, CRS, timestamps, hashes",shape=folder,fillcolor="#FCE7F3"];
+scenario [label="Scenario construction
+controlled experimental input",fillcolor="#DCFCE7"];
+sim [label="Simulated truth",fillcolor="#E0F2FE"];
+obs [label="Observed reading available to runtime",fillcolor="#EDE9FE"];
+quality [label="Quality / coverage / freshness / eligibility",fillcolor="#FEF3C7"];
+assessment [label="Candidate technical assessment",fillcolor="#DCFCE7"];
+authority [label="Operational authority
+NOT GRANTED",shape=octagon,fillcolor="#FEE2E2"];
+sources->curation->manifest->scenario->sim->obs->quality->assessment;
+assessment->authority [label="requires external validation and authorisation",style=dashed,color="#B91C1C"];
+}

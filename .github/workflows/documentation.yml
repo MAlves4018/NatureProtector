@@ -1,0 +1,22 @@
+name: Documentation
+on:
+  pull_request:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  documentation-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Validate documentation authority, links and diagram portfolio
+        run: python3 scripts/docs/validate_documentation.py
+      - name: Validate Structurizr DSL when CLI is available
+        run: |
+          if command -v structurizr >/dev/null 2>&1; then
+            structurizr validate -workspace docs/structurizr/workspace.dsl
+          else
+            echo 'Structurizr CLI not installed on this runner; static documentation gate remains authoritative.'
+          fi

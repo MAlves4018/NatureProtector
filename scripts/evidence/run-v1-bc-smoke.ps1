@@ -12,6 +12,8 @@ param(
     [switch]$CollectRuntimeProcessEvidence
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss-fff"
@@ -33,15 +35,6 @@ $diagnostics = @(
     "latest-run-coverage-freshness",
     "compare-latest-b-vs-c"
 )
-
-function Write-JsonFile {
-    param(
-        [string]$Path,
-        [object]$Value
-    )
-
-    $Value | ConvertTo-Json @jsonOptions | Set-Content -Path $Path -Encoding UTF8
-}
 
 function Invoke-JsonRequest {
     param(
@@ -148,7 +141,7 @@ $manifest = [ordered]@{
     diagnostics = $diagnostics
     outputDirectory = (Resolve-Path $runDirectory).Path
 }
-Write-JsonFile -Path (Join-Path $runDirectory "run-spec.resolved.json") -Value $manifest
+Write-NpJsonFile -Depth 50 -Path (Join-Path $runDirectory "run-spec.resolved.json") -Value $manifest
 
 if ($DryRun) {
     @"
@@ -176,7 +169,7 @@ No API calls, reset, simulation runs, diagnostics or runtime assertions were exe
 
 try {
     $summaryBefore = Invoke-JsonRequest -Method "GET" -Path "/api/control/runtime/summary?areaCode=$AreaCode&recentMinutes=30"
-    Write-JsonFile -Path (Join-Path $runDirectory "runtime-summary-before.json") -Value $summaryBefore
+    Write-NpJsonFile -Depth 50 -Path (Join-Path $runDirectory "runtime-summary-before.json") -Value $summaryBefore
 
     if (-not $SkipReset) {
         $resetBody = @{
@@ -185,22 +178,22 @@ try {
             dryRun = $false
         }
         $reset = Invoke-JsonRequest -Method "POST" -Path "/api/control/runtime/reset" -Body $resetBody
-        Write-JsonFile -Path (Join-Path $runDirectory "reset.json") -Value $reset
+        Write-NpJsonFile -Depth 50 -Path (Join-Path $runDirectory "reset.json") -Value $reset
     }
 
     $runB = Start-ScenarioRun -ScenarioCode "scenario_b" -DegradationProfiles @("none")
-    Write-JsonFile -Path (Join-Path $runDirectory "run-b.json") -Value $runB
+    Write-NpJsonFile -Depth 50 -Path (Join-Path $runDirectory "run-b.json") -Value $runB
     Assert-SmokeCondition -Condition ($null -ne $runB.run -and $runB.run.status -eq "Completed") -Message "scenario_b did not complete."
 
     $auditB = Get-RunAudit -RunId $runB.run.id
-    Write-JsonFile -Path (Join-Path $runDirectory "audit-b.json") -Value $auditB
+    Write-NpJsonFile -Depth 50 -Path (Join-Path $runDirectory "audit-b.json") -Value $auditB
 
     $runC = Start-ScenarioRun -ScenarioCode "scenario_c" -DegradationProfiles @("missing-readings")
-    Write-JsonFile -Path (Join-Path $runDirectory "run-c.json") -Value $runC
+    Write-NpJsonFile -Depth 50 -Path (Join-Path $runDirectory "run-c.json") -Value $runC
     Assert-SmokeCondition -Condition ($null -ne $runC.run -and $runC.run.status -eq "Completed") -Message "scenario_c did not complete."
 
     $auditC = Get-RunAudit -RunId $runC.run.id
-    Write-JsonFile -Path (Join-Path $runDirectory "audit-c.json") -Value $auditC
+    Write-NpJsonFile -Depth 50 -Path (Join-Path $runDirectory "audit-c.json") -Value $auditC
 
     $profilesC = Get-ResolvedProfiles -RunResponse $runC
     Assert-SmokeCondition -Condition ($runB.run.id -ne $runC.run.id) -Message "scenario_b and scenario_c produced the same SimulationRunId."
@@ -219,12 +212,12 @@ try {
             scenarioCode = "scenario_b"
         }
         $diagnosticResults[$diagnostic] = $result
-        Write-JsonFile -Path (Join-Path $runDirectory "$diagnostic.json") -Value $result
+        Write-NpJsonFile -Depth 50 -Path (Join-Path $runDirectory "$diagnostic.json") -Value $result
     }
 
     $summaryAfter = Invoke-JsonRequest -Method "GET" -Path "/api/control/runtime/summary?areaCode=$AreaCode&recentMinutes=30"
-    Write-JsonFile -Path (Join-Path $runDirectory "runtime-summary.json") -Value $summaryAfter
-    Write-JsonFile -Path (Join-Path $runDirectory "diagnostics.json") -Value $diagnosticResults
+    Write-NpJsonFile -Depth 50 -Path (Join-Path $runDirectory "runtime-summary.json") -Value $summaryAfter
+    Write-NpJsonFile -Depth 50 -Path (Join-Path $runDirectory "diagnostics.json") -Value $diagnosticResults
 
     Assert-SmokeCondition -Condition ($null -ne $summaryAfter.scoreComponents -and $null -ne $summaryAfter.scoreComponents.npScore) -Message "NatureProtector score is missing from runtime summary."
     Assert-IndexComparison -IndexComparison $summaryAfter.indexComparison

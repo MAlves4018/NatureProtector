@@ -1,0 +1,17 @@
+digraph G { graph [size="13.33,7.5!", ratio=fill]; rankdir=LR; graph [fontname="Arial", bgcolor="white", pad="0.25", nodesep="0.45", ranksep="0.7", splines=ortho];
+node [fontname="Arial", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F7FAFC", color="#334155", penwidth=1.2, margin="0.14,0.09"];
+edge [fontname="Arial", fontsize=9, color="#475569", arrowsize=0.75, penwidth=1.1];
+subgraph cluster_ui { label="User and control plane"; color="#93C5FD"; style="rounded"; web [label="webUI
+React / TypeScript",fillcolor="#DBEAFE"]; api [label="Backoffice.Api
+identity, runtime and operations",fillcolor="#BFDBFE"]; web->api [label="HTTP/JSON + capability profile"]; }
+subgraph cluster_runtime { label="Runtime plane"; color="#86EFAC"; sim [label="Simulator.Host",fillcolor="#DCFCE7"]; rabbit [label="RabbitMQ",shape=component,fillcolor="#FEF3C7"]; prev [label="Prevention.Host
+inbox, quality, eligibility, risk",fillcolor="#DCFCE7"]; sim->rabbit [label="SensorReadingProduced"]; rabbit->prev [label="consume / retry"]; }
+pg [label="PostgreSQL
+principal source of truth",shape=cylinder,fillcolor="#FCE7F3"];
+influx [label="InfluxDB",shape=cylinder,fillcolor="#E0F2FE"];
+graf [label="Grafana",fillcolor="#FFEDD5"];
+gh [label="GitHub Actions / runners",fillcolor="#F3E8FF"];
+ev [label="Evidence store
+artifacts + hashes",shape=folder,fillcolor="#F1F5F9"];
+api->pg; sim->pg [label="context + runs"]; prev->pg [label="inbox, attempts, projections"]; prev->influx; graf->influx [dir=back,label="queries"]; api->gh [label="dispatch closed operations"]; gh->ev; gh->api [label="authenticated callback"]; api->ev [label="index/read"];
+}

@@ -1,0 +1,186 @@
+name: _quality operation
+run-name: Quality operation ${{ inputs.operation_kind }} · ${{ inputs.operation_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation_id:
+        description: Control-plane operation identifier
+        required: true
+        type: string
+      operation_kind:
+        description: Closed quality suite identifier
+        required: true
+        type: string
+      environment:
+        description: Execution environment
+        required: true
+        default: ci
+        type: string
+      collect_evidence:
+        description: Preserve workflow evidence
+        required: true
+        default: "true"
+        type: string
+      ref:
+        description: Source reference recorded by the control plane
+        required: false
+        default: master
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    if: inputs.operation_kind != 'mutation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout callback reporter
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Select authoritative workflow
+        id: select
+        shell: bash
+        env:
+          SUITE: ${{ inputs.operation_kind }}
+        run: |
+          set -euo pipefail
+          case "$SUITE" in
+            frontend-fast|architecture|terraform-static|cloud-static)
+              workflow=quality-guardrails.yml
+              args='-f mode=enforce'
+              ;;
+            frontend-full|backend-unit|backend-integration|playwright-fixture|accessibility)
+              workflow=engineering-foundations.yml
+              args='-f browser_matrix=chromium'
+              ;;
+            security)
+              workflow=security.yml
+              args=''
+              ;;
+            playwright-full-stack|quality-all)
+              workflow=release-candidate.yml
+              args='-f benchmark_profile=B0'
+              ;;
+            *)
+              echo "Unknown quality suite: $SUITE" >&2
+              exit 2
+              ;;
+          esac
+          echo "workflow=$workflow" >> "$GITHUB_OUTPUT"
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch authoritative workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_WORKFLOW: ${{ steps.select.outputs.workflow }}
+          TARGET_ARGS: ${{ steps.select.outputs.args }}
+          TARGET_REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086
+          gh workflow run "$TARGET_WORKFLOW" --ref "$TARGET_REF" $TARGET_ARGS
+          printf '{"operationId":"%s","suite":"%s","workflow":"%s","status":"QUEUED","evidenceLevel":"IMPLEMENTED_NOT_PROVED"}\n' \
+            '${{ inputs.operation_id }}' '${{ inputs.operation_kind }}' "$TARGET_WORKFLOW" > dispatch-receipt.json
+
+      - name: Preserve dispatch receipt
+        if: always() && inputs.collect_evidence == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operations-quality-dispatch-${{ inputs.operation_id }}
+          path: dispatch-receipt.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Report dispatch state to operations API
+        if: always()
+        continue-on-error: true
+        env:
+          NP_OPERATIONS_CALLBACK_URL: ${{ vars.OPERATIONS_CALLBACK_URL }}
+          NP_OPERATIONS_CALLBACK_SECRET: ${{ secrets.OPERATIONS_CALLBACK_SECRET }}
+          RESULT_STATUS: ${{ job.status == 'success' && 'Queued' || 'Failed' }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          python scripts/operations/report-operation-callback.py
+          --operation-id '${{ inputs.operation_id }}'
+          --status "$RESULT_STATUS"
+          --provider-reference "$RUN_URL"
+          --detail 'Quality wrapper dispatched the authoritative child workflow; child completion remains separate evidence.'
+          --artifact-root dispatch-receipt.json
+          --artifact-name quality-dispatch-receipt
+          --artifact-kind dispatch-receipt
+          --artifact-reference "$RUN_URL"
+          --receipt callback-receipt.json
+
+      - name: Preserve callback receipt
+        if: always() && inputs.collect_evidence == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operations-quality-callback-${{ inputs.operation_id }}
+          path: callback-receipt.json
+          retention-days: 30
+          if-no-files-found: warn
+
+  mutation:
+    if: inputs.operation_kind == 'mutation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Execute bounded mutation smoke profile
+        shell: pwsh
+        run: >-
+          ./scripts/tests/run-mutation.ps1
+          -Profile Smoke
+          -Configuration Release
+          -MutationLevel Basic
+          -Concurrency 2
+          -TimeoutSeconds 900
+          -OutputRoot ./artifacts/mutation
+
+      - name: Preserve mutation evidence
+        if: always() && inputs.collect_evidence == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operations-mutation-${{ inputs.operation_id }}
+          path: artifacts/mutation/
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Report mutation result to operations API
+        if: always()
+        continue-on-error: true
+        env:
+          NP_OPERATIONS_CALLBACK_URL: ${{ vars.OPERATIONS_CALLBACK_URL }}
+          NP_OPERATIONS_CALLBACK_SECRET: ${{ secrets.OPERATIONS_CALLBACK_SECRET }}
+          RESULT_STATUS: ${{ job.status == 'success' && 'Succeeded' || 'Failed' }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          python scripts/operations/report-operation-callback.py
+          --operation-id '${{ inputs.operation_id }}'
+          --status "$RESULT_STATUS"
+          --provider-reference "$RUN_URL"
+          --detail 'Bounded mutation profile completed in the operations wrapper.'
+          --artifact-root artifacts/mutation
+          --artifact-name mutation-evidence
+          --artifact-kind mutation-report
+          --artifact-reference "$RUN_URL"
+          --receipt callback-receipt.json

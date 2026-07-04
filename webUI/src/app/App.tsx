@@ -1,110 +1,304 @@
-import React, { Suspense, lazy, useState } from 'react';
+import { LogIn, Moon, Sun } from 'lucide-react';
 import {
-  ChakraProvider, createSystem, defaultConfig, defineConfig, Box,
-} from '@chakra-ui/react';
-import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
+import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation, useNavigate } from 'react-router-dom';
+import { UiNavigation } from './navigation/Navigation';
+import { AlertBanner } from './components/AlertBanner';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { Breadcrumbs } from './components/Breadcrumbs';
+import { Skeleton } from './components/Skeleton';
+import type { UiNavTarget } from './capabilities';
+import { trapDialogTab } from './components/dialogFocus';
+import { defaultPageFor } from './navigation/pageRegistry';
+import {
+  useUiLocale,
+  useUiCapabilities,
+} from './state';
+import './theme/ui.css';
+import { UiProvider } from './state/Provider';
 import { NavBar } from './components/views/navBar';
-import { getColors } from './utils/utils';
-import { TokenProvider } from './context/TokenContext';
+import { LogInOut } from './components/views/LogInOut';
 
-const MainPage = lazy(() => import('./components/views/mainPage').then(module => ({ default: module.MainPage })));
-const DashBoards = lazy(() => import('./components/views/dashBoards').then(module => ({ default: module.DashBoards })));
-const Pipeline = lazy(() => import('./components/views/Pipeline').then(module => ({ default: module.Pipeline })));
-const DeveloperRuntimeControl = lazy(() => import('./components/views/DeveloperRuntimeControl').then(module => ({ default: module.DeveloperRuntimeControl })));
-const Workspace = lazy(() => import('./components/views/Workspace').then(module => ({ default: module.Workspace })));
-const LogInOut = lazy(() => import('./components/views/LogInOut').then(module => ({ default: module.LogInOut })));
-const UiV2App = lazy(() => import('./ui-v2/UiV2App').then(module => ({ default: module.UiV2App })));
+const PublicOverviewPage = lazy(() => import('./pages/PublicOverviewPage').then((module) => ({ default: module.PublicOverviewPage })));
+const DataContextPage = lazy(() => import('./pages/DataContextPage').then((module) => ({ default: module.DataContextPage })));
+const OverviewPage = lazy(() => import('./pages/OverviewPage').then((module) => ({ default: module.OverviewPage })));
+const RiskPage = lazy(() => import('./pages/RiskPage').then((module) => ({ default: module.RiskPage })));
+const RunsPage = lazy(() => import('./pages/RunsPage').then((module) => ({ default: module.RunsPage })));
+const SimulationPage = lazy(() => import('./pages/SimulationPage').then((module) => ({ default: module.SimulationPage })));
+const PipelinePage = lazy(() => import('./pages/PipelinePage').then((module) => ({ default: module.PipelinePage })));
+const QualityEvidencePage = lazy(() => import('./pages/QualityEvidencePage').then((module) => ({ default: module.QualityEvidencePage })));
+const QaTestSuitePage = lazy(() => import('./pages/QaTestSuitePage').then((module) => ({ default: module.QaTestSuitePage })));
+const DatabaseQueriesPage = lazy(() => import('./pages/DatabaseQueriesPage').then((module) => ({ default: module.DatabaseQueriesPage })));
+const DeploymentHealthPage = lazy(() => import('./pages/DeploymentHealthPage').then((module) => ({ default: module.DeploymentHealthPage })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then((module) => ({ default: module.AdminPage })));
+const ExperimentalPage = lazy(() => import('./pages/ExperimentalPage').then((module) => ({ default: module.ExperimentalPage })));
+const MissionControlPage = lazy(() => import('./pages/MissionControlPage').then((module) => ({ default: module.MissionControlPage })));
+const QualityRunsPage = lazy(() => import('./pages/QualityRunsPage').then((module) => ({ default: module.QualityRunsPage })));
+const EvidenceExplorerPage = lazy(() => import('./pages/EvidenceExplorerPage').then((module) => ({ default: module.EvidenceExplorerPage })));
+const DeploymentsPage = lazy(() => import('./pages/DeploymentsPage').then((module) => ({ default: module.DeploymentsPage })));
+const DashboardsPage = lazy(() => import('./pages/DashboardsPage').then((module) => ({ default: module.DashboardsPage })));
+const CloudResourcesPage = lazy(() => import('./pages/CloudResourcesPage').then((module) => ({ default: module.CloudResourcesPage })));
+const ApprovalsPage = lazy(() => import('./pages/ApprovalsPage').then((module) => ({ default: module.ApprovalsPage })));
+const UserRoleAdministrationPage = lazy(() => import('./pages/UserRoleAdministrationPage').then((module) => ({ default: module.UserRoleAdministrationPage })));
 
-// ─── Chakra system ─────────────────────────────────────────────────────────────
-const system = createSystem(defaultConfig, defineConfig({ theme: {} }));
+export function App() {
+  
+  const [isDark, setIsDark] = useState(false);
+  return (
+    <UiProvider isDark={isDark}>
+      <UiRouter isDark={isDark} setIsDark={setIsDark} />
+    </UiProvider>
+  );
+}
 
-function AppLayout({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {  
+function AppLayout({
+  isDark,
+  setIsDark,
+}: {
+  isDark: boolean;
+  setIsDark: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
   return (
     <>
       <NavBar isDark={isDark} setIsDark={setIsDark} />
-      <Suspense fallback={<RouteLoading isDark={isDark} />}>
+      <Suspense fallback={<UiRouteLoading/>}>
         <Outlet />
       </Suspense>
     </>
   );
 }
 
-// ─── Root ──────────────────────────────────────────────────────────────────────
-function RouteLoading({ isDark }: { isDark: boolean }) {
-  const c = getColors(isDark);
-
-  return (
-    <Box
-      minH="calc(100vh - 58px)"
-      bg={c.pageBg}
-      color={c.textSecond}
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      fontWeight={700}
-    >
-      Loading...
-    </Box>
-  );
-}
-
-export default function App() {
-  const [isDark, setIsDark] = useState(false);
-  const c = getColors(isDark);
-
-  const routes = createBrowserRouter([
-    {
-      path: "/",
-      element: <AppLayout isDark={isDark} setIsDark={setIsDark} />,
-      children: [
+function UiRouter({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {
+  const router = useMemo(
+    () =>
+      createBrowserRouter([
         {
-          index: true,
-          element: <MainPage isDark={isDark} />,
+          path: '/login',
+          element: (
+            <>
+              <NavBar isDark={isDark} setIsDark={setIsDark} />
+              <LogInOut isDark={isDark} mode="page" />
+            </>
+          ),
         },
         {
-          path: "/workspace/:areaCode",
-          element: <Workspace isDark={isDark} setIsDark={setIsDark} />,
-        },
-        {
-          path: "/dev/runtime",
-          element: <DeveloperRuntimeControl isDark={isDark} />,
-        },
-        {
-          path: "/login",
-          element: <LogInOut isDark={isDark} />,
-        },
-        {
-          path: "/ui-v2",
-          element: <UiV2App isDark={isDark} />,
-        },
-        {
-          path: "/dashboards/:areaCode",
+          path: '/',
+          element: <UiShell isDark={isDark} setIsDark={setIsDark} />,
           children: [
-            {
-              index: true,
-              element: <Workspace isDark={isDark} setIsDark={setIsDark} />,
-            },
-            {
-              path: "/dashboards/:areaCode/dashNMap",
-              element: <DashBoards isDark={isDark} />,
-            },
-            {
-              path: "/dashboards/:areaCode/pipeline",
-              element: <Pipeline isDark={isDark} />,
-            }
+            { index: true, element: <UiDefaultRedirect /> },
+            { path: 'demo', element: <PublicOverviewPage /> },
+            { path: 'context', element: <DataContextPage /> },
+            { path: 'dashboard', element: <DashboardsPage /> },
+            { path: 'mission', element: <MissionControlPage /> },
+            { path: 'risk', element: <RiskPage /> },
+            { path: 'runs', element: <RunsPage /> },
+            { path: 'simulation', element: <SimulationPage /> },
+            { path: 'pipeline', element: <PipelinePage /> },
+            { path: 'quality', element: <QualityRunsPage /> },
+            { path: 'qa', element: <QualityEvidencePage /> },
+            { path: 'qa-tests', element: <QaTestSuitePage /> },
+            { path: 'evidence', element: <EvidenceExplorerPage /> },
+            { path: 'deployments', element: <DeploymentsPage /> },
+            { path: 'deployment-health', element: <DeploymentHealthPage /> },
+            { path: 'cloud', element: <CloudResourcesPage /> },
+            { path: 'db-queries', element: <DatabaseQueriesPage /> },
+            { path: 'approvals', element: <ApprovalsPage /> },
+            { path: 'users', element: <UserRoleAdministrationPage /> },
+            { path: 'admin', element: <AdminPage /> },
+            { path: 'p3', element: <ExperimentalPage /> },
+            { path: '*', element: <UiDefaultRedirect /> },
           ],
-        }
-      ]
-    },
-  ])
+        },
+      ]),
+    [isDark, setIsDark],
+  );
+
+  return <RouterProvider router={router} />;
+}
+
+function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {
+  const {
+    pages,
+    capabilities,
+    setActivePage,
+    user,
+    isPublic,
+    capabilityAuthority,
+    capabilitiesLoading,
+  } = useUiCapabilities();
+  const { copy, locale, setLocale } = useUiLocale();
+  const [helpTopic, setHelpTopic] = useState<string | null>(null);
+  const helpCloseRef = useRef<HTMLButtonElement | null>(null);
+  const helpReturnFocusRef = useRef<HTMLElement | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const routePage = location.pathname.split('/').filter(Boolean)[0] as UiNavTarget | undefined;
+  const activePage = routePage && pages.some((page) => page.id === routePage) ? routePage : defaultPageFor(capabilities);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      helpReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setHelpTopic(String((event as CustomEvent).detail ?? 'overview'));
+    };
+    window.addEventListener('np-ui-help', handler);
+    return () => window.removeEventListener('np-ui-help', handler);
+  }, []);
+
+  useEffect(() => {
+    if (!helpTopic) {
+      return;
+    }
+
+    helpCloseRef.current?.focus();
+    return () => {
+      helpReturnFocusRef.current?.focus();
+      helpReturnFocusRef.current = null;
+    };
+  }, [helpTopic]);
+
+  useEffect(() => {
+    setActivePage(activePage);
+  }, [activePage, setActivePage]);
+
+  const closeHelp = () => setHelpTopic(null);
+  const handleHelpDialogKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeHelp();
+      return;
+    }
+
+    trapDialogTab(event);
+  };
+
+  const handleNavigate = useCallback((target: UiNavTarget) => {
+    setActivePage(target);
+    navigate('/' + target);
+  }, [navigate, setActivePage]);
+
+  const mainId = 'ui-main';
+
+  const breadcrumbItems = (() => {
+    const activePageDef = pages.find((p) => p.id === activePage);
+    if (!activePageDef) return [];
+    return [
+      { label: activePageDef.group.charAt(0).toUpperCase() + activePageDef.group.slice(1) },
+      { label: copy(activePageDef.labelKey as Parameters<typeof copy>[0]) },
+    ];
+  })();
 
   return (
-    <ChakraProvider value={system}>
-      <TokenProvider>
-        <Box bg={c.pageBg} minH="100vh" display="flex" flexDirection="column">
-          <RouterProvider router={routes} />
-        </Box>
-      </TokenProvider>
-    </ChakraProvider>
+    <>
+      <NavBar isDark={isDark} setIsDark={setIsDark} />
+      <div className="ui-shell" data-theme={isDark ? 'dark' : 'light'}>
+        <a
+          className="ui-skip"
+          href={`#${mainId}`}
+          onClick={(event) => {
+            event.preventDefault();
+            document.getElementById(mainId)?.focus();
+          }}
+        >
+          {copy('nav.skip')}
+        </a>
+        <header className="ui-hero">
+          <div>
+            <p className="ui-kicker">
+              {copy('app.prototype')} / {copy('app.readOnly')}
+            </p>
+            <h1 className="ui-title">{copy('app.name')}</h1>
+            <p className="ui-lead">
+              {isPublic
+                ? 'Entrada pública orientada ao produto: propósito, limites e estado dos dados sem superfícies internas.'
+                : `Perfil ativo: ${user?.roles.join(', ') || 'sem funções'}. Autorização: ${capabilitiesLoading ? 'a validar no backend' : capabilityAuthority
+                }.`}
+            </p>
+          </div>
+          <div className="ui-hero-actions">
+            <div className="ui-language">
+              <button
+                type="button"
+                className={locale === 'pt-PT' ? 'ui-button' : 'ui-secondary'}
+                onClick={() => setLocale('pt-PT')}
+              >
+                {copy('language.pt')}
+              </button>
+              <button
+                type="button"
+                className={locale === 'en' ? 'ui-button' : 'ui-secondary'}
+                onClick={() => setLocale('en')}
+              >
+                {copy('language.en')}
+              </button>
+            </div>
+            <span className="ui-badge">
+              {isDark ? <Moon size={14} /> : <Sun size={14} />}
+              {isDark ? 'Dark' : 'Light'}
+            </span>
+            {isPublic && (
+              <button type="button" className="ui-button" onClick={() => navigate('/login')}>
+                <LogIn size={16} />
+                {copy('nav.login')}
+              </button>
+            )}
+          </div>
+        </header>
+        <UiNavigation pages={pages} activePage={activePage} copy={copy} onSelect={handleNavigate} />
+        <AlertBanner />
+        <Breadcrumbs items={breadcrumbItems} onNavigate={handleNavigate} />
+        <main id={mainId} className="ui-content" tabIndex={-1}>
+          <ErrorBoundary key={activePage}>
+            <Suspense fallback={<UiRouteLoading />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
+        </main>
+        <footer className="ui-footer">{copy('footer.beta')}</footer>
+        {helpTopic && (
+          <div className="ui-help-overlay">
+            <section
+              className="ui-help-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-label={copy('help.title')}
+              onKeyDown={handleHelpDialogKeyDown}
+            >
+              <h2 className="ui-page-title">{copy('help.title')}</h2>
+              <p>{copy('help.intro')}</p>
+              <p>{copy('help.browser')}</p>
+              <button type="button" className="ui-button" onClick={closeHelp} ref={helpCloseRef}>
+                {copy('help.close')}
+              </button>
+            </section>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
+
+function UiDefaultRedirect() {
+  const { pages, capabilities } = useUiCapabilities();
+  const fallbackPage = defaultPageFor(capabilities);
+  const targetPage = pages.some((page) => page.id === fallbackPage) ? fallbackPage : 'demo';
+
+  return <Navigate to={targetPage} replace />;
+}
+
+function UiRouteLoading() {
+  return (
+    <section className="ui-page" aria-busy="true" aria-live="polite">
+      <Skeleton width="44%" height="30px" />
+      <Skeleton count={3} />
+    </section>
+  );
+}
+

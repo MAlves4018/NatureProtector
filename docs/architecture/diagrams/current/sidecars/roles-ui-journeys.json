@@ -1,0 +1,25 @@
+{
+  "id": "roles-ui-journeys",
+  "title": "Roles, capabilities and UI journeys",
+  "status": "CURRENT",
+  "verified_at": "2026-06-28",
+  "source_of_truth": [
+    "repository code",
+    "configuration",
+    "workflows",
+    "current-state documentation"
+  ],
+  "evidence_level": "FACT_CHECKED_AGAINST_SUPPLIED_REPOSITORY",
+  "variants": {
+    "web": "architecture/diagrams/current/render/roles-ui-journeys.svg",
+    "presentation": "architecture/diagrams/current/render/roles-ui-journeys-16x9.svg",
+    "report_a4": "architecture/diagrams/current/render/roles-ui-journeys-a4.svg"
+  },
+  "alt_text": "Roles, capabilities and UI journeys. Diagram showing the principal elements and directed relationships.",
+  "long_description": "Roles, capabilities and UI journeys; the diagram uses labelled nodes and arrows to distinguish implementation, evidence, authority and environment boundaries.",
+  "limitations": [
+    "Not an execution trace unless explicitly stated",
+    "Cloud resources may be declared rather than observed"
+  ],
+  "supersedes": []
+}

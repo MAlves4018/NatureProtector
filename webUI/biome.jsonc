@@ -9,7 +9,6 @@
   "files": {
     "ignoreUnknown": true,
     "includes": [
-      "src/app/ui-v2/**/*",
       "src/app/services/**/*",
       "src/app/routingImports.test.ts",
       "src/app/apiParity.test.ts",

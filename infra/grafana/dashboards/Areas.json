@@ -4,15 +4,27 @@
   "metadata": {
     "name": "adxq5gr",
     "namespace": "default",
-    "uid": "225c7b1c-89a4-4c86-beea-39614d406f0a",
-    "resourceVersion": "1778848984457999",
-    "generation": 28,
-    "creationTimestamp": "2026-05-07T21:46:26Z",
+    "uid": "cb0dc66b-972c-480a-84bd-9475273b75bb",
+    "resourceVersion": "1782916794487005",
+    "generation": 11,
+    "creationTimestamp": "2026-06-30T13:44:58Z",
     "labels": {
-      "grafana.app/deprecatedInternalID": "3367529253867520"
+      "grafana.app/deprecatedInternalID": "297310702854144"
     },
     "annotations": {
-      "grafana.app/folderTitle": "NatureProtector"
+      "grafana.app/createdBy": "access-policy:service",
+      "grafana.app/folder": "cfqpa373qrmdcd",
+      "grafana.app/managedBy": "classic-file-provisioning",
+      "grafana.app/managerAllowsEdits": "true",
+      "grafana.app/managerId": "NatureProtectorDashboards",
+      "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f21)",
+      "grafana.app/sourceChecksum": "897571f907c4471f6726236c0352f226",
+      "grafana.app/sourcePath": "/var/lib/grafana/dashboards/Areas.json",
+      "grafana.app/sourceTimestamp": "1779226323000",
+      "grafana.app/updatedBy": "user:afqpa2cbetj40f",
+      "grafana.app/updatedTimestamp": "2026-07-01T14:39:54Z",
+      "grafana.app/folderTitle": "NatureProtector",
+      "grafana.app/folderUrl": "/dashboards/f/cfqpa373qrmdcd/natureprotector"
     }
   },
   "spec": {
@@ -512,7 +524,7 @@
                             },
                             {
                               "key": "q",
-                              "value": "SELECT * FROM  risk_assessments WHERE area_id = '$area_id' limit 100"
+                              "value": "SELECT time, avg(risk_score) FROM  risk_assessments WHERE area_id = '$area_id' GROUP BY time"
                             }
                           ]
                         }
@@ -686,7 +698,7 @@
                             },
                             {
                               "key": "q",
-                              "value": "SELECT time, sensor_name, value FROM accepted_readings WHERE metric_type = 'WindSpeed' and area_id = '$area_id' limit 25"
+                              "value": "SELECT time, avg(value) as value FROM accepted_readings WHERE metric_type = 'WindSpeed' AND area_id = '$area_id' GROUP BY time LIMIT 25"
                             }
                           ]
                         }
@@ -839,7 +851,7 @@
                             },
                             {
                               "key": "q",
-                              "value": "SELECT time, sensor_name, value FROM accepted_readings WHERE metric_type = 'Humidity' and area_id = '$area_id' limit 25"
+                              "value": "SELECT time, avg(value) as value FROM accepted_readings WHERE metric_type = 'Humidity' AND area_id = '$area_id' GROUP BY time LIMIT 25"
                             }
                           ]
                         }
@@ -1630,6 +1642,154 @@
           }
         }
       },
+      "panel-20": {
+        "kind": "Panel",
+        "spec": {
+          "id": 20,
+          "title": "Current Risk",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "yesoreyeram-infinity-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "natureprotector-infinity-json"
+                      },
+                      "spec": {
+                        "columns": [
+                          {
+                            "selector": "time",
+                            "text": "Time",
+                            "type": "timestamp"
+                          },
+                          {
+                            "selector": "risk_score",
+                            "text": "Risk Score",
+                            "type": "number"
+                          }
+                        ],
+                        "filters": [],
+                        "format": "table",
+                        "global_query_id": "",
+                        "parser": "backend",
+                        "root_selector": "",
+                        "source": "url",
+                        "type": "json",
+                        "url": "/api/v3/query_sql",
+                        "url_options": {
+                          "data": "",
+                          "method": "GET",
+                          "params": [
+                            {
+                              "key": "db",
+                              "value": "np_telemetry"
+                            },
+                            {
+                              "key": "format",
+                              "value": "json"
+                            },
+                            {
+                              "key": "q",
+                              "value": "SELECT time, avg(risk_score) as risk_score FROM  risk_assessments WHERE area_id = '$area_id' GROUP BY time"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.69,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": true
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "/^Risk Score$/",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": false,
+                "showThresholdMarkers": false,
+                "sizing": "auto",
+                "sparkline": true,
+                "text": {
+                  "titleSize": 60
+                },
+                "textMode": "value_and_name"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "none",
+                  "min": 0,
+                  "max": 1,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 0.5,
+                        "color": "#EAB839"
+                      },
+                      {
+                        "value": 0.7,
+                        "color": "#ba5823"
+                      },
+                      {
+                        "value": 0.8,
+                        "color": "#920112"
+                      },
+                      {
+                        "value": 0.9,
+                        "color": "#000000"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
       "panel-3": {
         "kind": "Panel",
         "spec": {
@@ -2087,7 +2247,7 @@
                             },
                             {
                               "key": "q",
-                              "value": "SELECT time, sensor_name, value FROM accepted_readings WHERE metric_type = 'Temperature'  and area_id = '$area_id' limit 25"
+                              "value": "SELECT    time,    avg(value) as value  FROM accepted_readings  WHERE metric_type = 'Temperature'    AND area_id = '$area_id'  GROUP BY time LIMIT 25"
                             }
                           ]
                         }
@@ -2510,6 +2670,19 @@
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-13"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 16,
+                        "width": 6,
+                        "height": 12,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-20"
                         }
                       }
                     },

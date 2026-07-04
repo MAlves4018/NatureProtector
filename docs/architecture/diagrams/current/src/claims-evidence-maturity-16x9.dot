@@ -1,0 +1,20 @@
+digraph G { graph [size="13.33,7.5!", ratio=fill]; rankdir=BT; graph [fontname="Arial", bgcolor="white", pad="0.25", nodesep="0.45", ranksep="0.7", splines=ortho];
+node [fontname="Arial", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F7FAFC", color="#334155", penwidth=1.2, margin="0.14,0.09"];
+edge [fontname="Arial", fontsize=9, color="#475569", arrowsize=0.75, penwidth=1.1];
+a [label="Implemented
+source exists",fillcolor="#E0F2FE"];
+b [label="Statically verified
+contracts/configuration inspected",fillcolor="#DBEAFE"];
+c [label="Executed
+identified environment and run",fillcolor="#DCFCE7"];
+d [label="Reproduced
+repeatable procedure and artifacts",fillcolor="#D1FAE5"];
+e [label="Validated
+method and intended claim evaluated",fillcolor="#FEF3C7"];
+f [label="Authorised
+external operational authority",fillcolor="#FDE68A"];
+a->b->c->d->e->f;
+limit [label="Current NatureProtector evidence is heterogeneous;
+no automatic promotion between levels",shape=note,fillcolor="#FEE2E2"];
+limit->e [style=dashed,color="#B91C1C"];
+}

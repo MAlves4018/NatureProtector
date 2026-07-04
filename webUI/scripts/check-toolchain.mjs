@@ -13,7 +13,7 @@ const expected = {
   npmEngine: '>=10.8.2',
   packageManager: 'npm@10.8.2',
   react: '18.3.1',
-  reactDom: '18.3.1'
+  reactDom: '18.3.1',
 };
 
 const failures = [];
@@ -56,7 +56,7 @@ expectEqual('webUI/.node-version', readText(join(webRoot, '.node-version')), exp
 expectEqual('dependencies.react', dependencies.react, expected.react);
 expectEqual('dependencies.react-dom', dependencies['react-dom'], expected.reactDom);
 
-for (const packageName of Object.keys(dependencies).filter(name => name.startsWith('@types/'))) {
+for (const packageName of Object.keys(dependencies).filter((name) => name.startsWith('@types/'))) {
   fail(`${packageName} must be a devDependency, not a runtime dependency.`);
 }
 
@@ -74,10 +74,26 @@ if (!rootLockPackage) {
 } else {
   expectEqual('package-lock root engines.node', rootLockPackage.engines?.node, expected.nodeEngine);
   expectEqual('package-lock root dependencies.react', rootLockPackage.dependencies?.react, expected.react);
-  expectEqual('package-lock root dependencies.react-dom', rootLockPackage.dependencies?.['react-dom'], expected.reactDom);
-  expectMajorRange('package-lock root devDependencies.@types/react', rootLockPackage.devDependencies?.['@types/react'], 18);
-  expectMajorRange('package-lock root devDependencies.@types/react-dom', rootLockPackage.devDependencies?.['@types/react-dom'], 18);
-  expectMajorRange('package-lock root devDependencies.@types/node', rootLockPackage.devDependencies?.['@types/node'], 20);
+  expectEqual(
+    'package-lock root dependencies.react-dom',
+    rootLockPackage.dependencies?.['react-dom'],
+    expected.reactDom,
+  );
+  expectMajorRange(
+    'package-lock root devDependencies.@types/react',
+    rootLockPackage.devDependencies?.['@types/react'],
+    18,
+  );
+  expectMajorRange(
+    'package-lock root devDependencies.@types/react-dom',
+    rootLockPackage.devDependencies?.['@types/react-dom'],
+    18,
+  );
+  expectMajorRange(
+    'package-lock root devDependencies.@types/node',
+    rootLockPackage.devDependencies?.['@types/node'],
+    20,
+  );
 }
 
 const allowedWorkflowNodeVersions = new Set([expected.nodeFileVersion, expected.node22CiVersion]);

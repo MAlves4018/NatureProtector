@@ -1,0 +1,21 @@
+# NatureProtector critical-path ownership.
+# Enforcement still depends on a repository ruleset requiring code-owner review.
+
+/.github/CODEOWNERS                                  @migkxl
+/.github/dependabot.yml                              @migkxl
+/.github/workflows/                                  @migkxl
+/Directory.Build.props                               @migkxl
+/Directory.Packages.props                            @migkxl
+/NuGet.Config                                        @migkxl
+
+/src/NatureProtector.Backoffice.Api/                 @migkxl
+/src/NatureProtector.Infrastructure.Postgres/Migrations/ @migkxl
+
+/infra/                                              @migkxl
+/deploy/                                             @migkxl
+/scripts/cloud/                                      @migkxl
+/scripts/ci/                                         @migkxl
+/scripts/release/                                    @migkxl
+/scripts/setup/                                      @migkxl
+
+/docs/security/                                      @migkxl

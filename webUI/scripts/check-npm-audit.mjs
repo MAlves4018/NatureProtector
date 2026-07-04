@@ -5,13 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const severityRank = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 };
 
-export function classifyAuditPolicy({
-  auditReport,
-  packageJson,
-  packageLock,
-  allowlist,
-  now = new Date(),
-}) {
+export function classifyAuditPolicy({ auditReport, packageJson, packageLock, allowlist, now = new Date() }) {
   validateAuditReport(auditReport);
   validateAllowlist(allowlist);
 
@@ -179,11 +173,7 @@ function validateAuditReport(report) {
     throw new Error('npm audit JSON is missing vulnerabilities object.');
   }
 
-  if (
-    !report.metadata ||
-    !report.metadata.vulnerabilities ||
-    typeof report.metadata.vulnerabilities.total !== 'number'
-  ) {
+  if (!report.metadata?.vulnerabilities || typeof report.metadata.vulnerabilities.total !== 'number') {
     throw new Error('npm audit JSON is missing metadata.vulnerabilities totals.');
   }
 }
@@ -258,14 +248,7 @@ function collectAdvisoryIds(packageName, vulnerabilities, seen = new Set()) {
   return [...new Set(ids)].sort();
 }
 
-function findMatchingAllowlistForAllPaths({
-  vulnerability,
-  paths,
-  advisoryIds,
-  classification,
-  allowlist,
-  now,
-}) {
+function findMatchingAllowlistForAllPaths({ vulnerability, paths, advisoryIds, classification, allowlist, now }) {
   const entries = [];
   const uncoveredPaths = [];
 
@@ -300,10 +283,12 @@ function findMatchingAllowlistForAllPaths({
 }
 
 function arraysEqual(left, right) {
-  return Array.isArray(left) &&
+  return (
+    Array.isArray(left) &&
     Array.isArray(right) &&
     left.length === right.length &&
-    left.every((value, index) => value === right[index]);
+    left.every((value, index) => value === right[index])
+  );
 }
 
 function readJson(path, label) {
@@ -342,9 +327,7 @@ export function runCli(argv = process.argv, env = process.env) {
   mkdirSync(dirname(outputPath), { recursive: true });
 
   const command = env.NP_NPM_AUDIT_COMMAND ?? 'npm';
-  const args = env.NP_NPM_AUDIT_ARGS
-    ? JSON.parse(env.NP_NPM_AUDIT_ARGS)
-    : ['audit', '--json'];
+  const args = env.NP_NPM_AUDIT_ARGS ? JSON.parse(env.NP_NPM_AUDIT_ARGS) : ['audit', '--json'];
   const audit = spawnSync(command, args, {
     cwd: process.cwd(),
     encoding: 'utf8',
@@ -367,21 +350,29 @@ export function runCli(argv = process.argv, env = process.env) {
   writeFileSync(paths.exitCode, `${exitCode}\n`);
 
   if (audit.status !== 0 && audit.status !== 1) {
-    writeFailureArtifacts(paths, {
-      reason: 'npm_audit_unexpected_exit_code',
-      exitCode,
-      stderr: audit.stderr ?? '',
-    }, audit.status);
+    writeFailureArtifacts(
+      paths,
+      {
+        reason: 'npm_audit_unexpected_exit_code',
+        exitCode,
+        stderr: audit.stderr ?? '',
+      },
+      audit.status,
+    );
     console.error(`npm audit returned unexpected exit code ${exitCode}.`);
     return 1;
   }
 
   if (!audit.stdout || audit.stdout.trim().length === 0) {
-    writeFailureArtifacts(paths, {
-      reason: 'npm_audit_empty_stdout',
-      exitCode,
-      stderr: audit.stderr ?? '',
-    }, audit.status);
+    writeFailureArtifacts(
+      paths,
+      {
+        reason: 'npm_audit_empty_stdout',
+        exitCode,
+        stderr: audit.stderr ?? '',
+      },
+      audit.status,
+    );
     console.error('npm audit returned empty stdout.');
     return 1;
   }
@@ -390,12 +381,16 @@ export function runCli(argv = process.argv, env = process.env) {
   try {
     report = JSON.parse(audit.stdout);
   } catch (error) {
-    writeFailureArtifacts(paths, {
-      reason: 'npm_audit_invalid_json',
-      exitCode,
-      parseError: error.message,
-      stderr: audit.stderr ?? '',
-    }, audit.status);
+    writeFailureArtifacts(
+      paths,
+      {
+        reason: 'npm_audit_invalid_json',
+        exitCode,
+        parseError: error.message,
+        stderr: audit.stderr ?? '',
+      },
+      audit.status,
+    );
     console.error(`npm audit output is not valid JSON. Raw output was written to ${outputPath}.`);
     return 1;
   }
@@ -436,27 +431,34 @@ export function runCli(argv = process.argv, env = process.env) {
       for (const advisory of policy.allowed) {
         console.warn(
           `- ${advisory.severity.toUpperCase()} ${advisory.package} ` +
-          `${advisory.advisoryIds.join(',')} path=${advisory.dependencyPaths.map((path) => path.join('>')).join('|')} ` +
-          `expires=${advisory.expiresOn}`);
+            `${advisory.advisoryIds.join(',')} path=${advisory.dependencyPaths.map((path) => path.join('>')).join('|')} ` +
+            `expires=${advisory.expiresOn}`,
+        );
       }
     }
 
     if (!policy.ok) {
       console.error('Blocking npm advisories or audit failures found:');
       for (const advisory of policy.blocking) {
-        console.error(`- ${advisory.severity?.toUpperCase?.() ?? 'UNKNOWN'} ${advisory.package ?? ''} ${advisory.reason}`);
+        console.error(
+          `- ${advisory.severity?.toUpperCase?.() ?? 'UNKNOWN'} ${advisory.package ?? ''} ${advisory.reason}`,
+        );
       }
       return 1;
     }
 
     return 0;
   } catch (error) {
-    writeFailureArtifacts(paths, {
-      reason: 'npm_audit_policy_evaluation_failed',
-      exitCode,
-      error: error.message,
-      stderr: audit.stderr ?? '',
-    }, audit.status);
+    writeFailureArtifacts(
+      paths,
+      {
+        reason: 'npm_audit_policy_evaluation_failed',
+        exitCode,
+        error: error.message,
+        stderr: audit.stderr ?? '',
+      },
+      audit.status,
+    );
     console.error(`npm audit policy evaluation failed: ${error.message}`);
     return 1;
   }

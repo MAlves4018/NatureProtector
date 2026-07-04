@@ -14,36 +14,9 @@ param(
     [string]$OutputRoot
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
-
-function Find-RepositoryRoot {
-    $current = Get-Item -LiteralPath $PSScriptRoot
-    while ($null -ne $current) {
-        if ((Test-Path -LiteralPath (Join-Path $current.FullName "NatureProtector.sln")) -and
-            (Test-Path -LiteralPath (Join-Path $current.FullName "tests"))) {
-            return $current.FullName
-        }
-
-        $current = $current.Parent
-    }
-
-    throw "Could not locate repository root from $PSScriptRoot."
-}
-
-function Get-RelativePath {
-    param(
-        [string]$Root,
-        [string]$Path
-    )
-
-    $fullRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    if ($fullPath.StartsWith($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        return $fullPath.Substring($fullRoot.Length).TrimStart('\', '/')
-    }
-
-    return $fullPath
-}
 
 function Count-Regex {
     param(
@@ -205,7 +178,7 @@ function Join-Values {
     return ($materialized -join "; ")
 }
 
-$repoRoot = Find-RepositoryRoot
+$repoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln', 'tests')
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
     $OutputRoot = Join-Path $repoRoot "artifacts\validation\test-inventory"
 }
@@ -285,7 +258,7 @@ foreach ($project in $testProjects) {
     $inventory.Add([pscustomobject]@{
         Id = $projectName
         Kind = "BackendTestProject"
-        Path = Get-RelativePath $repoRoot $project.FullName
+        Path = Get-NpPathUnderRoot $repoRoot $project.FullName
         Taxonomy = $levels
         ExplicitCategories = $explicitCategories
         TestCount = $testCount
@@ -344,7 +317,7 @@ if (Test-Path -LiteralPath $benchmarkProject) {
     $inventory.Add([pscustomobject]@{
         Id = "NatureProtector.Benchmarks"
         Kind = "BenchmarkProject"
-        Path = Get-RelativePath $repoRoot $benchmarkProject
+        Path = Get-NpPathUnderRoot $repoRoot $benchmarkProject
         Taxonomy = @("Microbenchmark")
         ExplicitCategories = @()
         TestCount = $benchmarkCount
@@ -397,7 +370,7 @@ if (Test-Path -LiteralPath $coverageScript) {
     $inventory.Add([pscustomobject]@{
         Id = "BackendCoverage"
         Kind = "QualityTooling"
-        Path = Get-RelativePath $repoRoot $coverageScript
+        Path = Get-NpPathUnderRoot $repoRoot $coverageScript
         Taxonomy = @("Unit", "Component")
         ExplicitCategories = @()
         TestCount = 0

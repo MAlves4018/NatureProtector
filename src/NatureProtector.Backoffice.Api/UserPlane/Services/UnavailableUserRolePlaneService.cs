@@ -25,6 +25,9 @@ public sealed class UnavailableUserRolePlaneService : IUserRolePlaneService
     public Task<UserResponse?> GetUserAsync(Guid userId, CancellationToken cancellationToken)
         => Task.FromResult<UserResponse?>(null);
 
+    public Task<IReadOnlyList<UserResponse>> ListUsersAsync(CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyList<UserResponse>>([]);
+
     public Task<RoleResponse?> CreateRoleAsync(string roleName, CancellationToken cancellationToken)
         => Task.FromResult<RoleResponse?>(null);
 
@@ -36,6 +39,9 @@ public sealed class UnavailableUserRolePlaneService : IUserRolePlaneService
 
     public Task<RoleResponse?> GetRoleAsync(short roleId, CancellationToken cancellationToken)
         => Task.FromResult<RoleResponse?>(null);
+
+    public Task<IReadOnlyList<RoleResponse>> ListRolesAsync(CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyList<RoleResponse>>([]);
 
     public Task<UserRoleResponse?> AddRoleToUserAsync(Guid userId, short roleId, CancellationToken cancellationToken)
         => Task.FromResult<UserRoleResponse?>(null);

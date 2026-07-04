@@ -69,10 +69,7 @@ describe('api client', () => {
 
   it('adds a bearer token from local storage when no explicit auth header exists', async () => {
     localStorage.setItem('token', 'local-token');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(new Response(null, { status: 204 })),
-    );
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
 
     await api.logout();
 

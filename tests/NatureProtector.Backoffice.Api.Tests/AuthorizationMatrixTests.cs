@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Backoffice.Api.Operations.Authorization;
 
 namespace NatureProtector.Backoffice.Api.Tests;
 
@@ -53,8 +54,40 @@ public sealed class AuthorizationMatrixTests
         Roles("GET", "/api/dev/controlled-validation/p3", "/api/dev/controlled-validation/p3", AccessPolicy.SimAdmin),
         Roles("POST", "/api/dev/controlled-validation/p3/run", "/api/dev/controlled-validation/p3/run", AccessPolicy.SimAdmin),
 
+
+        Authenticated("GET", "/api/control/operations/catalog", "/api/control/operations/catalog"),
+        Authenticated("GET", "/api/control/operations", "/api/control/operations"),
+        Authenticated("GET", "/api/control/operations/{id:guid}", "/api/control/operations/00000000-0000-0000-0000-000000000001"),
+        Authenticated("POST", "/api/control/operations", "/api/control/operations"),
+        Authenticated("POST", "/api/control/operations/{id:guid}/cancel", "/api/control/operations/00000000-0000-0000-0000-000000000001/cancel"),
+        Anonymous("POST", "/api/control/operations/callback", "/api/control/operations/callback"),
+
+        Capability("GET", "/api/control/quality/suites", "/api/control/quality/suites", OperationCapabilities.QualityRead, AccessPolicy.QualityRead),
+        Capability("GET", "/api/control/quality/runs", "/api/control/quality/runs", OperationCapabilities.QualityRead, AccessPolicy.QualityRead),
+        Capability("POST", "/api/control/quality/runs", "/api/control/quality/runs", OperationCapabilities.QualityRead, AccessPolicy.QualityRead),
+
+        Capability("GET", "/api/control/evidence/campaigns/catalog", "/api/control/evidence/campaigns/catalog", OperationCapabilities.EvidenceRead, AccessPolicy.EvidenceRead),
+        Capability("GET", "/api/control/evidence/campaigns", "/api/control/evidence/campaigns", OperationCapabilities.EvidenceRead, AccessPolicy.EvidenceRead),
+        Capability("POST", "/api/control/evidence/campaigns", "/api/control/evidence/campaigns", OperationCapabilities.EvidenceRead, AccessPolicy.EvidenceRead),
+        Capability("GET", "/api/control/evidence/compare", "/api/control/evidence/compare?left=00000000-0000-0000-0000-000000000001&right=00000000-0000-0000-0000-000000000002", OperationCapabilities.EvidenceCompare, AccessPolicy.EvidenceCompare),
+
+        Capability("GET", "/api/control/deployments/catalog", "/api/control/deployments/catalog", OperationCapabilities.DeploymentRead, AccessPolicy.DeploymentRead),
+        Capability("GET", "/api/control/deployments", "/api/control/deployments", OperationCapabilities.DeploymentRead, AccessPolicy.DeploymentRead),
+        Capability("POST", "/api/control/deployments/{environment}/{deploymentAction}", "/api/control/deployments/staging/plan", OperationCapabilities.DeploymentRead, AccessPolicy.DeploymentRead),
+
+        Capability("GET", "/api/control/cloud/catalog", "/api/control/cloud/catalog", OperationCapabilities.CloudRead, AccessPolicy.CloudRead),
+        Capability("GET", "/api/control/cloud/environments", "/api/control/cloud/environments", OperationCapabilities.CloudRead, AccessPolicy.CloudRead),
+        Capability("GET", "/api/control/cloud/environments/{environment}/resources", "/api/control/cloud/environments/staging/resources", OperationCapabilities.CloudRead, AccessPolicy.CloudRead),
+        Capability("GET", "/api/control/cloud/operations", "/api/control/cloud/operations", OperationCapabilities.CloudRead, AccessPolicy.CloudRead),
+        Capability("POST", "/api/control/cloud/environments/{environment}/operations", "/api/control/cloud/environments/staging/operations", OperationCapabilities.CloudRead, AccessPolicy.CloudRead),
+
+        Capability("GET", "/api/control/approvals", "/api/control/approvals", OperationCapabilities.ApprovalReview, AccessPolicy.ApprovalReview),
+        Capability("POST", "/api/control/approvals/{operationId:guid}/decision", "/api/control/approvals/00000000-0000-0000-0000-000000000001/decision", OperationCapabilities.ApprovalReview, AccessPolicy.ApprovalReview),
+
         Anonymous("POST", "/api/users-roles/login", "/api/users-roles/login"),
         Authenticated("POST", "/api/users-roles/logout", "/api/users-roles/logout"),
+        Capability("GET", "/api/users-roles/users", "/api/users-roles/users", OperationCapabilities.UsersManage, AccessPolicy.Admin),
+        Capability("GET", "/api/users-roles/roles", "/api/users-roles/roles", OperationCapabilities.RolesManage, AccessPolicy.Admin),
         Roles("POST", "/api/users-roles/users", "/api/users-roles/users", AccessPolicy.Admin),
         Roles("GET", "/api/users-roles/users/{userId:guid}", "/api/users-roles/users/00000000-0000-0000-0000-000000000001", AccessPolicy.Admin),
         Roles("PUT", "/api/users-roles/users/{userId:guid}", "/api/users-roles/users/00000000-0000-0000-0000-000000000001", AccessPolicy.Admin),
@@ -68,10 +101,11 @@ public sealed class AuthorizationMatrixTests
         Roles("GET", "/api/users-roles/roles/{roleId}/users", "/api/users-roles/roles/1/users", AccessPolicy.Admin),
         Authenticated("GET", "/api/users-roles/users/{userId:guid}/roles", "/api/users-roles/users/00000000-0000-0000-0000-000000000001/roles"),
         Authenticated("GET", "/api/users-roles/users/{userId:guid}/roles/{roleId}", "/api/users-roles/users/00000000-0000-0000-0000-000000000001/roles/1"),
-        Authenticated("GET", "/api/users-roles/me", "/api/users-roles/me")
+        Authenticated("GET", "/api/users-roles/me", "/api/users-roles/me"),
+        Authenticated("GET", "/api/users-roles/me/capabilities", "/api/users-roles/me/capabilities")
     ];
 
-    private static readonly string[] AllProfiles = ["Anonymous", "Admin", "Sim", "Pipeline", "Reviewer"];
+    private static readonly string[] AllProfiles = ["Anonymous", "Admin", "Sim", "Pipeline", "QA", "Operations", "ReleaseApprover", "Reviewer"];
 
     [Fact]
     public async Task EndpointInventory_HasExplicitAuthorizationClassification()
@@ -188,6 +222,13 @@ public sealed class AuthorizationMatrixTests
         Assert.NotEmpty(authorizeData);
 
         var effectiveRoles = ResolveEffectiveRoles(authorizeData);
+        if (policy.AuthorizationPolicy is not null)
+        {
+            Assert.Contains(authorizeData, data => data.Policy == policy.AuthorizationPolicy);
+            Assert.Empty(effectiveRoles);
+            return;
+        }
+
         if (policy.AccessPolicy == AccessPolicy.Authenticated)
         {
             Assert.Empty(effectiveRoles);
@@ -244,6 +285,12 @@ public sealed class AuthorizationMatrixTests
             AccessPolicy.Admin => profile == "Admin" ? AccessOutcome.Allowed : AccessOutcome.Forbidden,
             AccessPolicy.SimAdmin => profile is "Admin" or "Sim" ? AccessOutcome.Allowed : AccessOutcome.Forbidden,
             AccessPolicy.SimPipelineAdmin => profile is "Admin" or "Sim" or "Pipeline" ? AccessOutcome.Allowed : AccessOutcome.Forbidden,
+            AccessPolicy.QualityRead => profile is "Admin" or "Pipeline" or "QA" or "Operations" or "ReleaseApprover" ? AccessOutcome.Allowed : AccessOutcome.Forbidden,
+            AccessPolicy.EvidenceRead => profile is "Admin" or "Sim" or "Pipeline" or "QA" or "Operations" or "ReleaseApprover" ? AccessOutcome.Allowed : AccessOutcome.Forbidden,
+            AccessPolicy.EvidenceCompare => profile is "Admin" or "Pipeline" or "QA" or "Operations" or "ReleaseApprover" ? AccessOutcome.Allowed : AccessOutcome.Forbidden,
+            AccessPolicy.DeploymentRead => profile is "Admin" or "Operations" or "ReleaseApprover" ? AccessOutcome.Allowed : AccessOutcome.Forbidden,
+            AccessPolicy.CloudRead => profile is "Admin" or "Operations" or "ReleaseApprover" ? AccessOutcome.Allowed : AccessOutcome.Forbidden,
+            AccessPolicy.ApprovalReview => profile == "ReleaseApprover" ? AccessOutcome.Allowed : AccessOutcome.Forbidden,
             _ => throw new ArgumentOutOfRangeException(nameof(policy), policy, null)
         };
     }
@@ -370,6 +417,14 @@ public sealed class AuthorizationMatrixTests
         AccessPolicy accessPolicy)
         => new(method, routePattern, samplePath, accessPolicy);
 
+    private static EndpointPolicy Capability(
+        string method,
+        string routePattern,
+        string samplePath,
+        string authorizationPolicy,
+        AccessPolicy accessPolicy)
+        => new(method, routePattern, samplePath, accessPolicy, authorizationPolicy);
+
     private static ControlPlaneApiWebApplicationFactory CreateFactory(string profile)
         => profile switch
         {
@@ -396,7 +451,13 @@ public sealed class AuthorizationMatrixTests
         Authenticated,
         Admin,
         SimAdmin,
-        SimPipelineAdmin
+        SimPipelineAdmin,
+        QualityRead,
+        EvidenceRead,
+        EvidenceCompare,
+        DeploymentRead,
+        CloudRead,
+        ApprovalReview
     }
 
     private enum AccessOutcome
@@ -412,7 +473,8 @@ public sealed class AuthorizationMatrixTests
         string Method,
         string RoutePattern,
         string SamplePath,
-        AccessPolicy AccessPolicy)
+        AccessPolicy AccessPolicy,
+        string? AuthorizationPolicy = null)
     {
         public EndpointKey Key => new(Method, RoutePattern);
     }

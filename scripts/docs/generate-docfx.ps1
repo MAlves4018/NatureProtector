@@ -1,44 +1,12 @@
 $ErrorActionPreference = "Stop"
 
-function Get-AbsolutePath {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $Path
-    )
-
-    return [System.IO.Path]::GetFullPath($Path)
-}
-
-function Assert-PathExists {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $Path,
-        [Parameter(Mandatory = $true)]
-        [string] $Description,
-        [Parameter(Mandatory = $true)]
-        [bool] $ExpectDirectory
-    )
-
-    if (-not (Test-Path -LiteralPath $Path)) {
-        throw "$Description not found: $Path"
-    }
-
-    $item = Get-Item -LiteralPath $Path
-
-    if ($ExpectDirectory -and -not $item.PSIsContainer) {
-        throw "$Description must be a directory: $Path"
-    }
-
-    if (-not $ExpectDirectory -and $item.PSIsContainer) {
-        throw "$Description must be a file: $Path"
-    }
-}
-
 function Reset-DirectoryContents {
     param(
         [Parameter(Mandatory = $true)]
         [string] $Path
     )
+
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
 
     if (-not (Test-Path -LiteralPath $Path)) {
         New-Item -ItemType Directory -Force -Path $Path | Out-Null
@@ -48,7 +16,7 @@ function Reset-DirectoryContents {
     Get-ChildItem -LiteralPath $Path -Force | Remove-Item -Recurse -Force
 }
 
-$repoRoot = Get-AbsolutePath -Path (Join-Path $PSScriptRoot "..\..")
+$repoRoot = Get-NpAbsolutePath -Path (Join-Path $PSScriptRoot "..\..")
 $docfxRoot = Join-Path $repoRoot "docs\docfx"
 $docfxConfig = Join-Path $docfxRoot "docfx.json"
 $docfxArtifactsRoot = Join-Path $docfxRoot "artifacts"
@@ -59,12 +27,12 @@ $srcRoot = Join-Path $repoRoot "src"
 $solutionPath = Join-Path $repoRoot "NatureProtector.sln"
 $nugetConfig = Join-Path $repoRoot "NuGet.Config"
 
-Assert-PathExists -Path $repoRoot -Description "Repository root" -ExpectDirectory $true
-Assert-PathExists -Path $docfxRoot -Description "DocFX root" -ExpectDirectory $true
-Assert-PathExists -Path $docfxConfig -Description "DocFX configuration" -ExpectDirectory $false
-Assert-PathExists -Path $srcRoot -Description "Source root" -ExpectDirectory $true
-Assert-PathExists -Path $solutionPath -Description "Solution file" -ExpectDirectory $false
-Assert-PathExists -Path $nugetConfig -Description "NuGet configuration" -ExpectDirectory $false
+Assert-NpPathExists -Path $repoRoot -Description "Repository root" -ExpectDirectory $true
+Assert-NpPathExists -Path $docfxRoot -Description "DocFX root" -ExpectDirectory $true
+Assert-NpPathExists -Path $docfxConfig -Description "DocFX configuration" -ExpectDirectory $false
+Assert-NpPathExists -Path $srcRoot -Description "Source root" -ExpectDirectory $true
+Assert-NpPathExists -Path $solutionPath -Description "Solution file" -ExpectDirectory $false
+Assert-NpPathExists -Path $nugetConfig -Description "NuGet configuration" -ExpectDirectory $false
 
 foreach ($directory in @($docfxArtifactsRoot, $docfxApiInput, $docfxApi, $docfxOutput)) {
     New-Item -ItemType Directory -Force -Path $directory | Out-Null

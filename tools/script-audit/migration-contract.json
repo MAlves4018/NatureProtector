@@ -1,0 +1,137 @@
+{
+  "schema_version": 2,
+  "module_manifest": "scripts/common/NatureProtector.Tooling.psd1",
+  "module_implementation": "scripts/common/NatureProtector.Tooling.psm1",
+  "runtime_contract_test": "scripts/tests/test-common-tooling.ps1",
+  "exported_functions": [
+    "Find-NpRepositoryRoot",
+    "Read-NpDotEnv",
+    "Get-NpConfigValue",
+    "Get-NpRelativePath",
+    "Get-NpPathUnderRoot",
+    "Invoke-NpExternalCommand",
+    "Test-NpTcpEndpoint",
+    "Resolve-NpValidationPython",
+    "Write-NpJsonFile",
+    "Get-NpAbsolutePath",
+    "Assert-NpPathExists",
+    "Get-NpFreeTcpPort",
+    "Get-NpCommandLineVersion",
+    "Get-NpPercentileNearestRank"
+  ],
+  "intentional_local_exceptions": {
+    "scripts/workspace.ps1": [
+      "Test-TcpPort"
+    ],
+    "scripts/docs/export-documentation-quality.ps1": [
+      "Get-RelativePath"
+    ],
+    "scripts/scenarios/run-scenario.ps1": [
+      "Resolve-RepositoryRoot"
+    ],
+    "scripts/cloud/Invoke-G102ExecutablePreflight.ps1": [
+      "Resolve-ValidationPython"
+    ],
+    "scripts/cloud/Invoke-G102ProjectBootstrap.ps1": [
+      "Resolve-ValidationPython"
+    ],
+    "scripts/cloud/Invoke-G102OwnerGate.ps1": [
+      "Read-DotEnv",
+      "Write-JsonFile"
+    ]
+  },
+  "managed_consumers": {
+    "scripts/dev/start-local-runtime.ps1": [
+      "Resolve-RepositoryRoot",
+      "Read-DotEnv",
+      "Get-ConfigValue"
+    ],
+    "scripts/docs/generate-docfx.ps1": [
+      "Get-AbsolutePath",
+      "Assert-PathExists"
+    ],
+    "scripts/docs/generate-doxygen.ps1": [
+      "Get-AbsolutePath",
+      "Assert-PathExists"
+    ],
+    "scripts/evidence/run-v1-bc-smoke.ps1": [
+      "Write-JsonFile"
+    ],
+    "scripts/influx/Ensure-InfluxAdminTokenFile.ps1": [
+      "Find-RepositoryRoot",
+      "Read-DotEnv"
+    ],
+    "scripts/influx/Ensure-InfluxDatabase.ps1": [
+      "Find-RepositoryRoot",
+      "Read-DotEnv",
+      "Get-ConfigValue",
+      "Invoke-ExternalCommand",
+      "Test-TcpPort"
+    ],
+    "scripts/observability/test-otlp-collector-smoke.ps1": [
+      "Get-FreeTcpPort"
+    ],
+    "scripts/performance/run-local-readiness-workload.ps1": [
+      "Write-JsonFile",
+      "Get-CommandLineVersion",
+      "Get-PercentileNearestRank"
+    ],
+    "scripts/performance/run-system-capacity-workload.ps1": [
+      "Write-JsonFile",
+      "Get-CommandLineVersion",
+      "Get-PercentileNearestRank"
+    ],
+    "scripts/setup/Install-LocalPrerequisites.ps1": [
+      "Find-RepositoryRoot",
+      "Invoke-ExternalCommand"
+    ],
+    "scripts/setup/Setup-LocalEnvironment.ps1": [
+      "Find-RepositoryRoot"
+    ],
+    "scripts/setup/Test-LocalBaseline.ps1": [
+      "Find-RepositoryRoot",
+      "Read-DotEnv",
+      "Get-ConfigValue",
+      "Invoke-ExternalCommand",
+      "Test-TcpPort"
+    ],
+    "scripts/setup/Test-LocalPrerequisites.ps1": [
+      "Find-RepositoryRoot",
+      "Read-DotEnv",
+      "Get-ConfigValue",
+      "Invoke-ExternalCommand"
+    ],
+    "scripts/tests/export-coverage-gaps.ps1": [
+      "Find-RepositoryRoot"
+    ],
+    "scripts/tests/export-test-inventory.ps1": [
+      "Find-RepositoryRoot",
+      "Get-RelativePath"
+    ],
+    "scripts/tests/run-mutation.ps1": [
+      "Find-RepositoryRoot",
+      "Get-RelativePath"
+    ],
+    "scripts/workspace.ps1": [
+      "Read-DotEnv",
+      "Get-ConfigValue"
+    ]
+  },
+  "canonical_deployment_exclusions": {
+    "authority_manifest": "docs/implementation/maintainability/canonical-deployment-authority-2026-06-28.json",
+    "prefixes": [
+      "scripts/cloud/",
+      "scripts/ci/",
+      "scripts/release/",
+      "infra/gcp/",
+      ".github/workflows/",
+      "deploy/",
+      "tests/cloud/"
+    ],
+    "exact": [
+      "infra/scripts/reset-local-infra.ps1",
+      "scripts/np.ps1"
+    ],
+    "reason": "The current canonical deployment snapshot is the source of truth and is verified by hash rather than refactored from older snapshots."
+  }
+}

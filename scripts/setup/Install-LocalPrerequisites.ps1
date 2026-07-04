@@ -19,79 +19,13 @@ param(
     [switch]$Yes
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
-
-function Find-RepositoryRoot {
-    $current = Get-Item -LiteralPath $PSScriptRoot
-
-    while ($null -ne $current) {
-        if ((Test-Path -LiteralPath (Join-Path $current.FullName "NatureProtector.sln")) -and
-            (Test-Path -LiteralPath (Join-Path $current.FullName "docker-compose.yml"))) {
-            return $current.FullName
-        }
-
-        $current = $current.Parent
-    }
-
-    throw "Could not locate repository root from $PSScriptRoot."
-}
 
 function Test-CommandExists {
     param([string]$Name)
     return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
-}
-
-function Invoke-ExternalCommand {
-    param(
-        [string]$Name,
-        [string[]]$Arguments
-    )
-
-    try {
-        $command = Get-Command $Name -ErrorAction Stop
-        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $startInfo.FileName = $command.Source
-        $startInfo.UseShellExecute = $false
-        $startInfo.RedirectStandardOutput = $true
-        $startInfo.RedirectStandardError = $true
-
-        if ($Arguments.Count -gt 0) {
-            $quotedArguments = foreach ($argument in $Arguments) {
-                if ($argument -match '\s|"' ) {
-                    '"' + ($argument -replace '"', '\"') + '"'
-                }
-                else {
-                    $argument
-                }
-            }
-
-            $startInfo.Arguments = ($quotedArguments -join " ")
-        }
-
-        $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $startInfo
-        [void]$process.Start()
-        $standardOutput = $process.StandardOutput.ReadToEnd()
-        $standardError = $process.StandardError.ReadToEnd()
-        $process.WaitForExit()
-
-        $text = (($standardOutput + $standardError) | Out-String).Trim()
-        $exitCode = $process.ExitCode
-        if ($text -match "error during connect|Acesso negado|Access is denied|permission denied|Cannot connect") {
-            $exitCode = 1
-        }
-
-        return [pscustomobject]@{
-            ExitCode = $exitCode
-            Output = $text
-        }
-    }
-    catch {
-        return [pscustomobject]@{
-            ExitCode = 1
-            Output = $_.Exception.Message
-        }
-    }
 }
 
 function Get-DotNetExpectedMajor {
@@ -184,7 +118,7 @@ function Install-WithWinget {
     }
 }
 
-$repoRoot = Find-RepositoryRoot
+$repoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln', 'docker-compose.yml')
 Set-Location $repoRoot
 
 $expectedDotNetMajor = Get-DotNetExpectedMajor $repoRoot
@@ -195,8 +129,8 @@ Add-Dependency $dependencies "DotNet" ".NET SDK $expectedDotNetMajor" (Test-DotN
 Add-Dependency $dependencies "Node" "Node.js LTS and npm" ((Test-CommandExists "node") -and (Test-CommandExists "npm")) "OpenJS.NodeJS.LTS" "Install Node.js LTS from https://nodejs.org/" ($InstallMissing -or $InstallNode)
 Add-Dependency $dependencies "Docker" "Docker Desktop" (Test-CommandExists "docker") "Docker.DockerDesktop" "Install Docker Desktop from https://www.docker.com/products/docker-desktop/" ($InstallMissing -or $InstallDocker)
 
-$dockerEngine = if (Test-CommandExists "docker") { Invoke-ExternalCommand "docker" @("info", "--format", "{{.ServerVersion}}") } else { $null }
-$compose = if (Test-CommandExists "docker") { Invoke-ExternalCommand "docker" @("compose", "version") } else { $null }
+$dockerEngine = if (Test-CommandExists "docker") { Invoke-NpExternalCommand "docker" @("info", "--format", "{{.ServerVersion}}") } else { $null }
+$compose = if (Test-CommandExists "docker") { Invoke-NpExternalCommand "docker" @("compose", "version") } else { $null }
 
 Write-Host "NatureProtector local prerequisite installer"
 Write-Host "Repository root: $repoRoot"

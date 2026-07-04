@@ -16,22 +16,9 @@ param(
     [switch]$Yes
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
-
-function Find-RepositoryRoot {
-    $current = Get-Item -LiteralPath $PSScriptRoot
-
-    while ($null -ne $current) {
-        if ((Test-Path -LiteralPath (Join-Path $current.FullName "NatureProtector.sln")) -and
-            (Test-Path -LiteralPath (Join-Path $current.FullName "docker-compose.yml"))) {
-            return $current.FullName
-        }
-
-        $current = $current.Parent
-    }
-
-    throw "Could not locate repository root from $PSScriptRoot."
-}
 
 function Invoke-Step {
     param(
@@ -139,7 +126,7 @@ function Assert-InfluxTokenReady {
     }
 }
 
-$repoRoot = Find-RepositoryRoot
+$repoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln', 'docker-compose.yml')
 Set-Location $repoRoot
 
 $prereqScript = Join-Path $repoRoot "scripts\setup\Test-LocalPrerequisites.ps1"

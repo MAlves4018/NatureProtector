@@ -1,0 +1,58 @@
+{
+  "schema_version": 2,
+  "policy": "CANONICAL_DEPLOYMENT_AUTHORITY_WITH_NON_DEPLOYMENT_MAINTAINABILITY",
+  "authorities": [
+    {
+      "id": "canonical-deployment-snapshot",
+      "path": "docs/implementation/maintainability/canonical-deployment-authority-2026-06-28.json",
+      "owns": [
+        "deployment_workflows",
+        "terraform",
+        "cloud_scripts",
+        "deployment_contracts",
+        "cloud_validation"
+      ],
+      "rule": "Historical snapshot hashes document the 2026-06-28 convergence input. Continuous enforcement uses semantic markers and current validators, not immutable file hashes.",
+      "enforcement": "NON_BLOCKING_SNAPSHOT_PROOF"
+    },
+    {
+      "id": "dotnet-package-versions",
+      "path": "Directory.Packages.props",
+      "owns": [
+        "nuget_package_versions"
+      ],
+      "policy": "config/dependencies/dotnet-package-policy.json"
+    },
+    {
+      "id": "quality-policy",
+      "path": "config/quality/quality-gates.json",
+      "owns": [
+        "non_deployment_quality_gates"
+      ]
+    },
+    {
+      "id": "report-evidence-tooling",
+      "path": "docs/report/report-evidence-campaign.md",
+      "owns": [
+        "report_evidence_campaign_contract"
+      ]
+    }
+  ],
+  "deployment_exclusion_prefixes": [
+    ".config/cloud/",
+    ".github/workflows/",
+    "deploy/",
+    "infra/gcp/",
+    "scripts/cloud/",
+    "scripts/ci/",
+    "scripts/release/",
+    "tests/cloud/",
+    "docs/implementation/cloud/"
+  ],
+  "deployment_exclusion_exact": [
+    "infra/scripts/reset-local-infra.ps1"
+  ],
+  "semantic_merge_paths": [
+    "scripts/np.ps1"
+  ]
+}

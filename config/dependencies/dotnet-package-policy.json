@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "target_framework": "net9.0",
+  "sdk_source": "global.json",
+  "package_version_authority": "Directory.Packages.props",
+  "rules": {
+    "project_files_must_not_declare_versions": true,
+    "transitive_pinning_enabled": false,
+    "version_changes_require_restore_build_and_test": true
+  },
+  "reviewed_cross_major_exceptions": [
+    {
+      "package_prefix": "Microsoft.Extensions.",
+      "version": "10.0.5",
+      "projects": [
+        "src/NatureProtector.Infrastructure.Influx/NatureProtector.Infrastructure.Influx.csproj",
+        "tests/NatureProtector.Infrastructure.Influx.Tests/NatureProtector.Infrastructure.Influx.Tests.csproj"
+      ],
+      "decision": "preserve-existing-version-in-phase-2",
+      "reason": "This phase centralizes ownership without changing the previously selected dependency graph; alignment requires a dedicated restore/build compatibility proof."
+    }
+  ],
+  "reviewed_version_families": [
+    {
+      "package_prefix": "OpenTelemetry.",
+      "decision": "preserve-existing-compatible-set-in-phase-2",
+      "reason": "Exporter, hosting and instrumentation packages have distinct release tracks, including an intentional beta Process instrumentation package."
+    }
+  ]
+}

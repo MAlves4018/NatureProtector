@@ -1,0 +1,39 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{cs,csx}]
+indent_style = space
+indent_size = 4
+
+# Phase 4 starts style rules as IDE suggestions. Build enforcement is opt-in
+# through NPQualityMode=enforce in Directory.Build.props.
+dotnet_analyzer_diagnostic.category-Style.severity = suggestion
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_event = false:suggestion
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
+csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_style_prefer_primary_constructors = false:silent
+
+[*.{json,jsonc,yml,yaml,md}]
+indent_style = space
+indent_size = 2
+
+[*.{ps1,psm1,psd1}]
+indent_style = space
+indent_size = 4
+
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+[*.sh]
+indent_style = space
+indent_size = 2

@@ -1,5 +1,5 @@
 // Import color sets
-import { lightColors, darkColors } from "./colorSets";
+import { lightColors, darkColors } from './colorSets';
 
 export function getColors(isDark: boolean) {
   return isDark ? darkColors : lightColors;

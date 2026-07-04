@@ -9,6 +9,8 @@ param(
     [switch]$DryRun
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
 
 Add-Type -AssemblyName System.Net.Http
@@ -48,50 +50,6 @@ function Join-Url {
     }
 
     return "$base/$Path"
-}
-
-function Write-JsonFile {
-    param(
-        [string]$Path,
-        [object]$Value
-    )
-
-    $Value | ConvertTo-Json @jsonOptions | Set-Content -Path $Path -Encoding UTF8
-}
-
-function Get-CommandLineVersion {
-    param(
-        [string]$Command,
-        [string[]]$Arguments = @()
-    )
-
-    try {
-        $output = & $Command @Arguments 2>$null | Select-Object -First 1
-        if ([string]::IsNullOrWhiteSpace($output)) {
-            return "Not available"
-        }
-
-        return "$output".Trim()
-    }
-    catch {
-        return "Not available"
-    }
-}
-
-function Get-PercentileNearestRank {
-    param(
-        [double[]]$Values,
-        [double]$Percentile
-    )
-
-    if ($null -eq $Values -or $Values.Count -eq 0) {
-        return $null
-    }
-
-    $sorted = @($Values | Sort-Object)
-    $rank = [Math]::Ceiling(($Percentile / 100.0) * $sorted.Count) - 1
-    $rank = [Math]::Max(0, [Math]::Min($rank, $sorted.Count - 1))
-    return [Math]::Round([double]$sorted[$rank], 2)
 }
 
 function New-Probe {
@@ -146,16 +104,16 @@ $environment = [ordered]@{
     timeoutSeconds = $TimeoutSeconds
     dryRun = [bool]$DryRun
     scope = "Measured local HTTP availability and response elapsed time only; not a load test, stress test, broker-depth test, end-to-end event-latency test, or external validation."
-    dotnet = Get-CommandLineVersion -Command "dotnet" -Arguments @("--version")
-    node = Get-CommandLineVersion -Command "node" -Arguments @("--version")
-    npm = Get-CommandLineVersion -Command "npm" -Arguments @("--version")
-    dockerClient = Get-CommandLineVersion -Command "docker" -Arguments @("version", "--format", "{{.Client.Version}}")
+    dotnet = Get-NpCommandLineVersion -Command "dotnet" -Arguments @("--version")
+    node = Get-NpCommandLineVersion -Command "node" -Arguments @("--version")
+    npm = Get-NpCommandLineVersion -Command "npm" -Arguments @("--version")
+    dockerClient = Get-NpCommandLineVersion -Command "docker" -Arguments @("version", "--format", "{{.Client.Version}}")
     machineName = $env:COMPUTERNAME
     osVersion = [System.Environment]::OSVersion.VersionString
 }
 
-Write-JsonFile -Path (Join-Path $runDirectory "manifest.json") -Value $environment
-Write-JsonFile -Path (Join-Path $runDirectory "probes.json") -Value $probes
+Write-NpJsonFile -Depth 20 -Path (Join-Path $runDirectory "manifest.json") -Value $environment
+Write-NpJsonFile -Depth 20 -Path (Join-Path $runDirectory "probes.json") -Value $probes
 
 if ($DryRun) {
     @(
@@ -239,7 +197,7 @@ finally {
 
 $measurementRows = @($measurements)
 $measurementRows | Export-Csv -Path (Join-Path $runDirectory "measurements.csv") -NoTypeInformation -Encoding UTF8
-Write-JsonFile -Path (Join-Path $runDirectory "measurements.json") -Value $measurementRows
+Write-NpJsonFile -Depth 20 -Path (Join-Path $runDirectory "measurements.json") -Value $measurementRows
 
 $summaries = @()
 foreach ($group in ($measurementRows | Group-Object surface, name)) {
@@ -256,15 +214,15 @@ foreach ($group in ($measurementRows | Group-Object surface, name)) {
         observedStatusCodes = ($statusCodes -join "|")
         minElapsedMs = if ($elapsedValues.Count -gt 0) { [Math]::Round(($elapsedValues | Measure-Object -Minimum).Minimum, 2) } else { $null }
         avgElapsedMs = if ($elapsedValues.Count -gt 0) { [Math]::Round(($elapsedValues | Measure-Object -Average).Average, 2) } else { $null }
-        p50ElapsedMs = Get-PercentileNearestRank -Values $elapsedValues -Percentile 50
-        p95ElapsedMs = Get-PercentileNearestRank -Values $elapsedValues -Percentile 95
+        p50ElapsedMs = Get-NpPercentileNearestRank -Values $elapsedValues -Percentile 50
+        p95ElapsedMs = Get-NpPercentileNearestRank -Values $elapsedValues -Percentile 95
         maxElapsedMs = if ($elapsedValues.Count -gt 0) { [Math]::Round(($elapsedValues | Measure-Object -Maximum).Maximum, 2) } else { $null }
         purpose = $rows[0].purpose
     }
 }
 
 $summaries | Export-Csv -Path (Join-Path $runDirectory "summary.csv") -NoTypeInformation -Encoding UTF8
-Write-JsonFile -Path (Join-Path $runDirectory "summary.json") -Value $summaries
+Write-NpJsonFile -Depth 20 -Path (Join-Path $runDirectory "summary.json") -Value $summaries
 
 $totalAttempts = $measurementRows.Count
 $expectedAttempts = @($measurementRows | Where-Object { $_.expectedStatusObserved }).Count

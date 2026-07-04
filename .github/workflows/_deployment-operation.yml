@@ -1,0 +1,211 @@
+name: _deployment operation
+run-name: Deployment operation ${{ inputs.operation_kind }} · ${{ inputs.operation_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation_id:
+        description: Control-plane operation identifier
+        required: true
+        type: string
+      operation_kind:
+        description: Closed deployment operation identifier
+        required: true
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        type: string
+      collect_evidence:
+        description: Preserve dispatch receipt
+        required: true
+        default: "true"
+        type: string
+      ref:
+        description: Source reference
+        required: false
+        default: master
+        type: string
+      manifest:
+        description: Release manifest reference
+        required: false
+        default: ""
+        type: string
+      releaseRunId:
+        description: Immutable release workflow run ID
+        required: false
+        default: ""
+        type: string
+      deploymentMode:
+        description: verified or services-only-bootstrap
+        required: false
+        default: verified
+        type: string
+      edgeBootstrapConfirmation:
+        description: Edge bootstrap confirmation
+        required: false
+        default: ""
+        type: string
+      releaseId:
+        description: Release ID used for rollback
+        required: false
+        default: ""
+        type: string
+      stagingRunId:
+        description: Proved staging run ID
+        required: false
+        default: ""
+        type: string
+      releaseName:
+        description: Proved Cloud Deploy release name
+        required: false
+        default: ""
+        type: string
+      firstReleaseConfirmation:
+        description: First production release confirmation
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+  id-token: write
+
+jobs:
+  staging-plan:
+    if: inputs.operation_kind == 'staging-plan'
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 30
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Setup repository toolchain
+        uses: ./.github/actions/setup-toolchain
+      - name: Authenticate through bounded staging identity
+        uses: ./.github/actions/cloud-auth
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+      - name: Generate staging plan only
+        shell: pwsh
+        run: ./scripts/np.ps1 staging plan
+      - name: Preserve staging plan evidence
+        if: always() && inputs.collect_evidence == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operations-staging-plan-${{ inputs.operation_id }}
+          path: artifacts/
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Report staging plan result to operations API
+        if: always()
+        continue-on-error: true
+        env:
+          NP_OPERATIONS_CALLBACK_URL: ${{ vars.OPERATIONS_CALLBACK_URL }}
+          NP_OPERATIONS_CALLBACK_SECRET: ${{ secrets.OPERATIONS_CALLBACK_SECRET }}
+          RESULT_STATUS: ${{ job.status == 'success' && 'Succeeded' || 'Failed' }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          python scripts/operations/report-operation-callback.py
+          --operation-id '${{ inputs.operation_id }}'
+          --status "$RESULT_STATUS"
+          --provider-reference "$RUN_URL"
+          --detail 'Staging plan-only operation completed; no apply was requested by this wrapper.'
+          --artifact-root artifacts
+          --artifact-name staging-plan-evidence
+          --artifact-kind terraform-plan-evidence
+          --artifact-reference "$RUN_URL"
+          --receipt callback-receipt.json
+
+  dispatch:
+    if: inputs.operation_kind != 'staging-plan'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout callback reporter
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Dispatch current deployment authority
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KIND: ${{ inputs.operation_kind }}
+          TARGET_REF: ${{ inputs.ref }}
+          RELEASE_RUN_ID: ${{ inputs.releaseRunId }}
+          DEPLOYMENT_MODE: ${{ inputs.deploymentMode }}
+          EDGE_CONFIRMATION: ${{ inputs.edgeBootstrapConfirmation }}
+          RELEASE_ID: ${{ inputs.releaseId }}
+          STAGING_RUN_ID: ${{ inputs.stagingRunId }}
+          RELEASE_NAME: ${{ inputs.releaseName }}
+          FIRST_RELEASE_CONFIRMATION: ${{ inputs.firstReleaseConfirmation }}
+        run: |
+          set -euo pipefail
+          case "$KIND" in
+            staging-deploy)
+              [[ "$RELEASE_RUN_ID" =~ ^[0-9]+$ ]]
+              gh workflow run gcp-g8-1-deploy-staging.yml --ref "$TARGET_REF" \
+                -f release_run_id="$RELEASE_RUN_ID" \
+                -f deployment_mode="$DEPLOYMENT_MODE" \
+                -f edge_bootstrap_confirmation="$EDGE_CONFIRMATION"
+              workflow=gcp-g8-1-deploy-staging.yml
+              ;;
+            staging-rollback)
+              [[ -n "$RELEASE_ID" ]]
+              gh workflow run rollback-staging.yml --ref "$TARGET_REF" -f release_id="$RELEASE_ID"
+              workflow=rollback-staging.yml
+              ;;
+            production-deploy)
+              [[ "$STAGING_RUN_ID" =~ ^[0-9]+$ && -n "$RELEASE_NAME" ]]
+              gh workflow run gcp-g8-1-promote-production.yml --ref "$TARGET_REF" \
+                -f staging_run_id="$STAGING_RUN_ID" \
+                -f release_name="$RELEASE_NAME" \
+                -f confirmation=PROMOTE_VERIFIED_RELEASE_TO_PRODUCTION \
+                -f first_release_confirmation="$FIRST_RELEASE_CONFIRMATION" \
+                -f deployment_mode="$DEPLOYMENT_MODE" \
+                -f edge_bootstrap_confirmation="$EDGE_CONFIRMATION"
+              workflow=gcp-g8-1-promote-production.yml
+              ;;
+            *)
+              echo "Operation is intentionally blocked because no authoritative workflow exists: $KIND" >&2
+              exit 3
+              ;;
+          esac
+          printf '{"operationId":"%s","operationKind":"%s","workflow":"%s","status":"QUEUED","evidenceLevel":"IMPLEMENTED_NOT_PROVED"}\n' \
+            '${{ inputs.operation_id }}' "$KIND" "$workflow" > dispatch-receipt.json
+
+      - name: Preserve deployment dispatch receipt
+        if: always() && inputs.collect_evidence == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operations-deployment-dispatch-${{ inputs.operation_id }}
+          path: dispatch-receipt.json
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Report deployment dispatch state to operations API
+        if: always()
+        continue-on-error: true
+        env:
+          NP_OPERATIONS_CALLBACK_URL: ${{ vars.OPERATIONS_CALLBACK_URL }}
+          NP_OPERATIONS_CALLBACK_SECRET: ${{ secrets.OPERATIONS_CALLBACK_SECRET }}
+          RESULT_STATUS: ${{ job.status == 'success' && 'Queued' || 'Failed' }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          python scripts/operations/report-operation-callback.py
+          --operation-id '${{ inputs.operation_id }}'
+          --status "$RESULT_STATUS"
+          --provider-reference "$RUN_URL"
+          --detail 'Deployment wrapper dispatched the current authoritative deployment workflow.'
+          --artifact-root dispatch-receipt.json
+          --artifact-name deployment-dispatch-receipt
+          --artifact-kind dispatch-receipt
+          --artifact-reference "$RUN_URL"
+          --receipt callback-receipt.json

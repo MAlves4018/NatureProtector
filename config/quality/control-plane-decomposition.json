@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "source_file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.cs",
+  "baseline_sha256": "489cfeb982d47f34d430cd0b044fb6928f6283fb1ed794dcb422b0e7b7f84ab9",
+  "slices": [
+    {
+      "id": "core-members",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.cs",
+      "original_lines": [
+        34,
+        94
+      ],
+      "sha256": "8613ff3dad78393eb3579238035870ef1942028aeab7566dc117213af0ceb870",
+      "line_count": 61
+    },
+    {
+      "id": "availability",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.cs",
+      "original_lines": [
+        243,
+        251
+      ],
+      "sha256": "947b68749e9ea3b8d9859607a396647eb80c4e11c8e50aa1ce3724366cf84c69",
+      "line_count": 9
+    },
+    {
+      "id": "run-timings",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.RunTimings.cs",
+      "original_lines": [
+        96,
+        241
+      ],
+      "sha256": "d84d9061a4f5718f218f59fed885503e6926d5dfbdd23e1d9730c7d8ec147657",
+      "line_count": 146
+    },
+    {
+      "id": "catalog-queries",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.Catalog.cs",
+      "original_lines": [
+        253,
+        923
+      ],
+      "sha256": "28188f9e5861a5dae36880845724a5229df80d1a271cc66619f5514d6318205f",
+      "line_count": 671
+    },
+    {
+      "id": "runtime-summary-api",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.RuntimeSummary.cs",
+      "original_lines": [
+        924,
+        1027
+      ],
+      "sha256": "8ca2b9f59a5212f8fdb1c52c42dfd1b504830546c744c6c848716cd613a78ae1",
+      "line_count": 104
+    },
+    {
+      "id": "runtime-summary-helpers",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.RuntimeSummary.cs",
+      "original_lines": [
+        3726,
+        4502
+      ],
+      "sha256": "1c07bb30c07692a83b7d2ceef2def5f3234635a2ee3bb4587dafa92a6c6a57e9",
+      "line_count": 777
+    },
+    {
+      "id": "runtime-diagnostics-api",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.RuntimeDiagnostics.cs",
+      "original_lines": [
+        1028,
+        1091
+      ],
+      "sha256": "2c7926f3556896fcbf45d4df02019cd1969dfd99b6c9871bc2a9bda100983e09",
+      "line_count": 64
+    },
+    {
+      "id": "runtime-diagnostics-queries",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.RuntimeDiagnostics.cs",
+      "original_lines": [
+        1612,
+        3360
+      ],
+      "sha256": "c3e568e1b3c004df4918c22e986e2397f5e0dde911e83bac2d6f8c9b46a9b530",
+      "line_count": 1749
+    },
+    {
+      "id": "runtime-operations-api",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.RuntimeOperations.cs",
+      "original_lines": [
+        1092,
+        1611
+      ],
+      "sha256": "062b9cf30a8a5f00dcbd4a05ddfcc92af91b83c7801727aefc0c14081a7d0f29",
+      "line_count": 520
+    },
+    {
+      "id": "runtime-operations-evidence",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.RuntimeOperations.cs",
+      "original_lines": [
+        3361,
+        3725
+      ],
+      "sha256": "0e30b64d64523de0ac13a9fd06b65bf674202de6cf14362c9e51ad4209b99c6c",
+      "line_count": 365
+    },
+    {
+      "id": "shared-mapping-and-normalization",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.Shared.cs",
+      "original_lines": [
+        4503,
+        4961
+      ],
+      "sha256": "2e75934996bc20b6e225a402a5d990fa491b4c1b18a86f5de3a7c83066a8aa0a",
+      "line_count": 459
+    }
+  ],
+  "limits": {
+    "max_feature_file_lines": 2000,
+    "max_core_file_lines": 180
+  }
+}

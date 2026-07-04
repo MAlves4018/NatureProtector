@@ -16,12 +16,13 @@ public static class BackofficeAdminBootstrapper
         ArgumentNullException.ThrowIfNull(dbContext);
         ArgumentNullException.ThrowIfNull(passwordHasher);
 
+        await EnsureCanonicalRolesAsync(dbContext, cancellationToken);
+
         if (string.IsNullOrWhiteSpace(adminPassword))
         {
+            await dbContext.SaveChangesAsync(cancellationToken);
             return;
         }
-
-        await EnsureAdminRoleAsync(dbContext, cancellationToken);
 
         var adminUser = await dbContext.Users
             .SingleOrDefaultAsync(
@@ -59,24 +60,37 @@ public static class BackofficeAdminBootstrapper
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private static async Task EnsureAdminRoleAsync(
+    private static async Task EnsureCanonicalRolesAsync(
         NatureProtectorControlDbContext dbContext,
         CancellationToken cancellationToken)
     {
-        var adminRole = await dbContext.Roles
-            .SingleOrDefaultAsync(entity => entity.Id == RoleRecord.AdminId, cancellationToken);
+        var canonicalRoles = new (short Id, string Name)[]
+        {
+            (RoleRecord.AdminId, RoleRecord.Admin),
+            (RoleRecord.SimId, RoleRecord.Sim),
+            (RoleRecord.PipelineId, RoleRecord.Pipeline),
+            (RoleRecord.QAId, RoleRecord.QA),
+            (RoleRecord.OperationsId, RoleRecord.Operations),
+            (RoleRecord.ReleaseApproverId, RoleRecord.ReleaseApprover)
+        };
 
-        if (adminRole is null)
+        foreach (var canonical in canonicalRoles)
         {
-            dbContext.Roles.Add(new RoleRecord
+            var role = await dbContext.Roles
+                .SingleOrDefaultAsync(entity => entity.Id == canonical.Id, cancellationToken);
+            if (role is null)
             {
-                Id = RoleRecord.AdminId,
-                Name = RoleRecord.Admin
-            });
-        }
-        else if (!string.Equals(adminRole.Name, RoleRecord.Admin, StringComparison.Ordinal))
-        {
-            adminRole.Name = RoleRecord.Admin;
+                dbContext.Roles.Add(new RoleRecord
+                {
+                    Id = canonical.Id,
+                    Name = canonical.Name
+                });
+            }
+            else if (!string.Equals(role.Name, canonical.Name, StringComparison.Ordinal))
+            {
+                role.Name = canonical.Name;
+            }
         }
     }
+
 }

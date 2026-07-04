@@ -20,7 +20,7 @@ O objetivo não é apenas dizer "que comando correr". O objetivo é explicar:
 
 Para o mapa das lacunas ainda em aberto e da ordem dos próximos passos, ver também:
 
-- [docs/planning/pipeline-gap-and-dependency-map.md](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/docs/planning/pipeline-gap-and-dependency-map.md)
+- [docs/planning/pipeline-gap-and-dependency-map.md](../../docs/planning/pipeline-gap-and-dependency-map.md)
 
 ## Índice
 
@@ -236,7 +236,7 @@ Exemplo:
 
 Resultado esperado:
 
-- fica criada a pasta [`.venv-data312`](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/.venv-data312)
+- fica criada a pasta `.venv-data312`
 
 ### 3. Atualizar `pip`, `setuptools` e `wheel`
 
@@ -297,8 +297,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\data\bootstrap-proen
 
 ### Resultado esperado
 
-- existe a pasta [data](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data)
-- existem manifests em [data/manifests](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/manifests)
+- existe a pasta [data](../../data)
+- existem manifests em [data/manifests](../../data/manifests)
 - existem as pastas base de `external`, `baseline` e `runtime`
 
 ## Fluxo Completo de Aquisição e Curadoria
@@ -392,10 +392,10 @@ Contributo:
 
 Resultado esperado:
 
-- [area.gpkg](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/area.gpkg)
-- [area.geojson](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/area.geojson)
-- [grid_1km.gpkg](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/grid_1km.gpkg)
-- [grid_1km.geojson](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/grid_1km.geojson)
+- [area.gpkg](../../data/baseline/areas/proenca-a-nova/area.gpkg)
+- [area.geojson](../../data/baseline/areas/proenca-a-nova/area.geojson)
+- [grid_1km.gpkg](../../data/baseline/areas/proenca-a-nova/grid_1km.gpkg)
+- [grid_1km.geojson](../../data/baseline/areas/proenca-a-nova/grid_1km.geojson)
 
 Estado atual:
 
@@ -414,8 +414,8 @@ Contributo:
 
 Resultado esperado:
 
-- [cells_attributes.parquet](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/cells_attributes.parquet)
-- [cells_attributes.csv](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/cells_attributes.csv)
+- [cells_attributes.parquet](../../data/baseline/areas/proenca-a-nova/cells_attributes.parquet)
+- [cells_attributes.csv](../../data/baseline/areas/proenca-a-nova/cells_attributes.csv)
 
 ### 3. Aplicar ocupação do solo (`COS 2018`)
 
@@ -482,8 +482,8 @@ Contributo:
 
 Resultado esperado:
 
-- [pt_firesprd_metadata.parquet](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/external/pt-firesprd/pt_firesprd_metadata.parquet)
-- [pt_firesprd_metadata.csv](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/external/pt-firesprd/pt_firesprd_metadata.csv)
+- `data/external/pt-firesprd/pt_firesprd_metadata.parquet`
+- `data/external/pt-firesprd/pt_firesprd_metadata.csv`
 
 ### 7. Criar o seed de `scenario_candidates`
 
@@ -497,8 +497,8 @@ Contributo:
 
 Resultado esperado:
 
-- [scenario_candidates.parquet](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/scenario_candidates.parquet)
-- [scenario_candidates.csv](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/scenario_candidates.csv)
+- [scenario_candidates.parquet](../../data/baseline/areas/proenca-a-nova/scenario_candidates.parquet)
+- [scenario_candidates.csv](../../data/baseline/areas/proenca-a-nova/scenario_candidates.csv)
 
 ### 8. Criar o seed de `fire_history`
 
@@ -512,8 +512,8 @@ Contributo:
 
 Resultado esperado:
 
-- [fire_history.parquet](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/fire_history.parquet)
-- [fire_history.csv](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/fire_history.csv)
+- [fire_history.parquet](../../data/baseline/areas/proenca-a-nova/fire_history.parquet)
+- [fire_history.csv](../../data/baseline/areas/proenca-a-nova/fire_history.csv)
 
 ### 9. Integrar área ardida oficial do `ICNF`
 
@@ -558,7 +558,7 @@ Contributo:
 
 Resultado esperado:
 
-- [ipma_nearby_stations.csv](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/ipma_nearby_stations.csv)
+- [ipma_nearby_stations.csv](../../data/baseline/areas/proenca-a-nova/ipma_nearby_stations.csv)
 
 Estado atual:
 
@@ -576,8 +576,8 @@ Contributo:
 
 Resultado esperado:
 
-- [ipma_recent_observations.parquet](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/ipma_recent_observations.parquet)
-- [ipma_recent_observations.csv](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/ipma_recent_observations.csv)
+- [ipma_recent_observations.parquet](../../data/baseline/areas/proenca-a-nova/ipma_recent_observations.parquet)
+- [ipma_recent_observations.csv](../../data/baseline/areas/proenca-a-nova/ipma_recent_observations.csv)
 
 ### 13. Construir o `weather_reference` horário
 
@@ -591,8 +591,8 @@ Contributo:
 
 Resultado esperado:
 
-- [weather_reference.parquet](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/weather_reference.parquet)
-- [weather_reference.csv](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/weather_reference.csv)
+- [weather_reference.parquet](../../data/baseline/areas/proenca-a-nova/weather_reference.parquet)
+- [weather_reference.csv](../../data/baseline/areas/proenca-a-nova/weather_reference.csv)
 - um JSON bruto em `data/external/open-meteo/proenca-a-nova/`
 
 Estado atual:
@@ -612,8 +612,8 @@ Contributo:
 
 Resultado esperado:
 
-- [weather_daily_reference.parquet](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/weather_daily_reference.parquet)
-- [weather_daily_reference.csv](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/weather_daily_reference.csv)
+- [weather_daily_reference.parquet](../../data/baseline/areas/proenca-a-nova/weather_daily_reference.parquet)
+- [weather_daily_reference.csv](../../data/baseline/areas/proenca-a-nova/weather_daily_reference.csv)
 
 Estado atual:
 
@@ -631,8 +631,8 @@ Contributo:
 
 Resultado esperado:
 
-- regrava [scenario_candidates.parquet](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/scenario_candidates.parquet)
-- regrava [scenario_candidates.csv](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/scenario_candidates.csv)
+- regrava [scenario_candidates.parquet](../../data/baseline/areas/proenca-a-nova/scenario_candidates.parquet)
+- regrava [scenario_candidates.csv](../../data/baseline/areas/proenca-a-nova/scenario_candidates.csv)
 
 Estado atual:
 
@@ -652,8 +652,8 @@ Contributo:
 
 Resultado esperado:
 
-- regrava [weather_daily_reference.parquet](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/weather_daily_reference.parquet)
-- regrava [weather_daily_reference.csv](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/weather_daily_reference.csv)
+- regrava [weather_daily_reference.parquet](../../data/baseline/areas/proenca-a-nova/weather_daily_reference.parquet)
+- regrava [weather_daily_reference.csv](../../data/baseline/areas/proenca-a-nova/weather_daily_reference.csv)
 - passam a existir colunas como `ffmc_reference`, `fwi_reference` e `kbdi_reference`
 
 ### 17. Enriquecer os `scenario_candidates` com os índices
@@ -669,8 +669,8 @@ Contributo:
 
 Resultado esperado:
 
-- regrava [scenario_candidates.parquet](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/scenario_candidates.parquet)
-- regrava [scenario_candidates.csv](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/baseline/areas/proenca-a-nova/scenario_candidates.csv)
+- regrava [scenario_candidates.parquet](../../data/baseline/areas/proenca-a-nova/scenario_candidates.parquet)
+- regrava [scenario_candidates.csv](../../data/baseline/areas/proenca-a-nova/scenario_candidates.csv)
 - passam a existir campos como `fwi_reference`, `kbdi_reference` e `candidate_index_kind`
 
 ### 18. Gerar os cenários `A/B/C`
@@ -688,10 +688,10 @@ Contributo:
 
 Resultado esperado:
 
-- [proenca-a-nova-scenarios.generated.json](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/manifests/scenarios/proenca-a-nova-scenarios.generated.json)
-- [scenario_a.base.json](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/manifests/scenarios/proenca-a-nova/scenario_a.base.json)
-- [scenario_b.high-risk.json](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/manifests/scenarios/proenca-a-nova/scenario_b.high-risk.json)
-- [scenario_c.degraded-pipeline.json](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/data/manifests/scenarios/proenca-a-nova/scenario_c.degraded-pipeline.json)
+- [proenca-a-nova-scenarios.generated.json](../../data/manifests/scenarios/proenca-a-nova-scenarios.generated.json)
+- [scenario_a.base.json](../../data/manifests/scenarios/proenca-a-nova/scenario_a.base.json)
+- [scenario_b.high-risk.json](../../data/manifests/scenarios/proenca-a-nova/scenario_b.high-risk.json)
+- [scenario_c.degraded-pipeline.json](../../data/manifests/scenarios/proenca-a-nova/scenario_c.degraded-pipeline.json)
 
 Estado atual:
 
@@ -814,38 +814,38 @@ Outros são utilitários de apoio usados por outros passos da pipeline.
 
 Estes são os scripts que fazem sentido correr explicitamente:
 
-- [bootstrap-proenca-a-nova.ps1](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/bootstrap-proenca-a-nova.ps1)
-- [curate_proenca_from_caop.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/curate_proenca_from_caop.py)
-- [build_cells_attributes_seed.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/build_cells_attributes_seed.py)
-- [apply_cos2018_land_cover.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/apply_cos2018_land_cover.py)
-- [apply_structural_hazard_2020_2030.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/apply_structural_hazard_2020_2030.py)
-- [apply_lneg_slope_aspect_from_identify.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/apply_lneg_slope_aspect_from_identify.py)
-- [extract_pt_firesprd_metadata.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/extract_pt_firesprd_metadata.py)
-- [build_scenario_candidates_seed_from_pt_firesprd.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/build_scenario_candidates_seed_from_pt_firesprd.py)
-- [build_fire_history_seed_from_pt_firesprd.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/build_fire_history_seed_from_pt_firesprd.py)
-- [apply_icnf_burned_area_to_fire_history.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/apply_icnf_burned_area_to_fire_history.py)
-- [download_ipma_open_data.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/download_ipma_open_data.py)
-- [build_ipma_nearby_stations.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/build_ipma_nearby_stations.py)
-- [build_ipma_recent_observations_sample.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/build_ipma_recent_observations_sample.py)
-- [build_weather_reference_from_open_meteo.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/build_weather_reference_from_open_meteo.py)
-- [build_weather_daily_reference.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/build_weather_daily_reference.py)
-- [enrich_scenario_candidates_from_daily_weather.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/enrich_scenario_candidates_from_daily_weather.py)
-- [build_fire_weather_indexes_reference.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/build_fire_weather_indexes_reference.py)
-- [enrich_scenario_candidates_from_fire_weather_indexes.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/enrich_scenario_candidates_from_fire_weather_indexes.py)
-- [build_proenca_scenarios.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/build_proenca_scenarios.py)
+- [bootstrap-proenca-a-nova.ps1](bootstrap-proenca-a-nova.ps1)
+- [curate_proenca_from_caop.py](curate_proenca_from_caop.py)
+- [build_cells_attributes_seed.py](build_cells_attributes_seed.py)
+- [apply_cos2018_land_cover.py](apply_cos2018_land_cover.py)
+- [apply_structural_hazard_2020_2030.py](apply_structural_hazard_2020_2030.py)
+- [apply_lneg_slope_aspect_from_identify.py](apply_lneg_slope_aspect_from_identify.py)
+- [extract_pt_firesprd_metadata.py](extract_pt_firesprd_metadata.py)
+- [build_scenario_candidates_seed_from_pt_firesprd.py](build_scenario_candidates_seed_from_pt_firesprd.py)
+- [build_fire_history_seed_from_pt_firesprd.py](build_fire_history_seed_from_pt_firesprd.py)
+- [apply_icnf_burned_area_to_fire_history.py](apply_icnf_burned_area_to_fire_history.py)
+- [download_ipma_open_data.py](download_ipma_open_data.py)
+- [build_ipma_nearby_stations.py](build_ipma_nearby_stations.py)
+- [build_ipma_recent_observations_sample.py](build_ipma_recent_observations_sample.py)
+- [build_weather_reference_from_open_meteo.py](build_weather_reference_from_open_meteo.py)
+- [build_weather_daily_reference.py](build_weather_daily_reference.py)
+- [enrich_scenario_candidates_from_daily_weather.py](enrich_scenario_candidates_from_daily_weather.py)
+- [build_fire_weather_indexes_reference.py](build_fire_weather_indexes_reference.py)
+- [enrich_scenario_candidates_from_fire_weather_indexes.py](enrich_scenario_candidates_from_fire_weather_indexes.py)
+- [build_proenca_scenarios.py](build_proenca_scenarios.py)
 
 ### Scripts auxiliares
 
 Estes scripts existem para suportar transformações mais finas ou reutilização de lógica.
 Normalmente não são o primeiro ponto de entrada para uma pessoa nova na equipa, mas fazem parte do toolkit da pipeline.
 
-- [enrich_cells_attributes_from_vector.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/enrich_cells_attributes_from_vector.py)
+- [enrich_cells_attributes_from_vector.py](enrich_cells_attributes_from_vector.py)
   - utilitário genérico para enriquecer `cells_attributes` a partir de camadas vetoriais
-- [enrich_cells_attributes_from_raster.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/enrich_cells_attributes_from_raster.py)
+- [enrich_cells_attributes_from_raster.py](enrich_cells_attributes_from_raster.py)
   - utilitário genérico para enriquecer `cells_attributes` a partir de raster e estatística zonal
-- [geospatial_utils.py](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/geospatial_utils.py)
+- [geospatial_utils.py](geospatial_utils.py)
   - funções partilhadas para leitura, CRS, clipping e operações geoespaciais recorrentes
-- [requirements-data.txt](C:/Users/Miguel/UNI/6sem/PS/IMP/A/NatureProtector/scripts/data/requirements-data.txt)
+- [requirements-data.txt](requirements-data.txt)
   - catálogo de dependências Python desta pipeline de dados
 
 ### Regra prática

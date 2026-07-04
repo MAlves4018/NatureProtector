@@ -1,0 +1,25 @@
+{
+  "id": "deployment-and-promotion",
+  "title": "Immutable release, staging and production promotion",
+  "status": "CURRENT",
+  "verified_at": "2026-06-28",
+  "source_of_truth": [
+    "repository code",
+    "configuration",
+    "workflows",
+    "current-state documentation"
+  ],
+  "evidence_level": "FACT_CHECKED_AGAINST_SUPPLIED_REPOSITORY",
+  "variants": {
+    "web": "architecture/diagrams/current/render/deployment-and-promotion.svg",
+    "presentation": "architecture/diagrams/current/render/deployment-and-promotion-16x9.svg",
+    "report_a4": "architecture/diagrams/current/render/deployment-and-promotion-a4.svg"
+  },
+  "alt_text": "Immutable release, staging and production promotion. Diagram showing the principal elements and directed relationships.",
+  "long_description": "Immutable release, staging and production promotion; the diagram uses labelled nodes and arrows to distinguish implementation, evidence, authority and environment boundaries.",
+  "limitations": [
+    "Not an execution trace unless explicitly stated",
+    "Cloud resources may be declared rather than observed"
+  ],
+  "supersedes": []
+}

@@ -16,8 +16,9 @@ Já inclui autenticação JWT e autorização por roles nos endpoints atuais. A 
   - contratos HTTP desta fase
 - `ControlPlane/Services/IControlPlaneService.cs`
   - fronteira interna de leitura e ativação
-- `ControlPlane/Services/PostgresControlPlaneService.cs`
-  - implementação real sobre `NatureProtectorControlDbContext`
+- `ControlPlane/Services/PostgresControlPlaneService*.cs`
+  - implementação real sobre `NatureProtectorControlDbContext`, decomposta por catálogo, timings, resumo, diagnósticos, operações e helpers partilhados;
+  - a interface pública continua concentrada em `IControlPlaneService`.
 - `Controllers/`
   - endpoints de configuração, áreas, estado operacional e runs
 - `NatureProtector.Backoffice.Api.http`

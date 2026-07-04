@@ -65,12 +65,10 @@ EXPECTED_TABLES = [
     ("control", "sensor_nodes"),
     ("control", "sensor_profiles"),
     ("control", "simulation_runs"),
-
     ("pipeline", "event_inbox"),
     ("pipeline", "processing_attempts"),
     ("pipeline", "rejected_events"),
     ("pipeline", "quarantined_events"),
-
     ("projection", "accepted_reading_log"),
     ("projection", "risk_assessment_log"),
     ("projection", "area_risk_snapshot_log"),

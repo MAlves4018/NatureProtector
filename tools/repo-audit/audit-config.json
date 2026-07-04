@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "excluded_paths": [
+    ".git/**",
+    "artifacts/**",
+    "**/__pycache__/**",
+    "**/bin/**",
+    "**/obj/**",
+    "**/node_modules/**",
+    "webUI/dist/**",
+    "webUI/coverage/**",
+    "webUI/playwright-report/**",
+    "webUI/test-results/**",
+    "StrykerOutput/**",
+    "BenchmarkDotNet.Artifacts/**"
+  ],
+  "generated_paths": [
+    "**/Migrations/**",
+    "**/*.Designer.cs",
+    "**/*.g.cs",
+    "**/*.generated.*",
+    "docs/doxygen/output/**",
+    "docs/docfx/api/**",
+    "docs/docfx/artifacts/**",
+    "docs/docfx/output/**",
+    "docs/structurizr/output/**"
+  ],
+  "dataset_paths": [
+    "data/baseline/**",
+    "data/external/**",
+    "data/runtime/**",
+    "scripts/scenarios/examples/**"
+  ],
+  "historical_paths": [
+    "docs/evidence/**",
+    "docs/planning/**"
+  ],
+  "text_extensions": [
+    ".bat", ".cmd", ".conf", ".cs", ".csproj", ".css", ".csv", ".dockerignore",
+    ".editorconfig", ".env", ".example", ".gitignore", ".gitattributes", ".hcl", ".html",
+    ".ini", ".js", ".json", ".jsonc", ".jsx", ".md", ".mjs", ".props", ".ps1",
+    ".psd1", ".psm1", ".py", ".resx", ".sh", ".sln", ".sql", ".targets", ".tf",
+    ".tfvars", ".toml", ".ts", ".tsx", ".txt", ".xml", ".yaml", ".yml"
+  ],
+  "text_filenames": [
+    "Dockerfile", "LICENSE", "Makefile", "NuGet.Config"
+  ],
+  "script_extensions": [
+    ".bat", ".cmd", ".ps1", ".py", ".sh"
+  ],
+  "language_by_extension": {
+    ".cs": "C#",
+    ".csproj": "MSBuild",
+    ".css": "CSS",
+    ".html": "HTML",
+    ".js": "JavaScript",
+    ".json": "JSON",
+    ".jsonc": "JSONC",
+    ".md": "Markdown",
+    ".mjs": "JavaScript",
+    ".props": "MSBuild",
+    ".ps1": "PowerShell",
+    ".psd1": "PowerShell",
+    ".psm1": "PowerShell",
+    ".py": "Python",
+    ".sh": "Shell",
+    ".sql": "SQL",
+    ".targets": "MSBuild",
+    ".tf": "Terraform",
+    ".tfvars": "Terraform",
+    ".ts": "TypeScript",
+    ".tsx": "TypeScript TSX",
+    ".xml": "XML",
+    ".yaml": "YAML",
+    ".yml": "YAML"
+  },
+  "configuration_sources": [
+    {
+      "path": "deploy/environments/common.json",
+      "keys": [
+        "project_id",
+        "region",
+        "artifact_repository",
+        "terraform.backend.bucket_variable"
+      ]
+    },
+    {
+      "path": "global.json",
+      "keys": [
+        "sdk.version"
+      ]
+    },
+    {
+      "path": "webUI/.nvmrc",
+      "keys": [
+        "$text"
+      ]
+    }
+  ],
+  "hotspot_line_threshold": 400,
+  "large_file_bytes": 1000000,
+  "duplicate_max_bytes": 25000000,
+  "max_report_rows": 100
+}

@@ -1,0 +1,11 @@
+document,audience,consumers,topic
+docs/current-state/project-state.md,all,"portal, report, presentation, study",executive state
+docs/current-state/architecture-and-runtime.md,"engineering, evaluator","portal, report, diagrams, study",architecture
+docs/current-state/operations-control-plane.md,"engineering, evaluator","portal, report, presentation, study",operations
+docs/current-state/roles-capabilities-and-ui.md,"users, security reviewer","portal, report, presentation, study",roles
+docs/current-state/quality-evidence-and-testing.md,"QA, evaluator","portal, report, study",quality
+docs/current-state/cloud-and-deployment.md,"operations, evaluator","portal, report, presentation, study",cloud
+docs/current-state/data-risk-and-scientific-boundaries.md,"scientific reviewer, evaluator","portal, report, study",scientific boundaries
+docs/current-state/limitations-and-open-gates.md,all,"portal, report, presentation, study",limitations
+docs/architecture/diagrams/current/README.md,all,"portal, report, presentation, study",visuals
+docs/study/NatureProtector-Complete-Study-Compendium.md,Miguel Alves,personal study and defence,study

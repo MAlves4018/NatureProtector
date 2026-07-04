@@ -1,29 +1,32 @@
 import { useEffect, useState } from 'react';
-import {
-  Box, Flex, Heading
-} from '@chakra-ui/react';
+import { Box, Flex, Heading } from '@chakra-ui/react';
 import { getColors } from '../../utils/utils';
 
+function grafanaKioskUrl(base: string, areaId: string) {
+  const url = base.replace('???', areaId);
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}kiosk&nav=false`;
+}
 
-
-export function GrafanaStrip({ isDark, areaId, ...c }: {
+export function GrafanaStrip({
+  isDark,
+  areaId,
+  ...c
+}: {
   isDark: boolean;
   areaId: string;
-}
-  & ReturnType<typeof getColors>
-) {
+} & ReturnType<typeof getColors>) {
   const [dashboardLinks, setDashboardLinks] = useState<string[]>([]);
   useEffect(() => {
-    console.log("areaId:", areaId);
+    console.log('areaId:', areaId);
     fetch('/area_dashboards_links.txt')
-      .then(r => r.text())
-      .then(text => {
-        const links = text.split('\n').filter(line => line.trim());
+      .then((r) => r.text())
+      .then((text) => {
+        const links = text.split('\n').filter((line) => line.trim());
         setDashboardLinks(links);
       })
-      .catch(err => console.error('Failed to load dashboards:', err));
-  }, []);
-
+      .catch((err) => console.error('Failed to load dashboards:', err));
+  }, [areaId]);
 
   return (
     <Box
@@ -35,7 +38,9 @@ export function GrafanaStrip({ isDark, areaId, ...c }: {
     // REMOVED resize="vertical" to avoid manual height override
     >
       <Box px={6} pt={4} pb={1}>
-        <Heading size="xl" color={c.textPrimary} fontFamily="serif">Grafana Dashboards</Heading>
+        <Heading size="xl" color={c.textPrimary} fontFamily="serif">
+          Grafana Dashboards
+        </Heading>
       </Box>
 
       <Flex
@@ -47,12 +52,12 @@ export function GrafanaStrip({ isDark, areaId, ...c }: {
         align="stretch" // Ensures all boxes have the same height if one is taller
         css={{
           scrollbarWidth: 'thin',
-          scrollbarColor: `${isDark ? '#2d3547' : '#d1d5db'} transparent`
+          scrollbarColor: `${isDark ? '#2d3547' : '#d1d5db'} transparent`,
         }}
       >
         {dashboardLinks.map((dash, index) => (
           <Box
-            key={index}
+            key={dash}
             minW="450px"
             flex="1"
             minH="500px"
@@ -62,7 +67,7 @@ export function GrafanaStrip({ isDark, areaId, ...c }: {
             borderColor={c.panelBorder}
           >
             <iframe
-              src={dash.replace('???', areaId) + '&kiosk'}
+              src={grafanaKioskUrl(dash, areaId)}
               width="100%"
               height="100%" // Now fills the 500px minH of the parent Box
               style={{ border: 0, display: 'block' }}
@@ -76,43 +81,60 @@ export function GrafanaStrip({ isDark, areaId, ...c }: {
   );
 }
 
-export function AreaRisk({ isDark, areaId, ...c }: {
+export function AreaRisk({
+  isDark,
+  areaId,
+  ...c
+}: {
   isDark: boolean;
   areaId: string;
-}
-  & ReturnType<typeof getColors>
-) {
-  const [areaRiskLink, setareaRiskLink] = useState<string>("");
+} & ReturnType<typeof getColors>) {
+  const [riskLinks, setRiskLinks] = useState<string[]>([]);
   useEffect(() => {
-    console.log("areaId:", areaId);
+    console.log('areaId:', areaId);
     fetch('/area_risk_link.txt')
-      .then(r => r.text())
-      .then(text => {
-        const links = text.split('\n').filter(line => line.trim());
-        setareaRiskLink(links[0] || "");
+      .then((r) => r.text())
+      .then((text) => {
+        const links = text.split('\n').filter((line) => line.trim());
+        setRiskLinks(links);
       })
-      .catch(err => console.error('Failed to load dashboards:', err));
-  }, []);
+      .catch((err) => console.error('Failed to load dashboards:', err));
+  }, [areaId]);
 
   return (
-    <Box
+    <Flex
       bg={c.panelBg}
       borderBottom="1px solid"
       borderColor={c.panelBorder}
-      flexShrink={1}
-      height="400px"
+      gap={4}
+      px={6}
+      py={4}
+      align="stretch"
+      minH="350px"
       transition="background 0.2s"
-      mt={4}
-      padding={6}
     >
-      <iframe
-        src={areaRiskLink.replace('???', areaId) + '&kiosk'}
-        width="100%"
-        height="100%"
-        style={{ border: 0, display: 'block' }}
-        title={`Area Risk Dashboard`}
-        loading="lazy"
-      ></iframe>
-    </Box>
+      {riskLinks.map((link, index) => (
+        <Box
+          key={link}
+          {...(index === 0
+            ? { w: '600px', h: '600px', flex: 'none' }
+            : { flex: '1' }
+          )}
+          borderRadius="md"
+          overflow="hidden"
+          border="1px solid"
+          borderColor={c.panelBorder}
+        >
+          <iframe
+            src={grafanaKioskUrl(link, areaId)}
+            width="100%"
+            height="100%"
+            style={{ border: 0, display: 'block' }}
+            title={`Area Risk Dashboard ${index + 1}`}
+            loading="lazy"
+          ></iframe>
+        </Box>
+      ))}
+    </Flex>
   );
 }

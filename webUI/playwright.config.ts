@@ -26,7 +26,7 @@ export default defineConfig({
   },
   webServer: {
     command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${webServerPort}`,
-    url: `${webServerUrl}/ui-v2`,
+    url: webServerUrl,
     reuseExistingServer: false,
     timeout: 120_000,
   },

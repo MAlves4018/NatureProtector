@@ -4,7 +4,15 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NPQualityMode Condition="'$(NPQualityMode)' == ''">report</NPQualityMode>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild Condition="'$(NPQualityMode)' == 'enforce'">true</EnforceCodeStyleInBuild>
+    <EnforceCodeStyleInBuild Condition="'$(NPQualityMode)' != 'enforce'">false</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors Condition="'$(NPQualityMode)' == 'enforce'">true</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors Condition="'$(NPQualityMode)' != 'enforce'">false</TreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors Condition="'$(NPQualityMode)' == 'enforce'">true</CodeAnalysisTreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors Condition="'$(NPQualityMode)' != 'enforce'">false</CodeAnalysisTreatWarningsAsErrors>
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile Condition="'$(IsTestProject)' != 'true'">true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-ARG NODE_IMAGE=node:22.17.1-alpine
+ARG NODE_IMAGE=node:26.4.0-alpine
 ARG NGINX_IMAGE=nginx:1.29-alpine-slim
 
 FROM ${NODE_IMAGE} AS build

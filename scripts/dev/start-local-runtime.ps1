@@ -8,68 +8,9 @@ param(
     [int]$WebPort = 5173
 )
 
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = 'Stop'
-
-function Resolve-RepositoryRoot {
-    $current = Split-Path -Parent $PSCommandPath
-    while ($current) {
-        if (Test-Path (Join-Path $current 'NatureProtector.sln')) {
-            return (Resolve-Path $current).Path
-        }
-
-        $parent = Split-Path -Parent $current
-        if ($parent -eq $current) {
-            break
-        }
-
-        $current = $parent
-    }
-
-    throw 'Could not resolve repository root from the launcher script path.'
-}
-
-function Read-DotEnv {
-    param([string]$Path)
-
-    $values = @{}
-    if (-not (Test-Path $Path)) {
-        return $values
-    }
-
-    foreach ($line in Get-Content -Path $Path) {
-        $trimmed = $line.Trim()
-        if (-not $trimmed -or $trimmed.StartsWith('#') -or -not $trimmed.Contains('=')) {
-            continue
-        }
-
-        $parts = $trimmed.Split('=', 2)
-        $name = $parts[0].Trim()
-        $value = $parts[1].Trim()
-        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
-            $value = $value.Substring(1, $value.Length - 2)
-        }
-
-        if ($name) {
-            $values[$name] = $value
-        }
-    }
-
-    return $values
-}
-
-function Get-ConfigValue {
-    param(
-        [hashtable]$Values,
-        [string]$Name,
-        [string]$DefaultValue
-    )
-
-    if ($Values.ContainsKey($Name) -and -not [string]::IsNullOrWhiteSpace([string]$Values[$Name])) {
-        return [string]$Values[$Name]
-    }
-
-    return $DefaultValue
-}
 
 function ConvertTo-PowerShellSingleQuotedLiteral {
     param([string]$Value)
@@ -310,7 +251,7 @@ function Start-LoggedPowerShell {
     $scriptPath = Join-Path (Split-Path -Parent $LogPath) ("start-" + ($Name -replace '[^A-Za-z0-9_.-]', '-') + ".ps1")
     Set-Content -Path $scriptPath -Value $script -Encoding UTF8
 
-    $process = Start-Process -FilePath 'powershell.exe' `
+    $process = Start-Process -FilePath 'pwsh.exe' `
         -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $scriptPath) `
         -WorkingDirectory $WorkingDirectory `
         -RedirectStandardOutput $LogPath `
@@ -329,27 +270,27 @@ function Start-LoggedPowerShell {
     }
 }
 
-$repositoryRoot = Resolve-RepositoryRoot
+$repositoryRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln')
 $composeFile = Join-Path $repositoryRoot 'docker-compose.yml'
 if (-not (Test-Path $composeFile)) {
     throw "Docker Compose file not found at $composeFile."
 }
 
-$dotEnv = Read-DotEnv -Path (Join-Path $repositoryRoot '.env')
+$dotEnv = Read-NpDotEnv -Path (Join-Path $repositoryRoot '.env')
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $evidenceRoot = Join-Path $repositoryRoot 'docs\evidence\dev-runtime'
 $runRoot = Join-Path $evidenceRoot $timestamp
 New-Item -ItemType Directory -Path $runRoot -Force | Out-Null
 
-$postgresHost = Get-ConfigValue -Values $dotEnv -Name 'POSTGRES_HOST' -DefaultValue 'localhost'
-$postgresPort = [int](Get-ConfigValue -Values $dotEnv -Name 'POSTGRES_PORT' -DefaultValue '5432')
-$postgresDb = Get-ConfigValue -Values $dotEnv -Name 'POSTGRES_DB' -DefaultValue 'natureprotector'
-$postgresUser = Get-ConfigValue -Values $dotEnv -Name 'POSTGRES_USER' -DefaultValue 'np'
-$postgresPassword = Get-ConfigValue -Values $dotEnv -Name 'POSTGRES_PASSWORD' -DefaultValue 'np_dev_pass'
-$rabbitPort = [int](Get-ConfigValue -Values $dotEnv -Name 'RABBITMQ_AMQP_PORT' -DefaultValue '5672')
-$rabbitUser = Get-ConfigValue -Values $dotEnv -Name 'RABBITMQ_DEFAULT_USER' -DefaultValue 'np'
-$rabbitPassword = Get-ConfigValue -Values $dotEnv -Name 'RABBITMQ_DEFAULT_PASS' -DefaultValue 'np_dev_pass'
-$influxPort = [int](Get-ConfigValue -Values $dotEnv -Name 'INFLUXDB_PORT' -DefaultValue '8181')
+$postgresHost = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_HOST' -DefaultValue 'localhost'
+$postgresPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_PORT' -DefaultValue '5432')
+$postgresDb = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_DB' -DefaultValue 'natureprotector'
+$postgresUser = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_USER' -DefaultValue 'np'
+$postgresPassword = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_PASSWORD' -DefaultValue 'np_dev_pass'
+$rabbitPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_AMQP_PORT' -DefaultValue '5672')
+$rabbitUser = Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_DEFAULT_USER' -DefaultValue 'np'
+$rabbitPassword = Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_DEFAULT_PASS' -DefaultValue 'np_dev_pass'
+$influxPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'INFLUXDB_PORT' -DefaultValue '8181')
 
 if ($ForceRestart) {
     Stop-NatureProtectorLocalProcesses -RepositoryRoot $repositoryRoot

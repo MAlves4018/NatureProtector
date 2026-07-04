@@ -1,0 +1,17 @@
+digraph G { graph [size="13.33,7.5!", ratio=fill]; rankdir=LR; graph [fontname="Arial", bgcolor="white", pad="0.25", nodesep="0.45", ranksep="0.7", splines=ortho];
+node [fontname="Arial", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F7FAFC", color="#334155", penwidth=1.2, margin="0.14,0.09"];
+edge [fontname="Arial", fontsize=9, color="#475569", arrowsize=0.75, penwidth=1.1];
+a [label="Scenario + seed + sensor profile",fillcolor="#DBEAFE"];
+b [label="Generated reading
+with optional degradation",fillcolor="#E0F2FE"];
+c [label="Event envelope + RabbitMQ",fillcolor="#FEF3C7"];
+d [label="Durable inbox",fillcolor="#FCE7F3"];
+e [label="Envelope and semantic validation",fillcolor="#DCFCE7"];
+f [label="Normalisation + temporal context",fillcolor="#DCFCE7"];
+g [label="Quality flags + coverage",fillcolor="#DCFCE7"];
+h [label="Eligibility decision",shape=diamond,fillcolor="#FFEDD5"];
+i [label="Candidate score / FWI / KBDI comparison",fillcolor="#EDE9FE"];
+j [label="Assessments + snapshots + projections",fillcolor="#FCE7F3"];
+k [label="Blocked / retry / rejection / quarantine",fillcolor="#FEE2E2"];
+a->b->c->d->e->f->g->h; h->i [label="eligible"]; i->j; h->k [label="not eligible",color="#B91C1C"]; d->k [label="processing failure",color="#B91C1C"]; k->d [label="bounded retry",style=dashed];
+}

@@ -29,6 +29,8 @@ param(
     [string]$Confirm
 )
 
+Import-Module (Join-Path $PSScriptRoot 'common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $ProgressRoot = Join-Path $RepoRoot "artifacts\mission-progress"
@@ -146,47 +148,6 @@ function Test-VersionPrefix {
     return $false
 }
 
-function Read-DotEnv {
-    param([string]$Path)
-
-    $values = @{}
-    if (-not (Test-Path -LiteralPath $Path)) {
-        return $values
-    }
-
-    foreach ($line in Get-Content -LiteralPath $Path) {
-        $trimmed = $line.Trim()
-        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
-            continue
-        }
-
-        $index = $trimmed.IndexOf("=")
-        if ($index -le 0) {
-            continue
-        }
-
-        $name = $trimmed.Substring(0, $index).Trim()
-        $value = $trimmed.Substring($index + 1).Trim().Trim('"').Trim("'")
-        $values[$name] = $value
-    }
-
-    return $values
-}
-
-function Get-ConfigValue {
-    param(
-        [hashtable]$Values,
-        [string]$Name,
-        [string]$DefaultValue
-    )
-
-    if ($Values.ContainsKey($Name) -and -not [string]::IsNullOrWhiteSpace($Values[$Name])) {
-        return $Values[$Name]
-    }
-
-    return $DefaultValue
-}
-
 function Test-TcpPort {
     param([int]$Port)
 
@@ -281,7 +242,7 @@ function Test-WorkspacePrerequisites {
     if ([string]::IsNullOrWhiteSpace($nodeVersion)) {
         Add-PrerequisiteResult $results "FAIL" "Node.js" "node was not found on PATH."
     }
-    elseif (Test-VersionPrefix $nodeVersion @("v20.17.", "v22.16.")) {
+    elseif (Test-VersionPrefix $nodeVersion @("v20.17.", "v22.16.", "v26.")) {
         Add-PrerequisiteResult $results "OK" "Node.js" "Found $nodeVersion."
     }
     else {
@@ -347,12 +308,12 @@ function Test-WorkspacePrerequisites {
         Add-PrerequisiteResult $results $status ".env" "Local file is missing. Create it manually from .env.example; this script will not create it." ([bool]$RequireDotEnv)
     }
 
-    $envValues = Read-DotEnv $dotEnvPath
+    $envValues = Read-NpDotEnv -Path $dotEnvPath -QuoteHandling BothTrim
     $ports = @(
-        [pscustomobject]@{ Name = "PostgreSQL"; Port = [int](Get-ConfigValue $envValues "POSTGRES_PORT" "5433") },
-        [pscustomobject]@{ Name = "RabbitMQ"; Port = [int](Get-ConfigValue $envValues "RABBITMQ_PORT" "5672") },
-        [pscustomobject]@{ Name = "RabbitMQ management"; Port = [int](Get-ConfigValue $envValues "RABBITMQ_MANAGEMENT_PORT" "15672") },
-        [pscustomobject]@{ Name = "InfluxDB"; Port = [int](Get-ConfigValue $envValues "INFLUXDB_HTTP_PORT" "8181") }
+        [pscustomobject]@{ Name = "PostgreSQL"; Port = [int](Get-NpConfigValue $envValues "POSTGRES_PORT" "5433") },
+        [pscustomobject]@{ Name = "RabbitMQ"; Port = [int](Get-NpConfigValue $envValues "RABBITMQ_PORT" "5672") },
+        [pscustomobject]@{ Name = "RabbitMQ management"; Port = [int](Get-NpConfigValue $envValues "RABBITMQ_MANAGEMENT_PORT" "15672") },
+        [pscustomobject]@{ Name = "InfluxDB"; Port = [int](Get-NpConfigValue $envValues "INFLUXDB_HTTP_PORT" "8181") }
     )
 
     foreach ($portInfo in $ports) {
@@ -466,10 +427,10 @@ function Invoke-WorkspaceSetup {
         $installArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $installer)
         if ($Yes) { $installArgs += "-Yes" }
         if ($NonInteractive) { $installArgs += "-NonInteractive" }
-        Invoke-External "powershell" $installArgs $RepoRoot -Required | Out-Null
+        Invoke-External "pwsh" $installArgs $RepoRoot -Required | Out-Null
     }
 
-    Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\dotnet\Use-RepoDotnetEnvironment.ps1"), "-Quiet") $RepoRoot -Required | Out-Null
+    Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\dotnet\Use-RepoDotnetEnvironment.ps1"), "-Quiet") $RepoRoot -Required | Out-Null
 
     if (-not $NoDependencyRestore) {
         Invoke-External "dotnet" @("tool", "restore") $RepoRoot -Required | Out-Null
@@ -491,12 +452,12 @@ function Invoke-WorkspaceUp {
     Test-WorkspacePrerequisites -RequireDocker -RequireDotEnv | Out-Null
     Invoke-WorkspaceSetup
     Invoke-External "docker" @("compose", "--project-directory", $RepoRoot, "-f", (Join-Path $RepoRoot "docker-compose.yml"), "config", "--quiet") $RepoRoot -Required | Out-Null
-    Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "infra\scripts\up.ps1"), "-SkipWorkspacePreparation") $RepoRoot -Required | Out-Null
-    Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\postgres\bootstrap-control-plane.ps1")) $RepoRoot -Required | Out-Null
-    Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\setup\Test-LocalBaseline.ps1"), "-InfrastructureOnly") $RepoRoot -Required | Out-Null
+    Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "infra\scripts\up.ps1"), "-SkipWorkspacePreparation") $RepoRoot -Required | Out-Null
+    Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\postgres\bootstrap-control-plane.ps1")) $RepoRoot -Required | Out-Null
+    Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\setup\Test-LocalBaseline.ps1"), "-InfrastructureOnly") $RepoRoot -Required | Out-Null
 
     if ($StartRuntime) {
-        Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\dev\start-local-runtime.ps1")) $RepoRoot -Required | Out-Null
+        Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\dev\start-local-runtime.ps1")) $RepoRoot -Required | Out-Null
     }
 
     if ($OpenBrowser) {
@@ -539,7 +500,7 @@ function Stop-LocalNatureProtectorProcesses {
 
 function Invoke-WorkspaceDown {
     Stop-LocalNatureProtectorProcesses
-    Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "infra\scripts\down.ps1")) $RepoRoot -Required | Out-Null
+    Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "infra\scripts\down.ps1")) $RepoRoot -Required | Out-Null
 }
 
 function Invoke-WorkspaceReset {
@@ -548,7 +509,7 @@ function Invoke-WorkspaceReset {
     }
 
     Stop-LocalNatureProtectorProcesses
-    Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "infra\scripts\reset-local-infra.ps1")) $RepoRoot -Required | Out-Null
+    Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "infra\scripts\reset-local-infra.ps1")) $RepoRoot -Required | Out-Null
 }
 
 function Invoke-WorkspaceValidate {
@@ -561,10 +522,10 @@ function Invoke-WorkspaceValidate {
             Invoke-External "npm" @("run", "check:toolchain") (Join-Path $RepoRoot "webUI") -Required | Out-Null
         }
         "Infrastructure" {
-            Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\setup\Test-LocalBaseline.ps1"), "-InfrastructureOnly") $RepoRoot -Required | Out-Null
+            Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\setup\Test-LocalBaseline.ps1"), "-InfrastructureOnly") $RepoRoot -Required | Out-Null
         }
         "Runtime" {
-            Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\setup\Test-LocalBaseline.ps1"), "-Full") $RepoRoot -Required | Out-Null
+            Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\setup\Test-LocalBaseline.ps1"), "-Full") $RepoRoot -Required | Out-Null
         }
         "Full" {
             Invoke-External "dotnet" @("build", ".\NatureProtector.sln", "-c", "Release", "--no-restore", "--nologo", "-v", "minimal", "-m:1") $RepoRoot -Required | Out-Null
@@ -576,14 +537,14 @@ function Invoke-WorkspaceValidate {
         }
         "Security" {
             $securityOutputRoot = Join-Path $RepoRoot "artifacts\validation\workspace-profiles\security"
-            Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\ci\check-dotnet-audit.ps1"), "-OutputPath", (Join-Path $securityOutputRoot "dotnet-audit.txt")) $RepoRoot -Required | Out-Null
+            Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\ci\check-dotnet-audit.ps1"), "-OutputPath", (Join-Path $securityOutputRoot "dotnet-audit.txt")) $RepoRoot -Required | Out-Null
             Invoke-External "npm" @("run", "test:audit-script") (Join-Path $RepoRoot "webUI") -Required | Out-Null
             Invoke-External "npm" @("run", "audit:ci", "--", (Join-Path $securityOutputRoot "npm-audit.json")) (Join-Path $RepoRoot "webUI") -Required | Out-Null
-            Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\ci\check-secret-canaries.ps1"), "-RepositoryRoot", $RepoRoot, "-NoGit") $RepoRoot -Required | Out-Null
+            Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\ci\check-secret-canaries.ps1"), "-RepositoryRoot", $RepoRoot, "-NoGit") $RepoRoot -Required | Out-Null
             Invoke-External "dotnet" @("test", ".\tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj", "-c", "Release", "--no-restore", "--filter", "FullyQualifiedName~JwtAuthenticationTests|FullyQualifiedName~AuthorizationMatrixTests|FullyQualifiedName~RuntimeEvidenceHttpSecurityTests", "--logger", "trx;LogFileName=workspace-security.trx", "--results-directory", ".\artifacts\validation\workspace-profiles\security\test-results") $RepoRoot -Required | Out-Null
         }
         "PerformanceSmoke" {
-            Invoke-External "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\performance\run-benchmarks.ps1"), "-Profile", "B0", "-Filter", "*SerializationBenchmarks.SerializeEnvelopeBatch*", "-OutputRoot", "artifacts\validation\workspace-profiles\performance-smoke", "-TimeoutSeconds", "180") $RepoRoot -Required | Out-Null
+            Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\performance\run-benchmarks.ps1"), "-Profile", "B0", "-Filter", "*SerializationBenchmarks.SerializeEnvelopeBatch*", "-OutputRoot", "artifacts\validation\workspace-profiles\performance-smoke", "-TimeoutSeconds", "180") $RepoRoot -Required | Out-Null
         }
     }
 }

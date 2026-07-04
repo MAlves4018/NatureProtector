@@ -1,12 +1,12 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vitest/config'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import tailwindcss from '@tailwindcss/vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vitest/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:5254'
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:5254';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -36,14 +36,10 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html', 'lcov'],
+      reporter: ['text', 'html', 'lcov', 'json-summary', 'cobertura'],
       reportsDirectory: './coverage',
       include: ['src/app/**/*.{ts,tsx}'],
-      exclude: [
-        'src/**/*.test.{ts,tsx}',
-        'src/test/**',
-        'src/main.tsx',
-      ],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx'],
     },
   },
-})
+});

@@ -1,0 +1,129 @@
+{
+  "schema_version": 2,
+  "policy": "ONGOING_ARCHITECTURE_POLICY",
+  "migration_proof": "docs/implementation/maintainability/frontend-decomposition-migration-proof-phase6.json",
+  "types_barrel": "webUI/src/app/types/index.tsx",
+  "expected_barrel_exports": [
+    "./auth",
+    "./geography",
+    "./runtime",
+    "./scenario",
+    "./operations"
+  ],
+  "expected_type_exports": [
+    "LoginRequest",
+    "LoginResponse",
+    "RoleResponse",
+    "ErrorResponse",
+    "AreaResponse",
+    "AreaGeoJSONResponse",
+    "User",
+    "MapType",
+    "MapProps",
+    "SensorInfo",
+    "AreaCellResponse",
+    "SensorNodeResponse",
+    "RuntimeSummaryResponse",
+    "RuntimeScoreComponentSummaryResponse",
+    "RuntimeIndexComparisonSummaryResponse",
+    "RuntimeRunSummaryResponse",
+    "SimulationRunResponse",
+    "RuntimeRunAuditResponse",
+    "RuntimeRunTimingSummaryResponse",
+    "RuntimeDataScopeResponse",
+    "RuntimeTimelinePointResponse",
+    "RuntimeAttemptTimingSummaryResponse",
+    "RuntimeStageTimingSummaryResponse",
+    "RuntimeAreaSnapshotAuditResponse",
+    "RuntimeRunOverridesResponse",
+    "RuntimeRunOverrideValuesResponse",
+    "RuntimePipelineSummaryResponse",
+    "RuntimeStatusCountResponse",
+    "RuntimeAttemptCountResponse",
+    "RuntimeCodeCountResponse",
+    "RuntimeRejectedEventResponse",
+    "RuntimeQuarantinedEventResponse",
+    "RuntimeProcessingAttemptResponse",
+    "RuntimeRiskSummaryResponse",
+    "RuntimeRiskPointResponse",
+    "RuntimeAreaOperationalSummaryResponse",
+    "RuntimeAlertSummaryResponse",
+    "RuntimeLimitationResponse",
+    "RuntimeOperationalHealthResponse",
+    "RuntimeOperationalHealthComponentResponse",
+    "RabbitMqMetricsResponse",
+    "RabbitMqQueueMetricResponse",
+    "RuntimeEvidenceCatalogResponse",
+    "RuntimeEvidenceCatalogItemResponse",
+    "RuntimeFreshnessSummaryResponse",
+    "RuntimeDiagnosticCatalogResponse",
+    "RuntimeDiagnosticDefinitionResponse",
+    "RuntimeDiagnosticRequest",
+    "RuntimeDiagnosticResultResponse",
+    "RuntimeRunStartRequest",
+    "RuntimeRunStartResponse",
+    "RuntimeResetRequest",
+    "RuntimeTableCountResponse",
+    "RuntimeResetResponse",
+    "ControlledValidationP3AvailabilityResponse",
+    "ControlledValidationP3RunRequest",
+    "ControlledValidationP3RunResponse",
+    "ScenarioResponse",
+    "NPArea",
+    "GridInfo",
+    "LogInOutProps",
+    "CapabilityProfileResponse",
+    "OperationInputDefinitionResponse",
+    "OperationDefinitionResponse",
+    "StartOperationRequest",
+    "OperationStepResponse",
+    "OperationArtifactResponse",
+    "OperationApprovalResponse",
+    "EngineeringOperationResponse",
+    "OperationComparisonResponse",
+    "CloudResourceDeclarationResponse",
+    "CloudEnvironmentResponse",
+    "AdminUserResponse",
+    "AdminRoleResponse"
+  ],
+  "type_modules": {
+    "webUI/src/app/types/auth.ts": {
+      "max_lines": 600
+    },
+    "webUI/src/app/types/geography.ts": {
+      "max_lines": 600
+    },
+    "webUI/src/app/types/runtime.ts": {
+      "max_lines": 600
+    },
+    "webUI/src/app/types/scenario.ts": {
+      "max_lines": 600
+    },
+    "webUI/src/app/types/operations.ts": {
+      "max_lines": 220
+    }
+  },
+  "workspace_export": "Workspace",
+  "workspace_modules": {
+    "webUI/src/app/components/views/Workspace.tsx": {
+      "required_marker": "export function Workspace",
+      "max_normalized_chars": 18200
+    },
+    "webUI/src/app/components/views/workspace/WorkspaceSections.tsx": {
+      "required_marker": "export function MonitoringOverview",
+      "max_normalized_chars": 64000
+    },
+    "webUI/src/app/components/views/workspace/WorkspaceShared.tsx": {
+      "required_marker": "export function RuntimeChainStrip",
+      "max_normalized_chars": 38500
+    },
+    "webUI/src/app/components/views/workspace/WorkspaceTopBar.tsx": {
+      "required_marker": "export function WorkspaceTopBar",
+      "max_normalized_chars": 2200
+    },
+    "webUI/src/app/components/views/workspace/workspaceConstants.ts": {
+      "required_marker": "export const DEFAULT_AREA",
+      "max_normalized_chars": 9100
+    }
+  }
+}

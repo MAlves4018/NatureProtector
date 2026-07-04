@@ -17,6 +17,16 @@ namespace NatureProtector.Backoffice.Api.Tests;
 public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory<Program>
 {
     private const string TestAuthScheme = "TestAuth";
+    private const string TestJwtSigningKey = "8d21f4c7-98b2-45ad-a6cf-0d147cc3e855";
+    private static readonly IReadOnlyDictionary<string, string> RequiredJwtEnvironmentValues =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Jwt__Issuer"] = "NatureProtector.Backoffice.Api.Tests",
+            ["Jwt__Audience"] = "NatureProtector.Backoffice.Api.Tests",
+            ["Jwt__SigningKey"] = TestJwtSigningKey,
+            ["Jwt__TokenLifetimeMinutes"] = "30"
+        };
+
     private readonly bool _controlPlaneAvailable;
     private readonly string _availabilityMessage;
     private readonly string _environmentName;
@@ -24,6 +34,7 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
     private readonly IReadOnlyList<string> _roles;
     private readonly IRuntimeObservabilityService? _runtimeObservabilityService;
     private readonly IReadOnlyDictionary<string, string?> _configurationOverrides;
+    private readonly Dictionary<string, string?> _previousJwtEnvironmentValues = new(StringComparer.Ordinal);
 
     public ControlPlaneApiWebApplicationFactory(
         bool controlPlaneAvailable = true,
@@ -41,6 +52,12 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
         _roles = roles is { Count: > 0 } ? roles : [RoleRecord.Admin];
         _runtimeObservabilityService = runtimeObservabilityService;
         _configurationOverrides = configurationOverrides ?? new Dictionary<string, string?>();
+
+        foreach (var pair in RequiredJwtEnvironmentValues)
+        {
+            _previousJwtEnvironmentValues[pair.Key] = Environment.GetEnvironmentVariable(pair.Key);
+            Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+        }
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -51,7 +68,12 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
         {
             var values = new Dictionary<string, string?>
             {
-                ["BackofficeApi:ControlPlaneEnabled"] = "false"
+                ["BackofficeApi:ControlPlaneEnabled"] = "false",
+                ["BackofficeApi:LocalRuntimeProcessLaunchEnabled"] = "false",
+                ["Jwt:Issuer"] = "NatureProtector.Backoffice.Api.Tests",
+                ["Jwt:Audience"] = "NatureProtector.Backoffice.Api.Tests",
+                ["Jwt:SigningKey"] = TestJwtSigningKey,
+                ["Jwt:TokenLifetimeMinutes"] = "30"
             };
             foreach (var pair in _configurationOverrides)
             {
@@ -82,6 +104,16 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
                     TestAuthScheme,
                     _ => { });
         });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        foreach (var pair in _previousJwtEnvironmentValues)
+        {
+            Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+        }
+
+        base.Dispose(disposing);
     }
 
     private sealed class TestAuthHandler(

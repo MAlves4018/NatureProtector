@@ -1,1 +1,16 @@
+# Keep shell scripts portable across Windows and Linux runners.
 *.sh text eol=lf
+
+# Explicit binary classification without imposing repository-wide line-ending changes.
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.woff binary
+*.woff2 binary
