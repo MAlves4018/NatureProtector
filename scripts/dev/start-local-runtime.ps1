@@ -5,6 +5,8 @@ param(
     [switch]$SkipBootstrap,
     [switch]$ForceRestart,
     [int]$ApiPort = 5254,
+    [int]$PreventionPort = 5260,
+    [int]$SimulatorPort = 5270,
     [int]$WebPort = 5173
 )
 
@@ -308,27 +310,30 @@ if (-not $SkipDocker) {
 
 Test-PostgresTarget -HostName $postgresHost -Port $postgresPort
 Assert-PortAvailable -Port $ApiPort -Name 'Backoffice API' -AllowForceRestart:$ForceRestart.IsPresent -RepositoryRoot $repositoryRoot
+Assert-PortAvailable -Port $PreventionPort -Name 'Prevention Host' -AllowForceRestart:$ForceRestart.IsPresent -RepositoryRoot $repositoryRoot
+Assert-PortAvailable -Port $SimulatorPort -Name 'Simulator Host' -AllowForceRestart:$ForceRestart.IsPresent -RepositoryRoot $repositoryRoot
 Assert-PortAvailable -Port $WebPort -Name 'webUI' -AllowForceRestart:$ForceRestart.IsPresent -RepositoryRoot $repositoryRoot
 
 if (-not $SkipBootstrap) {
-    $bootstrapScript = Join-Path $repositoryRoot 'scripts\dev\bootstrap-local-runtime.ps1'
+    $bootstrapScript = Join-Path $repositoryRoot 'scripts\postgres\bootstrap-control-plane.ps1'
     if (Test-Path $bootstrapScript) {
-        Write-Host 'Running local runtime bootstrap...'
+        Write-Host 'Running control-plane bootstrap...'
         & $bootstrapScript
     }
     else {
-        Write-Host 'No bootstrap-local-runtime.ps1 found; skipping bootstrap.'
+        Write-Host 'No bootstrap-control-plane.ps1 found; skipping bootstrap.'
     }
 }
 
 $apiUrl = "http://127.0.0.1:$ApiPort"
+$preventionUrl = "http://127.0.0.1:$PreventionPort"
+$simulatorUrl = "http://127.0.0.1:$SimulatorPort"
 $webUrl = "http://127.0.0.1:$WebPort"
 $developerUrl = "$webUrl"
 
 $commonEnvironment = @{
     ASPNETCORE_ENVIRONMENT                                             = 'Development'
     DOTNET_ENVIRONMENT                                                 = 'Development'
-    ASPNETCORE_URLS                                                    = $apiUrl
     POSTGRES_HOST                                                      = $postgresHost
     POSTGRES_PORT                                                      = [string]$postgresPort
     POSTGRES_DB                                                        = $postgresDb
@@ -339,11 +344,22 @@ $commonEnvironment = @{
     RabbitMq__UserName                                                 = $rabbitUser
     RabbitMq__Password                                                 = $rabbitPassword
     InfluxDb__Url                                                      = "http://localhost:$influxPort"
+    InfluxDb__Token                                                    = (Get-NpConfigValue -Values $dotEnv -Name 'INFLUXDB_TOKEN' -DefaultValue '')
     VITE_API_PROXY_TARGET                                              = $apiUrl
     ControlledValidation__ProcessingFaults__Enabled                    = 'true'
     ControlledValidation__ProcessingFaults__EnableBuiltInP3Cases       = 'true'
     ControlledValidation__ProcessingFaults__AllowedRunLabelPrefixes__0 = 'controlled-validation-p3-negative-pipeline-'
+    NP_BOOTSTRAP_ADMIN_PASSWORD                                        = 'admin123'
 }
+
+$apiEnvironment = $commonEnvironment.Clone()
+$apiEnvironment['ASPNETCORE_URLS'] = $apiUrl
+
+$preventionEnvironment = $commonEnvironment.Clone()
+$preventionEnvironment['ASPNETCORE_URLS'] = $preventionUrl
+
+$simulatorEnvironment = $commonEnvironment.Clone()
+$simulatorEnvironment['ASPNETCORE_URLS'] = $simulatorUrl
 
 $webUiRoot = Join-Path $repositoryRoot 'webUI'
 $webUiNodeModules = Join-Path $webUiRoot 'node_modules'
@@ -353,14 +369,16 @@ if (-not (Test-Path $webUiNodeModules)) {
 
 $apiProject = Join-Path $repositoryRoot 'src\NatureProtector.Backoffice.Api\NatureProtector.Backoffice.Api.csproj'
 $preventionProject = Join-Path $repositoryRoot 'src\NatureProtector.Prevention.Host\NatureProtector.Prevention.Host.csproj'
+$simulatorProject = Join-Path $repositoryRoot 'src\NatureProtector.Simulator.Host\NatureProtector.Simulator.Host.csproj'
 Invoke-DotnetProjectBuild -ProjectPath $apiProject -Name 'Backoffice API'
 Invoke-DotnetProjectBuild -ProjectPath $preventionProject -Name 'Prevention Host'
+Invoke-DotnetProjectBuild -ProjectPath $simulatorProject -Name 'Simulator Host'
 
 $processes = @()
 $processes += Start-LoggedPowerShell `
     -Name 'Backoffice API' `
     -WorkingDirectory $repositoryRoot `
-    -Environment $commonEnvironment `
+    -Environment $apiEnvironment `
     -Command 'dotnet run -c Release --no-build --no-restore --project src\NatureProtector.Backoffice.Api\NatureProtector.Backoffice.Api.csproj --no-launch-profile' `
     -LogPath (Join-Path $runRoot 'backoffice-api.log') `
     -ErrorLogPath (Join-Path $runRoot 'backoffice-api.err.log') `
@@ -370,12 +388,22 @@ $processes += Start-LoggedPowerShell `
 $processes += Start-LoggedPowerShell `
     -Name 'Prevention Host' `
     -WorkingDirectory $repositoryRoot `
-    -Environment $commonEnvironment `
+    -Environment $preventionEnvironment `
     -Command 'dotnet run -c Release --no-build --no-restore --project src\NatureProtector.Prevention.Host\NatureProtector.Prevention.Host.csproj --no-launch-profile' `
     -LogPath (Join-Path $runRoot 'prevention-host.log') `
     -ErrorLogPath (Join-Path $runRoot 'prevention-host.err.log') `
-    -Port $null `
-    -Url ''
+    -Port $PreventionPort `
+    -Url $preventionUrl
+    
+$processes += Start-LoggedPowerShell `
+    -Name 'Simulator Host' `
+    -WorkingDirectory $repositoryRoot `
+    -Environment $simulatorEnvironment `
+    -Command 'dotnet run -c Release --no-build --no-restore --project src\NatureProtector.Simulator.Host\NatureProtector.Simulator.Host.csproj --no-launch-profile' `
+    -LogPath (Join-Path $runRoot 'simulator-host.log') `
+    -ErrorLogPath (Join-Path $runRoot 'simulator-host.err.log') `
+    -Port $SimulatorPort `
+    -Url $simulatorUrl
 
 $processes += Start-LoggedPowerShell `
     -Name 'webUI' `
@@ -391,6 +419,10 @@ try {
     Write-Host 'Waiting for Backoffice API readiness...'
     Wait-TcpPort -HostName '127.0.0.1' -Port $ApiPort -TimeoutSeconds 60 -Name 'Backoffice API'
     Wait-HttpReady -Url "$apiUrl/api/control/areas" -TimeoutSeconds 60 -Name 'Backoffice API'
+
+    Write-Host 'Waiting for Prevention Host liveness...'
+    Wait-TcpPort -HostName '127.0.0.1' -Port $PreventionPort -TimeoutSeconds 60 -Name 'Prevention Host'
+    Wait-HttpReady -Url "$preventionUrl/health/live" -TimeoutSeconds 60 -Name 'Prevention Host'
 
     Write-Host 'Waiting for webUI readiness...'
     Wait-TcpPort -HostName '127.0.0.1' -Port $WebPort -TimeoutSeconds 60 -Name 'webUI'
@@ -418,6 +450,8 @@ $processRows = $processes | ForEach-Object {
     '## Effective Targets'
     ''
     "- Backoffice API: $apiUrl"
+    "- Prevention Host health: $preventionUrl"
+    "- Simulator Host health: $simulatorUrl"
     "- webUI: $webUrl"
     "- Developer Runtime View: $developerUrl"
     "- PostgreSQL: $postgresHost`:$postgresPort/$postgresDb as $postgresUser"
@@ -436,6 +470,8 @@ $processRows = $processes | ForEach-Object {
 
 Write-Host "Launcher summary: $summaryPath"
 Write-Host "Backoffice API: $apiUrl"
+Write-Host "Prevention Host health: $preventionUrl"
+Write-Host "Simulator Host health: $simulatorUrl"
 Write-Host "webUI: $webUrl"
 Write-Host "Developer Runtime View: $developerUrl"
 

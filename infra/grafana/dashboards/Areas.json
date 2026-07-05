@@ -2,30 +2,7 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "adxq5gr",
-    "namespace": "default",
-    "uid": "cb0dc66b-972c-480a-84bd-9475273b75bb",
-    "resourceVersion": "1782916794487005",
-    "generation": 11,
-    "creationTimestamp": "2026-06-30T13:44:58Z",
-    "labels": {
-      "grafana.app/deprecatedInternalID": "297310702854144"
-    },
-    "annotations": {
-      "grafana.app/createdBy": "access-policy:service",
-      "grafana.app/folder": "cfqpa373qrmdcd",
-      "grafana.app/managedBy": "classic-file-provisioning",
-      "grafana.app/managerAllowsEdits": "true",
-      "grafana.app/managerId": "NatureProtectorDashboards",
-      "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f21)",
-      "grafana.app/sourceChecksum": "897571f907c4471f6726236c0352f226",
-      "grafana.app/sourcePath": "/var/lib/grafana/dashboards/Areas.json",
-      "grafana.app/sourceTimestamp": "1779226323000",
-      "grafana.app/updatedBy": "user:afqpa2cbetj40f",
-      "grafana.app/updatedTimestamp": "2026-07-01T14:39:54Z",
-      "grafana.app/folderTitle": "NatureProtector",
-      "grafana.app/folderUrl": "/dashboards/f/cfqpa373qrmdcd/natureprotector"
-    }
+    "name": "adxq5gr"
   },
   "spec": {
     "annotations": [

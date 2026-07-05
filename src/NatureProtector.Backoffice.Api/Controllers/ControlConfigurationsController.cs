@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Backoffice.Api.Operations.Authorization;
 
 namespace NatureProtector.Backoffice.Api.Controllers;
 
 [Route("api/control/configurations")]
-[Authorize (Roles = "Sim,Pipeline,Admin")]
+[Authorize]
 public sealed class ControlConfigurationsController : ControlPlaneControllerBase
 {
     public ControlConfigurationsController(IControlPlaneService controlPlane)
@@ -14,6 +15,7 @@ public sealed class ControlConfigurationsController : ControlPlaneControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = OperationCapabilities.AdminRead)] 
     public async Task<ActionResult> ListConfigurations(CancellationToken cancellationToken)
     {
         var unavailable = EnsureControlPlaneAvailable();
@@ -27,6 +29,7 @@ public sealed class ControlConfigurationsController : ControlPlaneControllerBase
     }
 
     [HttpGet("active")]
+    [Authorize(Policy = OperationCapabilities.AdminRead)]
     public async Task<ActionResult> GetActiveConfiguration(CancellationToken cancellationToken)
     {
         var unavailable = EnsureControlPlaneAvailable();
@@ -40,7 +43,7 @@ public sealed class ControlConfigurationsController : ControlPlaneControllerBase
     }
 
     [HttpPost("{versionNumber:int}/activate")]
-    [Authorize(Roles = "Sim,Admin")]
+    [Authorize(Policy = OperationCapabilities.AdminExecute)]
     public async Task<ActionResult> ActivateConfiguration(int versionNumber, CancellationToken cancellationToken)
     {
         var unavailable = EnsureControlPlaneAvailable();

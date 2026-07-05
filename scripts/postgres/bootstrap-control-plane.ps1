@@ -59,6 +59,15 @@ try {
         throw "Bootstrap output not found at $bootstrapDllPath. Run without -SkipBuild or build the project in $Configuration first."
     }
 
+    if (-not $env:NP_BOOTSTRAP_ADMIN_PASSWORD) {
+        $dotEnvPath = Join-Path $repoRoot ".env"
+        if (Test-Path -LiteralPath $dotEnvPath) {
+            $envVals = Get-Content $dotEnvPath | ForEach-Object {
+                if ($_ -match '^NP_BOOTSTRAP_ADMIN_PASSWORD=(.*)') { $matches[1] }
+            }
+            if ($envVals) { $env:NP_BOOTSTRAP_ADMIN_PASSWORD = $envVals[0] }
+        }
+    }
     dotnet run --project .\src\NatureProtector.Postgres.Bootstrap\NatureProtector.Postgres.Bootstrap.csproj -c $Configuration --no-build --no-restore
 
     if ($LASTEXITCODE -ne 0) {

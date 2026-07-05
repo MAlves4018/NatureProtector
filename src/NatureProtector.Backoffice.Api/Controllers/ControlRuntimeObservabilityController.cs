@@ -2,12 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Backoffice.Api.Operations.Authorization;
 
 namespace NatureProtector.Backoffice.Api.Controllers;
 
 [ApiController]
 [Route("api/control/runtime/observability")]
-[Authorize(Roles = "Sim,Pipeline,Admin")]
+[Authorize(Policy = OperationCapabilities.RunRead)]
 public sealed class ControlRuntimeObservabilityController : ControllerBase
 {
     private readonly IRuntimeObservabilityService _observability;

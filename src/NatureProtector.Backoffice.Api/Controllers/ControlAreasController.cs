@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Backoffice.Api.Operations.Authorization;
 
 namespace NatureProtector.Backoffice.Api.Controllers;
 
 
-[Authorize]
 [Route("api/control/areas")]
+[Authorize(Policy = OperationCapabilities.AreaRead)]
 public sealed class ControlAreasController : ControlPlaneControllerBase
 {
     public ControlAreasController(IControlPlaneService controlPlane)
@@ -103,7 +104,6 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
     }
 
     [HttpGet("{areaCode}/scenarios")]
-    [Authorize(Roles = "Sim,Pipeline,Admin")]
     public async Task<ActionResult> ListScenarios(
         string areaCode,
         [FromQuery] int? configurationVersion,
@@ -122,7 +122,6 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
     }
 
     [HttpGet("{areaCode}/operational-state")]
-    [Authorize(Roles = "Sim,Pipeline,Admin")]
     public async Task<ActionResult> GetOperationalState(
         string areaCode,
         [FromQuery] int? configurationVersion,
@@ -139,7 +138,6 @@ public sealed class ControlAreasController : ControlPlaneControllerBase
     }
 
     [HttpGet("{areaCode}/cells/operational-state")]
-    [Authorize(Roles = "Sim,Pipeline,Admin")]
     public async Task<ActionResult> ListCellOperationalStates(
         string areaCode,
         [FromQuery] int? configurationVersion,
