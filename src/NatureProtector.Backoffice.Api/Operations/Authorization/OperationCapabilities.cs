@@ -72,12 +72,12 @@ public static class OperationRoleCatalog
             ["QA"] =
             [
                 OperationCapabilities.DemoRead, OperationCapabilities.AreaRead, OperationCapabilities.RiskRead,
-                OperationCapabilities.RunRead, OperationCapabilities.QualityRead,
+                OperationCapabilities.RunRead, OperationCapabilities.ScenarioRead, OperationCapabilities.SimulationRead,
+                OperationCapabilities.SimulationExecute, OperationCapabilities.EvidenceRead, OperationCapabilities.QualityRead,
                 OperationCapabilities.QualityExecuteStatic, OperationCapabilities.QualityExecuteFull,
                 OperationCapabilities.EvidenceRead, OperationCapabilities.EvidenceDownload,
                 OperationCapabilities.EvidenceExecuteCampaign, OperationCapabilities.EvidenceCompare,
-                OperationCapabilities.DataContextRead,
-                OperationCapabilities.HelpRead
+                OperationCapabilities.DataContextRead, OperationCapabilities.HelpRead
             ],
             ["Operations"] =
             [

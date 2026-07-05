@@ -6,6 +6,7 @@ import { SimulationProgress } from '../components/SimulationProgress';
 import { useUiLocale } from '../state/LocaleContext';
 import { useUiSimulation } from '../state/SimulationContext';
 import { useUiActivity } from '../state/ActivityContext';
+import { useNavigate } from 'react-router-dom';
 
 export function SimulationPage() {
   const { copy } = useUiLocale();
@@ -28,20 +29,11 @@ export function SimulationPage() {
     degradationProfiles,
   } = useUiSimulation();
 
+  const navigate = useNavigate();
+
   if (simulationResult?.run?.id) {
-    return (
-      <section className="ui-page">
-        <PageHeader
-          title={copy('simulation.title')}
-          subtitle={copy('simulation.subtitle')}
-          helpTopic="degradationProfile"
-        />
-        <SimulationProgress
-          runId={simulationResult.run.id}
-          onBackToForm={() => setSimulationResult(null)}
-        />
-      </section>
-    );
+    setSimulationResult(null);
+    navigate(`/runs`);
   }
 
   return (

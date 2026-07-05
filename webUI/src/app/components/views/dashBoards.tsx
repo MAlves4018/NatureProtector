@@ -10,8 +10,7 @@ import { api } from '../../services/api';
 export function DashBoards({ isDark, areaCode: areaCodeProp }: { isDark: boolean; areaCode?: string }) {
   const c = getColors(isDark);
 
-  const { areaCode: areaCodeParam } = useParams<{ areaCode: string }>();
-  const areaCode = areaCodeProp ?? areaCodeParam;
+  const areaCode = areaCodeProp;
   const [curAreaId, setAreaId] = useState<string>('');
 
   const [geoJSON, setGeoJSON] = useState<any>(null);

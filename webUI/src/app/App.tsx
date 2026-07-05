@@ -59,23 +59,6 @@ export function App() {
   );
 }
 
-function AppLayout({
-  isDark,
-  setIsDark,
-}: {
-  isDark: boolean;
-  setIsDark: React.Dispatch<React.SetStateAction<boolean>>;
-}) {
-  return (
-    <>
-      <NavBar isDark={isDark} setIsDark={setIsDark} />
-      <Suspense fallback={<UiRouteLoading/>}>
-        <Outlet />
-      </Suspense>
-    </>
-  );
-}
-
 function UiRouter({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {
   const router = useMemo(
     () =>

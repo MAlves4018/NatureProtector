@@ -2,11 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Backoffice.Api.Operations.Authorization;
 
 namespace NatureProtector.Backoffice.Api.Controllers;
 
 [Route("api/dev/controlled-validation")]
-[Authorize(Roles = "Sim,Admin")]
+[Authorize]
 public sealed class DevControlledValidationController : ControlPlaneControllerBase
 {
     private const string Phase = "P3NegativePipeline";
@@ -25,6 +26,7 @@ public sealed class DevControlledValidationController : ControlPlaneControllerBa
     }
 
     [HttpGet("p3")]
+    [Authorize(Policy = OperationCapabilities.P3Read)]
     public ActionResult<ControlledValidationP3AvailabilityResponse> GetP3Availability()
     {
         var unavailable = EnsureControlPlaneAvailable();
@@ -47,6 +49,7 @@ public sealed class DevControlledValidationController : ControlPlaneControllerBa
     }
 
     [HttpPost("p3/run")]
+    [Authorize(Policy = OperationCapabilities.SimulationExecute)]
     public async Task<ActionResult<ControlledValidationP3RunResponse>> RunP3(
         [FromBody] ControlledValidationP3RunRequest? request,
         CancellationToken cancellationToken = default)
