@@ -1,3 +1,5 @@
+import { Status } from "@chakra-ui/react/";
+
 export interface RuntimeSummaryResponse {
   generatedAtUtc: string;
   recentWindowMinutes: number;
@@ -511,4 +513,18 @@ export interface ControlledValidationP3RunResponse {
   auditRequired: boolean;
   run: RuntimeRunSummaryResponse | null;
   notes: string[];
+}
+
+export interface AlertStateResponse {
+  id: string;
+  areaCode: string;
+  configurationVersionNumber: number;
+  alertCode: string;
+  severity: string;
+  status: string;
+  message: string;
+  triggeredAt: string;
+  updatedAt: string;
+  resolvedAt: string | null;
+  alertState: string | null;
 }

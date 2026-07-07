@@ -1,5 +1,4 @@
 import { AreaSelector } from '../components/AreaSelector';
-import { BetaParityLinks } from '../components/BetaParityLinks';
 import { DataStatusSummary } from '../components/DataStatusSummary';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
@@ -55,7 +54,6 @@ export function OverviewPage() {
           ))}
         </div>
       </section>
-      <BetaParityLinks ids={['monitoring', 'map']} />
     </section>
   );
 }

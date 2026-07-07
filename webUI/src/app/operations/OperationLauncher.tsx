@@ -110,7 +110,7 @@ export function OperationLauncher({ definition }: { definition: OperationDefinit
       {!enabled && (
         <div className="ui-notice ui-warning">
           <ShieldAlert size={16} />
-          <span>{definition.limitation ?? definition.availability}</span>
+          <span>{definition.availability}</span>
         </div>
       )}
       <button

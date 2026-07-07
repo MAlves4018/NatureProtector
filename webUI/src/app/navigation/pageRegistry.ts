@@ -23,15 +23,17 @@ export interface UiPageDefinition {
     | 'nav.users'
     | 'nav.admin'
     | 'nav.p3'
-    | 'nav.context';
+    | 'nav.context'
+    | 'nav.scenario-compare'
+    | 'nav.about';
   requiredCapabilities: readonly UiCapability[];
-  audience: 'public' | 'common' | 'sim' | 'pipeline' | 'qa' | 'operations' | 'approver' | 'admin';
+  audience: 'public' | 'common' | 'sim' | 'pipeline' | 'qa' | 'operations' | 'approver' | 'admin' | 'about';
   order: number;
-  group: 'public' | 'operate' | 'technical' | 'release' | 'admin' | 'simulate';
+  group: 'public' | 'operate' | 'technical' | 'release' | 'admin' | 'simulate' | 'about';
   helpTopic: HelpTopicId;
 }
 
-export const UI_V3_PAGE_REGISTRY: readonly UiPageDefinition[] = [
+export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
   {
     id: 'demo',
     labelKey: 'nav.demo',
@@ -48,6 +50,15 @@ export const UI_V3_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     audience: 'public',
     order: 15,
     group: 'public',
+    helpTopic: 'overview',
+  },
+  {
+    id: 'about',
+    labelKey: 'nav.about',
+    requiredCapabilities: ['demo.read'],
+    audience: 'about',
+    order: 18,
+    group: 'about',
     helpTopic: 'overview',
   },
   {
@@ -94,6 +105,15 @@ export const UI_V3_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     order: 50,
     group: 'simulate',
     helpTopic: 'degradationProfile',
+  },
+  {
+    id: 'scenario-compare',
+    labelKey: 'nav.scenario-compare',
+    requiredCapabilities: ['run.read'],
+    audience: 'common',
+    order: 55,
+    group: 'simulate',
+    helpTopic: 'runState',
   },
   {
     id: 'pipeline',
@@ -206,7 +226,7 @@ export const UI_V3_PAGE_REGISTRY: readonly UiPageDefinition[] = [
 ];
 
 export function getUiPages(capabilities: Set<UiCapability>) {
-  return UI_V3_PAGE_REGISTRY.filter((page) =>
+  return UI_PAGE_REGISTRY.filter((page) =>
     page.requiredCapabilities.every((capability) => capabilities.has(capability)),
   ).sort((a, b) => a.order - b.order);
 }

@@ -45,14 +45,6 @@ export function ExperimentalPage() {
         </div>
       </section>
       <TechnicalDetail title="Detalhe P3" fields={p3Surface.fields} />
-      <section className="ui-notice">
-        <strong>Limites P3</strong>
-        <ul>
-          {p3Surface.limitations.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
     </section>
   );
 }

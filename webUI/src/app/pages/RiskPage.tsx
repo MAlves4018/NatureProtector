@@ -1,5 +1,4 @@
 import { AreaSelector } from '../components/AreaSelector';
-import { BetaParityLinks } from '../components/BetaParityLinks';
 import { DataStatusSummary } from '../components/DataStatusSummary';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
@@ -53,7 +52,6 @@ export function RiskPage() {
           </ul>
         </section>
       )}
-      <BetaParityLinks ids={['monitoring', 'map']} />
     </section>
   );
 }

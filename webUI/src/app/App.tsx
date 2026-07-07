@@ -33,6 +33,8 @@ const OverviewPage = lazy(() => import('./pages/OverviewPage').then((module) => 
 const RiskPage = lazy(() => import('./pages/RiskPage').then((module) => ({ default: module.RiskPage })));
 const RunsPage = lazy(() => import('./pages/RunsPage').then((module) => ({ default: module.RunsPage })));
 const SimulationPage = lazy(() => import('./pages/SimulationPage').then((module) => ({ default: module.SimulationPage })));
+const ScenarioComparisonPage = lazy(() => import('./pages/ScenarioComparisonPage').then((module) => ({ default: module.ScenarioComparisonPage })));
+const AboutPage = lazy(() => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const PipelinePage = lazy(() => import('./pages/PipelinePage').then((module) => ({ default: module.PipelinePage })));
 const QualityEvidencePage = lazy(() => import('./pages/QualityEvidencePage').then((module) => ({ default: module.QualityEvidencePage })));
 const QaTestSuitePage = lazy(() => import('./pages/QaTestSuitePage').then((module) => ({ default: module.QaTestSuitePage })));
@@ -78,12 +80,14 @@ function UiRouter({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dis
           children: [
             { index: true, element: <UiDefaultRedirect /> },
             { path: 'demo', element: <PublicOverviewPage /> },
+            { path: 'about', element: <AboutPage /> },
             { path: 'context', element: <DataContextPage /> },
             { path: 'dashboard', element: <DashboardsPage /> },
             { path: 'mission', element: <MissionControlPage /> },
             { path: 'risk', element: <RiskPage /> },
             { path: 'runs', element: <RunsPage /> },
             { path: 'simulation', element: <SimulationPage /> },
+            { path: 'scenario-compare', element: <ScenarioComparisonPage /> },
             { path: 'pipeline', element: <PipelinePage /> },
             { path: 'quality', element: <QualityRunsPage /> },
             { path: 'qa', element: <QualityEvidencePage /> },

@@ -83,13 +83,6 @@ export function ComponentHealthDashboard({ health }: Props) {
           </article>
         ))}
       </div>
-      {health.limitations.length > 0 && (
-        <ul style={{ marginTop: 8 }}>
-          {health.limitations.map((lim, i) => (
-            <li key={i} className="ui-muted">{lim.message}</li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

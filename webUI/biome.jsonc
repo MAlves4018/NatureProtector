@@ -11,7 +11,6 @@
     "includes": [
       "src/app/services/**/*",
       "src/app/routingImports.test.ts",
-      "src/app/apiParity.test.ts",
       "e2e/**/*.ts",
       "scripts/**/*.mjs",
       "vite.config.ts",

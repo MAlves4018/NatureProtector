@@ -18,14 +18,6 @@ export function DataStatusDetails() {
           </div>
         ))}
       </div>
-      <div className="ui-limits">
-        <span className="ui-label">{copy('technical.limitation')}</span>
-        <ul>
-          {riskModel.limitations.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
     </details>
   );
 }

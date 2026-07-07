@@ -5,6 +5,8 @@ import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
 import { useAdminActions } from '../state/useUiSurfaces';
 import type { UiAdminAction } from '../technicalSurfaces';
+import { api } from '../services/api';
+import { RuntimeResetRequest } from '../types';
 
 export function AdminPage() {
   const { copy } = useUiLocale();
@@ -18,10 +20,14 @@ export function AdminPage() {
   const [resetResult, setResetResult] = useState<string | null>(null);
 
   const handleReset = async () => {
-    if (confirmText !== 'RESET') return;
+    if (confirmText !== 'RESET_RUNTIME_STATE') return;
     setExecuting(true);
     setResetResult(null);
-    await new Promise((r) => setTimeout(r, 1500));
+    await api.resetRuntimeState({
+      scope: 'runtime-only',
+      confirm: confirmText,
+      dryRun: dryRun,
+    } as RuntimeResetRequest);
     setResetResult(
       dryRun
         ? 'Dry-run: runtime reset simulado. Nenhum dado foi alterado.'
@@ -84,13 +90,13 @@ export function AdminPage() {
           </label>
           <label className="ui-field" style={{ marginBottom: 12 }}>
             <span>
-              Escreva <strong>RESET</strong> para confirmar:
+              Escreva <strong>RESET_RUNTIME_STATE</strong> para confirmar:
             </span>
             <input
               className="ui-input"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="RESET"
+              placeholder="RESET_RUNTIME_STATE"
               disabled={executing}
             />
           </label>
@@ -99,7 +105,7 @@ export function AdminPage() {
               type="button"
               className="ui-button"
               style={{ background: 'var(--ui-error)', color: 'white' }}
-              disabled={confirmText !== 'RESET' || executing}
+              disabled={confirmText !== 'RESET_RUNTIME_STATE' || executing}
               onClick={() => void handleReset()}
             >
               {executing ? <RotateCw size={16} className="ui-spin" /> : <AlertTriangle size={16} />}

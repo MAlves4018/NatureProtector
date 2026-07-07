@@ -35,6 +35,7 @@ import {
   CloudEnvironmentResponse,
   AdminUserResponse,
   AdminRoleResponse,
+  AlertStateResponse,
 } from '../types';
 
 export const api = {
@@ -264,6 +265,10 @@ export const api = {
       request,
       api.getRequestOptions(),
     );
+  },
+
+  getAlerts: (areaCode: string) => {
+    return httpClient.get<AlertStateResponse[]>(`/control/areas/${encodeURIComponent(areaCode)}/alerts/active`, api.getRequestOptions());
   },
 
   withAuthToken(token: string) {
