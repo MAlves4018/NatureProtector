@@ -11,29 +11,27 @@ import { UiAlertProvider } from './AlertContext';
 import { UiToastProvider } from './ToastContext';
 
 export function UiProvider({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
-    return (
-        <UiLocaleProvider>
-            <UiCapabilityProvider isDark={isDark} >
-                <UiAreaProvider>
-                    <UiRiskProvider>
-                        <UiActivityProvider>
-                            <UiSimulationProvider>
-                                <UiObservabilityProvider>
-                                    <OperationsProvider>
-                                        <UiQaTestProvider>
-                                            <UiAlertProvider>
-                                                <UiToastProvider>
-                                                    {children}
-                                                </UiToastProvider>
-                                            </UiAlertProvider>
-                                        </UiQaTestProvider>
-                                    </OperationsProvider>
-                                </UiObservabilityProvider>
-                            </UiSimulationProvider>
-                        </UiActivityProvider>
-                    </UiRiskProvider>
-                </UiAreaProvider>
-            </UiCapabilityProvider>
-        </UiLocaleProvider>
-    );
+  return (
+    <UiLocaleProvider>
+      <UiCapabilityProvider isDark={isDark}>
+        <UiAreaProvider>
+          <UiRiskProvider>
+            <UiActivityProvider>
+              <UiSimulationProvider>
+                <UiObservabilityProvider>
+                  <OperationsProvider>
+                    <UiQaTestProvider>
+                      <UiAlertProvider>
+                        <UiToastProvider>{children}</UiToastProvider>
+                      </UiAlertProvider>
+                    </UiQaTestProvider>
+                  </OperationsProvider>
+                </UiObservabilityProvider>
+              </UiSimulationProvider>
+            </UiActivityProvider>
+          </UiRiskProvider>
+        </UiAreaProvider>
+      </UiCapabilityProvider>
+    </UiLocaleProvider>
+  );
 }

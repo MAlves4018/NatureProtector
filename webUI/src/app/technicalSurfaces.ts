@@ -648,11 +648,14 @@ export function buildUiAdminActions(user: Pick<User, 'roles'> | null | undefined
       capability: 'admin.execute',
       action: 'Runtime reset',
       riskLevel: 'High',
-      authorizationState: 'Backend endpoint exists for Sim/Admin in Development; executable reset is not exposed by this UI surface',
+      authorizationState:
+        'Backend endpoint exists for Sim/Admin in Development; executable reset is not exposed by this UI surface',
       confirmationRequired: 'RESET confirm token and dry-run support in backend contract',
       auditAvailable: 'Before/after table counts in reset response',
       availability: 'blocked',
-      limitations: ['Preserving M04 smoke state is required; reset can be destructive and is not exposed as available administration.'],
+      limitations: [
+        'Preserving M04 smoke state is required; reset can be destructive and is not exposed as available administration.',
+      ],
     },
     {
       capability: 'admin.execute',
@@ -906,5 +909,3 @@ function none(locale: UiLocale) {
 function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
 }
-
-

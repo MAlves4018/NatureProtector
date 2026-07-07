@@ -62,26 +62,26 @@ export type UiNavTarget =
 export interface UiNavigationItem {
   id: UiNavTarget;
   labelKey:
-  | 'nav.demo'
-  | 'nav.dashboard'
-  | 'nav.mission'
-  | 'nav.risk'
-  | 'nav.pipeline'
-  | 'nav.simulation'
-  | 'nav.runs'
-  | 'nav.quality'
-  | 'nav.qa'
-  | 'nav.qa-tests'
-  | 'nav.db-queries'
-  | 'nav.evidence'
-  | 'nav.deployment-health'
-  | 'nav.deployments'
-  | 'nav.cloud'
-  | 'nav.approvals'
-  | 'nav.users'
-  | 'nav.admin'
-  | 'nav.p3'
-  | 'nav.context';
+    | 'nav.demo'
+    | 'nav.dashboard'
+    | 'nav.mission'
+    | 'nav.risk'
+    | 'nav.pipeline'
+    | 'nav.simulation'
+    | 'nav.runs'
+    | 'nav.quality'
+    | 'nav.qa'
+    | 'nav.qa-tests'
+    | 'nav.db-queries'
+    | 'nav.evidence'
+    | 'nav.deployment-health'
+    | 'nav.deployments'
+    | 'nav.cloud'
+    | 'nav.approvals'
+    | 'nav.users'
+    | 'nav.admin'
+    | 'nav.p3'
+    | 'nav.context';
   requiredCapability: UiCapability;
 }
 
@@ -203,5 +203,3 @@ export function getUiCapabilities(user: Pick<User, 'roles'> | null | undefined):
 export function hasUiCapability(capabilities: Set<UiCapability>, capability: UiCapability) {
   return capabilities.has(capability);
 }
-
-

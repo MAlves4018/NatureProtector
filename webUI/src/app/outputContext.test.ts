@@ -65,5 +65,3 @@ describe('risk read model', () => {
     expect(model.area).toBe('Desconhecido');
   });
 });
-
-

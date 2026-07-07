@@ -77,17 +77,19 @@ def validate(repo: Path) -> dict[str, Any]:
                 f"{normalized_chars} <= {spec['max_normalized_chars']}",
             )
             check(f"workspace-marker:{relative}", spec["required_marker"] in text, spec["required_marker"])
-    workspace = repo / "webUI/src/app/components/views/Workspace.tsx"
+    workspace = repo / contract.get("workspace_entrypoint", "")
     text = workspace.read_text(encoding="utf-8") if workspace.is_file() else ""
+    workspace_export = contract.get("workspace_export", "Workspace")
     check(
         "workspace-public-export",
-        bool(re.search(r"^export function Workspace\(", text, re.MULTILINE)),
-        "export function Workspace",
+        bool(re.search(rf"^export function {re.escape(workspace_export)}\(", text, re.MULTILINE)),
+        f"export function {workspace_export}",
     )
     app = repo / "webUI/src/app/App.tsx"
+    lazy_import = contract.get("workspace_lazy_import", "import('./components/views/Workspace')")
     check(
         "workspace-lazy-import-preserved",
-        app.is_file() and "import('./components/views/Workspace')" in app.read_text(encoding="utf-8"),
+        app.is_file() and lazy_import in app.read_text(encoding="utf-8"),
         "App.tsx lazy import",
     )
     barrel = repo / contract["types_barrel"]

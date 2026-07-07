@@ -19,10 +19,12 @@ export function AlertBanner() {
   if (activeAlerts.length === 0) return null;
 
   return (
-    <div className="ui-alert-banner" role="region" aria-label="Alertas ativos">
+    <section className="ui-alert-banner" aria-label="Alertas ativos">
       <div className="ui-alert-header">
         <Bell size={14} />
-        <span>{activeAlerts.length} alerta{activeAlerts.length !== 1 ? 's' : ''} ativo{activeAlerts.length !== 1 ? 's' : ''}</span>
+        <span>
+          {activeAlerts.length} alerta{activeAlerts.length !== 1 ? 's' : ''} ativo{activeAlerts.length !== 1 ? 's' : ''}
+        </span>
       </div>
       <div className="ui-alert-list">
         {activeAlerts.map((alert) => {
@@ -46,6 +48,6 @@ export function AlertBanner() {
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }

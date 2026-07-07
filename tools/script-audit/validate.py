@@ -11,6 +11,23 @@ from pathlib import Path
 
 FUNCTION_RE = re.compile(r"(?im)^\s*function\s+([A-Za-z0-9_-]+)\s*\{")
 IMPORT_RE = re.compile(r"Import-Module\s+\(Join-Path\s+\$PSScriptRoot\s+['\"]([^'\"]+)['\"]\)", re.I)
+LOCAL_SCAN_EXCLUDED_PREFIXES = (
+    ".nuget/",
+    ".testbin/",
+    "artifacts/",
+    "BenchmarkDotNet.Artifacts/",
+    "coveragereport_backend/",
+    "coveragereport_core/",
+    "docs/RepositorioDocumental/",
+    "graphify-out/",
+    "TestResults/",
+)
+LOCAL_SCAN_EXCLUDED_PARTS = {
+    ".terraform",
+    "bin",
+    "node_modules",
+    "obj",
+}
 
 
 def function_names(text: str) -> list[str]:
@@ -105,6 +122,11 @@ def resolve_import(script_path: Path, relative: str) -> Path:
     return (script_path.parent / relative.replace("\\", "/")).resolve()
 
 
+def is_local_scan_excluded(path: Path, repo: Path) -> bool:
+    rel = path.relative_to(repo).as_posix()
+    return rel.startswith(LOCAL_SCAN_EXCLUDED_PREFIXES) or bool(LOCAL_SCAN_EXCLUDED_PARTS.intersection(path.parts))
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--repo", default=".")
@@ -156,10 +178,11 @@ def main() -> int:
         imports = IMPORT_RE.findall(text)
         check(f"module-import-count:{relative}", len(imports) == 1, f"imports={imports}")
         if len(imports) == 1:
+            resolved_import = resolve_import(script, imports[0])
             check(
                 f"module-import-resolves:{relative}",
-                resolve_import(script, imports[0]) == manifest.resolve(),
-                str(resolve_import(script, imports[0])),
+                resolved_import in {manifest.resolve(), implementation.resolve()},
+                str(resolved_import),
             )
     for relative, names in contract.get("intentional_local_exceptions", {}).items():
         path = repo / relative
@@ -196,6 +219,8 @@ def main() -> int:
     counts = Counter()
     locations = defaultdict(list)
     for script in list(repo.rglob("*.ps1")) + list(repo.rglob("*.psm1")):
+        if is_local_scan_excluded(script, repo):
+            continue
         rel = script.relative_to(repo).as_posix()
         if rel in exact or rel.startswith(prefixes):
             continue

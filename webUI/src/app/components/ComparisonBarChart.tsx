@@ -1,5 +1,4 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useUiLocale } from '../state/LocaleContext';
 import type { OperationComparisonResponse } from '../types/operations';
 
 interface ComparisonBarChartProps {
@@ -11,7 +10,6 @@ const RIGHT_COLOR = '#176b4d';
 const SHARED_COLOR = '#53625b';
 
 export function ComparisonBarChart({ comparison }: ComparisonBarChartProps) {
-  const { copy } = useUiLocale();
   if (!comparison) {
     return (
       <div className="ui-chart-card ui-chart-full">

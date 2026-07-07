@@ -51,8 +51,8 @@ export function EligibilityPieChart({ data }: EligibilityPieChartProps) {
             innerRadius={30}
             paddingAngle={2}
           >
-            {chartData.map((entry, index) => (
-              <Cell key={`${entry.name}-${index}`} fill={entry.color} />
+            {chartData.map((entry) => (
+              <Cell key={entry.name} fill={entry.color} />
             ))}
           </Pie>
           <Tooltip

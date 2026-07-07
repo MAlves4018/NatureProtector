@@ -54,17 +54,20 @@ export function PublicOverviewPage() {
         </div>
         <div style={{ display: 'grid', gap: 14 }}>
           <p>
-            O <strong>NatureProtector</strong> é um protótipo académico de monitorização e avaliação
-            do risco de incêndios florestais. O sistema integra sensores, simulação de cenários e
-            análise de risco para apoiar a tomada de decisão na prevenção e resposta a incêndios.
+            O <strong>NatureProtector</strong> é um protótipo académico de monitorização e avaliação do risco de
+            incêndios florestais. O sistema integra sensores, simulação de cenários e análise de risco para apoiar a
+            tomada de decisão na prevenção e resposta a incêndios.
           </p>
           <p>
-            A plataforma consome dados de estações meteorológicas, sensores de humidade e temperatura
-            e modelos de propagação do fogo para produzir avaliações de risco em tempo real.
-            Os resultados são contextualizados por origem, temporalidade, disponibilidade e limitações
-            conhecidas, não substituindo autoridades oficiais como IPMA, ICNF ou Proteção Civil.
+            A plataforma consome dados de estações meteorológicas, sensores de humidade e temperatura e modelos de
+            propagação do fogo para produzir avaliações de risco em tempo real. Os resultados são contextualizados por
+            origem, temporalidade, disponibilidade e limitações conhecidas, não substituindo autoridades oficiais como
+            IPMA, ICNF ou Proteção Civil.
           </p>
-          <div className="ui-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginTop: 8 }}>
+          <div
+            className="ui-grid"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginTop: 8 }}
+          >
             {TEAM_MEMBERS.map((member) => (
               <article key={member.name} className="ui-card" style={{ display: 'grid', gap: 4, padding: 12 }}>
                 <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

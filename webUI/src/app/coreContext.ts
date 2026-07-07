@@ -438,5 +438,3 @@ function coreLabel(locale: UiLocale, key: CoreLabelKey) {
 
   return labels[locale][key];
 }
-
-

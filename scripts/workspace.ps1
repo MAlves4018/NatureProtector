@@ -30,12 +30,7 @@ param(
     [string]$Confirm
 )
 
-if ($PSVersionTable.PSVersion.Major -ge 7) {
-    Import-Module (Join-Path $PSScriptRoot 'common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
-}
-else {
-    Import-Module (Join-Path $PSScriptRoot 'common/NatureProtector.Tooling.psm1') -Force -ErrorAction Stop
-}
+Import-Module (Join-Path $PSScriptRoot 'common/NatureProtector.Tooling.psm1') -Force -ErrorAction Stop
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path

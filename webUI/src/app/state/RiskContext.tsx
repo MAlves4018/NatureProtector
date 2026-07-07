@@ -17,7 +17,7 @@ const UiRiskContext = createContext<UiRiskContextValue | null>(null);
 
 export function UiRiskProvider({ children }: { children: ReactNode }) {
   const { resolvedAreaCode, areasLoading } = useUiArea();
-  const { canReadRisk, canReadRun, canReadScenario } = useUiCapabilities();
+  const { canReadRisk } = useUiCapabilities();
   const { locale } = useUiLocale();
   const [summary, setSummary] = useState<RuntimeSummaryResponse | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);

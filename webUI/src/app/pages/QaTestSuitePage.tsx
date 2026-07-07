@@ -2,12 +2,10 @@ import { useState } from 'react';
 import { PlayCircle, RotateCw } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
-import { useUiLocale } from '../state/LocaleContext';
 import { useUiCapabilities } from '../state/CapabilityContext';
 import { useUiQaTests } from '../state/QaTestContext';
 
 export function QaTestSuitePage() {
-  const { copy } = useUiLocale();
   const { canExecuteFullQa } = useUiCapabilities();
   const { qaSuites, runningSuiteIds, executions, runAll, runSuites, clearExecutions } = useUiQaTests();
 
@@ -24,7 +22,6 @@ export function QaTestSuitePage() {
 
   const isRunning = runningSuiteIds.size > 0;
   const allSelected = qaSuites.every((s) => selectedIds.has(s.suiteId));
-  const canRun = canExecuteFullQa || qaSuites.some((s) => selectedIds.has(s.suiteId));
 
   return (
     <section className="ui-page">
@@ -131,7 +128,15 @@ export function QaTestSuitePage() {
                     state="ready"
                   />
                 </div>
-                <div className="ui-fact-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, margin: 0 }}>
+                <div
+                  className="ui-fact-list"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                    gap: 8,
+                    margin: 0,
+                  }}
+                >
                   <span>
                     <strong>Duracao</strong> {(exec.durationMs / 1000).toFixed(1)}s
                   </span>
@@ -154,12 +159,20 @@ export function QaTestSuitePage() {
                   </summary>
                   <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
                     {exec.suites.map((suite) => (
-                      <div key={suite.suiteId} className="ui-detail-row" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
+                      <div
+                        key={suite.suiteId}
+                        className="ui-detail-row"
+                        style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}
+                      >
                         <span style={{ fontWeight: 700 }}>{suite.suiteName}</span>
                         <span style={{ display: 'flex', gap: 8 }}>
                           <span style={{ color: '#166534', fontWeight: 900 }}>P {suite.passed ?? '-'}</span>
-                          {(suite.failed ?? 0) > 0 && <span style={{ color: '#b91c1c', fontWeight: 900 }}>F {suite.failed}</span>}
-                          {(suite.skipped ?? 0) > 0 && <span style={{ color: '#a16207', fontWeight: 900 }}>S {suite.skipped}</span>}
+                          {(suite.failed ?? 0) > 0 && (
+                            <span style={{ color: '#b91c1c', fontWeight: 900 }}>F {suite.failed}</span>
+                          )}
+                          {(suite.skipped ?? 0) > 0 && (
+                            <span style={{ color: '#a16207', fontWeight: 900 }}>S {suite.skipped}</span>
+                          )}
                         </span>
                         <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <StatusBadge label={suite.status} state={suite.status === 'Passed' ? 'ready' : 'partial'} />

@@ -20,7 +20,7 @@ export function Breadcrumbs({ items, onNavigate }: BreadcrumbsProps) {
         <Home size={14} />
       </button>
       {items.map((item, i) => (
-        <span key={i} className="ui-breadcrumb-item">
+        <span key={`${item.target ?? 'current'}-${item.label}`} className="ui-breadcrumb-item">
           <ChevronRight size={12} className="ui-breadcrumb-sep" />
           {item.target && i < items.length - 1 ? (
             <button type="button" className="ui-breadcrumb-link" onClick={() => item.target && onNavigate(item.target)}>

@@ -24,9 +24,9 @@ class FrontendDecompositionTests(unittest.TestCase):
     def test_legitimate_body_change_is_allowed(self):
         with tempfile.TemporaryDirectory() as temp:
             fixture = self._fixture(Path(temp))
-            path = fixture / "webUI/src/app/components/views/workspace/WorkspaceShared.tsx"
+            path = fixture / "webUI/src/app/pages/MissionControlPage.tsx"
             path.write_text(
-                path.read_text(encoding="utf-8").replace("Unexpected UI/runtime error", "Updated UI/runtime error"),
+                path.read_text(encoding="utf-8").replace("Mission Control", "Operations Control"),
                 encoding="utf-8",
             )
             self.assertEqual("PASS", MODULE.validate(fixture)["status"])
@@ -34,7 +34,8 @@ class FrontendDecompositionTests(unittest.TestCase):
     def test_workspace_monolith_regression_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
             fixture = self._fixture(Path(temp))
-            path = fixture / "webUI/src/app/components/views/Workspace.tsx"
+            contract = json.loads((fixture / "config/quality/frontend-decomposition.json").read_text(encoding="utf-8"))
+            path = fixture / contract["workspace_entrypoint"]
             path.write_text(path.read_text(encoding="utf-8") + "\n" + ("// regression\n" * 600), encoding="utf-8")
             payload = MODULE.validate(fixture)
             self.assertEqual("FAIL", payload["status"])

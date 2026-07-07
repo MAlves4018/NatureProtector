@@ -281,5 +281,3 @@ function containsAny(values: Array<string | null | undefined>, needles: string[]
     return needles.some((needle) => text.includes(needle));
   });
 }
-
-

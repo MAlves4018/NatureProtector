@@ -20,9 +20,21 @@ export function ThroughputDisplay({ audit, timings }: Props) {
       : `${audit.acceptedReadings}`;
     metrics.push({ label: 'Taxa de aceitacao', value: acceptedRate, color: '#166534' });
 
-    metrics.push({ label: 'Rejeitados', value: String(audit.rejected), color: audit.rejected > 0 ? '#b91c1c' : '#166534' });
-    metrics.push({ label: 'Quarentena', value: String(audit.quarantined), color: audit.quarantined > 0 ? '#a16207' : '#166534' });
-    metrics.push({ label: 'Retries', value: String(audit.retryAttempts), color: audit.retryAttempts > 0 ? '#a16207' : '#166534' });
+    metrics.push({
+      label: 'Rejeitados',
+      value: String(audit.rejected),
+      color: audit.rejected > 0 ? '#b91c1c' : '#166534',
+    });
+    metrics.push({
+      label: 'Quarentena',
+      value: String(audit.quarantined),
+      color: audit.quarantined > 0 ? '#a16207' : '#166534',
+    });
+    metrics.push({
+      label: 'Retries',
+      value: String(audit.retryAttempts),
+      color: audit.retryAttempts > 0 ? '#a16207' : '#166534',
+    });
     metrics.push({ label: 'Risk assessments', value: String(audit.riskAssessments), color: '#166534' });
   }
 
@@ -37,9 +49,10 @@ export function ThroughputDisplay({ audit, timings }: Props) {
   }
 
   if (timings?.attempts) {
-    const successRate = timings.attempts.attemptCount > 0
-      ? `${((timings.attempts.successfulAttempts / timings.attempts.attemptCount) * 100).toFixed(1)}%`
-      : 'N/A';
+    const successRate =
+      timings.attempts.attemptCount > 0
+        ? `${((timings.attempts.successfulAttempts / timings.attempts.attemptCount) * 100).toFixed(1)}%`
+        : 'N/A';
     metrics.push({ label: 'Sucesso attempts', value: successRate, color: '#166534' });
 
     if (timings.attempts.avgDurationMs !== null) {

@@ -408,5 +408,3 @@ function jsonResponse(body: unknown) {
     headers: { 'Content-Type': 'application/json' },
   });
 }
-
-

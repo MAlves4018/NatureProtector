@@ -7,7 +7,6 @@ CI authority when these optional presentation dependencies are unavailable.
 from __future__ import annotations
 
 import argparse
-import html
 import json
 import os
 import re
