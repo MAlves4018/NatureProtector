@@ -26,6 +26,14 @@ Já inclui autenticação JWT e autorização por roles nos endpoints atuais. A 
 
 ## Endpoints desta fase
 
+### Health tecnico
+
+- `GET /health`
+- `GET /health/live`
+- `GET /health/ready`
+
+Estes endpoints usam ASP.NET health checks simples para probes tecnicos locais. Nao substituem o health operacional detalhado em `GET /api/control/runtime/observability/health`.
+
 ### Configuração
 
 - `GET /api/control/configurations`

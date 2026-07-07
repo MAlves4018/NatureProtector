@@ -25,15 +25,15 @@ REQUIRED_FILES = [
     "src/NatureProtector.Backoffice.Api/Controllers/ControlDeploymentsController.cs",
     "src/NatureProtector.Backoffice.Api/Controllers/ControlCloudOperationsController.cs",
     "src/NatureProtector.Backoffice.Api/Controllers/ControlApprovalsController.cs",
-    "webUI/src/app/ui-v2/operations/OperationsContext.tsx",
-    "webUI/src/app/ui-v2/operations/OperationLauncher.tsx",
-    "webUI/src/app/ui-v2/pages/MissionControlPage.tsx",
-    "webUI/src/app/ui-v2/pages/QualityRunsPage.tsx",
-    "webUI/src/app/ui-v2/pages/EvidenceExplorerPage.tsx",
-    "webUI/src/app/ui-v2/pages/DeploymentsPage.tsx",
-    "webUI/src/app/ui-v2/pages/CloudResourcesPage.tsx",
-    "webUI/src/app/ui-v2/pages/ApprovalsPage.tsx",
-    "webUI/src/app/ui-v2/pages/UserRoleAdministrationPage.tsx",
+    "webUI/src/app/operations/OperationsContext.tsx",
+    "webUI/src/app/operations/OperationLauncher.tsx",
+    "webUI/src/app/pages/MissionControlPage.tsx",
+    "webUI/src/app/pages/QualityRunsPage.tsx",
+    "webUI/src/app/pages/EvidenceExplorerPage.tsx",
+    "webUI/src/app/pages/DeploymentsPage.tsx",
+    "webUI/src/app/pages/CloudResourcesPage.tsx",
+    "webUI/src/app/pages/ApprovalsPage.tsx",
+    "webUI/src/app/pages/UserRoleAdministrationPage.tsx",
     ".github/workflows/_quality-operation.yml",
     ".github/workflows/_evidence-campaign.yml",
     ".github/workflows/_deployment-operation.yml",
@@ -86,9 +86,9 @@ def main() -> int:
     dispatcher = text("src/NatureProtector.Backoffice.Api/Operations/Services/AutomationDispatcher.cs")
     program = text("src/NatureProtector.Backoffice.Api/Program.cs")
     users_controller = text("src/NatureProtector.Backoffice.Api/Controllers/UserAndRolesController.cs")
-    launcher = text("webUI/src/app/ui-v2/operations/OperationLauncher.tsx")
+    launcher = text("webUI/src/app/operations/OperationLauncher.tsx")
     api = text("webUI/src/app/services/api.ts")
-    ui_context = text("webUI/src/app/ui-v2/state/UiV2Context.tsx")
+    ui_context = text("webUI/src/app/state/CapabilityContext.tsx")
 
     required_capabilities = [
         "QualityExecuteStatic", "QualityExecuteFull", "EvidenceExecuteCampaign", "EvidenceCompare",

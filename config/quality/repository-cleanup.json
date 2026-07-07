@@ -27,7 +27,9 @@
     ],
     "retained_manual_entrypoints": [
       "scripts/dotnet/Invoke-RepoDotnet.ps1",
+      "scripts/docker/Export-DockerDiagnostics.ps1",
       "scripts/evidence/export_db_evidence.py",
+      "scripts/evidence/Generate-DeepEngineeringExploration20260701.ps1",
       "scripts/evidence/collect-reliability-evidence.sh",
       "scripts/evidence/run-report-evidence-campaign.sh"
     ],

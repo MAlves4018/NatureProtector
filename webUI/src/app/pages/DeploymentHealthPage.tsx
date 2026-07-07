@@ -15,18 +15,114 @@ interface ModuleStatus {
 function buildMockModules(): ModuleStatus[] {
   const now = new Date();
   return [
-    { module: 'Docker Engine', environment: 'dev', status: 'healthy', lastCheck: now.toISOString(), version: '27.2.0', uptime: '12d 7h', detail: 'All containers running' },
-    { module: 'Runtime API', environment: 'dev', status: 'healthy', lastCheck: now.toISOString(), version: '1.4.2', uptime: '12d 7h', detail: 'HTTP 200' },
-    { module: 'PostgreSQL', environment: 'dev', status: 'healthy', lastCheck: now.toISOString(), version: '16.4', uptime: '12d 7h', detail: 'Connections: 12/100' },
-    { module: 'RabbitMQ', environment: 'dev', status: 'degraded', lastCheck: now.toISOString(), version: '3.13.6', uptime: '12d 7h', detail: 'Queue depth: 1423 (elevated)' },
-    { module: 'InfluxDB', environment: 'dev', status: 'healthy', lastCheck: now.toISOString(), version: '2.7.10', uptime: '12d 7h', detail: 'Write throughput nominal' },
-    { module: 'Grafana', environment: 'dev', status: 'healthy', lastCheck: now.toISOString(), version: '11.2.0', uptime: '12d 7h', detail: 'Dashboards responsive' },
-    { module: 'Simulator', environment: 'dev', status: 'outage', lastCheck: now.toISOString(), version: '0.9.1', uptime: '0d 0h', detail: 'Service not responding' },
-    { module: 'P3 Service', environment: 'dev', status: 'unknown', lastCheck: now.toISOString(), version: '0.5.0', uptime: 'N/A', detail: 'Not instrumented' },
-    { module: 'Docker Engine', environment: 'staging', status: 'healthy', lastCheck: now.toISOString(), version: '27.2.0', uptime: '5d 3h', detail: 'All containers running' },
-    { module: 'Runtime API', environment: 'staging', status: 'healthy', lastCheck: now.toISOString(), version: '1.4.2', uptime: '5d 3h', detail: 'HTTP 200' },
-    { module: 'PostgreSQL', environment: 'staging', status: 'degraded', lastCheck: now.toISOString(), version: '16.4', uptime: '5d 3h', detail: 'Replication lag: 2.3s' },
-    { module: 'RabbitMQ', environment: 'staging', status: 'healthy', lastCheck: now.toISOString(), version: '3.13.6', uptime: '5d 3h', detail: 'Nominal' },
+    {
+      module: 'Docker Engine',
+      environment: 'dev',
+      status: 'healthy',
+      lastCheck: now.toISOString(),
+      version: '27.2.0',
+      uptime: '12d 7h',
+      detail: 'All containers running',
+    },
+    {
+      module: 'Runtime API',
+      environment: 'dev',
+      status: 'healthy',
+      lastCheck: now.toISOString(),
+      version: '1.4.2',
+      uptime: '12d 7h',
+      detail: 'HTTP 200',
+    },
+    {
+      module: 'PostgreSQL',
+      environment: 'dev',
+      status: 'healthy',
+      lastCheck: now.toISOString(),
+      version: '16.4',
+      uptime: '12d 7h',
+      detail: 'Connections: 12/100',
+    },
+    {
+      module: 'RabbitMQ',
+      environment: 'dev',
+      status: 'degraded',
+      lastCheck: now.toISOString(),
+      version: '3.13.6',
+      uptime: '12d 7h',
+      detail: 'Queue depth: 1423 (elevated)',
+    },
+    {
+      module: 'InfluxDB',
+      environment: 'dev',
+      status: 'healthy',
+      lastCheck: now.toISOString(),
+      version: '2.7.10',
+      uptime: '12d 7h',
+      detail: 'Write throughput nominal',
+    },
+    {
+      module: 'Grafana',
+      environment: 'dev',
+      status: 'healthy',
+      lastCheck: now.toISOString(),
+      version: '11.2.0',
+      uptime: '12d 7h',
+      detail: 'Dashboards responsive',
+    },
+    {
+      module: 'Simulator',
+      environment: 'dev',
+      status: 'outage',
+      lastCheck: now.toISOString(),
+      version: '0.9.1',
+      uptime: '0d 0h',
+      detail: 'Service not responding',
+    },
+    {
+      module: 'P3 Service',
+      environment: 'dev',
+      status: 'unknown',
+      lastCheck: now.toISOString(),
+      version: '0.5.0',
+      uptime: 'N/A',
+      detail: 'Not instrumented',
+    },
+    {
+      module: 'Docker Engine',
+      environment: 'staging',
+      status: 'healthy',
+      lastCheck: now.toISOString(),
+      version: '27.2.0',
+      uptime: '5d 3h',
+      detail: 'All containers running',
+    },
+    {
+      module: 'Runtime API',
+      environment: 'staging',
+      status: 'healthy',
+      lastCheck: now.toISOString(),
+      version: '1.4.2',
+      uptime: '5d 3h',
+      detail: 'HTTP 200',
+    },
+    {
+      module: 'PostgreSQL',
+      environment: 'staging',
+      status: 'degraded',
+      lastCheck: now.toISOString(),
+      version: '16.4',
+      uptime: '5d 3h',
+      detail: 'Replication lag: 2.3s',
+    },
+    {
+      module: 'RabbitMQ',
+      environment: 'staging',
+      status: 'healthy',
+      lastCheck: now.toISOString(),
+      version: '3.13.6',
+      uptime: '5d 3h',
+      detail: 'Nominal',
+    },
   ];
 }
 
@@ -84,7 +180,11 @@ export function DeploymentHealthPage() {
         <div className="ui-section-heading">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <GlobalIcon size={20} style={{ color: STATUS_COLORS[globalStatus] }} />
-            {globalStatus === 'healthy' ? 'All systems operational' : globalStatus === 'degraded' ? 'Degraded' : 'Outage'}
+            {globalStatus === 'healthy'
+              ? 'All systems operational'
+              : globalStatus === 'degraded'
+                ? 'Degraded'
+                : 'Outage'}
           </h3>
           <span className="ui-badge">
             {modules.filter((m) => m.status === 'healthy').length}/{modules.length} healthy
@@ -108,12 +208,7 @@ export function DeploymentHealthPage() {
           <h3>Modulos</h3>
           <div className="ui-button-row">
             <span className="ui-label">Ultimo check: {new Date(lastRefresh).toLocaleString()}</span>
-            <button
-              type="button"
-              className="ui-button"
-              disabled={refreshing}
-              onClick={() => void handleRefresh()}
-            >
+            <button type="button" className="ui-button" disabled={refreshing} onClick={() => void handleRefresh()}>
               <RefreshCw size={16} className={refreshing ? 'ui-spin' : ''} />
               {refreshing ? 'A atualizar...' : 'Refresh All'}
             </button>
@@ -133,12 +228,14 @@ export function DeploymentHealthPage() {
               </tr>
             </thead>
             <tbody>
-              {modules.map((mod, i) => {
+              {modules.map((mod) => {
                 const Icon = STATUS_ICONS[mod.status];
                 return (
-                  <tr key={`${mod.module}-${mod.environment}-${i}`}>
+                  <tr key={`${mod.module}-${mod.environment}`}>
                     <td style={{ fontWeight: 700 }}>{mod.module}</td>
-                    <td><span className="ui-badge">{mod.environment}</span></td>
+                    <td>
+                      <span className="ui-badge">{mod.environment}</span>
+                    </td>
                     <td>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: STATUS_COLORS[mod.status] }}>
                         <Icon size={14} />

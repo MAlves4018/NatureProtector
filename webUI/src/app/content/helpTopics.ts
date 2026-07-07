@@ -152,5 +152,3 @@ function topic(
 export function findHelpTopic(id: HelpTopicId) {
   return HELP_TOPICS.find((topic) => topic.id === id) ?? HELP_TOPICS[0];
 }
-
-

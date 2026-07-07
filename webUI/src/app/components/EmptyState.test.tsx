@@ -20,5 +20,3 @@ describe('EmptyState', () => {
     expect(container.querySelector('p')).toBeNull();
   });
 });
-
-

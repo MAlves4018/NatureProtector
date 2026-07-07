@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { api } from '../services/api';
 import { useUiActivity } from './ActivityContext';
 import { useUiCapabilities } from './CapabilityContext';
@@ -73,7 +73,7 @@ export function UiSimulationProvider({ children }: { children: ReactNode }) {
 
   const simulationRequest = useMemo(
     () => buildSimulationRequest(resolvedAreaCode ?? selectedAreaCodeTrimmed, selectedScenarioCode, simulationForm),
-    [resolvedAreaCode, selectedScenarioCode, simulationForm],
+    [resolvedAreaCode, selectedAreaCodeTrimmed, selectedScenarioCode, simulationForm],
   );
 
   const simulationReview = useMemo(
@@ -102,7 +102,15 @@ export function UiSimulationProvider({ children }: { children: ReactNode }) {
     } finally {
       setSimulationSubmitting(false);
     }
-  }, [copy, canExecuteSimulation, resolvedAreaCode, selectedScenarioCode, simulationRequest, setSelectedRunId, reloadAreaContext]);
+  }, [
+    copy,
+    canExecuteSimulation,
+    resolvedAreaCode,
+    selectedScenarioCode,
+    simulationRequest,
+    setSelectedRunId,
+    reloadAreaContext,
+  ]);
 
   const value = useMemo(
     () => ({

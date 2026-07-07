@@ -1,4 +1,5 @@
 import type { Page, Route } from '@playwright/test';
+import { getUiCapabilities } from '../src/app/capabilities';
 
 export type RoleProfile = 'Admin' | 'Sim' | 'Pipeline' | 'Unknown';
 export type SummaryState = 'ready' | 'partial' | 'stale' | 'blocked' | 'null' | 'unknown';
@@ -72,6 +73,16 @@ async function handleApiRoute(route: Route, path: string, options: UiV2ApiFixtur
     }
 
     await json(route, currentUser(profile));
+    return;
+  }
+
+  if (path === '/users-roles/me/capabilities') {
+    const user = currentUser(profile);
+    await json(route, {
+      roles: user.roles,
+      capabilities: [...getUiCapabilities(user)],
+      authority: 'playwright-fixture-role-capability-policy',
+    });
     return;
   }
 

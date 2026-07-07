@@ -93,5 +93,3 @@ describe('core context adapters', () => {
     expect(review.warnings).toEqual(['launch disabled']);
   });
 });
-
-

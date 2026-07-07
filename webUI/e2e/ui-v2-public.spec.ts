@@ -24,12 +24,11 @@ test.describe('UI v2 public surface', () => {
   test('loads the public product surface without protected navigation or axe violations', async ({ page }) => {
     await page.goto('/ui-v2');
 
-    await expect(page.getByRole('heading', { name: 'NatureProtector UI v2' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'NatureProtector', level: 2 })).toBeVisible();
-    await expect(page.getByText('Data Status')).toBeVisible();
-    await expect(page.getByRole('link', { name: /entrar/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'NatureProtector', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /estado dos dados/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /entrar/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Pipeline$/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Simulacao$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Simulação$/i })).toHaveCount(0);
 
     await expectAxeClean(page);
   });
@@ -43,7 +42,7 @@ test.describe('UI v2 public surface', () => {
     await skipLink.focus();
     await expect(skipLink).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(page.locator('#ui-v2-main')).toBeFocused();
+    await expect(page.locator('#ui-main')).toBeFocused();
 
     const englishButton = page.getByRole('button', { name: /^EN$/ });
     await englishButton.focus();
@@ -59,7 +58,7 @@ test.describe('UI v2 public surface', () => {
     await expect(englishButton).toBeFocused();
 
     await page.getByRole('button', { name: /^Dark$/i }).click();
-    await expect(page.locator('.ui-v2-shell')).toHaveAttribute('data-theme', 'dark');
+    await expect(page.locator('.ui-shell')).toHaveAttribute('data-theme', 'dark');
     await expect(page.getByRole('banner')).toBeVisible();
     await expectAxeClean(page);
   });

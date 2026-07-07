@@ -60,16 +60,15 @@ describe('capabilities', () => {
 
     expect(navigation.map((item) => item.id)).toEqual([
       'demo',
+      'dashboard',
       'context',
       'mission',
       'risk',
       'runs',
       'pipeline',
-      'quality',
+      'qa',
       'evidence',
     ]);
     expect(navigation.some((item) => item.id === 'deployments')).toBe(false);
   });
 });
-
-

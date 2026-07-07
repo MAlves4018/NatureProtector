@@ -62,5 +62,3 @@ export const BETA_CAPABILITIES: readonly BetaCapabilityLink[] = [
     status: 'available-in-beta',
   },
 ];
-
-

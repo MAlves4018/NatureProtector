@@ -4,8 +4,19 @@ import { useUiArea } from './AreaContext';
 import { useUiCapabilities } from './CapabilityContext';
 import { useUiLocale } from './LocaleContext';
 import { useUiRisk } from './RiskContext';
-import type { ScenarioResponse, SimulationRunResponse, RuntimeRunSummaryResponse, RuntimeRunAuditResponse, RuntimeRunTimingSummaryResponse } from '../types';
-import { buildUiScenarioContext, buildUiRunContext, type UiScenarioContextModel, type UiRunContextModel } from '../coreContext';
+import type {
+  ScenarioResponse,
+  SimulationRunResponse,
+  RuntimeRunSummaryResponse,
+  RuntimeRunAuditResponse,
+  RuntimeRunTimingSummaryResponse,
+} from '../types';
+import {
+  buildUiScenarioContext,
+  buildUiRunContext,
+  type UiScenarioContextModel,
+  type UiRunContextModel,
+} from '../coreContext';
 
 const SCENARIO_STORAGE_KEY = 'np.Ui.scenarioCode';
 const RUN_STORAGE_KEY = 'np.Ui.runId';
@@ -62,7 +73,10 @@ export function UiActivityProvider({ children }: { children: ReactNode }) {
   );
 
   const selectedRunFromSummary = useMemo(() => findRunInSummary(summary, selectedRunId), [summary, selectedRunId]);
-  const selectedRunFromList = useMemo(() => runs.find((run) => run.id === selectedRunId) ?? null, [runs, selectedRunId]);
+  const selectedRunFromList = useMemo(
+    () => runs.find((run) => run.id === selectedRunId) ?? null,
+    [runs, selectedRunId],
+  );
   const selectedRun = runtimeRun ?? selectedRunFromSummary ?? selectedRunFromList;
 
   const runContext = useMemo(
@@ -165,9 +179,7 @@ export function UiActivityProvider({ children }: { children: ReactNode }) {
         setRunTimings(timingsResult.status === 'fulfilled' ? timingsResult.value : null);
         const rejected = [runResult, auditResult, timingsResult].find((result) => result.status === 'rejected');
         setRunDetailsError(
-          rejected && rejected.status === 'rejected'
-            ? asError(rejected.reason, 'Failed to load run details')
-            : null,
+          rejected && rejected.status === 'rejected' ? asError(rejected.reason, 'Failed to load run details') : null,
         );
       })
       .finally(() => {
@@ -229,7 +241,10 @@ export function useUiActivity() {
   return context;
 }
 
-function findRunInSummary(summary: { currentRun?: RuntimeRunSummaryResponse | null; latestRun?: RuntimeRunSummaryResponse | null } | null, selectedRunId: string) {
+function findRunInSummary(
+  summary: { currentRun?: RuntimeRunSummaryResponse | null; latestRun?: RuntimeRunSummaryResponse | null } | null,
+  selectedRunId: string,
+) {
   if (!summary || !selectedRunId) return null;
   if (summary.currentRun?.id === selectedRunId) return summary.currentRun;
   if (summary.latestRun?.id === selectedRunId) return summary.latestRun;

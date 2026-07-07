@@ -12,7 +12,11 @@ riderModule.iml
 /data/external/**
 !/data/external/**/.gitkeep
 /data/runtime/**
-!/data/runtime/**/.gitkeep
+!/data/runtime/
+!/data/runtime/exports/
+!/data/runtime/exports/.gitkeep
+!/data/runtime/simulations/
+!/data/runtime/simulations/.gitkeep
 
 **/TestResults/
 /coveragereport_core/
@@ -43,6 +47,9 @@ graphify-out
 /BenchmarkDotNet.Artifacts/
 /playwright-report/
 /test-results/
+.understand-anything/
+docs/RepositorioDocumental/
+docs/docs.zip
 
 .env
 node_modules/.package-lock.json
@@ -90,6 +97,8 @@ repomix.config.json
 docs/evidence/*
 docs/evidence/dev-runtime/*
 docs/evidence/runs/*
+!docs/evidence/runs/
+!docs/evidence/runs/.gitkeep
 docs/evidence/ml/*
 docs/evidence/ui/*
 docs/evidence/V0/*
@@ -113,6 +122,7 @@ docs/evidence/controlled-validation/*
 !docs/evidence/g10-2-phase3-state.json
 !docs/evidence/g10-3-phase4-state.json
 !docs/evidence/report-inventory-collection.md
+!docs/evidence/evidence-collection.md
 
 #TEMP 
 docs/planning/V0/

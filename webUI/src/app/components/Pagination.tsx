@@ -30,7 +30,9 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
       </button>
       {pages.map((page, i) =>
         page === 'ellipsis' ? (
-          <span key={`e${i}`} className="ui-pagination-ellipsis">...</span>
+          <span key={`ellipsis-after-${pages[i - 1] ?? 'start'}`} className="ui-pagination-ellipsis">
+            ...
+          </span>
         ) : (
           <button
             key={page}

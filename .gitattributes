@@ -1,6 +1,9 @@
 # Keep shell scripts portable across Windows and Linux runners.
 *.sh text eol=lf
 
+# Biome quality gates require LF line endings for frontend sources.
+webUI/** text eol=lf
+
 # Explicit binary classification without imposing repository-wide line-ending changes.
 *.db binary
 *.sqlite binary

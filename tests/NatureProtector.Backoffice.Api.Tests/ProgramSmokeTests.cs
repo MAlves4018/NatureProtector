@@ -58,12 +58,15 @@ public sealed class ProgramSmokeTests : IClassFixture<WebApplicationFactory<Prog
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [Fact]
-    public async Task HealthEndpoint_ReturnsOk()
+    [Theory]
+    [InlineData("/health")]
+    [InlineData("/health/live")]
+    [InlineData("/health/ready")]
+    public async Task HealthEndpoint_ReturnsOk(string path)
     {
         using var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync(path);
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
     }

@@ -71,16 +71,25 @@ def main() -> int:
             f"node_modules/{package}" not in package_lock.get("packages", {}),
             package,
         )
+    audit = load_module(repo / "tools/repo-audit/audit.py", "phase8_repo_audit")
+    config = repo / "tools/repo-audit/audit-config.json"
+    audit_config = audit.read_json(config)
+    repository_files = list(audit.iter_repository_files(repo, audit_config))
+
     dotnet = (repo / "Directory.Packages.props").read_text(encoding="utf-8-sig")
-    csproj = "\n".join(path.read_text(encoding="utf-8-sig") for path in sorted(repo.rglob("*.csproj")))
-    csharp = "\n".join(path.read_text(encoding="utf-8-sig", errors="ignore") for path in sorted(repo.rglob("*.cs")))
+    csproj = "\n".join(
+        path.read_text(encoding="utf-8-sig") for relative, path in repository_files if relative.endswith(".csproj")
+    )
+    csharp = "\n".join(
+        path.read_text(encoding="utf-8-sig", errors="ignore")
+        for relative, path in repository_files
+        if relative.endswith(".cs")
+    )
     for package in contract["removed_dependencies"]["nuget"]:
         check(f"nuget-package-not-catalogued:{package}", package not in dotnet, package)
         check(f"nuget-package-not-referenced:{package}", package not in csproj, package)
         check(f"nuget-namespace-not-used:{package}", package not in csharp, package)
-    audit = load_module(repo / "tools/repo-audit/audit.py", "phase8_repo_audit")
-    config = repo / "tools/repo-audit/audit-config.json"
-    model = audit.build_model(repo, audit.read_json(config), audit.sha256_file(config))
+    model = audit.build_model(repo, audit_config, audit.sha256_file(config))
     unresolved = [item["path"] for item in model["script_inventory"] if item["status"] == "NO_STATIC_REFERENCE_FOUND"]
     check("zero-unresolved-script-candidates", unresolved == [], json.dumps(unresolved))
     for relative in contract["documentation"]:

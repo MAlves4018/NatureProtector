@@ -69,5 +69,3 @@ export function technicalLabelDetail(code: string, locale: UiLocale) {
   const match = TECHNICAL_LABELS.find((item) => item.code.toLowerCase() === code.toLowerCase());
   return match ? localize(locale, match.detail) : '';
 }
-
-

@@ -27,7 +27,11 @@ function simulateQuery(engine: DbEngine, query: string): Promise<QueryResult> {
       }
       resolve({
         columns: ['result'],
-        rows: [{ result: `[${engine === 'pgsql' ? 'PostgreSQL' : 'InfluxDB'}] Query executada: ${query.substring(0, 60)}...` }],
+        rows: [
+          {
+            result: `[${engine === 'pgsql' ? 'PostgreSQL' : 'InfluxDB'}] Query executada: ${query.substring(0, 60)}...`,
+          },
+        ],
         rowCount: 1,
         durationMs: Math.round(delay),
       });
@@ -70,8 +74,18 @@ export function DatabaseQueriesPage() {
         helpTopic="pipeline"
       />
 
-      <div className="ui-notice" style={{ marginBottom: 16, padding: '8px 12px', borderRadius: 6, background: 'var(--ui-warning-bg)', color: 'var(--ui-warning)' }}>
-        <strong>⚠ Aviso:</strong> Apenas queries de leitura permitidas. Operacoes de escrita (INSERT, UPDATE, DELETE, DROP) sao bloqueadas.
+      <div
+        className="ui-notice"
+        style={{
+          marginBottom: 16,
+          padding: '8px 12px',
+          borderRadius: 6,
+          background: 'var(--ui-warning-bg)',
+          color: 'var(--ui-warning)',
+        }}
+      >
+        <strong>⚠ Aviso:</strong> Apenas queries de leitura permitidas. Operacoes de escrita (INSERT, UPDATE, DELETE,
+        DROP) sao bloqueadas.
       </div>
 
       <div className="ui-tabs">
@@ -80,7 +94,11 @@ export function DatabaseQueriesPage() {
             key={engine}
             type="button"
             className={`ui-tab${activeEngine === engine ? ' ui-tab-active' : ''}`}
-            onClick={() => { setActiveEngine(engine); setResult(null); setError(null); }}
+            onClick={() => {
+              setActiveEngine(engine);
+              setResult(null);
+              setError(null);
+            }}
           >
             {engine === 'pgsql' ? <Database size={16} /> : <Terminal size={16} />}
             {ENGINE_LABELS[engine]}
@@ -144,8 +162,8 @@ export function DatabaseQueriesPage() {
                     <td colSpan={result.columns.length}>Sem resultados</td>
                   </tr>
                 ) : (
-                  result.rows.map((row, i) => (
-                    <tr key={i}>
+                  result.rows.map((row) => (
+                    <tr key={result.columns.map((col) => row[col] ?? 'NULL').join('|')}>
                       {result.columns.map((col) => (
                         <td key={col}>{row[col] ?? 'NULL'}</td>
                       ))}

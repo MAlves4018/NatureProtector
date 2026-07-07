@@ -35,9 +35,7 @@ export function ComponentHealthDashboard({ health }: Props) {
     );
   }
 
-  const sorted = [...health.components].sort(
-    (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
-  );
+  const sorted = [...health.components].sort((a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99));
 
   return (
     <div className="ui-chart-card">
@@ -50,10 +48,7 @@ export function ComponentHealthDashboard({ health }: Props) {
           <article key={comp.component} className="ui-card" style={{ padding: 12 }}>
             <div className="ui-section-heading" style={{ marginBottom: 8 }}>
               <strong>{comp.component}</strong>
-              <span
-                className="ui-badge"
-                style={{ background: statusColor(comp.status), color: '#fff' }}
-              >
+              <span className="ui-badge" style={{ background: statusColor(comp.status), color: '#fff' }}>
                 {comp.status}
               </span>
             </div>
@@ -77,16 +72,16 @@ export function ComponentHealthDashboard({ health }: Props) {
                 </span>
               )}
             </div>
-            {comp.reason && (
-              <p style={{ fontSize: '0.8rem', marginTop: 6, color: 'var(--ui-muted)' }}>{comp.reason}</p>
-            )}
+            {comp.reason && <p style={{ fontSize: '0.8rem', marginTop: 6, color: 'var(--ui-muted)' }}>{comp.reason}</p>}
           </article>
         ))}
       </div>
       {health.limitations.length > 0 && (
         <ul style={{ marginTop: 8 }}>
-          {health.limitations.map((lim, i) => (
-            <li key={i} className="ui-muted">{lim.message}</li>
+          {health.limitations.map((lim) => (
+            <li key={lim.message} className="ui-muted">
+              {lim.message}
+            </li>
           ))}
         </ul>
       )}

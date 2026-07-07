@@ -36,5 +36,3 @@ export function trapDialogTab(event: KeyboardEvent<HTMLElement>) {
     first.focus();
   }
 }
-
-

@@ -133,6 +133,68 @@ public sealed class RuntimeObservabilityServiceTests
         Assert.Contains("Health response", components["Grafana"].Limitation, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task GetOperationalHealthAsync_DoesNotDegradeRabbitMq_ForDiagnosticRawQueueBacklog()
+    {
+        await using var db = new SqliteControlDbContextScope();
+        var queues = DistinctTopologyQueues();
+        var queueMetrics = queues.Select(queueName =>
+            string.Equals(queueName, NatureProtectorRabbitMqTopology.IngestionReadingsQueue, StringComparison.Ordinal)
+                ? (queueName, MessagesReady: 0, MessagesUnacknowledged: 0, MessagesTotal: 0, Consumers: 1)
+                : (queueName, MessagesReady: 12, MessagesUnacknowledged: 0, MessagesTotal: 12, Consumers: 0));
+        var handler = new CapturingHandler(request =>
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            if (string.Equals(path, "/api/queues", StringComparison.Ordinal))
+            {
+                return JsonResponse(BuildQueueMetricsJson(queueMetrics));
+            }
+
+            return JsonResponse("""{ "status": "ok", "database": "ok" }""");
+        });
+        using var client = new HttpClient(handler);
+        var service = CreateService(db, client);
+
+        var health = await service.GetOperationalHealthAsync(CancellationToken.None);
+
+        var components = health.Components.ToDictionary(component => component.Component, StringComparer.Ordinal);
+        Assert.Equal(RuntimeOperationalHealthStatus.Healthy, components["RabbitMQ"].Status);
+        Assert.Equal(RuntimeOperationalHealthStatus.Healthy, components["Prevention.Host"].Status);
+        Assert.Contains(NatureProtectorRabbitMqTopology.ObservabilityRawQueue, components["RabbitMQ"].Limitation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetOperationalHealthAsync_ReportsAuthRequired_WhenHttpHealthEndpointReturnsUnauthorized()
+    {
+        await using var db = new SqliteControlDbContextScope();
+        var queues = DistinctTopologyQueues();
+        var handler = new CapturingHandler(request =>
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            if (string.Equals(path, "/api/queues", StringComparison.Ordinal))
+            {
+                return JsonResponse(BuildQueueMetricsJson(queues));
+            }
+
+            if (string.Equals(path, "/health", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            }
+
+            return JsonResponse("""{ "database": "ok" }""");
+        });
+        using var client = new HttpClient(handler);
+        var service = CreateService(db, client);
+
+        var health = await service.GetOperationalHealthAsync(CancellationToken.None);
+
+        var components = health.Components.ToDictionary(component => component.Component, StringComparer.Ordinal);
+        Assert.Equal(RuntimeOperationalHealthStatus.AuthRequired, components["InfluxDB"].Status);
+        Assert.Null(components["InfluxDB"].LastFailureAt);
+        Assert.Contains("requires authentication", components["InfluxDB"].Limitation, StringComparison.Ordinal);
+        Assert.Contains(health.Limitations, limitation => limitation.Code == "health_auth_required_is_explicit");
+    }
+
     private static RuntimeObservabilityService CreateService(SqliteControlDbContextScope db, HttpClient client)
     {
         var configuration = new ConfigurationBuilder()
@@ -170,15 +232,20 @@ public sealed class RuntimeObservabilityServiceTests
         int messagesUnacknowledged = 1,
         int messagesTotal = 4,
         int consumers = 2)
+        => BuildQueueMetricsJson(queueNames.Select(queueName =>
+            (queueName, messagesReady, messagesUnacknowledged, messagesTotal, consumers)));
+
+    private static string BuildQueueMetricsJson(
+        IEnumerable<(string QueueName, int MessagesReady, int MessagesUnacknowledged, int MessagesTotal, int Consumers)> queueMetrics)
     {
-        var items = queueNames.Select(queueName =>
+        var items = queueMetrics.Select(queue =>
             $$"""
             {
-              "name": "{{queueName}}",
-              "messages_ready": {{messagesReady}},
-              "messages_unacknowledged": {{messagesUnacknowledged}},
-              "messages": {{messagesTotal}},
-              "consumers": {{consumers}}
+              "name": "{{queue.QueueName}}",
+              "messages_ready": {{queue.MessagesReady}},
+              "messages_unacknowledged": {{queue.MessagesUnacknowledged}},
+              "messages": {{queue.MessagesTotal}},
+              "consumers": {{queue.Consumers}}
             }
             """);
 

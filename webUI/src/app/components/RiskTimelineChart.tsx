@@ -1,12 +1,4 @@
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useUiLocale } from '../state/LocaleContext';
 import { formatUiDate } from '../i18n';
 import type { RuntimeRiskPointResponse } from '../types';
@@ -48,11 +40,7 @@ export function RiskTimelineChart({ data }: RiskTimelineChartProps) {
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-border, #d7e1da)" />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 11 }}
-            interval="preserveStartEnd"
-          />
+          <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
           <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} />
           <Tooltip
             contentStyle={{

@@ -59,7 +59,11 @@ export function SimulationProgress({ runId, onBackToForm }: SimulationProgressPr
 
   useEffect(() => {
     if (completed) {
-      addToast({ severity: 'success', title: 'Simulação concluída', message: `A execução ${runId} terminou com sucesso.` });
+      addToast({
+        severity: 'success',
+        title: 'Simulação concluída',
+        message: `A execução ${runId} terminou com sucesso.`,
+      });
     }
   }, [completed, runId, addToast]);
 
@@ -99,11 +103,7 @@ export function SimulationProgress({ runId, onBackToForm }: SimulationProgressPr
               className={`ui-progress-stage${isActive ? ' ui-progress-stage-active' : ''}${isDone ? ' ui-progress-stage-done' : ''}${isPending ? ' ui-progress-stage-pending' : ''}`}
             >
               <div className="ui-progress-marker">
-                {isDone ? (
-                  <CheckCircle2 size={20} />
-                ) : (
-                  <div className="ui-progress-dot" />
-                )}
+                {isDone ? <CheckCircle2 size={20} /> : <div className="ui-progress-dot" />}
               </div>
               <div className="ui-progress-label">
                 <span>{stage.label}</span>

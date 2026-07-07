@@ -76,11 +76,12 @@ public sealed class PostgresSimulationContextSource(
                 timeAcceleration: simulatorOptions.GetProperty("TimeAcceleration").GetDouble()),
             description: scenario.Description);
 
-        var startTimestamp = simulatorOptions.TryGetProperty("StartTimestamp", out var timestampElement)
+        var scenarioStartTimestamp = simulatorOptions.TryGetProperty("StartTimestamp", out var timestampElement)
             && timestampElement.ValueKind == JsonValueKind.String
             && DateTimeOffset.TryParse(timestampElement.GetString(), out var parsedTimestamp)
                 ? parsedTimestamp
-                : _options.StartTimestamp ?? DateTimeOffset.UtcNow;
+                : (DateTimeOffset?)null;
+        var startTimestamp = _options.StartTimestamp ?? scenarioStartTimestamp ?? DateTimeOffset.UtcNow;
 
         var runOverrides = _options.RunOverrides ?? new SimulatorRunOverridesOptions();
         var requestedProfiles = SimulationDegradationProfiles.Normalize(
