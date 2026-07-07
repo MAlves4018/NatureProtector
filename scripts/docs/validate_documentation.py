@@ -3,8 +3,17 @@ from pathlib import Path
 import re, sys, json, urllib.parse
 root=Path(__file__).resolve().parents[2]
 errors=[]
-excluded_dirs={'.git','.nuget','.testbin','bin','node_modules','obj'}
-mds=[md for md in root.rglob('*.md') if not excluded_dirs.intersection(md.relative_to(root).parts)]
+excluded_dirs={'.git','.nuget','.testbin','artifacts','bin','node_modules','obj'}
+excluded_paths={
+    ('docs','RepositorioDocumental'),
+    ('docs','planning','V0'),
+    ('docs','planning','V1'),
+    ('docs','planning','V3'),
+}
+def is_excluded(md):
+    parts=md.relative_to(root).parts
+    return excluded_dirs.intersection(parts) or any(parts[:len(path)]==path for path in excluded_paths)
+mds=[md for md in root.rglob('*.md') if not is_excluded(md)]
 pat=re.compile(r'(?<!!)\[[^\]]*\]\(([^)]+)\)|!\[[^\]]*\]\(([^)]+)\)')
 for md in mds:
     txt=md.read_text(errors='ignore')

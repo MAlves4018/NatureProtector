@@ -12,7 +12,11 @@ riderModule.iml
 /data/external/**
 !/data/external/**/.gitkeep
 /data/runtime/**
-!/data/runtime/**/.gitkeep
+!/data/runtime/
+!/data/runtime/exports/
+!/data/runtime/exports/.gitkeep
+!/data/runtime/simulations/
+!/data/runtime/simulations/.gitkeep
 
 **/TestResults/
 /coveragereport_core/
@@ -93,6 +97,8 @@ repomix.config.json
 docs/evidence/*
 docs/evidence/dev-runtime/*
 docs/evidence/runs/*
+!docs/evidence/runs/
+!docs/evidence/runs/.gitkeep
 docs/evidence/ml/*
 docs/evidence/ui/*
 docs/evidence/V0/*

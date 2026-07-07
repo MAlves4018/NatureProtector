@@ -115,7 +115,7 @@ if (-not (Test-Path ".env")) {
 }
 
 # Prepara o ficheiro local de admin token usado pelo InfluxDB 3 no primeiro arranque
-# depois de volumes novos. Não altera o `.env`.
+# depois de volumes novos. Este script will not create or edit .env.
 $InfluxAdminTokenScript = Join-Path $ProjectRoot "scripts\influx\Ensure-InfluxAdminTokenFile.ps1"
 if (Test-Path $InfluxAdminTokenScript) {
     $tokenOutput = Invoke-CheckedExternalCommand `
