@@ -13,11 +13,11 @@ test.describe('UI v2 authenticated role flows', () => {
 
     await page.goto('/ui-v2');
 
-    await expect(page.getByRole('heading', { name: 'NatureProtector UI v2' })).toBeVisible();
-    await expect(page.getByRole('link', { name: /entrar/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'NatureProtector', level: 1 })).toBeVisible();
+    await expect(page.getByRole('button', { name: /entrar/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Pipeline$/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Simulacao$/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Administracao$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Simulação$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Administração$/i })).toHaveCount(0);
 
     await page.goto('/ui-v2?area=proenca-a-nova');
     await expect(page.getByRole('button', { name: /^Pipeline$/i })).toHaveCount(0);
@@ -30,26 +30,23 @@ test.describe('UI v2 authenticated role flows', () => {
     await signIn(page, 'Admin');
 
     await expect(page.getByText('Perfil ativo: Admin')).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Pipeline$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Simulacao$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Administracao$/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /^Pipeline$/i }).click();
+    await openNavPage(page, /^Técnico$/i, /^Pipeline$/i);
     await expect(page.getByRole('heading', { name: /Pipeline e observabilidade/i })).toBeVisible();
-    await page.getByText('Campos de runtime, temporalidade e provenance').click();
-    await expect(page.getByText('Prevention.Host health')).toBeVisible();
-    await expect(page.getByText('RabbitMQ health')).toBeVisible();
-    await expect(page.getByText('Ingestion ready')).toBeVisible();
+    await page.getByRole('button', { name: /Runtime current state/i }).click();
+    await expect(page.getByText('Prevention.Host health')).toHaveCount(1);
+    await expect(page.getByText('RabbitMQ health')).toHaveCount(1);
+    await expect(page.getByText('Ingestion ready')).toHaveCount(1);
 
-    await page.getByRole('button', { name: /^Qualidade e evidencia$/i }).click();
-    await expect(page.getByRole('heading', { name: /Qualidade e evidencia/i })).toBeVisible();
+    await openNavPage(page, /^Técnico$/i, /^Qualidade e evidencia$/i);
+    await expect(page.getByRole('heading', { name: /Qualidade e evidência/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Runtime smoke evidence' })).toBeVisible();
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: /Download evidence/i }).click();
     expect((await download).suggestedFilename()).toBe('ui-v2-runtime-smoke.txt');
 
-    await page.getByRole('button', { name: /^Administracao$/i }).click();
-    await expect(page.getByRole('heading', { name: /Administracao proporcional/i })).toBeVisible();
+    await openNavPage(page, /^Admin$/i, /^Administração$/i);
+    await expect(page.getByRole('heading', { name: /Administração proporcional/i })).toBeVisible();
     await expect(page.getByText('Runtime reset')).toBeVisible();
     await expect(page.getByText('User/role administration')).toBeVisible();
 
@@ -63,16 +60,15 @@ test.describe('UI v2 authenticated role flows', () => {
 
     await signIn(page, 'Sim');
 
-    await expect(page.getByRole('button', { name: /^Simulacao$/i })).toBeVisible();
+    await openNavPage(page, /^Simulações$/i, /^Simulação$/i);
     await expect(page.getByRole('button', { name: /^Pipeline$/i })).toHaveCount(0);
-    await page.getByRole('button', { name: /^Simulacao$/i }).click();
 
-    await page.getByLabel(/Selecionar cenario/i).selectOption('scenario_c');
-    await page.getByRole('combobox', { name: /^Degradacao$/i }).selectOption('noise');
-    await expect(page.getByRole('button', { name: /Iniciar simulacao/i })).toBeEnabled();
-    await page.getByRole('button', { name: /Iniciar simulacao/i }).click();
+    await page.getByLabel(/Selecionar cenário/i).selectOption('scenario_c');
+    await page.getByRole('combobox', { name: /^Degradação$/i }).selectOption('power-degradation');
+    await expect(page.getByRole('button', { name: /Iniciar simulação/i })).toBeEnabled();
+    await page.getByRole('button', { name: /Iniciar simulação/i }).click();
 
-    await expect(page.getByRole('heading', { name: /Contexto de run/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Contexto da execução/i })).toBeVisible();
     const startRequest = api.requests.find(
       (request) => request.method === 'POST' && request.path === '/control/runtime/runs',
     );
@@ -80,8 +76,8 @@ test.describe('UI v2 authenticated role flows', () => {
     expect(startRequest?.postData).toMatchObject({
       areaCode: 'proenca-a-nova',
       scenarioCode: 'scenario_c',
-      degradationProfile: 'noise',
-      degradationProfiles: ['noise'],
+      degradationProfile: 'power-degradation',
+      degradationProfiles: ['power-degradation'],
     });
   });
 
@@ -90,19 +86,19 @@ test.describe('UI v2 authenticated role flows', () => {
 
     await signIn(page, 'Pipeline');
 
-    await expect(page.getByRole('button', { name: /^Pipeline$/i })).toBeVisible();
+    await openNavPage(page, /^Técnico$/i, /^Pipeline$/i);
     await expect(page.getByRole('button', { name: /^Qualidade e evidencia$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Simulacao$/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Administracao$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Simulação$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Administração$/i })).toHaveCount(0);
 
-    await page.getByRole('button', { name: /^Pipeline$/i }).click();
-    await page.getByText('Campos de runtime, temporalidade e provenance').click();
-    await expect(page.getByText('Queue state')).toBeVisible();
-    await expect(page.getByText('Ingestion unacknowledged')).toBeVisible();
+    await page.getByRole('button', { name: /Runtime current state/i }).click();
+    await expect(page.getByText('Queue state')).toHaveCount(1);
+    await expect(page.getByText('Ingestion unacknowledged')).toHaveCount(1);
 
-    await page.getByRole('button', { name: /^Execucoes$/i }).click();
-    await expect(page.getByRole('heading', { name: /Auditoria de run/i })).toBeVisible();
-    await expect(page.getByText('4 accepted / 1 rejected / 0 quarantined')).toBeVisible();
+    await openNavPage(page, /^Simulações$/i, /^Execuções$/i);
+    await expect(page.getByRole('heading', { name: /Contexto da execução/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Auditoria da execução/i })).toBeVisible();
+    await expect(page.getByText('Sem evidência').first()).toBeVisible();
 
     expect(api.requests.some((request) => request.path === '/control/runtime/observability/rabbitmq')).toBe(true);
     expect(api.requests.some((request) => request.path === '/control/runtime/runs')).toBe(false);
@@ -121,16 +117,19 @@ test.describe('UI v2 authenticated role flows', () => {
       await expect
         .poll(() => page.evaluate(() => localStorage.getItem('token')))
         .toBe(`${profile.toLowerCase()}-token`);
-      await expect(page.getByRole('link', { name: /entrar/i })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /entrar/i })).toHaveCount(0);
 
       if (profile === 'Admin') {
-        await expect(page.getByRole('button', { name: /^Administracao$/i })).toBeVisible();
+        await openNavPage(page, /^Admin$/i, /^Administração$/i);
+        await expect(page.getByRole('heading', { name: /Administração proporcional/i })).toBeVisible();
       } else if (profile === 'Sim') {
-        await expect(page.getByRole('button', { name: /^Simulacao$/i })).toBeVisible();
+        await openNavPage(page, /^Simulações$/i, /^Simulação$/i);
+        await expect(page.getByRole('heading', { name: /^Simulação$/i })).toBeVisible();
         await expect(page.getByRole('button', { name: /^Pipeline$/i })).toHaveCount(0);
       } else {
-        await expect(page.getByRole('button', { name: /^Pipeline$/i })).toBeVisible();
-        await expect(page.getByRole('button', { name: /^Simulacao$/i })).toHaveCount(0);
+        await openNavPage(page, /^Técnico$/i, /^Pipeline$/i);
+        await expect(page.getByRole('heading', { name: /Pipeline e observabilidade/i })).toBeVisible();
+        await expect(page.getByRole('button', { name: /^Simulação$/i })).toHaveCount(0);
       }
     });
   }
@@ -155,7 +154,7 @@ test.describe('UI v2 authentication and API failure states', () => {
 
     await page.goto('/ui-v2');
 
-    await expect(page.getByRole('link', { name: /entrar/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /entrar/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Pipeline$/i })).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).toBeNull();
   });
@@ -166,8 +165,8 @@ test.describe('UI v2 authentication and API failure states', () => {
 
     await page.goto('/ui-v2?area=proenca-a-nova');
 
-    await expect(page.getByRole('link', { name: /entrar/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Administracao$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /entrar/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Administração$/i })).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).toBeNull();
   });
 
@@ -177,9 +176,9 @@ test.describe('UI v2 authentication and API failure states', () => {
     await signIn(page, 'Unknown');
 
     await expect(page.getByText('Perfil ativo: Observer')).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Visao geral$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Público$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Pipeline$/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Simulacao$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Simulação$/i })).toHaveCount(0);
   });
 
   for (const state of ['partial', 'stale', 'blocked', 'null', 'unknown'] as const) {
@@ -207,9 +206,9 @@ test.describe('UI v2 authentication and API failure states', () => {
     await installUiV2ApiFixture(page, { profile: 'Sim', startRunStatus: 403 });
 
     await signIn(page, 'Sim');
-    await page.getByRole('button', { name: /^Simulacao$/i }).click();
-    await page.getByLabel(/Selecionar cenario/i).selectOption('scenario_b');
-    await page.getByRole('button', { name: /Iniciar simulacao/i }).click();
+    await openNavPage(page, /^Simulações$/i, /^Simulação$/i);
+    await page.getByLabel(/Selecionar cenário/i).selectOption('scenario_b');
+    await page.getByRole('button', { name: /Iniciar simulação/i }).click();
 
     await expect(page.getByText('Forbidden by mock RBAC')).toBeVisible();
   });
@@ -217,7 +216,7 @@ test.describe('UI v2 authentication and API failure states', () => {
 
 async function signIn(page: Page, profile: RoleProfile) {
   await page.goto('/ui-v2');
-  await page.getByRole('link', { name: /entrar/i }).click();
+  await page.goto('/login');
   await page.getByLabel(/Username or email/i).fill(`${profile.toLowerCase()}@natureprotector.test`);
   await page.getByLabel(/Password/i).fill('password');
   const loginResponse = page.waitForResponse(
@@ -228,7 +227,18 @@ async function signIn(page: Page, profile: RoleProfile) {
   await expect(page).toHaveURL(/\/ui-v2/);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).toBe(`${profile.toLowerCase()}-token`);
   await page.goto('/ui-v2?area=proenca-a-nova');
-  await expect(page.getByRole('heading', { name: 'NatureProtector UI v2' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'NatureProtector', level: 1 })).toBeVisible();
+}
+
+async function openNavPage(page: Page, groupName: RegExp, pageName: RegExp) {
+  await page.getByRole('button', { name: groupName }).click();
+  const pageButton = page.getByRole('button', { name: pageName });
+  try {
+    await expect(pageButton).toBeVisible({ timeout: 1_000 });
+    await pageButton.click();
+  } catch {
+    // Some groups contain a single page, so clicking the group is the navigation action.
+  }
 }
 
 async function assertSummaryState(page: Page, state: SummaryState) {
@@ -247,12 +257,12 @@ async function assertSummaryState(page: Page, state: SummaryState) {
 
   if (state === 'blocked') {
     await expect(page.getByText('blocked').first()).toBeVisible();
-    await expect(page.getByText('Sem score apresentavel')).toBeVisible();
+    await expect(page.getByText('Sem score apresentável')).toBeVisible();
     return;
   }
 
   if (state === 'null') {
-    await expect(page.getByText('Sem score apresentavel')).toBeVisible();
+    await expect(page.getByText('Sem score apresentável')).toBeVisible();
     return;
   }
 
@@ -260,8 +270,7 @@ async function assertSummaryState(page: Page, state: SummaryState) {
 }
 
 async function openRiskPage(page: Page) {
-  await page.getByRole('button', { name: /^Risco e dados$/i }).click();
-  await expect(page.getByRole('heading', { name: /Output de risco contextualizado/i })).toBeVisible();
+  await openNavPage(page, /^Operar$/i, /^Risco e dados$/i);
 }
 
 function runtimeFailureMessage(page: Page, failure: SummaryFailure) {

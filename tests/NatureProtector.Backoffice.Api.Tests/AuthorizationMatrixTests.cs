@@ -16,6 +16,7 @@ public sealed class AuthorizationMatrixTests
     [
         Anonymous("GET", "/health", "/health"),
         Anonymous("GET", "/health/live", "/health/live"),
+        Anonymous("GET", "/health/ready", "/health/ready"),
         Anonymous("GET", "/openapi/{documentName}.json", "/openapi/v1.json"),
 
         Anonymous("GET", "/api/control/areas", "/api/control/areas"),
@@ -25,34 +26,34 @@ public sealed class AuthorizationMatrixTests
         Anonymous("GET", "/api/control/areas/{areaCode}/sensor-nodes", "/api/control/areas/proenca-a-nova/sensor-nodes"),
         Anonymous("GET", "/api/control/areas/{areaCode}/alerts/active", "/api/control/areas/proenca-a-nova/alerts/active"),
 
-        Roles("GET", "/api/control/areas/{areaCode}/scenarios", "/api/control/areas/proenca-a-nova/scenarios", AccessPolicy.SimPipelineAdmin),
-        Roles("GET", "/api/control/areas/{areaCode}/operational-state", "/api/control/areas/proenca-a-nova/operational-state", AccessPolicy.SimPipelineAdmin),
-        Roles("GET", "/api/control/areas/{areaCode}/cells/operational-state", "/api/control/areas/proenca-a-nova/cells/operational-state", AccessPolicy.SimPipelineAdmin),
+        Capability("GET", "/api/control/areas/{areaCode}/scenarios", "/api/control/areas/proenca-a-nova/scenarios", OperationCapabilities.AreaRead, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/areas/{areaCode}/operational-state", "/api/control/areas/proenca-a-nova/operational-state", OperationCapabilities.AreaRead, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/areas/{areaCode}/cells/operational-state", "/api/control/areas/proenca-a-nova/cells/operational-state", OperationCapabilities.AreaRead, AccessPolicy.Authenticated),
 
-        Roles("GET", "/api/control/configurations", "/api/control/configurations", AccessPolicy.SimPipelineAdmin),
-        Roles("GET", "/api/control/configurations/active", "/api/control/configurations/active", AccessPolicy.SimPipelineAdmin),
-        Roles("POST", "/api/control/configurations/{versionNumber:int}/activate", "/api/control/configurations/1/activate", AccessPolicy.SimAdmin),
+        Capability("GET", "/api/control/configurations", "/api/control/configurations", OperationCapabilities.AdminRead, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/configurations/active", "/api/control/configurations/active", OperationCapabilities.AdminRead, AccessPolicy.Authenticated),
+        Capability("POST", "/api/control/configurations/{versionNumber:int}/activate", "/api/control/configurations/1/activate", OperationCapabilities.AdminExecute, AccessPolicy.Authenticated),
 
-        Roles("GET", "/api/control/runtime/summary", "/api/control/runtime/summary", AccessPolicy.SimPipelineAdmin),
-        Roles("GET", "/api/control/runtime/diagnostics", "/api/control/runtime/diagnostics", AccessPolicy.SimPipelineAdmin),
-        Roles("POST", "/api/control/runtime/diagnostics/{diagnosticId}", "/api/control/runtime/diagnostics/runtime-table-counts", AccessPolicy.SimAdmin),
-        Roles("POST", "/api/control/runtime/runs", "/api/control/runtime/runs", AccessPolicy.SimAdmin),
-        Roles("GET", "/api/control/runtime/runs/latest", "/api/control/runtime/runs/latest", AccessPolicy.SimPipelineAdmin),
-        Roles("GET", "/api/control/runtime/runs/{runId:guid}", "/api/control/runtime/runs/90000000-0000-0000-0000-000000000001", AccessPolicy.SimPipelineAdmin),
-        Roles("GET", "/api/control/runtime/runs/{runId:guid}/audit", "/api/control/runtime/runs/90000000-0000-0000-0000-000000000001/audit", AccessPolicy.SimPipelineAdmin),
-        Roles("GET", "/api/control/runtime/runs/{runId:guid}/timings", "/api/control/runtime/runs/90000000-0000-0000-0000-000000000001/timings", AccessPolicy.SimPipelineAdmin),
-        Roles("POST", "/api/control/runtime/reset", "/api/control/runtime/reset", AccessPolicy.SimAdmin),
+        Capability("GET", "/api/control/runtime/summary", "/api/control/runtime/summary", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/runtime/diagnostics", "/api/control/runtime/diagnostics", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
+        Capability("POST", "/api/control/runtime/diagnostics/{diagnosticId}", "/api/control/runtime/diagnostics/runtime-table-counts", OperationCapabilities.SimulationExecute, AccessPolicy.Authenticated),
+        Capability("POST", "/api/control/runtime/runs", "/api/control/runtime/runs", OperationCapabilities.SimulationExecute, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/runtime/runs/latest", "/api/control/runtime/runs/latest", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/runtime/runs/{runId:guid}", "/api/control/runtime/runs/90000000-0000-0000-0000-000000000001", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/runtime/runs/{runId:guid}/audit", "/api/control/runtime/runs/90000000-0000-0000-0000-000000000001/audit", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/runtime/runs/{runId:guid}/timings", "/api/control/runtime/runs/90000000-0000-0000-0000-000000000001/timings", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
+        Capability("POST", "/api/control/runtime/reset", "/api/control/runtime/reset", OperationCapabilities.SimulationExecute, AccessPolicy.Authenticated),
 
-        Roles("GET", "/api/control/runtime/observability/health", "/api/control/runtime/observability/health", AccessPolicy.SimPipelineAdmin),
-        Roles("GET", "/api/control/runtime/observability/rabbitmq", "/api/control/runtime/observability/rabbitmq", AccessPolicy.SimPipelineAdmin),
-        Roles("GET", "/api/control/runtime/observability/evidence", "/api/control/runtime/observability/evidence", AccessPolicy.SimPipelineAdmin),
-        Roles("GET", "/api/control/runtime/observability/evidence/{evidenceId}", "/api/control/runtime/observability/evidence/missing-evidence", AccessPolicy.SimPipelineAdmin),
+        Capability("GET", "/api/control/runtime/observability/health", "/api/control/runtime/observability/health", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/runtime/observability/rabbitmq", "/api/control/runtime/observability/rabbitmq", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/runtime/observability/evidence", "/api/control/runtime/observability/evidence", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/runtime/observability/evidence/{evidenceId}", "/api/control/runtime/observability/evidence/missing-evidence", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
 
-        Roles("GET", "/api/control/simulation-runs", "/api/control/simulation-runs", AccessPolicy.SimPipelineAdmin),
-        Roles("GET", "/api/control/simulation-runs/{runId:guid}", "/api/control/simulation-runs/90000000-0000-0000-0000-000000000001", AccessPolicy.SimPipelineAdmin),
+        Capability("GET", "/api/control/simulation-runs", "/api/control/simulation-runs", OperationCapabilities.SimulationRead, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/simulation-runs/{runId:guid}", "/api/control/simulation-runs/90000000-0000-0000-0000-000000000001", OperationCapabilities.SimulationRead, AccessPolicy.Authenticated),
 
-        Roles("GET", "/api/dev/controlled-validation/p3", "/api/dev/controlled-validation/p3", AccessPolicy.SimAdmin),
-        Roles("POST", "/api/dev/controlled-validation/p3/run", "/api/dev/controlled-validation/p3/run", AccessPolicy.SimAdmin),
+        Capability("GET", "/api/dev/controlled-validation/p3", "/api/dev/controlled-validation/p3", OperationCapabilities.P3Read, AccessPolicy.Authenticated),
+        Capability("POST", "/api/dev/controlled-validation/p3/run", "/api/dev/controlled-validation/p3/run", OperationCapabilities.SimulationExecute, AccessPolicy.Authenticated),
 
 
         Authenticated("GET", "/api/control/operations/catalog", "/api/control/operations/catalog"),
@@ -130,6 +131,7 @@ public sealed class AuthorizationMatrixTests
         string method,
         string path,
         AccessPolicy accessPolicy,
+        string? authorizationPolicy,
         string profile)
     {
         await using var factory = CreateFactory(profile);
@@ -137,7 +139,7 @@ public sealed class AuthorizationMatrixTests
 
         using var response = await SendAsync(client, method, path);
 
-        var expected = ExpectedOutcome(accessPolicy, profile);
+        var expected = ExpectedOutcome(accessPolicy, authorizationPolicy, profile);
         if (expected == AccessOutcome.Allowed)
         {
             Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -169,7 +171,7 @@ public sealed class AuthorizationMatrixTests
         {
             foreach (var profile in AllProfiles)
             {
-                yield return [policy.Method, policy.SamplePath, policy.AccessPolicy, profile];
+                yield return [policy.Method, policy.SamplePath, policy.AccessPolicy, policy.AuthorizationPolicy, profile];
             }
         }
     }
@@ -267,7 +269,7 @@ public sealed class AuthorizationMatrixTests
                 .Order(StringComparer.Ordinal)
                 .ToArray();
 
-    private static AccessOutcome ExpectedOutcome(AccessPolicy policy, string profile)
+    private static AccessOutcome ExpectedOutcome(AccessPolicy policy, string? authorizationPolicy, string profile)
     {
         if (policy == AccessPolicy.Anonymous)
         {
@@ -277,6 +279,13 @@ public sealed class AuthorizationMatrixTests
         if (profile == "Anonymous")
         {
             return AccessOutcome.Unauthorized;
+        }
+
+        if (!string.IsNullOrWhiteSpace(authorizationPolicy))
+        {
+            return OperationRoleCatalog.GetCapabilities([profile]).Contains(authorizationPolicy, StringComparer.OrdinalIgnoreCase)
+                ? AccessOutcome.Allowed
+                : AccessOutcome.Forbidden;
         }
 
         return policy switch

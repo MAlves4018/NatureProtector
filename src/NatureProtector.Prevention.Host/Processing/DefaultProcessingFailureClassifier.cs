@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NatureProtector.Prevention.Host.Persistence;
 using Npgsql;
 
 namespace NatureProtector.Prevention.Host.Processing;
@@ -33,6 +34,10 @@ public sealed class DefaultProcessingFailureClassifier : IProcessingFailureClass
             ControlledValidationProcessingFaultException controlledValidationFault => new ProcessingFailureClassification(
                 controlledValidationFault.Kind,
                 controlledValidationFault.ErrorCode),
+
+            MissingSimulationRunReferenceException => new ProcessingFailureClassification(
+                ProcessingFailureKind.Permanent,
+                MissingSimulationRunReferenceException.ErrorCode),
 
             TimeoutException => new ProcessingFailureClassification(
                 ProcessingFailureKind.Transient,

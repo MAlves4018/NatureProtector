@@ -49,6 +49,31 @@ const CloudResourcesPage = lazy(() => import('./pages/CloudResourcesPage').then(
 const ApprovalsPage = lazy(() => import('./pages/ApprovalsPage').then((module) => ({ default: module.ApprovalsPage })));
 const UserRoleAdministrationPage = lazy(() => import('./pages/UserRoleAdministrationPage').then((module) => ({ default: module.UserRoleAdministrationPage })));
 
+const uiChildRoutes = [
+  { index: true, element: <UiDefaultRedirect /> },
+  { path: 'demo', element: <PublicOverviewPage /> },
+  { path: 'context', element: <DataContextPage /> },
+  { path: 'dashboard', element: <DashboardsPage /> },
+  { path: 'mission', element: <MissionControlPage /> },
+  { path: 'risk', element: <RiskPage /> },
+  { path: 'runs', element: <RunsPage /> },
+  { path: 'simulation', element: <SimulationPage /> },
+  { path: 'pipeline', element: <PipelinePage /> },
+  { path: 'quality', element: <QualityRunsPage /> },
+  { path: 'qa', element: <QualityEvidencePage /> },
+  { path: 'qa-tests', element: <QaTestSuitePage /> },
+  { path: 'evidence', element: <EvidenceExplorerPage /> },
+  { path: 'deployments', element: <DeploymentsPage /> },
+  { path: 'deployment-health', element: <DeploymentHealthPage /> },
+  { path: 'cloud', element: <CloudResourcesPage /> },
+  { path: 'db-queries', element: <DatabaseQueriesPage /> },
+  { path: 'approvals', element: <ApprovalsPage /> },
+  { path: 'users', element: <UserRoleAdministrationPage /> },
+  { path: 'admin', element: <AdminPage /> },
+  { path: 'p3', element: <ExperimentalPage /> },
+  { path: '*', element: <UiDefaultRedirect /> },
+];
+
 export function App() {
   
   const [isDark, setIsDark] = useState(false);
@@ -75,30 +100,12 @@ function UiRouter({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dis
         {
           path: '/',
           element: <UiShell isDark={isDark} setIsDark={setIsDark} />,
-          children: [
-            { index: true, element: <UiDefaultRedirect /> },
-            { path: 'demo', element: <PublicOverviewPage /> },
-            { path: 'context', element: <DataContextPage /> },
-            { path: 'dashboard', element: <DashboardsPage /> },
-            { path: 'mission', element: <MissionControlPage /> },
-            { path: 'risk', element: <RiskPage /> },
-            { path: 'runs', element: <RunsPage /> },
-            { path: 'simulation', element: <SimulationPage /> },
-            { path: 'pipeline', element: <PipelinePage /> },
-            { path: 'quality', element: <QualityRunsPage /> },
-            { path: 'qa', element: <QualityEvidencePage /> },
-            { path: 'qa-tests', element: <QaTestSuitePage /> },
-            { path: 'evidence', element: <EvidenceExplorerPage /> },
-            { path: 'deployments', element: <DeploymentsPage /> },
-            { path: 'deployment-health', element: <DeploymentHealthPage /> },
-            { path: 'cloud', element: <CloudResourcesPage /> },
-            { path: 'db-queries', element: <DatabaseQueriesPage /> },
-            { path: 'approvals', element: <ApprovalsPage /> },
-            { path: 'users', element: <UserRoleAdministrationPage /> },
-            { path: 'admin', element: <AdminPage /> },
-            { path: 'p3', element: <ExperimentalPage /> },
-            { path: '*', element: <UiDefaultRedirect /> },
-          ],
+          children: uiChildRoutes,
+        },
+        {
+          path: '/ui-v2',
+          element: <UiShell isDark={isDark} setIsDark={setIsDark} />,
+          children: uiChildRoutes,
         },
       ]),
     [isDark, setIsDark],
@@ -123,8 +130,9 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
   const helpReturnFocusRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const routePage = location.pathname.split('/').filter(Boolean)[0] as UiNavTarget | undefined;
+  const routePage = getRoutePage(location.pathname);
   const activePage = routePage && pages.some((page) => page.id === routePage) ? routePage : defaultPageFor(capabilities);
+  const activePageDef = pages.find((p) => p.id === activePage);
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -134,6 +142,21 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
     window.addEventListener('np-ui-help', handler);
     return () => window.removeEventListener('np-ui-help', handler);
   }, []);
+
+  useEffect(() => {
+    const handler = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'F1') {
+        return;
+      }
+
+      event.preventDefault();
+      helpReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setHelpTopic(activePageDef?.helpTopic ?? 'overview');
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [activePageDef?.helpTopic]);
 
   useEffect(() => {
     if (!helpTopic) {
@@ -164,13 +187,12 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
 
   const handleNavigate = useCallback((target: UiNavTarget) => {
     setActivePage(target);
-    navigate('/' + target);
-  }, [navigate, setActivePage]);
+    navigate(getRoutePrefix(location.pathname) + '/' + target);
+  }, [location.pathname, navigate, setActivePage]);
 
   const mainId = 'ui-main';
 
   const breadcrumbItems = (() => {
-    const activePageDef = pages.find((p) => p.id === activePage);
     if (!activePageDef) return [];
     return [
       { label: activePageDef.group.charAt(0).toUpperCase() + activePageDef.group.slice(1) },
@@ -266,6 +288,15 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
       </div>
     </>
   );
+}
+
+function getRoutePage(pathname: string): UiNavTarget | undefined {
+  const segments = pathname.split('/').filter(Boolean);
+  return (segments[0] === 'ui-v2' ? segments[1] : segments[0]) as UiNavTarget | undefined;
+}
+
+function getRoutePrefix(pathname: string) {
+  return pathname.split('/').filter(Boolean)[0] === 'ui-v2' ? '/ui-v2' : '';
 }
 
 function UiDefaultRedirect() {

@@ -43,6 +43,9 @@ graphify-out
 /BenchmarkDotNet.Artifacts/
 /playwright-report/
 /test-results/
+.understand-anything/
+docs/RepositorioDocumental/
+docs/docs.zip
 
 .env
 node_modules/.package-lock.json
@@ -113,6 +116,7 @@ docs/evidence/controlled-validation/*
 !docs/evidence/g10-2-phase3-state.json
 !docs/evidence/g10-3-phase4-state.json
 !docs/evidence/report-inventory-collection.md
+!docs/evidence/evidence-collection.md
 
 #TEMP 
 docs/planning/V0/

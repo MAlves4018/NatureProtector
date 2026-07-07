@@ -315,6 +315,7 @@ $sensorCount = Get-OptionalValue -Object $spec -Name "sensorCount"
 $numberOfCycles = Get-OptionalValue -Object $spec -Name "numberOfCycles"
 $intervalSeconds = Get-OptionalValue -Object $spec -Name "intervalSeconds"
 $seed = Get-OptionalValue -Object $spec -Name "seed"
+$startTimestamp = Get-OptionalValue -Object $spec -Name "startTimestamp"
 $degradationProfile = Get-OptionalValue -Object $spec -Name "degradationProfile"
 $collectEvidence = Get-OptionalValue -Object $spec -Name "collectEvidence"
 $waitForCompletion = Get-OptionalValue -Object $spec -Name "waitForCompletion"
@@ -336,6 +337,21 @@ Assert-PositiveIfDefined -Name "timeoutSeconds" -Value $timeoutSeconds
 
 if ($null -ne $seed -and -not ($seed -is [int] -or $seed -is [long])) {
     throw "'seed' must be an integer when defined."
+}
+
+if ($null -ne $startTimestamp -and $startTimestamp -is [datetimeoffset]) {
+    $startTimestamp = $startTimestamp.ToUniversalTime().ToString("o")
+}
+elseif ($null -ne $startTimestamp -and $startTimestamp -is [datetime]) {
+    $startTimestamp = ([datetime]$startTimestamp).ToUniversalTime().ToString("o")
+}
+elseif ($null -ne $startTimestamp) {
+    $parsedStartTimestamp = [datetimeoffset]::MinValue
+    if (-not [datetimeoffset]::TryParse([string]$startTimestamp, [ref]$parsedStartTimestamp)) {
+        throw "'startTimestamp' must be a valid ISO-8601 timestamp when defined."
+    }
+
+    $startTimestamp = $parsedStartTimestamp.ToUniversalTime().ToString("o")
 }
 
 if ($null -eq $collectEvidence) { $collectEvidence = $true }
@@ -425,6 +441,7 @@ $resolvedSpec = [ordered]@{
         numberOfCycles = $numberOfCycles
         intervalSeconds = $intervalSeconds
         seed = $seed
+        startTimestamp = $startTimestamp
         degradationProfile = $degradationProfile
     }
     orchestrator = [ordered]@{
@@ -519,6 +536,7 @@ try {
     Set-TemporaryEnvVarIfDefined -Name "Simulator__RunOverrides__NumberOfCycles" -Value $numberOfCycles
     Set-TemporaryEnvVarIfDefined -Name "Simulator__RunOverrides__IntervalSeconds" -Value $intervalSeconds
     Set-TemporaryEnvVarIfDefined -Name "Simulator__RunOverrides__Seed" -Value $seed
+    Set-TemporaryEnvVarIfDefined -Name "Simulator__StartTimestamp" -Value $startTimestamp
     Set-TemporaryEnvVarIfDefined -Name "Simulator__RunOverrides__DegradationProfile" -Value $degradationProfile
     Set-TemporaryEnvVar -Name "Simulator__RunOverrides__OrchestratorCorrelationId" -Value "$orchestratorCorrelationId"
 
@@ -785,6 +803,7 @@ $summaryLines = @(
     "- numberOfCycles: $numberOfCycles",
     "- intervalSeconds: $intervalSeconds",
     "- seed: $seed",
+    "- startTimestamp: $startTimestamp",
     "- degradationProfile: $degradationProfile",
     "- waitForCompletion: $waitForCompletion",
     "- timeoutSeconds: $timeoutSeconds",

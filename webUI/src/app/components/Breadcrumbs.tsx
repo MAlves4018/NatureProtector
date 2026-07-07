@@ -16,7 +16,7 @@ export function Breadcrumbs({ items, onNavigate }: BreadcrumbsProps) {
 
   return (
     <nav className="ui-breadcrumbs" aria-label="Breadcrumb">
-      <button type="button" className="ui-breadcrumb-link" onClick={() => onNavigate('demo')}>
+      <button type="button" className="ui-breadcrumb-link" aria-label="Início" onClick={() => onNavigate('demo')}>
         <Home size={14} />
       </button>
       {items.map((item, i) => (

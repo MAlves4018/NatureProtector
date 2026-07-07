@@ -90,6 +90,7 @@ public sealed class PostgresDailyCellStateRepository(
                 cancellationToken);
         var scenarioDailyReference = await LoadScenarioDailyReferenceAsync(
             dbContext,
+            input,
             input.SimulationRunId,
             cancellationToken);
 
@@ -185,6 +186,7 @@ public sealed class PostgresDailyCellStateRepository(
 
     private static async Task<ScenarioDailyReference?> LoadScenarioDailyReferenceAsync(
         NatureProtectorControlDbContext dbContext,
+        RiskInput input,
         Guid? simulationRunId,
         CancellationToken cancellationToken)
     {
@@ -199,7 +201,11 @@ public sealed class PostgresDailyCellStateRepository(
 
         if (run is null)
         {
-            return null;
+            throw new MissingSimulationRunReferenceException(
+                simulationRunId.Value,
+                input.AreaId,
+                input.SensorId,
+                input.SourceEventId);
         }
 
         var scenario = await dbContext.ScenarioDefinitions

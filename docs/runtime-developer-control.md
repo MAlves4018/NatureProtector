@@ -32,15 +32,27 @@ Instrumentação runtime ausente é apresentada explicitamente. Em particular, a
 Usar um comando para iniciar os serviços locais de runtime:
 
 ```powershell
-.\scripts\dev\start-local-runtime.ps1 -OpenBrowser
+.\scripts\np.ps1 start -OpenBrowser
 ```
 
 Opções úteis:
 
 ```powershell
-.\scripts\dev\start-local-runtime.ps1 -SkipBootstrap -OpenBrowser
-.\scripts\dev\start-local-runtime.ps1 -SkipDocker -NoBrowser
-.\scripts\dev\start-local-runtime.ps1 -SkipBootstrap -ForceRestart -OpenBrowser
+.\scripts\runtime\Start-LocalRuntime.ps1 -SkipBootstrap -OpenBrowser
+.\scripts\runtime\Start-LocalRuntime.ps1 -SkipDocker -NoBrowser
+.\scripts\runtime\Start-LocalRuntime.ps1 -SkipBootstrap -ForceRestart -OpenBrowser
+```
+
+`scripts\dev\start-local-runtime.ps1` continua disponivel como compatibilidade de baixo nivel. O fluxo recomendado de clone-to-run usa `scripts\np.ps1`.
+
+O comando `start` arranca apenas os serviços persistentes locais: `Backoffice.Api`, `Prevention.Host` e `webUI`. O `Simulator.Host` nao e serviço persistente neste fluxo; e lançado por run atraves da API/UI do Run Orchestrator.
+
+Portas locais por defeito:
+
+```text
+Backoffice API: http://127.0.0.1:5254
+Prevention Host health: http://127.0.0.1:5260
+webUI: http://127.0.0.1:5173
 ```
 
 Os logs são escritos em:

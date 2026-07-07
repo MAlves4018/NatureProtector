@@ -1,12 +1,20 @@
 # Observabilidade e evidence runtime
 
-Última atualização: 2026-06-18
+Última atualização: 2026-07-05
 
 Este documento descreve a fatia atual de observabilidade interna. É evidence runtime para um protótipo técnico, não validação científica de risco de incêndio, alerting oficial ou previsão calibrada.
 
 ## Modelo de health
 
-A Backoffice mantém o endpoint técnico simples `/health` para readiness básica.
+A Backoffice mantem endpoints tecnicos simples para probes locais:
+
+```text
+GET /health
+GET /health/live
+GET /health/ready
+```
+
+Estes endpoints usam ASP.NET health checks simples e nao substituem o health operacional detalhado.
 
 O health operacional detalhado é exposto por:
 
@@ -23,11 +31,12 @@ Healthy
 Degraded
 Unhealthy
 Unknown
+AuthRequired
 NotInstrumented
 NotApplicable
 ```
 
-A ausência de erros não é tratada como `Healthy`. Sinais ausentes ou inacessíveis são representados como `Unknown`, `NotInstrumented` ou `NotApplicable`.
+A ausência de erros não é tratada como `Healthy`. Sinais ausentes ou inacessíveis são representados como `Unknown`, `NotInstrumented` ou `NotApplicable`. Endpoints alcançáveis que exigem autenticação são representados como `AuthRequired`.
 
 Componentes atuais:
 
@@ -36,7 +45,7 @@ Componentes atuais:
 - `RabbitMQ`: RabbitMQ Management HTTP API e estado relevante de filas.
 - `Prevention.Host`: sinal proxy a partir de consumers em `np.ingestion.readings`.
 - `Simulator.Host`: ciclo de vida da última simulation run; uma run concluída é `NotApplicable`, não unhealthy.
-- `InfluxDB`: probe HTTP de health; probes unauthorized ou unreachable são `Unknown`.
+- `InfluxDB`: probe HTTP de health; probes unauthorized são `AuthRequired` e probes unreachable são `Unknown`.
 - `Grafana`: `/api/health` com estado da base de dados quando disponível.
 
 ## Métricas RabbitMQ
@@ -175,7 +184,7 @@ A UI v2 Pipeline consome os novos contratos de observabilidade de forma proporci
 
 Esta passagem não criou dashboards Grafana. Grafana health é verificado através do endpoint real de health e pode ser mostrado no operational health.
 
-InfluxDB health é verificado através de HTTP. Se o endpoint local exigir autorização e a Backoffice não tiver token configurado, o componente fica `Unknown`, não `Healthy`.
+InfluxDB health é verificado através de HTTP. Se o endpoint local exigir autorização e a Backoffice não tiver token configurado, o componente fica `AuthRequired`, não `Healthy` nem falha runtime.
 
 ## Evidence de validação
 
@@ -217,7 +226,7 @@ Runtime smoke observado em 2026-06-14:
 - `RabbitMQ=Degraded`
 - `Prevention.Host=Healthy`
 - `Simulator.Host=NotApplicable`
-- `InfluxDB=Unknown`
+- `InfluxDB=Unknown` na observação histórica de 2026-06-14; passagens atuais devem usar `AuthRequired` quando o endpoint responder `401`.
 - `Grafana=Healthy`
 - `np.ingestion.readings`: ready `0`, unacknowledged `0`, total `0`, consumers `1`
 - `np.observability.raw`: ready `52`, unacknowledged `0`, total `52`, consumers `0`
@@ -231,4 +240,4 @@ Runtime smoke observado em 2026-06-14:
 - Esta passagem não criou dashboard Grafana.
 - Não há claim de latência integral por evento.
 - Runs históricas anteriores a futura persistência de quality/classifier continuarão sem evidence detalhada de classifier.
-- `np.observability.raw` pode mostrar backlog com zero consumers por desenho, salvo quando existir um consumer esperado e provisionado.
+- `np.observability.raw` pode mostrar backlog com zero consumers por desenho; esse backlog é limitação diagnóstica não bloqueante quando `np.ingestion.readings` tem consumer e sem backlog.

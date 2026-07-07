@@ -22,10 +22,11 @@ Run Orchestrator
 
 Responsabilidades principais:
 
-- `scripts/workspace.ps1` e o ponto de entrada canonico para `setup`, `up`, `validate`, `down` e `reset`.
+- `scripts/np.ps1` e o ponto de entrada canonico para clone-to-run local: `doctor`, `init-local`, `clean-local`, `up`, `start`, `health`, `stop` e `down`.
+- `scripts/workspace.ps1` continua disponivel como compatibilidade para `setup`, `up`, `validate`, `down` e `reset`.
 - `infra/scripts/up.ps1` sobe a infraestrutura Docker: PostgreSQL, RabbitMQ, InfluxDB e Grafana. Este script exige `.env` existente e nao cria nem altera esse ficheiro.
 - `scripts/postgres/bootstrap-control-plane.ps1` inicializa/importa a baseline da base de dados local.
-- `scripts/dev/start-local-runtime.ps1` arranca `Backoffice.Api`, `Prevention.Host` e `webUI` em background.
+- `scripts/runtime/Start-LocalRuntime.ps1` arranca `Backoffice.Api`, `Prevention.Host` e `webUI` em background.
 - `Simulator.Host` é lançado pelo Run Orchestrator quando uma run é pedida.
 - Depois da run terminar, `Simulator.Host` deve fechar.
 
@@ -45,10 +46,10 @@ Instalar antes de iniciar:
 Validacao read-only pelo ponto canonico:
 
 ```powershell
-.\scripts\workspace.ps1 setup -PlanOnly -NoDependencyRestore -NoPlaywrightInstall
+.\scripts\np.ps1 doctor
 ```
 
-O validador legado continua disponivel em `scripts/setup/Test-LocalPrerequisites.ps1`, mas tambem segue a regra de nao executar comandos Git.
+O validador legado continua disponivel em `scripts/setup/Test-LocalPrerequisites.ps1`, e `scripts/workspace.ps1 setup -PlanOnly -NoDependencyRestore -NoPlaywrightInstall` continua suportado para compatibilidade.
 
 `dotnet-ef` **não é obrigatório** para o fluxo normal clone-to-run. A baseline local é inicializada pelo script `scripts/postgres/bootstrap-control-plane.ps1`. `dotnet-ef` fica reservado para validação avançada/desenvolvimento.
 
@@ -59,12 +60,20 @@ O validador legado continua disponivel em `scripts/setup/Test-LocalPrerequisites
 Depois de clonar o repositório:
 
 ```powershell
-Copy-Item .\.env.example .\.env
+.\scripts\np.ps1 init-local -Force
 ```
 
-Os scripts `scripts/workspace.ps1` e `infra/scripts/up.ps1` nao criam, copiam, sanitizam nem alteram `.env`. A copia inicial e uma acao manual do operador local.
+O comando cria `.env` a partir de `.env.example`, gera um `INFLUXDB_TOKEN` local com prefixo `apiv3_`, garante `NP_BOOTSTRAP_ADMIN_USERNAME=admin`, garante `NP_BOOTSTRAP_ADMIN_PASSWORD=admin123` e prepara o ficheiro local `data/runtime/influx/admin-token.json`.
 
-O `.env.example` já inclui um `INFLUXDB_TOKEN` local/dev de conveniência para a baseline académica. Não é preciso gerar um token manualmente no caminho normal clone-to-run. O ficheiro `.env` é local, contém credenciais de desenvolvimento e não deve ser versionado.
+O `.env.example` nao inclui um `INFLUXDB_TOKEN` local valido. O valor real em `.env` nao deve ficar como placeholder e o ficheiro `.env` nao deve ser versionado.
+
+Se `-Force` regenerar `INFLUXDB_TOKEN` enquanto existir um volume InfluxDB local inicializado com o token anterior, o InfluxDB pode devolver HTTP 401 durante `up`. Para simular clone novo ou reparar esse drift em local/dev, executar:
+
+```powershell
+.\scripts\np.ps1 clean-local
+```
+
+Este comando e scoped ao projeto NatureProtector e executa `docker compose --project-directory . -f .\docker-compose.yml down -v --remove-orphans`. Nao usa `docker system prune` e nao apaga volumes globais fora do compose deste repo.
 
 ---
 
@@ -73,14 +82,14 @@ O `.env.example` já inclui um `INFLUXDB_TOKEN` local/dev de conveniência para 
 Executar:
 
 ```powershell
-.\scripts\workspace.ps1 up
+.\scripts\np.ps1 up
 ```
 
 O script:
 
 - resolve a raiz do repositório;
 - valida o ficheiro `docker-compose.yml`;
-- falha se `.env` faltar, sem criar nem alterar esse ficheiro;
+- falha se `.env` faltar; nesse caso execute `.\scripts\np.ps1 init-local -Force`;
 - cria/atualiza o ficheiro local de token admin do InfluxDB;
 - executa Docker Compose;
 - garante a database InfluxDB `np_telemetry`;
@@ -99,7 +108,7 @@ No fluxo canonico, `workspace.ps1 up` tambem executa o bootstrap do control plan
 Antes de executar a suite de testes completa, garantir que a infraestrutura Docker local está ativa:
 
 ```powershell
-.\scripts\workspace.ps1 up
+.\scripts\np.ps1 up
 ```
 
 Alguns testes, nomeadamente testes de API/integração, dependem dos serviços locais expostos pela baseline, como PostgreSQL, RabbitMQ e restantes dependências configuradas no ambiente local. Por isso, num clone novo ou após limpeza de containers, deve-se subir a infraestrutura antes de correr:
@@ -209,20 +218,21 @@ webUI did not become reachable on TCP port 5173 within 60 seconds
 Executar:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+.\scripts\np.ps1 start
 ```
 
-Ou se já tiver o Browser aberto:
+Se for necessário abrir o browser automaticamente, usar a superfície de baixo nível:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -ForceRestart
+.\scripts\runtime\Start-LocalRuntime.ps1 -OpenBrowser
 ```
 
 O launcher:
 
 - usa `docker compose --project-directory <repo> -f <repo>\docker-compose.yml up -d`;
 - arranca `Backoffice.Api`, `Prevention.Host` e `webUI` em background;
-- espera API e webUI ficarem acessíveis antes de abrir o browser;
+- usa portas separadas por defeito: Backoffice API em `5254`, Prevention Host health em `5260` e webUI em `5173`;
+- espera API, Prevention Host e webUI ficarem acessíveis antes de abrir o browser;
 - não segue logs em foreground;
 - devolve o prompt;
 - escreve logs em `docs/evidence/dev-runtime/<timestamp>/`.
@@ -248,6 +258,8 @@ Ficheiros principais:
 - `prevention-host.err.log`;
 - `webui.log`;
 - `webui.err.log`.
+
+`scripts\dev\start-local-runtime.ps1` continua disponível apenas como compatibilidade. O caminho recomendado para clone-to-run e freeze candidate é `scripts\np.ps1`.
 
 ---
 
@@ -422,7 +434,7 @@ A validacao completa pode ser executada com:
 .\scripts\setup\Test-LocalBaseline.ps1 -Full
 ```
 
-No estado atual, este comando usa `/health` para readiness publico da Backoffice API e valida `api/control/configurations/active` como guarda de autenticacao esperada:
+No estado atual, este comando usa `/health` para readiness publico da Backoffice API. A API tambem expoe `/health/live` e `/health/ready` para probes tecnicos locais, incluindo scripts de readiness que distinguem liveness/readiness. O comando valida `api/control/configurations/active` como guarda de autenticacao esperada:
 
 ```text
 [OK] Backoffice API health - http://localhost:5254/health returned HTTP 200
@@ -490,7 +502,7 @@ The file is locked by: "NatureProtector.Prevention.Host"
 significa que o runtime local ainda está ativo em background. Isto pode acontecer depois de correr:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+.\scripts\np.ps1 start
 ```
 
 O launcher arranca a Backoffice API, o Prevention Host e a webUI em processos separados e depois devolve o prompt. Esse comportamento é esperado para a demo, mas os processos .NET continuam a usar DLLs em `bin\Debug\net9.0`. Enquanto estiverem vivos, o Windows pode impedir que o `dotnet build` substitua esses ficheiros.
@@ -561,17 +573,20 @@ dotnet build .\NatureProtector.sln --nologo -v minimal --configfile NuGet.Config
 - repetir:
 
 ```powershell
-.\scripts\workspace.ps1 up
+.\scripts\np.ps1 up
 ```
 
 ### `INFLUXDB_TOKEN` inválido
 
-O `.env.example` atual já inclui um token local/dev para a baseline académica. Se o token no `.env` tiver sido removido, truncado ou substituído por um valor inválido, recriar `.env` a partir de `.env.example` é o caminho preferido:
+Se o token no `.env` tiver sido removido, truncado ou substituído por um valor inválido, recriar `.env` pelo script local é o caminho preferido:
 
 ```powershell
-Copy-Item .\.env.example .\.env -Force
-.\scripts\workspace.ps1 up
+.\scripts\np.ps1 init-local -Force
+.\scripts\np.ps1 clean-local
+.\scripts\np.ps1 up
 ```
+
+O `clean-local` e necessario quando ja existem volumes Docker locais inicializados com outro token. A limpeza e limitada ao projeto NatureProtector e nao deve ser substituida por prune global.
 
 Gerar um token manualmente só deve ser necessário para investigação avançada:
 
@@ -585,7 +600,7 @@ $token = "apiv3_" + ([Convert]::ToBase64String($bytes).Replace("+","-").Replace(
 Depois repetir:
 
 ```powershell
-.\scripts\workspace.ps1 up
+.\scripts\np.ps1 up
 ```
 
 ### `vite` não é reconhecido
@@ -601,7 +616,7 @@ cd ..
 Depois:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+.\scripts\np.ps1 start
 ```
 
 ### API/webUI não ficam ready no launcher
@@ -617,7 +632,7 @@ docs/evidence/dev-runtime/<timestamp>/
 Usar `-ForceRestart` apenas para processos locais do NatureProtector:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\dev\start-local-runtime.ps1 -OpenBrowser -ForceRestart
+.\scripts\runtime\Start-LocalRuntime.ps1 -OpenBrowser -ForceRestart
 ```
 
 Se a porta pertencer a outro processo, parar manualmente o processo ou alterar a porta em `.env`.

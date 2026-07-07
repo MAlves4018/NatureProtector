@@ -68,6 +68,7 @@ public sealed class RateLimitingTests
         for (var attempt = 0; attempt < 5; attempt++)
         {
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/live")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/ready")).StatusCode);
         }
     }
 
