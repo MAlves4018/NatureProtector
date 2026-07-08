@@ -19,7 +19,7 @@ Object.defineProperty(globalThis, 'localStorage', {
     };
   })(),
   writable: false,
-  configurable: false,
+  configurable: true,
 });
 
 globalThis.ResizeObserver ??= ResizeObserverMock;
