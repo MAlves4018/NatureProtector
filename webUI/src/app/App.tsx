@@ -68,31 +68,6 @@ const UserRoleAdministrationPage = lazy(() =>
   import('./pages/UserRoleAdministrationPage').then((module) => ({ default: module.UserRoleAdministrationPage })),
 );
 
-const uiChildRoutes = [
-  { index: true, element: <UiDefaultRedirect /> },
-  { path: 'demo', element: <PublicOverviewPage /> },
-  { path: 'context', element: <DataContextPage /> },
-  { path: 'dashboard', element: <DashboardsPage /> },
-  { path: 'mission', element: <MissionControlPage /> },
-  { path: 'risk', element: <RiskPage /> },
-  { path: 'runs', element: <RunsPage /> },
-  { path: 'simulation', element: <SimulationPage /> },
-  { path: 'pipeline', element: <PipelinePage /> },
-  { path: 'quality', element: <QualityRunsPage /> },
-  { path: 'qa', element: <QualityEvidencePage /> },
-  { path: 'qa-tests', element: <QaTestSuitePage /> },
-  { path: 'evidence', element: <EvidenceExplorerPage /> },
-  { path: 'deployments', element: <DeploymentsPage /> },
-  { path: 'deployment-health', element: <DeploymentHealthPage /> },
-  { path: 'cloud', element: <CloudResourcesPage /> },
-  { path: 'db-queries', element: <DatabaseQueriesPage /> },
-  { path: 'approvals', element: <ApprovalsPage /> },
-  { path: 'users', element: <UserRoleAdministrationPage /> },
-  { path: 'admin', element: <AdminPage /> },
-  { path: 'p3', element: <ExperimentalPage /> },
-  { path: '*', element: <UiDefaultRedirect /> },
-];
-
 export function App() {
   const [isDark, setIsDark] = useState(false);
   return (
@@ -308,7 +283,6 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
             </Suspense>
           </ErrorBoundary>
         </main>
-        <footer className="ui-footer">{copy('footer.beta')}</footer>
         {helpTopic && (
           <div className="ui-help-overlay">
             <section

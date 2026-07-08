@@ -224,7 +224,6 @@ const messages = {
     'help.technical':
       'Superfícies técnicas: mostram fonte, escopo, carimbo temporal e ausência explícita quando o contrato não instrumenta um campo.',
     'help.docs': 'Ajuda integrada M04',
-    'footer.beta': 'Beta preservada em rotas existentes.',
   },
   en: {
     'app.name': 'NatureProtector',
@@ -446,7 +445,6 @@ const messages = {
     'help.technical':
       'Technical surfaces: show source, scope, timestamp and explicit absence when a field is not instrumented by the contract.',
     'help.docs': 'Integrated M04 help',
-    'footer.beta': 'A beta permanece nas rotas existentes.',
   },
 } satisfies Record<UiLocale, Record<string, string>>;
 

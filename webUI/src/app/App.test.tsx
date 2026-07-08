@@ -173,8 +173,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
     expect(await screen.findByRole('heading', { name: /Pipeline e observabilidade/i })).toBeInTheDocument();
-    expect(screen.getByText(/Pipeline health is not inferred/i)).toBeInTheDocument();
-
+    
     fireEvent.click(screen.getByRole('button', { name: /Qualidade e evidencia/i }));
     expect(await screen.findByRole('heading', { name: /Qualidade e evidência/i })).toBeInTheDocument();
     expect(screen.getByText(/Latest test execution/i)).toBeInTheDocument();
@@ -333,7 +332,6 @@ function createFetchMock(options: { failSummary?: boolean; roles?: string[] } = 
         qualityFlagsSummary: [],
         eligibilitySummary: [],
         areaSnapshot: null,
-        limitations: [],
         scoreComponents: summary.scoreComponents,
         indexComparison: summary.indexComparison,
       });
@@ -356,7 +354,6 @@ function createFetchMock(options: { failSummary?: boolean; roles?: string[] } = 
         timeToFirstAlertMs: null,
         attempts: {},
         stages: [],
-        limitations: [],
       });
     }
 

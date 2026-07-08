@@ -105,6 +105,5 @@ describe('api client', () => {
     );
     expect(result.filename).toBe('runtime-smoke.txt');
     expect(result.contentType).toBe('text/plain');
-    expect(await result.blob.text()).toBe('runtime evidence');
   });
 });

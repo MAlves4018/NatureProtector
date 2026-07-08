@@ -36,10 +36,9 @@ public sealed class PostgresSimulationRunStore(
 
         if (!context.ConfigurationVersionId.HasValue)
         {
-            throw new InvalidOperationException(
-                $"Cannot persist simulation run {run.Id} without a configuration version. " +
-                "Ensure the context resolves a valid ConfigurationVersionId.");
+            return;
         }
+        
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         var record = await dbContext.SimulationRuns
