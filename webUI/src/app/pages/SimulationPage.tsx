@@ -2,7 +2,6 @@ import { PlayCircle } from 'lucide-react';
 import { AreaSelector } from '../components/AreaSelector';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
-import { SimulationProgress } from '../components/SimulationProgress';
 import { useUiLocale } from '../state/LocaleContext';
 import { useUiSimulation } from '../state/SimulationContext';
 import { useUiActivity } from '../state/ActivityContext';
@@ -10,12 +9,7 @@ import { useNavigate } from 'react-router-dom';
 
 export function SimulationPage() {
   const { copy } = useUiLocale();
-  const {
-    scenarios,
-    selectedScenarioCode,
-    setSelectedScenarioCode,
-    scenarioContext,
-  } = useUiActivity();
+  const { scenarios, selectedScenarioCode, setSelectedScenarioCode } = useUiActivity();
   const {
     simulationForm,
     setSimulationForm,

@@ -53,7 +53,11 @@ export function useEvidenceItems() {
   const { locale } = useUiLocale();
 
   return useMemo(
-    () => buildUiEvidenceItems({ summary, run: selectedRun, audit: runAudit, timings: runTimings, catalog: evidenceCatalog }, locale),
+    () =>
+      buildUiEvidenceItems(
+        { summary, run: selectedRun, audit: runAudit, timings: runTimings, catalog: evidenceCatalog },
+        locale,
+      ),
     [summary, selectedRun, runAudit, runTimings, evidenceCatalog, locale],
   );
 }

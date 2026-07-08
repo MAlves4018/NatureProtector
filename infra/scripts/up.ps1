@@ -26,8 +26,7 @@ function Assert-CommandAvailable {
     )
 
     if (-not (Get-Command $Command -ErrorAction SilentlyContinue)) {
-        Write-Error "$Command was not found on PATH. $InstallHint"
-        exit 1
+        throw "$Command was not found on PATH. $InstallHint"
     }
 }
 
@@ -77,8 +76,7 @@ function Invoke-CheckedExternalCommand {
     }
 
     if ($exitCode -ne 0) {
-        Write-Error "$FailureMessage Output: $text"
-        exit $exitCode
+        throw "$FailureMessage Output: $text"
     }
 
     return $text
@@ -105,8 +103,7 @@ if (-not $SkipWorkspacePreparation -and (Test-Path -LiteralPath $WorkspaceScript
 $ComposeFile = Join-Path $ProjectRoot "docker-compose.yml"
 
 if (-not (Test-Path -LiteralPath $ComposeFile)) {
-    Write-Error "docker-compose.yml not found at $ComposeFile. ProjectRoot resolved to $ProjectRoot."
-    exit 1
+    throw "docker-compose.yml not found at $ComposeFile. ProjectRoot resolved to $ProjectRoot."
 }
 
 Assert-CommandAvailable "docker" "Install Docker Desktop, open it, and re-run scripts\setup\Test-LocalPrerequisites.ps1."
@@ -114,12 +111,11 @@ Invoke-CheckedExternalCommand "docker" @("info", "--format", "{{.ServerVersion}}
 Invoke-CheckedExternalCommand "docker" @("compose", "version") "Docker Compose v2 is not available. Install/update Docker Desktop before running up.ps1." | Out-Null
 
 if (-not (Test-Path ".env")) {
-    Write-Error ".env is missing. Create it manually from .env.example and review machine-specific values before running infra/scripts/up.ps1. This script will not create or edit .env."
-    exit 1
+    throw ".env is missing. Run scripts\np.ps1 init-local -Force before running infra/scripts/up.ps1."
 }
 
 # Prepara o ficheiro local de admin token usado pelo InfluxDB 3 no primeiro arranque
-# depois de volumes novos. Não altera o `.env`.
+# depois de volumes novos. Este script will not create or edit .env.
 $InfluxAdminTokenScript = Join-Path $ProjectRoot "scripts\influx\Ensure-InfluxAdminTokenFile.ps1"
 if (Test-Path $InfluxAdminTokenScript) {
     $tokenOutput = Invoke-CheckedExternalCommand `
@@ -132,8 +128,7 @@ if (Test-Path $InfluxAdminTokenScript) {
     }
 }
 else {
-    Write-Error "Influx admin token script not found at $InfluxAdminTokenScript."
-    exit 1
+    throw "Influx admin token script not found at $InfluxAdminTokenScript."
 }
 
 # Levanta a infraestrutura em background para que os restantes processos possam
@@ -159,8 +154,7 @@ if (Test-Path $InfluxEnsureScript) {
         & $InfluxEnsureScript
     }
     catch {
-        Write-Error "Influx database provisioning script failed. $($_.Exception.Message)"
-        exit 1
+        throw "Influx database provisioning script failed. $($_.Exception.Message)"
     }
 }
 else {

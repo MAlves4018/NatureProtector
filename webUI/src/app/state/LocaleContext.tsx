@@ -21,11 +21,7 @@ export function UiLocaleProvider({ children }: { children: ReactNode }) {
     sessionStorage.setItem('np.Ui.locale', locale);
   }, [locale]);
 
-  return (
-    <UiLocaleContext.Provider value={{ locale, setLocale, copy }}>
-      {children}
-    </UiLocaleContext.Provider>
-  );
+  return <UiLocaleContext.Provider value={{ locale, setLocale, copy }}>{children}</UiLocaleContext.Provider>;
 }
 
 export function useUiLocale() {

@@ -8,6 +8,7 @@ Scripts are grouped by operational responsibility. A script that is not called b
 - `scripts/workspace.ps1`: local workspace lifecycle and developer runtime entrypoint.
 - `scripts/dotnet/Use-RepoDotnetEnvironment.ps1`: configure the repository-local .NET environment in the current PowerShell session.
 - `scripts/dotnet/Invoke-RepoDotnet.ps1`: manual wrapper that configures the repository-local .NET environment and invokes `dotnet`, adding single-process execution for restore, build, test and publish unless the caller supplied an override.
+- `scripts/docker/Export-DockerDiagnostics.ps1`: manual local-runtime diagnostics exporter. It writes Docker and Compose snapshots under `artifacts/local-runtime/docker-diagnostics/` or an explicit output directory and does not prune, remove or mutate Docker resources.
 - `scripts/evidence/export_db_evidence.py`: manual PostgreSQL evidence exporter. It requires explicit database connectivity and writes a Markdown inventory; it is not part of normal CI or deployment.
 
 ## Dynamic G8.2 probes
@@ -22,6 +23,7 @@ New manual entrypoints must be documented. Helpers imported by other scripts sho
 
 - `scripts/evidence/run-report-evidence-campaign.sh`: entrypoint manual suportado para Git Bash/Linux; delega na campanha Python e exige `--execute` para ações selecionadas.
 - `scripts/evidence/collect-reliability-evidence.sh`: entrypoint manual suportado para recolha de fiabilidade; não executa P3 sem confirmação explícita.
+- `scripts/evidence/Generate-DeepEngineeringExploration20260701.ps1`: entrypoint manual histórico para regenerar o pacote documental de exploração de engenharia de 2026-07-01. Mantém-se documentado como ferramenta de reprodução de evidência, não como fluxo CI ou deployment.
 
 Os resultados são escritos em `artifacts/report-evidence/` e não são versionados.
 

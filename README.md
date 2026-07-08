@@ -92,15 +92,32 @@ Esse guia é a fonte principal para correr a baseline. Deve ser preferido a nota
 Fluxo resumido:
 
 ```powershell
-Copy-Item .env.example .env
-.\scripts\workspace.ps1 setup
-.\scripts\workspace.ps1 up -StartRuntime -OpenBrowser
-.\scripts\workspace.ps1 validate -Profile Quick
+.\scripts\np.ps1 doctor
+.\scripts\np.ps1 init-local -Force
+.\scripts\np.ps1 clean-local
+.\scripts\np.ps1 up
+.\scripts\np.ps1 start
+.\scripts\np.ps1 health
 ```
 
-O `.env.example` inclui o token local/dev de conveniência usado pela baseline académica. O ficheiro `.env` é local e não deve ser versionado. `dotnet ef` fica reservado para validação avançada/desenvolvimento; não é parte do caminho normal clone-to-run.
+O caminho real usado para o freeze candidate local é:
 
-Os scripts de workspace e infraestrutura nao criam, copiam nem alteram `.env`; crie o ficheiro manualmente a partir de `.env.example` e reveja os valores locais antes de subir a baseline.
+```text
+C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector
+```
+
+Para parar:
+
+```powershell
+.\scripts\np.ps1 stop
+.\scripts\np.ps1 down
+```
+
+`scripts\np.ps1` é o entrypoint recomendado para clone-to-run. `scripts\workspace.ps1` continua disponível como compatibilidade para fluxos antigos.
+
+O `.env.example` não contém um token InfluxDB local válido. `.\scripts\np.ps1 init-local -Force` gera `.env`, cria um `INFLUXDB_TOKEN` com prefixo `apiv3_` e prepara o token admin local usado pelo Docker Compose. O ficheiro `.env` é local e não deve ser versionado. `dotnet ef` fica reservado para validação avançada/desenvolvimento; não é parte do caminho normal clone-to-run.
+
+Se `init-local -Force` regenerar o token e já existir um volume InfluxDB local inicializado com token antigo, `up` pode falhar com HTTP 401. Para ambiente local/dev, use `.\scripts\np.ps1 clean-local`; este comando executa limpeza scoped ao compose NatureProtector (`docker compose down -v --remove-orphans`) e não executa `docker system prune`.
 
 Login local em ambiente `Development`:
 
@@ -233,21 +250,32 @@ Se o build .NET falhar por ficheiros bloqueados, confirmar que `Backoffice.Api`,
 
 ## Evidência operacional recente
 
-A baseline foi validada com uma run `scenario_b` usando 6 sensores e 5 ciclos, produzindo:
+A baseline local do freeze candidate foi validada com `scenario_b` e `scenario_c` pelo harness:
 
-- `simulation_runs` com `StartedAt` e `EndedAt`;
-- `processing_attempts = 30`;
-- `risk_assessments = 30`;
-- scores entre aproximadamente `0.4178` e `0.4482`;
-- ausência de processo `Simulator.Host` após a run.
+```powershell
+.\scripts\validation\Invoke-LocalFunctionalValidation.ps1 -Full -Evidence -Ui
+```
 
-A nova evidência runtime de `scenario_c` deve ser recolhida quando se pretender fechar a comparação B/C final.
+Resultado aceito da validação funcional local:
+
+- `scenario_b`: `30` eventos aceites, `30` risk assessments, `0` missing, `0` rejected, `0` quarantined;
+- `scenario_c` com `missing-readings`: `24` eventos aceites, `24` risk assessments, `6` missing, `0` rejected, `0` quarantined;
+- comparação B/C concluída;
+- validações DB, RabbitMQ, Prevention Host e UI smoke concluídas;
+- ausência de processo `Simulator.Host` persistente após as runs.
+
+O harness aguarda convergência assíncrona do audit antes de declarar PASS. Isto evita tratar uma leitura parcial de auditoria como regressão funcional.
 
 ---
 
 ## Documentação relacionada
 
 - [docs/setup/local-baseline-setup.md](docs/setup/local-baseline-setup.md)
+- [docs/freeze/FREEZE-CANDIDATE.md](docs/freeze/FREEZE-CANDIDATE.md)
+- [docs/runtime/local-runtime.md](docs/runtime/local-runtime.md)
+- [docs/runtime/simulation-runs.md](docs/runtime/simulation-runs.md)
+- [docs/testing/validation-gates.md](docs/testing/validation-gates.md)
+- [docs/scripts/script-inventory.md](docs/scripts/script-inventory.md)
 - [docs/README.md](docs/README.md)
 - [docs/architecture/README.md](docs/architecture/README.md)
 - [docs/architecture/implementation.md](docs/architecture/implementation.md)
@@ -263,7 +291,7 @@ A nova evidência runtime de `scenario_c` deve ser recolhida quando se pretender
 - O score NatureProtector é candidato e não está cientificamente calibrado.
 - FWI e KBDI são usados como comparação/proveniência, não como validação científica final.
 - O Portuguese Context Proxy é candidato e não corresponde ao RCM/IPMA/ICNF oficial.
-- `scenario_c` deve ser revalidado em runtime antes de ser usado como evidência final de comparação B/C.
+- A validação B/C é local e funcional; não prova readiness cloud, produção, carga, stress ou calibração científica.
 - InfluxDB/Grafana fazem parte da observabilidade local; problemas nestes serviços devem ser diagnosticados pelo guia de setup.
 - Autenticação local usa credenciais de Development (`admin` / `admin123`) apenas para baseline local.
 

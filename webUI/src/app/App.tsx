@@ -1,14 +1,5 @@
 import { LogIn, Moon, Sun } from 'lucide-react';
-import {
-  Suspense,
-  lazy,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import { UiNavigation } from './navigation/Navigation';
 import { AlertBanner } from './components/AlertBanner';
@@ -18,41 +9,91 @@ import { Skeleton } from './components/Skeleton';
 import type { UiNavTarget } from './capabilities';
 import { trapDialogTab } from './components/dialogFocus';
 import { defaultPageFor } from './navigation/pageRegistry';
-import {
-  useUiLocale,
-  useUiCapabilities,
-} from './state';
+import { useUiLocale, useUiCapabilities } from './state';
 import './theme/ui.css';
 import { UiProvider } from './state/Provider';
 import { NavBar } from './components/views/navBar';
 import { LogInOut } from './components/views/LogInOut';
 
-const PublicOverviewPage = lazy(() => import('./pages/PublicOverviewPage').then((module) => ({ default: module.PublicOverviewPage })));
-const DataContextPage = lazy(() => import('./pages/DataContextPage').then((module) => ({ default: module.DataContextPage })));
-const OverviewPage = lazy(() => import('./pages/OverviewPage').then((module) => ({ default: module.OverviewPage })));
+const PublicOverviewPage = lazy(() =>
+  import('./pages/PublicOverviewPage').then((module) => ({ default: module.PublicOverviewPage })),
+);
+const DataContextPage = lazy(() =>
+  import('./pages/DataContextPage').then((module) => ({ default: module.DataContextPage })),
+);
 const RiskPage = lazy(() => import('./pages/RiskPage').then((module) => ({ default: module.RiskPage })));
 const RunsPage = lazy(() => import('./pages/RunsPage').then((module) => ({ default: module.RunsPage })));
-const SimulationPage = lazy(() => import('./pages/SimulationPage').then((module) => ({ default: module.SimulationPage })));
+const SimulationPage = lazy(() =>
+  import('./pages/SimulationPage').then((module) => ({ default: module.SimulationPage })),
+);
 const ScenarioComparisonPage = lazy(() => import('./pages/ScenarioComparisonPage').then((module) => ({ default: module.ScenarioComparisonPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const PipelinePage = lazy(() => import('./pages/PipelinePage').then((module) => ({ default: module.PipelinePage })));
-const QualityEvidencePage = lazy(() => import('./pages/QualityEvidencePage').then((module) => ({ default: module.QualityEvidencePage })));
-const QaTestSuitePage = lazy(() => import('./pages/QaTestSuitePage').then((module) => ({ default: module.QaTestSuitePage })));
-const DatabaseQueriesPage = lazy(() => import('./pages/DatabaseQueriesPage').then((module) => ({ default: module.DatabaseQueriesPage })));
-const DeploymentHealthPage = lazy(() => import('./pages/DeploymentHealthPage').then((module) => ({ default: module.DeploymentHealthPage })));
+const QualityEvidencePage = lazy(() =>
+  import('./pages/QualityEvidencePage').then((module) => ({ default: module.QualityEvidencePage })),
+);
+const QaTestSuitePage = lazy(() =>
+  import('./pages/QaTestSuitePage').then((module) => ({ default: module.QaTestSuitePage })),
+);
+const DatabaseQueriesPage = lazy(() =>
+  import('./pages/DatabaseQueriesPage').then((module) => ({ default: module.DatabaseQueriesPage })),
+);
+const DeploymentHealthPage = lazy(() =>
+  import('./pages/DeploymentHealthPage').then((module) => ({ default: module.DeploymentHealthPage })),
+);
 const AdminPage = lazy(() => import('./pages/AdminPage').then((module) => ({ default: module.AdminPage })));
-const ExperimentalPage = lazy(() => import('./pages/ExperimentalPage').then((module) => ({ default: module.ExperimentalPage })));
-const MissionControlPage = lazy(() => import('./pages/MissionControlPage').then((module) => ({ default: module.MissionControlPage })));
-const QualityRunsPage = lazy(() => import('./pages/QualityRunsPage').then((module) => ({ default: module.QualityRunsPage })));
-const EvidenceExplorerPage = lazy(() => import('./pages/EvidenceExplorerPage').then((module) => ({ default: module.EvidenceExplorerPage })));
-const DeploymentsPage = lazy(() => import('./pages/DeploymentsPage').then((module) => ({ default: module.DeploymentsPage })));
-const DashboardsPage = lazy(() => import('./pages/DashboardsPage').then((module) => ({ default: module.DashboardsPage })));
-const CloudResourcesPage = lazy(() => import('./pages/CloudResourcesPage').then((module) => ({ default: module.CloudResourcesPage })));
+const ExperimentalPage = lazy(() =>
+  import('./pages/ExperimentalPage').then((module) => ({ default: module.ExperimentalPage })),
+);
+const MissionControlPage = lazy(() =>
+  import('./pages/MissionControlPage').then((module) => ({ default: module.MissionControlPage })),
+);
+const QualityRunsPage = lazy(() =>
+  import('./pages/QualityRunsPage').then((module) => ({ default: module.QualityRunsPage })),
+);
+const EvidenceExplorerPage = lazy(() =>
+  import('./pages/EvidenceExplorerPage').then((module) => ({ default: module.EvidenceExplorerPage })),
+);
+const DeploymentsPage = lazy(() =>
+  import('./pages/DeploymentsPage').then((module) => ({ default: module.DeploymentsPage })),
+);
+const DashboardsPage = lazy(() =>
+  import('./pages/DashboardsPage').then((module) => ({ default: module.DashboardsPage })),
+);
+const CloudResourcesPage = lazy(() =>
+  import('./pages/CloudResourcesPage').then((module) => ({ default: module.CloudResourcesPage })),
+);
 const ApprovalsPage = lazy(() => import('./pages/ApprovalsPage').then((module) => ({ default: module.ApprovalsPage })));
-const UserRoleAdministrationPage = lazy(() => import('./pages/UserRoleAdministrationPage').then((module) => ({ default: module.UserRoleAdministrationPage })));
+const UserRoleAdministrationPage = lazy(() =>
+  import('./pages/UserRoleAdministrationPage').then((module) => ({ default: module.UserRoleAdministrationPage })),
+);
+
+const uiChildRoutes = [
+  { index: true, element: <UiDefaultRedirect /> },
+  { path: 'demo', element: <PublicOverviewPage /> },
+  { path: 'context', element: <DataContextPage /> },
+  { path: 'dashboard', element: <DashboardsPage /> },
+  { path: 'mission', element: <MissionControlPage /> },
+  { path: 'risk', element: <RiskPage /> },
+  { path: 'runs', element: <RunsPage /> },
+  { path: 'simulation', element: <SimulationPage /> },
+  { path: 'pipeline', element: <PipelinePage /> },
+  { path: 'quality', element: <QualityRunsPage /> },
+  { path: 'qa', element: <QualityEvidencePage /> },
+  { path: 'qa-tests', element: <QaTestSuitePage /> },
+  { path: 'evidence', element: <EvidenceExplorerPage /> },
+  { path: 'deployments', element: <DeploymentsPage /> },
+  { path: 'deployment-health', element: <DeploymentHealthPage /> },
+  { path: 'cloud', element: <CloudResourcesPage /> },
+  { path: 'db-queries', element: <DatabaseQueriesPage /> },
+  { path: 'approvals', element: <ApprovalsPage /> },
+  { path: 'users', element: <UserRoleAdministrationPage /> },
+  { path: 'admin', element: <AdminPage /> },
+  { path: 'p3', element: <ExperimentalPage /> },
+  { path: '*', element: <UiDefaultRedirect /> },
+];
 
 export function App() {
-  
   const [isDark, setIsDark] = useState(false);
   return (
     <UiProvider isDark={isDark}>
@@ -61,7 +102,13 @@ export function App() {
   );
 }
 
-function UiRouter({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {
+function UiRouter({
+  isDark,
+  setIsDark,
+}: {
+  isDark: boolean;
+  setIsDark: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
   const router = useMemo(
     () =>
       createBrowserRouter([
@@ -112,23 +159,18 @@ function UiRouter({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dis
 }
 
 function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {
-  const {
-    pages,
-    capabilities,
-    setActivePage,
-    user,
-    isPublic,
-    capabilityAuthority,
-    capabilitiesLoading,
-  } = useUiCapabilities();
+  const { pages, capabilities, setActivePage, user, isPublic, capabilityAuthority, capabilitiesLoading } =
+    useUiCapabilities();
   const { copy, locale, setLocale } = useUiLocale();
   const [helpTopic, setHelpTopic] = useState<string | null>(null);
   const helpCloseRef = useRef<HTMLButtonElement | null>(null);
   const helpReturnFocusRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const routePage = location.pathname.split('/').filter(Boolean)[0] as UiNavTarget | undefined;
-  const activePage = routePage && pages.some((page) => page.id === routePage) ? routePage : defaultPageFor(capabilities);
+  const routePage = getRoutePage(location.pathname);
+  const activePage =
+    routePage && pages.some((page) => page.id === routePage) ? routePage : defaultPageFor(capabilities);
+  const activePageDef = pages.find((p) => p.id === activePage);
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -138,6 +180,21 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
     window.addEventListener('np-ui-help', handler);
     return () => window.removeEventListener('np-ui-help', handler);
   }, []);
+
+  useEffect(() => {
+    const handler = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'F1') {
+        return;
+      }
+
+      event.preventDefault();
+      helpReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setHelpTopic(activePageDef?.helpTopic ?? 'overview');
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [activePageDef?.helpTopic]);
 
   useEffect(() => {
     if (!helpTopic) {
@@ -166,15 +223,17 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
     trapDialogTab(event);
   };
 
-  const handleNavigate = useCallback((target: UiNavTarget) => {
-    setActivePage(target);
-    navigate('/' + target);
-  }, [navigate, setActivePage]);
+  const handleNavigate = useCallback(
+    (target: UiNavTarget) => {
+      setActivePage(target);
+      navigate(getRoutePrefix(location.pathname) + '/' + target);
+    },
+    [location.pathname, navigate, setActivePage],
+  );
 
   const mainId = 'ui-main';
 
   const breadcrumbItems = (() => {
-    const activePageDef = pages.find((p) => p.id === activePage);
     if (!activePageDef) return [];
     return [
       { label: activePageDef.group.charAt(0).toUpperCase() + activePageDef.group.slice(1) },
@@ -205,8 +264,9 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
             <p className="ui-lead">
               {isPublic
                 ? 'Entrada pública orientada ao produto: propósito, limites e estado dos dados sem superfícies internas.'
-                : `Perfil ativo: ${user?.roles.join(', ') || 'sem funções'}. Autorização: ${capabilitiesLoading ? 'a validar no backend' : capabilityAuthority
-                }.`}
+                : `Perfil ativo: ${user?.roles.join(', ') || 'sem funções'}. Autorização: ${
+                    capabilitiesLoading ? 'a validar no backend' : capabilityAuthority
+                  }.`}
             </p>
           </div>
           <div className="ui-hero-actions">
@@ -272,6 +332,15 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
   );
 }
 
+function getRoutePage(pathname: string): UiNavTarget | undefined {
+  const segments = pathname.split('/').filter(Boolean);
+  return (segments[0] === 'ui-v2' ? segments[1] : segments[0]) as UiNavTarget | undefined;
+}
+
+function getRoutePrefix(pathname: string) {
+  return pathname.split('/').filter(Boolean)[0] === 'ui-v2' ? '/ui-v2' : '';
+}
+
 function UiDefaultRedirect() {
   const { pages, capabilities } = useUiCapabilities();
   const fallbackPage = defaultPageFor(capabilities);
@@ -288,4 +357,3 @@ function UiRouteLoading() {
     </section>
   );
 }
-

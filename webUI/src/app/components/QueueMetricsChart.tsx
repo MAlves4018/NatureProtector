@@ -17,8 +17,8 @@ export function QueueMetricsChart({ rabbitMq }: Props) {
   const data = rabbitMq.queues.map((q) => ({
     name: q.queueName.length > 30 ? q.queueName.substring(0, 28) + '...' : q.queueName,
     'Messages Ready': q.messagesReady ?? 0,
-    'Unacknowledged': q.messagesUnacknowledged ?? 0,
-    'Consumers': q.consumers ?? 0,
+    Unacknowledged: q.messagesUnacknowledged ?? 0,
+    Consumers: q.consumers ?? 0,
   }));
 
   return (

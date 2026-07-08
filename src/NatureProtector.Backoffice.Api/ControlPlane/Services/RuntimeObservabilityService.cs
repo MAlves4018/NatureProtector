@@ -72,6 +72,13 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
                 "Missing service signals are represented as Unknown or NotInstrumented, not Healthy."));
         }
 
+        if (components.Any(component => component.Status is RuntimeOperationalHealthStatus.AuthRequired))
+        {
+            limitations.Add(new RuntimeLimitationResponse(
+                "health_auth_required_is_explicit",
+                "Authenticated service health endpoints are represented as AuthRequired, not as runtime failure."));
+        }
+
         return new RuntimeOperationalHealthResponse(observedAt, components, rabbitMq, limitations);
     }
 
@@ -204,18 +211,31 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
                 "RabbitMQ broker health cannot be inferred without a positive management API signal.");
         }
 
-        var hasUnconsumedBacklog = rabbitMq.Queues.Any(queue =>
+        var hasBlockingUnconsumedBacklog = rabbitMq.Queues.Any(queue =>
+            IsBlockingRuntimeQueue(queue.QueueName) &&
             queue.MessagesTotal.GetValueOrDefault() > 0 &&
             queue.Consumers.GetValueOrDefault() == 0);
+
+        var nonBlockingUnconsumedBacklogQueues = rabbitMq.Queues
+            .Where(queue =>
+                !IsBlockingRuntimeQueue(queue.QueueName) &&
+                queue.MessagesTotal.GetValueOrDefault() > 0 &&
+                queue.Consumers.GetValueOrDefault() == 0)
+            .Select(queue => queue.QueueName)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
         return Component(
             "RabbitMQ",
-            hasUnconsumedBacklog ? RuntimeOperationalHealthStatus.Degraded : RuntimeOperationalHealthStatus.Healthy,
+            hasBlockingUnconsumedBacklog ? RuntimeOperationalHealthStatus.Degraded : RuntimeOperationalHealthStatus.Healthy,
             observedAt,
-            hasUnconsumedBacklog
-                ? "At least one relevant queue has measured messages and no measured consumers."
+            hasBlockingUnconsumedBacklog
+                ? "At least one blocking runtime queue has measured messages and no measured consumers."
                 : "Relevant queues were measured by the management API.",
             RabbitMqSource,
-            hasUnconsumedBacklog ? "Broker is reachable, but queue consumption is degraded." : null);
+            hasBlockingUnconsumedBacklog
+                ? "Broker is reachable, but blocking queue consumption is degraded."
+                : BuildNonBlockingRabbitMqLimitation(nonBlockingUnconsumedBacklogQueues));
     }
 
     private RuntimeOperationalHealthComponentResponse BuildPreventionHealth(
@@ -312,12 +332,14 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
                 return Component(
                     component,
                     response.StatusCode == System.Net.HttpStatusCode.Unauthorized
-                        ? RuntimeOperationalHealthStatus.Unknown
+                        ? RuntimeOperationalHealthStatus.AuthRequired
                         : RuntimeOperationalHealthStatus.Degraded,
                     observedAt,
                     $"{uri} returned HTTP {(int)response.StatusCode}.",
                     uri.ToString(),
-                    "Health endpoint did not provide an authenticated positive healthy signal.");
+                    response.StatusCode == System.Net.HttpStatusCode.Unauthorized
+                        ? "Health endpoint is reachable but requires authentication; no unauthenticated healthy signal is claimed."
+                        : "Health endpoint did not provide a positive healthy signal.");
             }
 
             if (!string.IsNullOrWhiteSpace(expectedJsonProperty))
@@ -394,6 +416,16 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
             positiveTimestamp.HasValue ? Math.Max(0, (observedAt - positiveTimestamp.Value).TotalSeconds) : null,
             "runtime-observability",
             limitation);
+
+    private static bool IsBlockingRuntimeQueue(string queueName)
+        => string.Equals(queueName, NatureProtectorRabbitMqTopology.IngestionReadingsQueue, StringComparison.Ordinal);
+
+    private static string? BuildNonBlockingRabbitMqLimitation(IReadOnlyList<string> queueNames)
+        => queueNames.Count == 0
+            ? null
+            : "Non-blocking diagnostic queues have measured messages and no consumers: " +
+              string.Join(", ", queueNames) +
+              ".";
 
     private RabbitMqOptions GetRabbitMqOptions()
         => _configuration.GetSection(RabbitMqOptions.SectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();

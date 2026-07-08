@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import axe from 'axe-core';
 import { useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -42,17 +43,21 @@ const scenarioFixtures = [
 
 function renderUi(isDark = false) {
   return render(
-    <TokenProvider>
-      <App />
-    </TokenProvider>,
+    <ChakraProvider value={defaultSystem}>
+      <TokenProvider>
+        <App />
+      </TokenProvider>
+    </ChakraProvider>,
   );
 }
 
 function renderAuthenticatedUi(roles: string[], isDark = false) {
   return render(
-    <TokenProvider>
-      <AuthenticatedUi roles={roles} isDark={isDark} />
-    </TokenProvider>,
+    <ChakraProvider value={defaultSystem}>
+      <TokenProvider>
+        <AuthenticatedUi roles={roles} isDark={isDark} />
+      </TokenProvider>
+    </ChakraProvider>,
   );
 }
 
@@ -84,10 +89,9 @@ describe('App', () => {
   it('keeps the public landing limited to product, data status, help and login', async () => {
     renderUi();
 
-    expect(await screen.findByRole('heading', { name: 'NatureProtector' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'NatureProtector', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /entrar/i })).toHaveAttribute('href', '/login');
-    expect(screen.getByText('Estado dos dados')).toBeInTheDocument();
+    expect((await screen.findAllByRole('heading', { name: 'NatureProtector' })).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /entrar/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Leitura pública/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Pipeline/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Simulação/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Qualidade/i })).not.toBeInTheDocument();
@@ -117,7 +121,7 @@ describe('App', () => {
   it('passes a basic axe scan for the public landing', async () => {
     const { container } = renderUi();
 
-    await screen.findByRole('heading', { name: 'NatureProtector' });
+    await screen.findAllByRole('heading', { name: 'NatureProtector' });
     await screen.findByRole('option', { name: /Proenca-a-Nova/i });
     const result = await axe.run(container, {
       rules: {
@@ -131,7 +135,7 @@ describe('App', () => {
   it('opens contextual help from the F1 shortcut', async () => {
     renderUi();
 
-    await screen.findByRole('heading', { name: 'NatureProtector' });
+    await screen.findAllByRole('heading', { name: 'NatureProtector' });
     fireEvent.keyDown(window, { key: 'F1' });
 
     expect(screen.getByRole('dialog', { name: /ajuda contextual/i })).toBeInTheDocument();
@@ -162,17 +166,18 @@ describe('App', () => {
     renderAuthenticatedUi(['Pipeline']);
 
     expect(await screen.findByRole('button', { name: /Risco e dados/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /simulação/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Simulação$/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Técnico/i }));
     expect(screen.getByRole('button', { name: /Evidence Explorer/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Deployments$/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
     expect(await screen.findByRole('heading', { name: /Pipeline e observabilidade/i })).toBeInTheDocument();
-    expect(screen.getByText('Ingestion ready')).toBeInTheDocument();
+    expect(screen.getByText(/Pipeline health is not inferred/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Testes e qualidade/i }));
-    expect(await screen.findByRole('heading', { name: /Execuções de qualidade/i })).toBeInTheDocument();
-    expect(screen.getByText(/suites fechadas/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Qualidade e evidencia/i }));
+    expect(await screen.findByRole('heading', { name: /Qualidade e evidência/i })).toBeInTheDocument();
+    expect(screen.getByText(/Latest test execution/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Evidence Explorer/i }));
     expect(await screen.findByRole('heading', { name: /Evidence Explorer/i })).toBeInTheDocument();
@@ -183,6 +188,7 @@ describe('App', () => {
     renderAuthenticatedUi(['Sim']);
 
     fireEvent.change(await screen.findByLabelText(/selecionar área/i), { target: { value: 'proenca-a-nova' } });
+    fireEvent.click(await screen.findByRole('button', { name: /Simulações/i }));
     fireEvent.click(await screen.findByRole('button', { name: /simulação/i }));
 
     expect(await screen.findByRole('heading', { name: /^Simulação$/i })).toBeInTheDocument();
@@ -196,9 +202,9 @@ describe('App', () => {
 
     renderAuthenticatedUi(['Admin']);
 
-    await screen.findByRole('heading', { name: 'NatureProtector' });
-    fireEvent.change(await screen.findByLabelText(/selecionar área/i), { target: { value: 'proenca-a-nova' } });
+    fireEvent.click(await screen.findByRole('button', { name: /Simulações/i }));
     fireEvent.click(await screen.findByRole('button', { name: /simulação/i }));
+    fireEvent.change(await screen.findByLabelText(/selecionar área/i), { target: { value: 'proenca-a-nova' } });
 
     const submitButton = await screen.findByRole('button', { name: /Iniciar simulação/i });
     await waitFor(() => expect(submitButton).not.toBeDisabled());
@@ -215,6 +221,7 @@ describe('App', () => {
     renderAuthenticatedUi(['Admin'], true);
 
     expect(await screen.findByText('Dark')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /^Admin$/i }));
     fireEvent.click(await screen.findByRole('button', { name: /^Administração$/i }));
     expect(await screen.findByRole('heading', { name: /Administração proporcional/i })).toBeInTheDocument();
     expect(screen.getByText('Runtime reset')).toBeInTheDocument();
@@ -230,11 +237,11 @@ describe('App', () => {
     vi.stubGlobal('fetch', createFetchMock({ failSummary: true, roles: ['Pipeline'] }));
 
     renderAuthenticatedUi(['Pipeline']);
-    fireEvent.change(await screen.findByLabelText(/selecionar área/i), { target: { value: 'proenca-a-nova' } });
     fireEvent.click(await screen.findByRole('button', { name: /Risco e dados/i }));
+    fireEvent.change(await screen.findByLabelText(/selecionar área/i), { target: { value: 'proenca-a-nova' } });
 
     await waitFor(() => expect(screen.getByText('summary unavailable')).toBeInTheDocument());
-    expect(screen.getByText(/Sem score apresentavel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sem score apresent/i)).toBeInTheDocument();
   });
 });
 
@@ -401,5 +408,3 @@ function jsonResponse(body: unknown) {
     headers: { 'Content-Type': 'application/json' },
   });
 }
-
-

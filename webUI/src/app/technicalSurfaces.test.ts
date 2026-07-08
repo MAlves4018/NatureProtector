@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createUiRuntimeSummaryFixture } from './fixtures';
-import {
-  buildUiAdminActions,
-  buildUiP3Surface,
-  buildUiPipelineSurface,
-  buildUiQaSuites,
-} from './technicalSurfaces';
+import { buildUiAdminActions, buildUiP3Surface, buildUiPipelineSurface, buildUiQaSuites } from './technicalSurfaces';
 
 describe('technical surfaces', () => {
   it('marks missing pipeline instrumentation explicitly instead of inferring health', () => {
@@ -93,5 +88,3 @@ describe('technical surfaces', () => {
     expect(reset?.limitations.join(' ')).toMatch(/not exposed/i);
   });
 });
-
-

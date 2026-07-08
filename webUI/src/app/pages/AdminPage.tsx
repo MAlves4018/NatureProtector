@@ -81,8 +81,8 @@ export function AdminPage() {
             </h3>
           </div>
           <p style={{ marginBottom: 12 }}>
-            Esta ação remove dados de simulação do runtime. A execução M04 smoke será preservada.
-            Recomenda-se executar primeiro em modo dry-run para verificar o impacto.
+            Esta ação remove dados de simulação do runtime. A execução M04 smoke será preservada. Recomenda-se executar
+            primeiro em modo dry-run para verificar o impacto.
           </p>
           <label className="ui-checkbox" style={{ marginBottom: 12 }}>
             <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
@@ -113,7 +113,15 @@ export function AdminPage() {
             </button>
           </div>
           {resetResult && (
-            <p style={{ marginTop: 12, padding: 10, background: 'var(--ui-surface-muted)', borderRadius: 6, fontWeight: 600 }}>
+            <p
+              style={{
+                marginTop: 12,
+                padding: 10,
+                background: 'var(--ui-surface-muted)',
+                borderRadius: 6,
+                fontWeight: 600,
+              }}
+            >
               {resetResult}
             </p>
           )}

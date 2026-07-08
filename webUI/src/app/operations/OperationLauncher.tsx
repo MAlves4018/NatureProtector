@@ -136,5 +136,3 @@ function confirmationPhrase(
     .replace('{environment}', environment)
     .replace('{planHash}', inputs.planHash || '<missing-plan-hash>');
 }
-
-

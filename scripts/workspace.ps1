@@ -1,11 +1,12 @@
 <#
 .SYNOPSIS
-Canonical local workspace entrypoint for NatureProtector.
+Compatibility local workspace entrypoint for NatureProtector.
 
 .DESCRIPTION
-Provides a single, Git-safe command surface for local setup, infrastructure
-startup, validation, shutdown, and destructive reset flows. This script never
-executes Git commands and never creates or edits .env or .env.example.
+Provides the existing Git-safe command surface for local setup, infrastructure
+startup, validation, shutdown, and destructive reset flows. New clone-to-run
+workflows should prefer scripts\np.ps1; this script is kept compatible for
+existing operators and never creates or edits .env or .env.example.
 #>
 
 [CmdletBinding()]
@@ -29,7 +30,7 @@ param(
     [string]$Confirm
 )
 
-Import-Module (Join-Path $PSScriptRoot 'common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
+Import-Module (Join-Path $PSScriptRoot 'common/NatureProtector.Tooling.psm1') -Force -ErrorAction Stop
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
@@ -457,7 +458,7 @@ function Invoke-WorkspaceUp {
     Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\setup\Test-LocalBaseline.ps1"), "-InfrastructureOnly") $RepoRoot -Required | Out-Null
 
     if ($StartRuntime) {
-        Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\dev\start-local-runtime.ps1")) $RepoRoot -Required | Out-Null
+        Invoke-External "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\runtime\Start-LocalRuntime.ps1"), "-SkipDocker") $RepoRoot -Required | Out-Null
     }
 
     if ($OpenBrowser) {
@@ -554,6 +555,15 @@ function Write-WorkspaceHelp {
 NatureProtector workspace command
 
 Usage:
+  .\scripts\np.ps1 doctor
+  .\scripts\np.ps1 init-local -Force
+  .\scripts\np.ps1 up
+  .\scripts\np.ps1 start
+  .\scripts\np.ps1 health
+  .\scripts\np.ps1 stop
+  .\scripts\np.ps1 down
+
+Compatibility:
   .\scripts\workspace.ps1 setup [-PlanOnly] [-NoDependencyRestore] [-NoPlaywrightInstall]
   .\scripts\workspace.ps1 up [-PlanOnly] [-StartRuntime] [-OpenBrowser]
   .\scripts\workspace.ps1 validate [-Profile Quick|Full|Infrastructure|Runtime|Security|PerformanceSmoke] [-PlanOnly]

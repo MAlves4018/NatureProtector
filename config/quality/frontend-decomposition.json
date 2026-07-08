@@ -8,7 +8,8 @@
     "./geography",
     "./runtime",
     "./scenario",
-    "./operations"
+    "./operations",
+    "./common"
   ],
   "expected_type_exports": [
     "LoginRequest",
@@ -84,7 +85,13 @@
     "CloudResourceDeclarationResponse",
     "CloudEnvironmentResponse",
     "AdminUserResponse",
-    "AdminRoleResponse"
+    "AdminRoleResponse",
+    "HelpTopicId",
+    "HelpTopic",
+    "BetaCapabilityLink",
+    "TechnicalLabel",
+    "Copy",
+    "localize"
   ],
   "type_modules": {
     "webUI/src/app/types/auth.ts": {
@@ -101,29 +108,50 @@
     },
     "webUI/src/app/types/operations.ts": {
       "max_lines": 220
+    },
+    "webUI/src/app/types/common.ts": {
+      "max_lines": 80
     }
   },
-  "workspace_export": "Workspace",
+  "workspace_export": "MissionControlPage",
+  "workspace_entrypoint": "webUI/src/app/pages/MissionControlPage.tsx",
+  "workspace_lazy_import": "import('./pages/MissionControlPage')",
   "workspace_modules": {
-    "webUI/src/app/components/views/Workspace.tsx": {
-      "required_marker": "export function Workspace",
-      "max_normalized_chars": 18200
+    "webUI/src/app/pages/MissionControlPage.tsx": {
+      "required_marker": "export function MissionControlPage",
+      "max_normalized_chars": 5600
     },
-    "webUI/src/app/components/views/workspace/WorkspaceSections.tsx": {
-      "required_marker": "export function MonitoringOverview",
-      "max_normalized_chars": 64000
+    "webUI/src/app/pages/QualityRunsPage.tsx": {
+      "required_marker": "export function QualityRunsPage",
+      "max_normalized_chars": 600
     },
-    "webUI/src/app/components/views/workspace/WorkspaceShared.tsx": {
-      "required_marker": "export function RuntimeChainStrip",
-      "max_normalized_chars": 38500
+    "webUI/src/app/pages/EvidenceExplorerPage.tsx": {
+      "required_marker": "export function EvidenceExplorerPage",
+      "max_normalized_chars": 3200
     },
-    "webUI/src/app/components/views/workspace/WorkspaceTopBar.tsx": {
-      "required_marker": "export function WorkspaceTopBar",
+    "webUI/src/app/pages/DeploymentsPage.tsx": {
+      "required_marker": "export function DeploymentsPage",
+      "max_normalized_chars": 600
+    },
+    "webUI/src/app/pages/CloudResourcesPage.tsx": {
+      "required_marker": "export function CloudResourcesPage",
+      "max_normalized_chars": 2800
+    },
+    "webUI/src/app/pages/ApprovalsPage.tsx": {
+      "required_marker": "export function ApprovalsPage",
       "max_normalized_chars": 2200
     },
-    "webUI/src/app/components/views/workspace/workspaceConstants.ts": {
-      "required_marker": "export const DEFAULT_AREA",
-      "max_normalized_chars": 9100
+    "webUI/src/app/pages/UserRoleAdministrationPage.tsx": {
+      "required_marker": "export function UserRoleAdministrationPage",
+      "max_normalized_chars": 3200
+    },
+    "webUI/src/app/operations/OperationsContext.tsx": {
+      "required_marker": "export function OperationsProvider",
+      "max_normalized_chars": 4200
+    },
+    "webUI/src/app/operations/OperationLauncher.tsx": {
+      "required_marker": "export function OperationLauncher",
+      "max_normalized_chars": 4600
     }
   }
 }

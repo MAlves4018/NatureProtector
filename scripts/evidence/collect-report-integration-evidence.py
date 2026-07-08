@@ -18,11 +18,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
 SCRIPT_VERSION = "1.1.0"
 ALLOWED_EVIDENCE_CLASSES = {
     "CURRENT_EXECUTION",
@@ -32,6 +27,25 @@ ALLOWED_EVIDENCE_CLASSES = {
     "BLOCKED_OR_PENDING",
     "NO_SOURCE_EVIDENCE",
 }
+
+_PYPLOT = None
+
+
+def require_pyplot() -> Any:
+    global _PYPLOT
+    if _PYPLOT is None:
+        try:
+            import matplotlib
+
+            matplotlib.use("Agg")
+            import matplotlib.pyplot as pyplot
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "matplotlib is required only when generating report figures. "
+                "Install the report/evidence plotting dependencies before running the collector end-to-end."
+            ) from exc
+        _PYPLOT = pyplot
+    return _PYPLOT
 
 
 def utc_now() -> str:
@@ -239,19 +253,21 @@ def component_state(summary: dict[str, Any] | None, component: str) -> dict[str,
 
 
 def save_chart(fig: Any, base: Path) -> list[str]:
+    pyplot = require_pyplot()
     base.parent.mkdir(parents=True, exist_ok=True)
     png, svg = base.with_suffix(".png"), base.with_suffix(".svg")
     fig.tight_layout()
     fig.savefig(png, dpi=180, bbox_inches="tight")
     fig.savefig(svg, bbox_inches="tight")
-    plt.close(fig)
+    pyplot.close(fig)
     return [png.name, svg.name]
 
 
 def make_bar(
     labels: list[str], values: list[float], title: str, ylabel: str, base: Path, percent: bool = False
 ) -> None:
-    fig, ax = plt.subplots(figsize=(8.5, 4.8))
+    pyplot = require_pyplot()
+    fig, ax = pyplot.subplots(figsize=(8.5, 4.8))
     bars = ax.bar(labels, values)
     ax.set_title(title)
     ax.set_ylabel(ylabel)
@@ -790,7 +806,8 @@ def main() -> int:
         generated_figures += ["database-tables-by-schema.svg", "database-tables-by-schema.png"]
     if bc_rows:
         labels = [row["scenario"] for row in bc_rows]
-        fig, ax = plt.subplots(figsize=(8.5, 4.8))
+        pyplot = require_pyplot()
+        fig, ax = pyplot.subplots(figsize=(8.5, 4.8))
         x = range(len(labels))
         width = 0.35
         ax.bar([i - width / 2 for i in x], [row["inbox"] for row in bc_rows], width, label="Inbox")
@@ -947,7 +964,8 @@ def main() -> int:
     )
 
     class_counts = Counter(claim["evidence_class"] for claim in claims)
-    fig, ax = plt.subplots(figsize=(8.5, 4.8))
+    pyplot = require_pyplot()
+    fig, ax = pyplot.subplots(figsize=(8.5, 4.8))
     labels = list(class_counts)
     values = [class_counts[label] for label in labels]
     bars = ax.barh(labels, values)

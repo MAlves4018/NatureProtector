@@ -50,6 +50,8 @@ export function UiAreaProvider({ children }: { children: ReactNode }) {
   }, [selectedAreaCode]);
 
   useEffect(() => {
+    void refreshNonce;
+
     if (!canReadArea) {
       setAreas([]);
       return;

@@ -149,5 +149,3 @@ function buildReadiness(
     },
   ];
 }
-
-

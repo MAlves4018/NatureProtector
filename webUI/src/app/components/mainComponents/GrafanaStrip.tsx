@@ -35,7 +35,7 @@ export function GrafanaStrip({
       borderColor={c.panelBorder}
       flexShrink={0}
       transition="background 0.2s"
-    // REMOVED resize="vertical" to avoid manual height override
+      // REMOVED resize="vertical" to avoid manual height override
     >
       <Box px={6} pt={4} pb={1}>
         <Heading size="xl" color={c.textPrimary} fontFamily="serif">
@@ -116,10 +116,7 @@ export function AreaRisk({
       {riskLinks.map((link, index) => (
         <Box
           key={link}
-          {...(index === 0
-            ? { w: '600px', h: '600px', flex: 'none' }
-            : { flex: '1' }
-          )}
+          {...(index === 0 ? { w: '600px', h: '600px', flex: 'none' } : { flex: '1' })}
           borderRadius="md"
           overflow="hidden"
           border="1px solid"

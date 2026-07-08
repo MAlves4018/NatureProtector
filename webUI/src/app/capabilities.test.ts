@@ -74,5 +74,3 @@ describe('capabilities', () => {
     expect(navigation.some((item) => item.id === 'deployments')).toBe(false);
   });
 });
-
-

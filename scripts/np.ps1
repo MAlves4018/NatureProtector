@@ -298,8 +298,133 @@ function Get-Authorities {
     )
 }
 
-$config = Get-EnvironmentConfig $Environment
+$LocalCommands = @("help", "doctor", "init-local", "clean-local", "reset-local", "up", "start", "health", "stop", "down")
+
+function Test-LocalFlag {
+    param([string]$Name)
+    return @($Command | Select-Object -Skip 1) -contains $Name
+}
+
+function Invoke-LocalPowerShellScript {
+    param(
+        [Parameter(Mandatory)][string]$RelativePath,
+        [string[]]$Arguments = @()
+    )
+
+    $scriptPath = Join-Path $RepoRoot $RelativePath
+    if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+        throw "Required local script not found: $RelativePath"
+    }
+
+    $tempRoot = Join-Path ([IO.Path]::GetTempPath()) "np-local-cli"
+    New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
+    $stamp = [guid]::NewGuid().ToString("N")
+    $stdout = Join-Path $tempRoot "$stamp.out.log"
+    $stderr = Join-Path $tempRoot "$stamp.err.log"
+
+    Write-Host "> pwsh -NoProfile -ExecutionPolicy Bypass -File $RelativePath $($Arguments -join ' ')"
+    $processArguments = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $scriptPath) + $Arguments
+    $process = Start-Process -FilePath "pwsh" `
+        -ArgumentList $processArguments `
+        -WorkingDirectory $RepoRoot `
+        -RedirectStandardOutput $stdout `
+        -RedirectStandardError $stderr `
+        -WindowStyle Hidden `
+        -PassThru
+
+    $process.WaitForExit()
+
+    if (Test-Path -LiteralPath $stdout) {
+        Get-Content -LiteralPath $stdout | ForEach-Object { Write-Host (Remove-SecretText ([string]$_)) }
+    }
+
+    if (Test-Path -LiteralPath $stderr) {
+        Get-Content -LiteralPath $stderr | ForEach-Object { Write-Host (Remove-SecretText ([string]$_)) }
+    }
+
+    Remove-Item -LiteralPath $stdout, $stderr -Force -ErrorAction SilentlyContinue
+    return $process.ExitCode
+}
+
+function Invoke-LocalCommand {
+    param([string]$Verb)
+
+    switch ($Verb) {
+        "help" {
+            Write-Host @"
+NatureProtector local command
+
+Usage:
+  .\scripts\np.ps1 doctor
+  .\scripts\np.ps1 init-local [-Force]
+  .\scripts\np.ps1 clean-local
+  .\scripts\np.ps1 up
+  .\scripts\np.ps1 start [-ForceRestart] [-OpenBrowser|-NoBrowser]
+  .\scripts\np.ps1 health
+  .\scripts\np.ps1 stop
+  .\scripts\np.ps1 down
+
+Compatibility:
+  .\scripts\workspace.ps1 remains available for existing setup/up/validate/down/reset flows.
+  Cloud/release commands remain available through this script, but are outside local onboarding.
+"@
+            return $Exit.Success
+        }
+        "doctor" {
+            return Invoke-LocalPowerShellScript 'scripts\setup\Test-LocalPrerequisites.ps1'
+        }
+        "init-local" {
+            $args = @()
+            if (Test-LocalFlag "-Force") { $args += "-Force" }
+            return Invoke-LocalPowerShellScript 'scripts\setup\New-LocalDotEnv.ps1' $args
+        }
+        "clean-local" {
+            return Invoke-LocalPowerShellScript 'scripts\docker\Clear-NatureProtectorDocker.ps1'
+        }
+        "reset-local" {
+            return Invoke-LocalPowerShellScript 'scripts\docker\Clear-NatureProtectorDocker.ps1'
+        }
+        "up" {
+            return Invoke-LocalPowerShellScript 'scripts\docker\Start-LocalInfrastructure.ps1'
+        }
+        "start" {
+            $args = @("-SkipDocker")
+            if (Test-LocalFlag "-ForceRestart") { $args += "-ForceRestart" }
+            if (Test-LocalFlag "-OpenBrowser") { $args += "-OpenBrowser" }
+            if (Test-LocalFlag "-NoBrowser") { $args += "-NoBrowser" }
+            return Invoke-LocalPowerShellScript 'scripts\runtime\Start-LocalRuntime.ps1' $args
+        }
+        "health" {
+            return Invoke-LocalPowerShellScript 'scripts\runtime\Test-LocalRuntimeHealth.ps1'
+        }
+        "stop" {
+            return Invoke-LocalPowerShellScript 'scripts\runtime\Stop-LocalRuntime.ps1'
+        }
+        "down" {
+            $runtimeExit = Invoke-LocalPowerShellScript 'scripts\runtime\Stop-LocalRuntime.ps1'
+            $infraExit = Invoke-LocalPowerShellScript 'scripts\docker\Stop-LocalInfrastructure.ps1'
+            if ($runtimeExit -ne 0) { return $runtimeExit }
+            return $infraExit
+        }
+        default {
+            throw "Unknown local operation '$Verb'."
+        }
+    }
+}
+
 $verb = if ($Command.Count -gt 0) { $Command[0].ToLowerInvariant() } else { "help" }
+
+if ($LocalCommands -contains $verb) {
+    try {
+        exit (Invoke-LocalCommand -Verb $verb)
+    }
+    catch {
+        Write-Error (Remove-SecretText $_.Exception.Message)
+        exit $Exit.TechnicalFailure
+    }
+}
+
+$config = Get-EnvironmentConfig $Environment
 $noun = if ($Command.Count -gt 1) { $Command[1].ToLowerInvariant() } else { "" }
 $operation = if ($noun) { "$verb-$noun" } else { $verb }
 $evidence = Get-EvidenceDirectory -Operation $operation -Config $config

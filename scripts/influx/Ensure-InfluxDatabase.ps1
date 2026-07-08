@@ -105,7 +105,7 @@ do {
         }
 
         if ($lastHttp.StatusCode -eq 401 -or $lastHttp.StatusCode -eq 403) {
-            throw "InfluxDB is reachable at $influxUrl, but the configured token was rejected (HTTP $($lastHttp.StatusCode)). Check INFLUXDB_TOKEN in .env."
+            throw "InfluxDB is reachable at $influxUrl, but the configured token was rejected (HTTP $($lastHttp.StatusCode)). The INFLUXDB_TOKEN in .env does not match the token stored in the existing local InfluxDB volume. For local/dev, run '.\scripts\np.ps1 clean-local' to remove only NatureProtector compose containers, networks and volumes, then rerun '.\scripts\np.ps1 up'. Do not use docker system prune."
         }
     }
 

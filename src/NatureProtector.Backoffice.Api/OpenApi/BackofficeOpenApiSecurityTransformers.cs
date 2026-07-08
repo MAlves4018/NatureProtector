@@ -57,10 +57,7 @@ public sealed class BackofficeOpenApiSecurityOperationTransformer : IOpenApiOper
         });
 
         operation.Responses.TryAdd("401", new OpenApiResponse { Description = "Unauthorized" });
-        if (authorizeData.Any(data => !string.IsNullOrWhiteSpace(data.Roles)))
-        {
-            operation.Responses.TryAdd("403", new OpenApiResponse { Description = "Forbidden" });
-        }
+        operation.Responses.TryAdd("403", new OpenApiResponse { Description = "Forbidden" });
 
         return Task.CompletedTask;
     }

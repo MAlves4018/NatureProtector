@@ -149,5 +149,3 @@ function navIcon(target: UiNavTarget) {
       return <Home size={16} />;
   }
 }
-
-

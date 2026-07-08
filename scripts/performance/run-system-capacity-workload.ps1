@@ -29,6 +29,21 @@ $ProgressPreference = "SilentlyContinue"
 
 Add-Type -AssemblyName System.Net.Http
 
+function Write-SystemCapacityJsonFile {
+    param(
+        [Parameter(Mandatory = $true)]$Value,
+        [Parameter(Mandatory = $true)][string]$Path,
+        [int]$Depth = 50,
+        [switch]$NullWhenEmpty
+    )
+
+    $json = ConvertTo-Json -InputObject $Value -Depth $Depth
+    if ($NullWhenEmpty -and [string]::IsNullOrWhiteSpace($json)) {
+        $json = "null"
+    }
+    $json | Set-Content -LiteralPath $Path -Encoding UTF8
+}
+
 $jsonDepth = 50
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss-fff"
@@ -456,7 +471,7 @@ function Save-ApiSnapshot {
     }
 
     $path = Join-Path $metricsDirectory "$Name.json"
-    Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path $path -Value $snapshot
+    Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path $path -Value $snapshot
     return $snapshot
 }
 
@@ -523,8 +538,8 @@ $environment = [ordered]@{
     secretsPrinted = $false
 }
 
-Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "environment.json") -Value $environment
-Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "workload.json") -Value $workload
+Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "environment.json") -Value $environment
+Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "workload.json") -Value $workload
 
 if ($DryRun) {
     $summary = [ordered]@{
@@ -537,8 +552,8 @@ if ($DryRun) {
         workload = $workload
         limitations = @("Dry-run only validates parameters, artifact layout and workload profile resolution.")
     }
-    Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "summary.json") -Value $summary
-    Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "run-failures.json") -Value @()
+    Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "summary.json") -Value $summary
+    Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "run-failures.json") -Value @()
     @(
         "# System capacity workload dry run",
         "",
@@ -593,7 +608,7 @@ for ($iteration = 1; $iteration -le [int]$profileSpec.repetitions; $iteration++)
 
     try {
         $runResponse = Invoke-ApiJson -Method "POST" -Path "/api/control/runtime/runs" -Body $request -Token $token -ExpectedStatusCodes @(200)
-        Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runsDirectory "$iterationLabel-response.json") -Value $runResponse.Json
+        Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runsDirectory "$iterationLabel-response.json") -Value $runResponse.Json
         $status = [string]$runResponse.Json.status
         if ($null -ne $runResponse.Json.run) {
             $runIdFromApi = [string]$runResponse.Json.run.id
@@ -608,8 +623,8 @@ for ($iteration = 1; $iteration -le [int]$profileSpec.repetitions; $iteration++)
                 -TimeoutSeconds $effectiveObservationWaitSeconds
             $audit = $evidence.audit
             $timings = $evidence.timings
-            Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runsDirectory "$iterationLabel-audit.json") -Value $audit
-            Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runsDirectory "$iterationLabel-timings.json") -Value $timings
+            Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runsDirectory "$iterationLabel-audit.json") -Value $audit
+            Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runsDirectory "$iterationLabel-timings.json") -Value $timings
             if (-not $evidence.complete) {
                 if ([string]::IsNullOrWhiteSpace($evidence.lastError)) {
                     $errorMessage = "Timed out waiting $effectiveObservationWaitSeconds seconds for persisted run evidence to reach $expectedEventsPerRun expected event(s)."
@@ -702,8 +717,8 @@ for ($iteration = 1; $iteration -le [int]$profileSpec.repetitions; $iteration++)
 $snapshotAfter = Save-ApiSnapshot -Name "after" -Token $token
 
 $measurements | Export-Csv -Path (Join-Path $runDirectory "measurements.csv") -NoTypeInformation -Encoding UTF8
-Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "measurements.json") -Value $measurements
-Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "run-failures.json") -Value $runFailures
+Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "measurements.json") -Value $measurements
+Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "run-failures.json") -Value $runFailures
 
 $elapsedValues = @($measurements | ForEach-Object { [double]$_.elapsedMs })
 $drainValues = @($measurements | Where-Object { $null -ne $_.backlogDrainTimeMs } | ForEach-Object { [double]$_.backlogDrainTimeMs })
@@ -759,7 +774,7 @@ $summary = [ordered]@{
     )
 }
 
-Write-NpJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "summary.json") -Value $summary
+Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runDirectory "summary.json") -Value $summary
 
 $summaryLines = New-Object System.Collections.Generic.List[string]
 $summaryLines.Add("# System capacity workload summary")

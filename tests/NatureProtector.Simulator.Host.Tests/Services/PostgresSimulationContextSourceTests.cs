@@ -222,6 +222,43 @@ public sealed class PostgresSimulationContextSourceTests
     }
 
     [Fact]
+    public async Task CreateAsync_StartTimestampOptionOverridesHistoricalScenarioTimestamp()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedControlPlaneAsync(
+            scope,
+            includeActiveSensor: true,
+            scenarioParametersJson:
+                """
+                {
+                  "simulator_options": {
+                    "FailureRate": 0.18,
+                    "NoiseLevel": 0.16,
+                    "StartTimestamp": "2020-09-13T12:00:00Z",
+                    "TimeAcceleration": 1.0,
+                    "IntervalSeconds": 15,
+                    "NumberOfCycles": 6
+                  }
+                }
+                """);
+        var currentReadinessTimestamp = new DateTimeOffset(2026, 7, 6, 10, 30, 0, TimeSpan.Zero);
+        var options = Options.Create(new SimulatorOptions
+        {
+            AreaId = Guid.Empty,
+            ScenarioId = Guid.Empty,
+            ControlPlaneAreaCode = "proenca-a-nova",
+            ControlPlaneScenarioCode = "scenario_b",
+            StartTimestamp = currentReadinessTimestamp
+        });
+
+        var source = new PostgresSimulationContextSource(scope.Factory, options);
+
+        var context = await source.CreateAsync(CancellationToken.None);
+
+        Assert.Equal(currentReadinessTimestamp, context.StartTimestamp);
+    }
+
+    [Fact]
     public async Task CreateAsync_Throws_WhenRunOverrideSensorCountExceedsActiveSensors()
     {
         await using var scope = new SqliteControlDbContextScope();

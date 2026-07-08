@@ -208,5 +208,3 @@ export function getUiCapabilities(user: Pick<User, 'roles'> | null | undefined):
 export function hasUiCapability(capabilities: Set<UiCapability>, capability: UiCapability) {
   return capabilities.has(capability);
 }
-
-

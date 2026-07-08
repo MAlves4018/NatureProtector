@@ -2,7 +2,11 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { api } from '../services/api';
 import { useUiArea } from './AreaContext';
 import { useUiCapabilities } from './CapabilityContext';
-import type { RabbitMqMetricsResponse, RuntimeEvidenceCatalogResponse, RuntimeOperationalHealthResponse } from '../types';
+import type {
+  RabbitMqMetricsResponse,
+  RuntimeEvidenceCatalogResponse,
+  RuntimeOperationalHealthResponse,
+} from '../types';
 
 interface UiObservabilityContextValue {
   operationalHealth: RuntimeOperationalHealthResponse | null;

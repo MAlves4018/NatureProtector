@@ -206,11 +206,13 @@ const messages = {
     'help.close': 'Fechar ajuda',
     'help.title': 'Ajuda contextual',
     'help.intro': 'Ajuda contextual que explica a saída antes de mostrar o valor. F1 também abre esta ajuda.',
-    'help.browser': 'Esta ajuda faz parte do conteúdo interno da aplicação; não depende de um caminho local para a documentação.',
+    'help.browser':
+      'Esta ajuda faz parte do conteúdo interno da aplicação; não depende de um caminho local para a documentação.',
     'help.area': 'Área: distingue o código pedido, a área resolvida e o catálogo disponível.',
     'help.run': 'Execução: mostra latest/current, auditoria e configuração requested/resolved quando persistida.',
     'help.scenario': 'Cenário: usa o catálogo real da área selecionada.',
-    'help.simulation': 'Simulação: a UI pode pedir execução, mas o backend só autoriza as funções Sim/Admin em Development.',
+    'help.simulation':
+      'Simulação: a UI pode pedir execução, mas o backend só autoriza as funções Sim/Admin em Development.',
     'help.riskScore': 'Risk score: valor calculado pelo protótipo quando existe uma avaliação elegível.',
     'help.calculated': 'Saída calculada: resultado derivado do pipeline, não observação direta nem alerta oficial.',
     'help.origin': 'Origem: fonte do contexto usado na apresentação.',
@@ -483,5 +485,3 @@ export function formatUiNumber(value: number | null | undefined, locale: UiLocal
     maximumFractionDigits,
   }).format(value);
 }
-
-

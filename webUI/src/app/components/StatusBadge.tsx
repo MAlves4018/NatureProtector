@@ -17,5 +17,3 @@ export function StatusBadge({
 
   return <span className={`ui-badge ${tone}`}>{label}</span>;
 }
-
-

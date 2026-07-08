@@ -146,6 +146,7 @@ public sealed class PostgresDailyCellStateRepositoryTests
         var updated = await repository.GetForReadingAsync(reading, runId, CancellationToken.None);
 
         Assert.NotNull(updated.State);
+        Assert.Equal(runId, updated.State!.SimulationRunId);
         Assert.Equal(0.0, updated.State!.DailyPrecipitationMillimeters);
         Assert.Equal(33.9, updated.State.MaxTemperatureCelsius);
         Assert.Equal(18.0, updated.State.LatestHumidityPercent);
@@ -157,6 +158,33 @@ public sealed class PostgresDailyCellStateRepositoryTests
         Assert.Equal(KbdiCalculationStatus.LimitedAntecedentHistory, updated.State.KbdiCalculationStatus);
         Assert.DoesNotContain("precipitation_24h_missing", updated.State.FireWeatherLimitations ?? string.Empty);
         Assert.Contains("scenario_daily_reference", updated.State.Provenance);
+    }
+
+    [Fact]
+    public async Task UpsertAsync_ThrowsSpecificPermanentException_WhenSimulationRunIsMissing()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var ids = await SeedTopologyAsync(scope);
+        var repository = new PostgresDailyCellStateRepository(scope.Factory);
+        var missingRunId = Guid.NewGuid();
+        var reading = CreateReading(ids.AreaId, ids.SensorId, SensorMetricType.Temperature, MeasurementUnit.Celsius, 31.0);
+        var lookup = await repository.GetForReadingAsync(reading, missingRunId, CancellationToken.None);
+        var input = RiskInput.FromNormalizedReading(
+            reading,
+            RiskEligibilityResult.Eligible,
+            lookup.State,
+            missingRunId,
+            lookup.GridCellId,
+            lookup.ConfigurationVersionId,
+            lookup.TerritorialContext);
+
+        var exception = await Assert.ThrowsAsync<MissingSimulationRunReferenceException>(
+            () => repository.UpsertAsync(input, CancellationToken.None));
+
+        Assert.Equal(missingRunId, exception.SimulationRunId);
+        Assert.Contains("control.simulation_runs", exception.Message);
+        await using var dbContext = scope.CreateDbContext();
+        Assert.Empty(await dbContext.DailyCellStates.ToListAsync());
     }
 
     [Fact]

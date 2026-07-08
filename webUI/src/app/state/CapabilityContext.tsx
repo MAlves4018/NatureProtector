@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '../services/api';
 import { useToken } from '../context/TokenContext';
 import { getUiCapabilities, hasUiCapability, type UiCapability, type UiNavTarget } from '../capabilities';
@@ -68,7 +68,17 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
       canReadProtectedP3,
       canExecuteFullQa,
     }),
-    [canReadArea, canReadRisk, canReadRun, canReadScenario, canExecuteSimulation, canReadPipeline, canReadEvidence, canReadProtectedP3, canExecuteFullQa],
+    [
+      canReadArea,
+      canReadRisk,
+      canReadRun,
+      canReadScenario,
+      canExecuteSimulation,
+      canReadPipeline,
+      canReadEvidence,
+      canReadProtectedP3,
+      canExecuteFullQa,
+    ],
   );
 
   useEffect(() => {
@@ -124,7 +134,17 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
       isDark,
       ...capabilityFlags,
     }),
-    [user, capabilities, capabilityAuthority, capabilitiesLoading, pages, activePage, isPublic, isDark, capabilityFlags],
+    [
+      user,
+      capabilities,
+      capabilityAuthority,
+      capabilitiesLoading,
+      pages,
+      activePage,
+      isPublic,
+      isDark,
+      capabilityFlags,
+    ],
   );
 
   return <UiCapabilityContext.Provider value={value}>{children}</UiCapabilityContext.Provider>;

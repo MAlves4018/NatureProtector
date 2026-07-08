@@ -6,8 +6,16 @@ param(
     [switch]$ForceRestart,
     [int]$ApiPort = 5254,
     [int]$PreventionPort = 5260,
-    [int]$SimulatorPort = 5270,
-    [int]$WebPort = 5173
+    [int]$WebPort = 5173,
+    [bool]$RunSimulator = $true,
+    [string]$ScenarioCode = "scenario_b",
+    [int]$SensorCount = 2,
+    [int]$NumberOfCycles = 1,
+    [int]$IntervalSeconds = 1,
+    [int]$Seed = 20260706,
+    [string]$DegradationProfile = "none",
+    [bool]$WaitForSimulatorCompletion = $true,
+    [int]$SimulatorTimeoutSeconds = 180
 )
 
 Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
@@ -272,6 +280,14 @@ function Start-LoggedPowerShell {
     }
 }
 
+function Set-CurrentProcessEnvironment {
+    param([hashtable]$Environment)
+
+    foreach ($entry in $Environment.GetEnumerator()) {
+        Set-Item -Path "Env:$($entry.Key)" -Value ([string]$entry.Value)
+    }
+}
+
 $repositoryRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln')
 $composeFile = Join-Path $repositoryRoot 'docker-compose.yml'
 if (-not (Test-Path $composeFile)) {
@@ -293,6 +309,8 @@ $rabbitPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_AMQP_PORT'
 $rabbitUser = Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_DEFAULT_USER' -DefaultValue 'np'
 $rabbitPassword = Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_DEFAULT_PASS' -DefaultValue 'np_dev_pass'
 $influxPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'INFLUXDB_PORT' -DefaultValue '8181')
+$bootstrapAdminUsername = Get-NpConfigValue -Values $dotEnv -Name 'NP_BOOTSTRAP_ADMIN_USERNAME' -DefaultValue 'admin'
+$bootstrapAdminPassword = Get-NpConfigValue -Values $dotEnv -Name 'NP_BOOTSTRAP_ADMIN_PASSWORD' -DefaultValue 'admin123'
 
 if ($ForceRestart) {
     Stop-NatureProtectorLocalProcesses -RepositoryRoot $repositoryRoot
@@ -311,13 +329,13 @@ if (-not $SkipDocker) {
 Test-PostgresTarget -HostName $postgresHost -Port $postgresPort
 Assert-PortAvailable -Port $ApiPort -Name 'Backoffice API' -AllowForceRestart:$ForceRestart.IsPresent -RepositoryRoot $repositoryRoot
 Assert-PortAvailable -Port $PreventionPort -Name 'Prevention Host' -AllowForceRestart:$ForceRestart.IsPresent -RepositoryRoot $repositoryRoot
-Assert-PortAvailable -Port $SimulatorPort -Name 'Simulator Host' -AllowForceRestart:$ForceRestart.IsPresent -RepositoryRoot $repositoryRoot
 Assert-PortAvailable -Port $WebPort -Name 'webUI' -AllowForceRestart:$ForceRestart.IsPresent -RepositoryRoot $repositoryRoot
 
 if (-not $SkipBootstrap) {
     $bootstrapScript = Join-Path $repositoryRoot 'scripts\postgres\bootstrap-control-plane.ps1'
     if (Test-Path $bootstrapScript) {
         Write-Host 'Running control-plane bootstrap...'
+        Set-Item -Path Env:NP_BOOTSTRAP_ADMIN_PASSWORD -Value $bootstrapAdminPassword
         & $bootstrapScript
     }
     else {
@@ -327,13 +345,13 @@ if (-not $SkipBootstrap) {
 
 $apiUrl = "http://127.0.0.1:$ApiPort"
 $preventionUrl = "http://127.0.0.1:$PreventionPort"
-$simulatorUrl = "http://127.0.0.1:$SimulatorPort"
 $webUrl = "http://127.0.0.1:$WebPort"
 $developerUrl = "$webUrl"
 
 $commonEnvironment = @{
     ASPNETCORE_ENVIRONMENT                                             = 'Development'
     DOTNET_ENVIRONMENT                                                 = 'Development'
+    BackofficeApi__LocalRuntimeProcessLaunchEnabled                    = 'true'
     POSTGRES_HOST                                                      = $postgresHost
     POSTGRES_PORT                                                      = [string]$postgresPort
     POSTGRES_DB                                                        = $postgresDb
@@ -349,7 +367,8 @@ $commonEnvironment = @{
     ControlledValidation__ProcessingFaults__Enabled                    = 'true'
     ControlledValidation__ProcessingFaults__EnableBuiltInP3Cases       = 'true'
     ControlledValidation__ProcessingFaults__AllowedRunLabelPrefixes__0 = 'controlled-validation-p3-negative-pipeline-'
-    NP_BOOTSTRAP_ADMIN_PASSWORD                                        = 'admin123'
+    NP_BOOTSTRAP_ADMIN_USERNAME                                        = $bootstrapAdminUsername
+    NP_BOOTSTRAP_ADMIN_PASSWORD                                        = $bootstrapAdminPassword
 }
 
 $apiEnvironment = $commonEnvironment.Clone()
@@ -357,9 +376,6 @@ $apiEnvironment['ASPNETCORE_URLS'] = $apiUrl
 
 $preventionEnvironment = $commonEnvironment.Clone()
 $preventionEnvironment['ASPNETCORE_URLS'] = $preventionUrl
-
-$simulatorEnvironment = $commonEnvironment.Clone()
-$simulatorEnvironment['ASPNETCORE_URLS'] = $simulatorUrl
 
 $webUiRoot = Join-Path $repositoryRoot 'webUI'
 $webUiNodeModules = Join-Path $webUiRoot 'node_modules'
@@ -372,7 +388,9 @@ $preventionProject = Join-Path $repositoryRoot 'src\NatureProtector.Prevention.H
 $simulatorProject = Join-Path $repositoryRoot 'src\NatureProtector.Simulator.Host\NatureProtector.Simulator.Host.csproj'
 Invoke-DotnetProjectBuild -ProjectPath $apiProject -Name 'Backoffice API'
 Invoke-DotnetProjectBuild -ProjectPath $preventionProject -Name 'Prevention Host'
-Invoke-DotnetProjectBuild -ProjectPath $simulatorProject -Name 'Simulator Host'
+if ($RunSimulator) {
+    Invoke-DotnetProjectBuild -ProjectPath $simulatorProject -Name 'Simulator Host'
+}
 
 $processes = @()
 $processes += Start-LoggedPowerShell `
@@ -394,16 +412,6 @@ $processes += Start-LoggedPowerShell `
     -ErrorLogPath (Join-Path $runRoot 'prevention-host.err.log') `
     -Port $PreventionPort `
     -Url $preventionUrl
-    
-$processes += Start-LoggedPowerShell `
-    -Name 'Simulator Host' `
-    -WorkingDirectory $repositoryRoot `
-    -Environment $simulatorEnvironment `
-    -Command 'dotnet run -c Release --no-build --no-restore --project src\NatureProtector.Simulator.Host\NatureProtector.Simulator.Host.csproj --no-launch-profile' `
-    -LogPath (Join-Path $runRoot 'simulator-host.log') `
-    -ErrorLogPath (Join-Path $runRoot 'simulator-host.err.log') `
-    -Port $SimulatorPort `
-    -Url $simulatorUrl
 
 $processes += Start-LoggedPowerShell `
     -Name 'webUI' `
@@ -427,6 +435,46 @@ try {
     Write-Host 'Waiting for webUI readiness...'
     Wait-TcpPort -HostName '127.0.0.1' -Port $WebPort -TimeoutSeconds 60 -Name 'webUI'
     Wait-HttpReady -Url $webUrl -TimeoutSeconds 60 -Name 'webUI'
+
+    if ($RunSimulator) {
+        $scenarioScript = Join-Path $repositoryRoot 'scripts\scenarios\run-scenario.ps1'
+        if (-not (Test-Path -LiteralPath $scenarioScript)) {
+            throw "Scenario runner not found at $scenarioScript."
+        }
+
+        $simulatorRunSpecPath = Join-Path $runRoot 'simulator-run-spec.json'
+        $simulatorRunLogPath = Join-Path $runRoot 'simulator-host.log'
+        $runLabel = "start-local-runtime-$timestamp-$ScenarioCode"
+        $simulatorRunSpec = [ordered]@{
+            version = "1.0"
+            areaCode = "proenca-a-nova"
+            scenarioCode = $ScenarioCode
+            sensorCount = $SensorCount
+            numberOfCycles = $NumberOfCycles
+            intervalSeconds = $IntervalSeconds
+            seed = $Seed
+            startTimestamp = [DateTimeOffset]::UtcNow.ToString("o")
+            degradationProfile = $DegradationProfile
+            collectEvidence = $false
+            waitForCompletion = $WaitForSimulatorCompletion
+            timeoutSeconds = $SimulatorTimeoutSeconds
+            allowParallelRun = $false
+            runLabel = $runLabel
+        }
+
+        $simulatorRunSpec | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $simulatorRunSpecPath -Encoding UTF8
+        Set-CurrentProcessEnvironment -Environment $commonEnvironment
+
+        Write-Host "Running Simulator Host through scenario runner..."
+        & $scenarioScript `
+            -SpecPath $simulatorRunSpecPath `
+            -PollIntervalSeconds 1 *>&1 |
+            Tee-Object -FilePath $simulatorRunLogPath
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "Simulator Host scenario run failed with exit code $LASTEXITCODE. Log: $simulatorRunLogPath"
+        }
+    }
 }
 catch {
     $logSummary = ($processes | ForEach-Object { "$($_.Name): $($_.LogPath) / $($_.ErrorLogPath)" }) -join [Environment]::NewLine
@@ -434,9 +482,12 @@ catch {
 }
 
 $summaryPath = Join-Path $runRoot 'launcher-summary.md'
+$processJsonPath = Join-Path $runRoot 'runtime-processes.json'
 $processRows = $processes | ForEach-Object {
     "- $($_.Name): PID $($_.Id), Port $($_.Port), URL $($_.Url), Log $($_.LogPath), ErrorLog $($_.ErrorLogPath), Script $($_.ScriptPath)"
 }
+
+$processes | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $processJsonPath -Encoding UTF8
 
 @(
     '# Local Runtime Launcher'
@@ -446,12 +497,12 @@ $processRows = $processes | ForEach-Object {
     "ForceRestart: $($ForceRestart.IsPresent)"
     "SkipDocker: $($SkipDocker.IsPresent)"
     "SkipBootstrap: $($SkipBootstrap.IsPresent)"
+    "RunSimulator: $RunSimulator"
+    "ScenarioCode: $ScenarioCode"
     ''
     '## Effective Targets'
     ''
     "- Backoffice API: $apiUrl"
-    "- Prevention Host health: $preventionUrl"
-    "- Simulator Host health: $simulatorUrl"
     "- webUI: $webUrl"
     "- Developer Runtime View: $developerUrl"
     "- PostgreSQL: $postgresHost`:$postgresPort/$postgresDb as $postgresUser"
@@ -466,12 +517,14 @@ $processRows = $processes | ForEach-Object {
     ''
     '- The launcher aborts if the API or webUI port is occupied, unless -ForceRestart can safely stop a local NatureProtector process.'
     '- PostgreSQL connectivity is checked before starting application processes.'
+    '- Simulator.Host is validated as a scenario process, not as a long-running HTTP service.'
 ) | Set-Content -Path $summaryPath -Encoding UTF8
 
 Write-Host "Launcher summary: $summaryPath"
+Write-Host "Runtime process manifest: $processJsonPath"
 Write-Host "Backoffice API: $apiUrl"
 Write-Host "Prevention Host health: $preventionUrl"
-Write-Host "Simulator Host health: $simulatorUrl"
+Write-Host "Simulator Host: scenario execution via scripts/scenarios/run-scenario.ps1"
 Write-Host "webUI: $webUrl"
 Write-Host "Developer Runtime View: $developerUrl"
 

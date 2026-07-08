@@ -4,7 +4,6 @@ import { AreaRisk, GrafanaStrip } from '../mainComponents/GrafanaStrip';
 import { AreaMap } from '../mainComponents/AreaMap';
 import { getColors } from '../../utils/utils';
 import { AreaCellResponse, SensorNodeResponse } from '../../types';
-import { useParams } from 'react-router-dom';
 import { api } from '../../services/api';
 
 export function DashBoards({ isDark, areaCode: areaCodeProp }: { isDark: boolean; areaCode?: string }) {

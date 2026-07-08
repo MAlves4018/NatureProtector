@@ -14,6 +14,18 @@ from pathlib import Path
 from typing import Any
 
 AUTHORITY_MANIFEST = Path("docs/implementation/maintainability/canonical-deployment-authority-2026-06-28.json")
+PROJECT_REFERENCE_EXCLUDED_PREFIXES = (
+    "docs/RepositorioDocumental/",
+    ".nuget/",
+    ".testbin/",
+    "artifacts/",
+    "BenchmarkDotNet.Artifacts/",
+)
+PROJECT_REFERENCE_EXCLUDED_PARTS = {
+    "bin",
+    "obj",
+    "node_modules",
+}
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -55,6 +67,8 @@ def project_package_references(root: Path) -> tuple[set[str], list[str]]:
     errors = []
     for path in sorted(root.rglob("*.csproj")):
         rel = path.relative_to(root).as_posix()
+        if rel.startswith(PROJECT_REFERENCE_EXCLUDED_PREFIXES) or PROJECT_REFERENCE_EXCLUDED_PARTS.intersection(path.parts):
+            continue
         try:
             doc = ET.parse(path)
         except ET.ParseError as exc:

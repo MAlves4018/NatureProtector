@@ -240,5 +240,3 @@ export function defaultPageFor(capabilities: Set<UiCapability>): UiNavTarget {
   }
   return 'demo';
 }
-
-

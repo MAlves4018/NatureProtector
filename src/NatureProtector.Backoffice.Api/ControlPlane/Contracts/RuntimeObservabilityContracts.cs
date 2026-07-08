@@ -6,6 +6,7 @@ public static class RuntimeOperationalHealthStatus
     public const string Degraded = "Degraded";
     public const string Unhealthy = "Unhealthy";
     public const string Unknown = "Unknown";
+    public const string AuthRequired = "AuthRequired";
     public const string NotInstrumented = "NotInstrumented";
     public const string NotApplicable = "NotApplicable";
 }

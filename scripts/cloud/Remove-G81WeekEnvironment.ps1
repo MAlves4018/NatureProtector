@@ -27,7 +27,7 @@ function Test-EvidenceChecksums {
     }
 }
 
-$expected = "DESTROY_NATUREPROTECTOR_${Environment.ToUpperInvariant()}_AFTER_EVIDENCE_EXPORT"
+$expected = "DESTROY_NATUREPROTECTOR_{0}_AFTER_EVIDENCE_EXPORT" -f $Environment.ToUpperInvariant()
 if ($Confirmation -ne $expected) { throw "Confirmation must be exactly $expected" }
 if ($ProjectId -match "(?i)cn2526|course|student") { throw "CN/course projects are forbidden for G8.1." }
 if ($Region -ne "europe-southwest1") { throw "Unexpected primary region: $Region" }

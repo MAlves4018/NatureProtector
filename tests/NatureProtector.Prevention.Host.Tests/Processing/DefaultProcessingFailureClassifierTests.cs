@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NatureProtector.Prevention.Host.Persistence;
 using NatureProtector.Prevention.Host.Processing;
 using Npgsql;
 
@@ -39,6 +40,20 @@ public sealed class DefaultProcessingFailureClassifierTests
 
         Assert.Equal(ProcessingFailureKind.Permanent, classification.Kind);
         Assert.Equal("db_foreign_key_violation", classification.ErrorCode);
+    }
+
+    [Fact]
+    public void Classify_ReturnsPermanentOrphanCode_ForMissingSimulationRunReference()
+    {
+        var classification = _classifier.Classify(new MissingSimulationRunReferenceException(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid()));
+
+        Assert.Equal(ProcessingFailureKind.Permanent, classification.Kind);
+        Assert.Equal("orphan_simulation_run_reference", classification.ErrorCode);
+        Assert.False(classification.IsRetryable);
     }
 
     [Fact]
