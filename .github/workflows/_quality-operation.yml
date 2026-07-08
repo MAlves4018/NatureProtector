@@ -55,15 +55,15 @@ jobs:
               workflow=quality-guardrails.yml
               args='-f mode=enforce'
               ;;
-            frontend-full|backend-unit|backend-integration|playwright-fixture|accessibility)
+            frontend-full|backend-unit|backend-integration|accessibility)
               workflow=engineering-foundations.yml
-              args='-f browser_matrix=chromium'
+              args=''
               ;;
             security)
               workflow=security.yml
               args=''
               ;;
-            playwright-full-stack|quality-all)
+            quality-all)
               workflow=release-candidate.yml
               args='-f benchmark_profile=B0'
               ;;

@@ -38,7 +38,7 @@ public sealed class PostgresSimulationRunStore(
         {
             return;
         }
-
+        
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         var record = await dbContext.SimulationRuns

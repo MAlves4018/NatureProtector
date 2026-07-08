@@ -35,6 +35,7 @@ import {
   CloudEnvironmentResponse,
   AdminUserResponse,
   AdminRoleResponse,
+  AlertStateResponse,
 } from '../types';
 
 export const api = {
@@ -262,6 +263,13 @@ export const api = {
     return httpClient.post<ControlledValidationP3RunResponse>(
       '/dev/controlled-validation/p3/run',
       request,
+      api.getRequestOptions(),
+    );
+  },
+
+  getAlerts: (areaCode: string) => {
+    return httpClient.get<AlertStateResponse[]>(
+      `/control/areas/${encodeURIComponent(areaCode)}/alerts/active`,
       api.getRequestOptions(),
     );
   },

@@ -1,172 +1,63 @@
-import { useState, useCallback } from 'react';
-import { RefreshCw, CheckCircle2, AlertTriangle, XCircle, Activity } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Activity } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
+import { useUiObservability } from '../state/ObservabilityContext';
+import { useEffect } from 'react';
 
-interface ModuleStatus {
-  module: string;
-  environment: string;
-  status: 'healthy' | 'degraded' | 'outage' | 'unknown';
-  lastCheck: string;
-  version: string;
-  uptime: string;
-  detail: string;
+const STATUS_ICONS: Record<string, typeof CheckCircle2> = {
+  Healthy: CheckCircle2,
+  Degraded: AlertTriangle,
+  Unhealthy: XCircle,
+  Unknown: Activity,
+  NotApplicable: Activity,
+  NotInstrumented: Activity,
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  Healthy: '#166534',
+  Degraded: '#a16207',
+  Unhealthy: '#b91c1c',
+  Unknown: 'var(--ui-muted)',
+  NotApplicable: 'var(--ui-muted)',
+  NotInstrumented: 'var(--ui-muted)',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  Healthy: 'Operational',
+  Degraded: 'Degraded',
+  Unhealthy: 'Unhealthy',
+  Unknown: 'Unknown',
+  NotApplicable: 'Not applicable',
+  NotInstrumented: 'Not instrumented',
+};
+
+function globalStatus(components: { status: string }[]): 'Healthy' | 'Degraded' | 'Unhealthy' {
+  if (components.some((c) => c.status === 'Unhealthy')) return 'Unhealthy';
+  if (components.some((c) => c.status === 'Degraded')) return 'Degraded';
+  return 'Healthy';
 }
 
-function buildMockModules(): ModuleStatus[] {
-  const now = new Date();
-  return [
-    {
-      module: 'Docker Engine',
-      environment: 'dev',
-      status: 'healthy',
-      lastCheck: now.toISOString(),
-      version: '27.2.0',
-      uptime: '12d 7h',
-      detail: 'All containers running',
-    },
-    {
-      module: 'Runtime API',
-      environment: 'dev',
-      status: 'healthy',
-      lastCheck: now.toISOString(),
-      version: '1.4.2',
-      uptime: '12d 7h',
-      detail: 'HTTP 200',
-    },
-    {
-      module: 'PostgreSQL',
-      environment: 'dev',
-      status: 'healthy',
-      lastCheck: now.toISOString(),
-      version: '16.4',
-      uptime: '12d 7h',
-      detail: 'Connections: 12/100',
-    },
-    {
-      module: 'RabbitMQ',
-      environment: 'dev',
-      status: 'degraded',
-      lastCheck: now.toISOString(),
-      version: '3.13.6',
-      uptime: '12d 7h',
-      detail: 'Queue depth: 1423 (elevated)',
-    },
-    {
-      module: 'InfluxDB',
-      environment: 'dev',
-      status: 'healthy',
-      lastCheck: now.toISOString(),
-      version: '2.7.10',
-      uptime: '12d 7h',
-      detail: 'Write throughput nominal',
-    },
-    {
-      module: 'Grafana',
-      environment: 'dev',
-      status: 'healthy',
-      lastCheck: now.toISOString(),
-      version: '11.2.0',
-      uptime: '12d 7h',
-      detail: 'Dashboards responsive',
-    },
-    {
-      module: 'Simulator',
-      environment: 'dev',
-      status: 'outage',
-      lastCheck: now.toISOString(),
-      version: '0.9.1',
-      uptime: '0d 0h',
-      detail: 'Service not responding',
-    },
-    {
-      module: 'P3 Service',
-      environment: 'dev',
-      status: 'unknown',
-      lastCheck: now.toISOString(),
-      version: '0.5.0',
-      uptime: 'N/A',
-      detail: 'Not instrumented',
-    },
-    {
-      module: 'Docker Engine',
-      environment: 'staging',
-      status: 'healthy',
-      lastCheck: now.toISOString(),
-      version: '27.2.0',
-      uptime: '5d 3h',
-      detail: 'All containers running',
-    },
-    {
-      module: 'Runtime API',
-      environment: 'staging',
-      status: 'healthy',
-      lastCheck: now.toISOString(),
-      version: '1.4.2',
-      uptime: '5d 3h',
-      detail: 'HTTP 200',
-    },
-    {
-      module: 'PostgreSQL',
-      environment: 'staging',
-      status: 'degraded',
-      lastCheck: now.toISOString(),
-      version: '16.4',
-      uptime: '5d 3h',
-      detail: 'Replication lag: 2.3s',
-    },
-    {
-      module: 'RabbitMQ',
-      environment: 'staging',
-      status: 'healthy',
-      lastCheck: now.toISOString(),
-      version: '3.13.6',
-      uptime: '5d 3h',
-      detail: 'Nominal',
-    },
-  ];
+function formatAge(seconds: number | null): string {
+  if (seconds === null || seconds === undefined) return '\u2014';
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}min`;
+  return `${Math.round(seconds / 3600)}h`;
 }
 
-const STATUS_ICONS = {
-  healthy: CheckCircle2,
-  degraded: AlertTriangle,
-  outage: XCircle,
-  unknown: Activity,
-};
-
-const STATUS_COLORS = {
-  healthy: '#166534',
-  degraded: '#a16207',
-  outage: '#b91c1c',
-  unknown: 'var(--ui-muted)',
-};
-
-const STATUS_LABELS = {
-  healthy: 'Operational',
-  degraded: 'Degraded',
-  outage: 'Outage',
-  unknown: 'Unknown',
-};
+function formatTimestamp(value: string | null | undefined): string {
+  if (!value) return '\u2014';
+  return new Date(value).toLocaleString();
+}
 
 export function DeploymentHealthPage() {
-  const [modules, setModules] = useState<ModuleStatus[]>(buildMockModules);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState(new Date().toISOString());
+  const { operationalHealth, observabilityError } = useUiObservability();
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setModules(buildMockModules());
-    setLastRefresh(new Date().toISOString());
-    setRefreshing(false);
-  }, []);
+  const components = operationalHealth?.components ?? [];
+  const status = globalStatus(components);
+  const GlobalIcon = STATUS_ICONS[status] ?? Activity;
 
-  const globalStatus: 'healthy' | 'degraded' | 'outage' = (() => {
-    if (modules.some((m) => m.status === 'outage')) return 'outage';
-    if (modules.some((m) => m.status === 'degraded')) return 'degraded';
-    return 'healthy';
-  })();
-
-  const GlobalIcon = STATUS_ICONS[globalStatus];
+  useEffect(() => {
+    console.log('Operational Health:', operationalHealth);
+  }, [operationalHealth]);
 
   return (
     <section className="ui-page">
@@ -179,20 +70,16 @@ export function DeploymentHealthPage() {
       <div className="ui-card" style={{ marginBottom: 16 }}>
         <div className="ui-section-heading">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <GlobalIcon size={20} style={{ color: STATUS_COLORS[globalStatus] }} />
-            {globalStatus === 'healthy'
-              ? 'All systems operational'
-              : globalStatus === 'degraded'
-                ? 'Degraded'
-                : 'Outage'}
+            <GlobalIcon size={20} style={{ color: STATUS_COLORS[status] }} />
+            {status === 'Healthy' ? 'All systems operational' : status === 'Degraded' ? 'Degraded' : 'Unhealthy'}
           </h3>
           <span className="ui-badge">
-            {modules.filter((m) => m.status === 'healthy').length}/{modules.length} healthy
+            {components.filter((c) => c.status === 'Healthy').length}/{components.length} healthy
           </span>
         </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
-          {(Object.keys(STATUS_LABELS) as Array<keyof typeof STATUS_LABELS>).map((key) => {
-            const count = modules.filter((m) => m.status === key).length;
+          {Object.keys(STATUS_LABELS).map((key) => {
+            const count = components.filter((c) => c.status === key).length;
             if (count === 0) return null;
             return (
               <span key={key} style={{ fontSize: '0.85rem', color: STATUS_COLORS[key], fontWeight: 600 }}>
@@ -203,56 +90,77 @@ export function DeploymentHealthPage() {
         </div>
       </div>
 
-      <div className="ui-card">
-        <div className="ui-section-heading">
-          <h3>Modulos</h3>
-          <div className="ui-button-row">
-            <span className="ui-label">Ultimo check: {new Date(lastRefresh).toLocaleString()}</span>
-            <button type="button" className="ui-button" disabled={refreshing} onClick={() => void handleRefresh()}>
-              <RefreshCw size={16} className={refreshing ? 'ui-spin' : ''} />
-              {refreshing ? 'A atualizar...' : 'Refresh All'}
-            </button>
-          </div>
+      {observabilityError && (
+        <div className="ui-card" style={{ marginBottom: 16 }}>
+          <p className="ui-state-error">{observabilityError.message}</p>
         </div>
-        <div className="ui-table-wrap">
-          <table className="ui-table">
-            <thead>
-              <tr>
-                <th>Modulo</th>
-                <th>Ambiente</th>
-                <th>Estado</th>
-                <th>Ultimo check</th>
-                <th>Versao</th>
-                <th>Uptime</th>
-                <th>Detalhe</th>
-              </tr>
-            </thead>
-            <tbody>
-              {modules.map((mod) => {
-                const Icon = STATUS_ICONS[mod.status];
-                return (
-                  <tr key={`${mod.module}-${mod.environment}`}>
-                    <td style={{ fontWeight: 700 }}>{mod.module}</td>
-                    <td>
-                      <span className="ui-badge">{mod.environment}</span>
-                    </td>
-                    <td>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: STATUS_COLORS[mod.status] }}>
-                        <Icon size={14} />
-                        {STATUS_LABELS[mod.status]}
-                      </span>
-                    </td>
-                    <td>{new Date(mod.lastCheck).toLocaleString()}</td>
-                    <td>{mod.version}</td>
-                    <td>{mod.uptime}</td>
-                    <td style={{ fontSize: '0.85rem', color: 'var(--ui-muted)' }}>{mod.detail}</td>
+      )}
+
+      {!operationalHealth && !observabilityError && (
+        <div className="ui-card">
+          <p>A carregar dados de saude...</p>
+        </div>
+      )}
+
+      {operationalHealth && (
+        <>
+          <div className="ui-card">
+            <div className="ui-section-heading">
+              <h3>Modulos</h3>
+              <span className="ui-badge">Observado em {new Date(operationalHealth.observedAt).toLocaleString()}</span>
+            </div>
+            <div className="ui-table-wrap">
+              <table className="ui-table">
+                <thead>
+                  <tr>
+                    <th>Modulo</th>
+                    <th>Estado</th>
+                    <th>Fonte</th>
+                    <th>Idade</th>
+                    <th>Ultimo sucesso</th>
+                    <th>Ultima falha</th>
+                    <th>Detalhe</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody>
+                  {components.length === 0 ? (
+                    <tr>
+                      <td colSpan={7}>Sem dados de saude dos componentes.</td>
+                    </tr>
+                  ) : (
+                    components.map((comp) => {
+                      const Icon = STATUS_ICONS[comp.status] ?? Activity;
+                      return (
+                        <tr key={comp.component}>
+                          <td style={{ fontWeight: 700 }}>{comp.component}</td>
+                          <td>
+                            <span
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                color: STATUS_COLORS[comp.status] ?? 'var(--ui-muted)',
+                              }}
+                            >
+                              <Icon size={14} />
+                              {STATUS_LABELS[comp.status] ?? comp.status}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: '0.85rem' }}>{comp.source}</td>
+                          <td style={{ fontSize: '0.85rem' }}>{formatAge(comp.ageSeconds)}</td>
+                          <td style={{ fontSize: '0.85rem' }}>{formatTimestamp(comp.lastSuccessAt)}</td>
+                          <td style={{ fontSize: '0.85rem' }}>{formatTimestamp(comp.lastFailureAt)}</td>
+                          <td style={{ fontSize: '0.85rem', color: 'var(--ui-muted)' }}>{comp.reason}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </section>
   );
 }

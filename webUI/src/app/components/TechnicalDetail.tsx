@@ -22,7 +22,6 @@ export function TechnicalDetail({ title, fields }: { title: string; fields: read
               <th>{copy('technical.source')}</th>
               <th>{copy('technical.scope')}</th>
               <th>{copy('technical.timestamp')}</th>
-              <th>{copy('technical.limitation')}</th>
             </tr>
           </thead>
           <tbody>
@@ -36,7 +35,6 @@ export function TechnicalDetail({ title, fields }: { title: string; fields: read
                 <td>{field.source}</td>
                 <td>{field.scope}</td>
                 <td>{field.timestamp}</td>
-                <td>{field.limitation || copy('value.noneReported')}</td>
               </tr>
             ))}
           </tbody>

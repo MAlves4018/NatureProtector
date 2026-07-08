@@ -362,6 +362,7 @@ $commonEnvironment = @{
     RabbitMq__UserName                                                 = $rabbitUser
     RabbitMq__Password                                                 = $rabbitPassword
     InfluxDb__Url                                                      = "http://localhost:$influxPort"
+    InfluxDb__Token                                                    = (Get-NpConfigValue -Values $dotEnv -Name 'INFLUXDB_TOKEN' -DefaultValue '')
     VITE_API_PROXY_TARGET                                              = $apiUrl
     ControlledValidation__ProcessingFaults__Enabled                    = 'true'
     ControlledValidation__ProcessingFaults__EnableBuiltInP3Cases       = 'true'
@@ -502,8 +503,6 @@ $processes | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $processJsonPath
     '## Effective Targets'
     ''
     "- Backoffice API: $apiUrl"
-    "- Prevention Host health: $preventionUrl"
-    "- Simulator Host: scenario execution via scripts/scenarios/run-scenario.ps1"
     "- webUI: $webUrl"
     "- Developer Runtime View: $developerUrl"
     "- PostgreSQL: $postgresHost`:$postgresPort/$postgresDb as $postgresUser"

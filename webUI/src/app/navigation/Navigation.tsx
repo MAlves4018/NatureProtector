@@ -5,6 +5,7 @@ import {
   Database,
   FlaskConical,
   Home,
+  Info,
   LayoutDashboard,
   ListChecks,
   PlayCircle,
@@ -16,6 +17,7 @@ import {
   Users,
   FileSearch,
   Search,
+  GitCompareArrows,
 } from 'lucide-react';
 import type { UiMessageKey } from '../i18n';
 import type { Copy } from '../types';
@@ -93,6 +95,8 @@ function groupIcon(group: string) {
       return <PlayCircle size={16} />;
     case 'admin':
       return <ShieldCheck size={16} />;
+    case 'about':
+      return <Info size={16} />;
     default:
       return <Home size={16} />;
   }
@@ -135,8 +139,12 @@ function navIcon(target: UiNavTarget) {
       return <ShieldCheck size={16} />;
     case 'p3':
       return <FlaskConical size={16} />;
+    case 'about':
+      return <Info size={16} />;
     case 'context':
       return <Beaker size={16} />;
+    case 'scenario-compare':
+      return <GitCompareArrows size={16} />;
     default:
       return <Home size={16} />;
   }

@@ -57,7 +57,9 @@ export type UiNavTarget =
   | 'p3'
   | 'context'
   | 'db-queries'
-  | 'deployment-health';
+  | 'deployment-health'
+  | 'scenario-compare'
+  | 'about';
 
 export interface UiNavigationItem {
   id: UiNavTarget;
@@ -81,7 +83,9 @@ export interface UiNavigationItem {
     | 'nav.users'
     | 'nav.admin'
     | 'nav.p3'
-    | 'nav.context';
+    | 'nav.context'
+    | 'nav.scenario-compare'
+    | 'nav.about';
   requiredCapability: UiCapability;
 }
 
@@ -139,6 +143,7 @@ export function getUiCapabilities(user: Pick<User, 'roles'> | null | undefined):
       'quality.execute.static',
       'quality.execute.full',
       'evidence.execute.campaign',
+      'simulation.execute',
     ]);
   }
   if (roles.includes('Operations')) {

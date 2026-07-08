@@ -26,6 +26,10 @@ const RunsPage = lazy(() => import('./pages/RunsPage').then((module) => ({ defau
 const SimulationPage = lazy(() =>
   import('./pages/SimulationPage').then((module) => ({ default: module.SimulationPage })),
 );
+const ScenarioComparisonPage = lazy(() =>
+  import('./pages/ScenarioComparisonPage').then((module) => ({ default: module.ScenarioComparisonPage })),
+);
+const AboutPage = lazy(() => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const PipelinePage = lazy(() => import('./pages/PipelinePage').then((module) => ({ default: module.PipelinePage })));
 const QualityEvidencePage = lazy(() =>
   import('./pages/QualityEvidencePage').then((module) => ({ default: module.QualityEvidencePage })),
@@ -66,31 +70,6 @@ const UserRoleAdministrationPage = lazy(() =>
   import('./pages/UserRoleAdministrationPage').then((module) => ({ default: module.UserRoleAdministrationPage })),
 );
 
-const uiChildRoutes = [
-  { index: true, element: <UiDefaultRedirect /> },
-  { path: 'demo', element: <PublicOverviewPage /> },
-  { path: 'context', element: <DataContextPage /> },
-  { path: 'dashboard', element: <DashboardsPage /> },
-  { path: 'mission', element: <MissionControlPage /> },
-  { path: 'risk', element: <RiskPage /> },
-  { path: 'runs', element: <RunsPage /> },
-  { path: 'simulation', element: <SimulationPage /> },
-  { path: 'pipeline', element: <PipelinePage /> },
-  { path: 'quality', element: <QualityRunsPage /> },
-  { path: 'qa', element: <QualityEvidencePage /> },
-  { path: 'qa-tests', element: <QaTestSuitePage /> },
-  { path: 'evidence', element: <EvidenceExplorerPage /> },
-  { path: 'deployments', element: <DeploymentsPage /> },
-  { path: 'deployment-health', element: <DeploymentHealthPage /> },
-  { path: 'cloud', element: <CloudResourcesPage /> },
-  { path: 'db-queries', element: <DatabaseQueriesPage /> },
-  { path: 'approvals', element: <ApprovalsPage /> },
-  { path: 'users', element: <UserRoleAdministrationPage /> },
-  { path: 'admin', element: <AdminPage /> },
-  { path: 'p3', element: <ExperimentalPage /> },
-  { path: '*', element: <UiDefaultRedirect /> },
-];
-
 export function App() {
   const [isDark, setIsDark] = useState(false);
   return (
@@ -122,12 +101,32 @@ function UiRouter({
         {
           path: '/',
           element: <UiShell isDark={isDark} setIsDark={setIsDark} />,
-          children: uiChildRoutes,
-        },
-        {
-          path: '/ui-v2',
-          element: <UiShell isDark={isDark} setIsDark={setIsDark} />,
-          children: uiChildRoutes,
+          children: [
+            { index: true, element: <UiDefaultRedirect /> },
+            { path: 'demo', element: <PublicOverviewPage /> },
+            { path: 'about', element: <AboutPage /> },
+            { path: 'context', element: <DataContextPage /> },
+            { path: 'dashboard', element: <DashboardsPage /> },
+            { path: 'mission', element: <MissionControlPage /> },
+            { path: 'risk', element: <RiskPage /> },
+            { path: 'runs', element: <RunsPage /> },
+            { path: 'simulation', element: <SimulationPage /> },
+            { path: 'scenario-compare', element: <ScenarioComparisonPage /> },
+            { path: 'pipeline', element: <PipelinePage /> },
+            { path: 'quality', element: <QualityRunsPage /> },
+            { path: 'qa', element: <QualityEvidencePage /> },
+            { path: 'qa-tests', element: <QaTestSuitePage /> },
+            { path: 'evidence', element: <EvidenceExplorerPage /> },
+            { path: 'deployments', element: <DeploymentsPage /> },
+            { path: 'deployment-health', element: <DeploymentHealthPage /> },
+            { path: 'cloud', element: <CloudResourcesPage /> },
+            { path: 'db-queries', element: <DatabaseQueriesPage /> },
+            { path: 'approvals', element: <ApprovalsPage /> },
+            { path: 'users', element: <UserRoleAdministrationPage /> },
+            { path: 'admin', element: <AdminPage /> },
+            { path: 'p3', element: <ExperimentalPage /> },
+            { path: '*', element: <UiDefaultRedirect /> },
+          ],
         },
       ]),
     [isDark, setIsDark],
@@ -204,9 +203,9 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
   const handleNavigate = useCallback(
     (target: UiNavTarget) => {
       setActivePage(target);
-      navigate(getRoutePrefix(location.pathname) + '/' + target);
+      navigate('/' + target);
     },
-    [location.pathname, navigate, setActivePage],
+    [navigate, setActivePage],
   );
 
   const mainId = 'ui-main';
@@ -286,7 +285,6 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
             </Suspense>
           </ErrorBoundary>
         </main>
-        <footer className="ui-footer">{copy('footer.beta')}</footer>
         {helpTopic && (
           <div className="ui-help-overlay">
             <section
@@ -315,16 +313,12 @@ function getRoutePage(pathname: string): UiNavTarget | undefined {
   return (segments[0] === 'ui-v2' ? segments[1] : segments[0]) as UiNavTarget | undefined;
 }
 
-function getRoutePrefix(pathname: string) {
-  return pathname.split('/').filter(Boolean)[0] === 'ui-v2' ? '/ui-v2' : '';
-}
-
 function UiDefaultRedirect() {
   const { pages, capabilities } = useUiCapabilities();
   const fallbackPage = defaultPageFor(capabilities);
   const targetPage = pages.some((page) => page.id === fallbackPage) ? fallbackPage : 'demo';
 
-  return <Navigate to={targetPage} replace />;
+  return <Navigate to={'/' + targetPage} replace />;
 }
 
 function UiRouteLoading() {

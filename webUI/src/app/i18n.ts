@@ -26,8 +26,27 @@ const messages = {
     'nav.admin': 'Administração',
     'nav.p3': 'P3 experimental',
     'nav.context': 'Dados',
+    'nav.about': 'Sobre',
+    'nav.scenario-compare': 'Comparar cenários B vs C',
+    'about.title': 'Sobre este protótipo',
+    'about.subtitle': 'Contexto académico, objectivos e limitações do NatureProtector.',
+    'about.body':
+      'O NatureProtector é um protótipo académico desenvolvido no âmbito da unidade curricular de Projeto de Software. ' +
+      'Demonstra conceitos de monitorização ambiental, simulação de risco e pipeline de dados. ' +
+      'Não é um sistema operacional de prevenção ou alerta público.',
+    'scenario-compare.title': 'Comparação de cenários B e C',
+    'scenario-compare.subtitle':
+      'Compara a última execução dos cenários B e C para a área selecionada usando dados persistidos.',
+    'scenario-compare.scenario': 'Cenário',
+    'scenario-compare.metric': 'Métrica',
+    'scenario-compare.value': 'Valor',
+    'scenario-compare.limitations': 'Limitações',
+    'scenario-compare.noArea': 'Seleciona uma área para ver a comparação.',
+    'scenario-compare.noData': 'Sem dados de comparação disponíveis.',
+    'scenario-compare.execute': 'Comparar',
     'nav.help': 'Ajuda',
     'group.public': 'Público',
+    'group.about': 'Sobre',
     'group.operate': 'Operar',
     'group.technical': 'Técnico',
     'group.simulate': 'Simulações',
@@ -206,7 +225,6 @@ const messages = {
     'help.technical':
       'Superfícies técnicas: mostram fonte, escopo, carimbo temporal e ausência explícita quando o contrato não instrumenta um campo.',
     'help.docs': 'Ajuda integrada M04',
-    'footer.beta': 'Beta preservada em rotas existentes.',
   },
   en: {
     'app.name': 'NatureProtector',
@@ -233,8 +251,27 @@ const messages = {
     'nav.admin': 'Admin',
     'nav.p3': 'Experimental P3',
     'nav.context': 'Data',
+    'nav.about': 'About',
+    'nav.scenario-compare': 'Compare B vs C',
+    'about.title': 'About this prototype',
+    'about.subtitle': 'Academic context, goals and limitations of NatureProtector.',
+    'about.body':
+      'NatureProtector is an academic prototype developed as part of a Software Engineering course. ' +
+      'It demonstrates environmental monitoring, risk simulation and data pipeline concepts. ' +
+      'It is not an operational prevention or public alerting system.',
+    'scenario-compare.title': 'Scenario B vs C comparison',
+    'scenario-compare.subtitle':
+      'Compares the latest scenario_b and scenario_c runs for the selected area using persisted runtime data.',
+    'scenario-compare.scenario': 'Scenario',
+    'scenario-compare.metric': 'Metric',
+    'scenario-compare.value': 'Value',
+    'scenario-compare.limitations': 'Limitations',
+    'scenario-compare.noArea': 'Select an area to view the comparison.',
+    'scenario-compare.noData': 'No comparison data available.',
+    'scenario-compare.execute': 'Compare',
     'nav.help': 'Help',
     'group.public': 'Public',
+    'group.about': 'About',
     'group.operate': 'Operate',
     'group.technical': 'Technical',
     'group.simulate': 'Simulations',
@@ -410,7 +447,6 @@ const messages = {
     'help.technical':
       'Technical surfaces: show source, scope, timestamp and explicit absence when a field is not instrumented by the contract.',
     'help.docs': 'Integrated M04 help',
-    'footer.beta': 'A beta permanece nas rotas existentes.',
   },
 } satisfies Record<UiLocale, Record<string, string>>;
 

@@ -53,16 +53,6 @@ export function OperationStatus({
               </li>
             ))}
           </ol>
-          {operation.limitations.length > 0 && (
-            <div className="ui-notice">
-              <strong>Limitações</strong>
-              <ul>
-                {operation.limitations.map((limitation) => (
-                  <li key={limitation}>{limitation}</li>
-                ))}
-              </ul>
-            </div>
-          )}
         </>
       )}
     </article>

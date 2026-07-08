@@ -52,7 +52,7 @@ describe('capabilities', () => {
   it('derives navigation entries from capabilities', () => {
     const navigation = getUiPages(new Set(['demo.read', 'data_context.read', 'help.read']));
 
-    expect(navigation.map((item) => item.id)).toEqual(['demo', 'context']);
+    expect(navigation.map((item) => item.id)).toEqual(['demo', 'about', 'context']);
   });
 
   it('exposes mission, quality and evidence as separate read-only Pipeline tasks', () => {
@@ -61,10 +61,12 @@ describe('capabilities', () => {
     expect(navigation.map((item) => item.id)).toEqual([
       'demo',
       'dashboard',
+      'about',
       'context',
       'mission',
       'risk',
       'runs',
+      'scenario-compare',
       'pipeline',
       'qa',
       'evidence',

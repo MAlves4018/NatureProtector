@@ -46,15 +46,6 @@ export function QueueMetricsChart({ rabbitMq }: Props) {
           <Bar dataKey="Consumers" fill="#166534" radius={[3, 3, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
-      {rabbitMq.limitations.length > 0 && (
-        <ul style={{ marginTop: 8 }}>
-          {rabbitMq.limitations.map((lim) => (
-            <li key={lim.message} className="ui-muted">
-              {lim.message}
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

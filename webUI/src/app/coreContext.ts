@@ -191,7 +191,7 @@ export function buildUiRunContext(
             : `${Math.round(input.timings.runDurationMs)}ms`,
       },
     ],
-    limitations: input.audit?.limitations.map((item) => item.message) ?? [],
+    limitations: (input.audit?.limitations ?? []).map((item) => item.message),
   };
 }
 

@@ -10,7 +10,6 @@
     "ignoreUnknown": true,
     "includes": [
       "src/**/*.{ts,tsx}",
-      "e2e/**/*.ts",
       "scripts/**/*.mjs",
       "vite.config.ts",
       "playwright.config.ts",

@@ -1,60 +1,24 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useUiArea } from './AreaContext';
-
-export interface Alert {
-  id: string;
-  severity: 'info' | 'warning' | 'critical';
-  title: string;
-  message: string;
-  timestamp: string;
-  dismissed: boolean;
-}
+import { api } from '../services/api';
+import { AlertStateResponse } from '../types';
 
 interface UiAlertContextValue {
-  alerts: Alert[];
+  alerts: AlertStateResponse[];
   loading: boolean;
   error: string | null;
   dismissAlert: (id: string) => void;
-  activeAlerts: Alert[];
+  activeAlerts: AlertStateResponse[];
 }
 
 const UiAlertContext = createContext<UiAlertContextValue | null>(null);
 
-function generateMockAlerts(areaCode: string | null): Alert[] {
-  if (!areaCode) return [];
-  return [
-    {
-      id: 'alert-1',
-      severity: 'info',
-      title: 'Atualizacao de dados',
-      message: `Novos dados de sensores disponiveis para a area ${areaCode}.`,
-      timestamp: new Date().toISOString(),
-      dismissed: false,
-    },
-    {
-      id: 'alert-2',
-      severity: 'warning',
-      title: 'Risco elevado',
-      message: `Condicoes meteorologicas na area ${areaCode} indicam risco elevado de incendio.`,
-      timestamp: new Date().toISOString(),
-      dismissed: false,
-    },
-    {
-      id: 'alert-3',
-      severity: 'critical',
-      title: 'Alerta de incendio',
-      message: `Potencial inicio de incendio detetado na area ${areaCode}. Verificar dados de sensores.`,
-      timestamp: new Date().toISOString(),
-      dismissed: false,
-    },
-  ];
-}
-
 export function UiAlertProvider({ children }: { children: ReactNode }) {
   const { resolvedAreaCode } = useUiArea();
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<AlertStateResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dismissedIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!resolvedAreaCode) {
@@ -62,24 +26,43 @@ export function UiAlertProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    let cancelled = false;
 
     const fetchAlerts = () => {
-      setAlerts(generateMockAlerts(resolvedAreaCode));
-      setLoading(false);
+      api
+        .getAlerts(resolvedAreaCode)
+        .then((data) => {
+          if (!cancelled) setAlerts(data);
+        })
+        .catch(() => {
+          if (!cancelled) setError('Failed to fetch alerts');
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
     };
 
     fetchAlerts();
     const interval = setInterval(fetchAlerts, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [resolvedAreaCode]);
 
   const dismissAlert = useCallback((id: string) => {
-    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, dismissed: true } : a)));
+    dismissedIdsRef.current.add(id);
+    setAlerts((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
-  const activeAlerts = useMemo(() => alerts.filter((a) => !a.dismissed), [alerts]);
+  const activeAlerts = useMemo(
+    () =>
+      alerts
+        .filter((a) => !dismissedIdsRef.current.has(a.id))
+        .sort((a, b) => new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime())
+        .slice(0, 3),
+    [alerts],
+  );
 
   const value = useMemo(
     () => ({ alerts, loading, error, dismissAlert, activeAlerts }),

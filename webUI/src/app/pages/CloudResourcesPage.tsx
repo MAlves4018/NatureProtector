@@ -60,11 +60,6 @@ export function CloudResourcesPage() {
                   ))}
                 </tbody>
               </table>
-              <ul>
-                {environment.limitations.map((limitation) => (
-                  <li key={limitation}>{limitation}</li>
-                ))}
-              </ul>
             </article>
           ))}
         </div>

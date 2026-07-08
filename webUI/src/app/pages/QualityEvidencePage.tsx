@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Download } from 'lucide-react';
 import { api } from '../services/api';
-import { BetaParityLinks } from '../components/BetaParityLinks';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
@@ -48,7 +47,6 @@ export function QualityEvidencePage() {
       )}
       <EvidenceSection title="Runtime evidence" items={runtimeEvidence} />
       <EvidenceSection title="Historical evidence" items={historical} />
-      <BetaParityLinks ids={['evidence-comparison']} />
     </section>
   );
 }

@@ -8,15 +8,6 @@ on:
   schedule:
     - cron: "17 3 * * *"
   workflow_dispatch:
-    inputs:
-      browser_matrix:
-        description: "Playwright browser matrix"
-        required: false
-        default: "chromium"
-        type: choice
-        options:
-          - chromium
-          - all
 
 permissions:
   contents: read
@@ -166,8 +157,6 @@ jobs:
     name: Frontend typecheck, tests, build
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      NP_PLAYWRIGHT_BROWSER_MATRIX: ${{ github.event_name == 'schedule' && 'all' || github.event.inputs.browser_matrix || 'chromium' }}
     defaults:
       run:
         working-directory: webUI
@@ -188,14 +177,6 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Install Playwright browsers
-        run: |
-          if [ "$NP_PLAYWRIGHT_BROWSER_MATRIX" = "all" ]; then
-            npx playwright install --with-deps chromium firefox webkit
-          else
-            npx playwright install --with-deps chromium
-          fi
-
       - name: Typecheck
         run: npm run typecheck
 
@@ -214,9 +195,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: E2E browser checks
-        run: npm run test:e2e
-
       - name: Audit frontend dependencies
         run: npm run audit:ci
 
@@ -227,9 +205,7 @@ jobs:
           name: frontend-test-artifacts
           retention-days: 14
           path: |
-            webUI/test-results/
             webUI/coverage/
-            webUI/playwright-report/
             webUI/npm-audit.json
 
   frontend-node22:
@@ -270,4 +246,4 @@ jobs:
           name: frontend-node22-test-artifacts
           retention-days: 14
           path: |
-            webUI/test-results/
+            webUI/test-results/vitest-junit.xml

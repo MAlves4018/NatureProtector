@@ -1,17 +1,15 @@
 import { X, AlertTriangle, Info, AlertCircle, Bell } from 'lucide-react';
 import { useUiAlerts } from '../state/AlertContext';
 
-const SEVERITY_ICONS = {
-  info: Info,
-  warning: AlertTriangle,
-  critical: AlertCircle,
+const SEVERITY_MAP = {
+  info: { icon: Info, className: 'ui-alert-info' },
+  warning: { icon: AlertTriangle, className: 'ui-alert-warning' },
+  critical: { icon: AlertCircle, className: 'ui-alert-critical' },
 } as const;
 
-const SEVERITY_CLASSES = {
-  info: 'ui-alert-info',
-  warning: 'ui-alert-warning',
-  critical: 'ui-alert-critical',
-} as const;
+function getSeverityStyle(severity: string) {
+  return SEVERITY_MAP[severity as keyof typeof SEVERITY_MAP] ?? SEVERITY_MAP.info;
+}
 
 export function AlertBanner() {
   const { activeAlerts, dismissAlert } = useUiAlerts();
@@ -28,19 +26,19 @@ export function AlertBanner() {
       </div>
       <div className="ui-alert-list">
         {activeAlerts.map((alert) => {
-          const Icon = SEVERITY_ICONS[alert.severity];
+          const { icon: Icon, className: severityClass } = getSeverityStyle(alert.severity);
           return (
-            <div key={alert.id} className={`ui-alert-item ${SEVERITY_CLASSES[alert.severity]}`}>
+            <div key={alert.id} className={`ui-alert-item ${severityClass}`}>
               <Icon size={18} className="ui-alert-icon" />
               <div className="ui-alert-content">
-                <strong>{alert.title}</strong>
+                <strong>{alert.alertCode}</strong>
                 <p>{alert.message}</p>
               </div>
               <button
                 type="button"
                 className="ui-alert-dismiss"
                 onClick={() => dismissAlert(alert.id)}
-                aria-label={`Dismissir alerta: ${alert.title}`}
+                aria-label={`Dismissir alerta: ${alert.alertCode}`}
               >
                 <X size={14} />
               </button>

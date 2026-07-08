@@ -1,6 +1,5 @@
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import { BetaParityLinks } from '../components/BetaParityLinks';
 import { PageHeader } from '../components/PageHeader';
 import { TechnicalDetail } from '../components/TechnicalDetail';
 import { PipelineTimeline } from '../components/PipelineTimeline';
@@ -14,7 +13,7 @@ import { useUiObservability } from '../state/ObservabilityContext';
 
 export function PipelinePage() {
   const { copy } = useUiLocale();
-  const { fields: pipelineFields, limitations: pipelineLimitations } = usePipelineSurface();
+  const { fields: pipelineFields } = usePipelineSurface();
   const { runTimings, runAudit } = useUiActivity();
   const { operationalHealth, rabbitMqMetrics } = useUiObservability();
   const [showTechnical, setShowTechnical] = useState(false);
@@ -40,15 +39,6 @@ export function PipelinePage() {
         </button>
         {showTechnical && <TechnicalDetail title="" fields={pipelineFields} />}
       </section>
-      <section className="ui-panel">
-        <h3>Limitacoes tecnicas</h3>
-        <ul>
-          {pipelineLimitations.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
-      <BetaParityLinks ids={['runtime-monitor', 'flow-model']} />
     </section>
   );
 }

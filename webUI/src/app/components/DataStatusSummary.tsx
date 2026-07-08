@@ -11,7 +11,6 @@ export function DataStatusSummary({ showDetails = true }: { showDetails?: boolea
   const freshness = fieldValue(riskModel.contextFields, 'freshness', copy('value.notConfirmed'));
   const coverage = fieldValue(riskModel.contextFields, 'coverage', copy('value.notConfirmed'));
   const eligibility = fieldValue(riskModel.contextFields, 'eligibility', copy('value.notConfirmed'));
-  const limitation = riskModel.limitations[0] ?? copy('value.noneReported');
 
   return (
     <section className="ui-card ui-data-status" aria-label="Estado dos dados">
@@ -25,7 +24,6 @@ export function DataStatusSummary({ showDetails = true }: { showDetails?: boolea
         <StatusItem label="Atualidade" value={freshness} />
         <StatusItem label="Cobertura" value={coverage} />
         <StatusItem label="Utilizacao do resultado" value={eligibility} />
-        <StatusItem label="Limitacao principal" value={limitation} />
       </div>
       {showDetails && <DataStatusDetails />}
     </section>
