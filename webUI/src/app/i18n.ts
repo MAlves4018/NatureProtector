@@ -35,7 +35,8 @@ const messages = {
       'Demonstra conceitos de monitorização ambiental, simulação de risco e pipeline de dados. ' +
       'Não é um sistema operacional de prevenção ou alerta público.',
     'scenario-compare.title': 'Comparação de cenários B e C',
-    'scenario-compare.subtitle': 'Compara a última execução dos cenários B e C para a área selecionada usando dados persistidos.',
+    'scenario-compare.subtitle':
+      'Compara a última execução dos cenários B e C para a área selecionada usando dados persistidos.',
     'scenario-compare.scenario': 'Cenário',
     'scenario-compare.metric': 'Métrica',
     'scenario-compare.value': 'Valor',
@@ -259,7 +260,8 @@ const messages = {
       'It demonstrates environmental monitoring, risk simulation and data pipeline concepts. ' +
       'It is not an operational prevention or public alerting system.',
     'scenario-compare.title': 'Scenario B vs C comparison',
-    'scenario-compare.subtitle': 'Compares the latest scenario_b and scenario_c runs for the selected area using persisted runtime data.',
+    'scenario-compare.subtitle':
+      'Compares the latest scenario_b and scenario_c runs for the selected area using persisted runtime data.',
     'scenario-compare.scenario': 'Scenario',
     'scenario-compare.metric': 'Metric',
     'scenario-compare.value': 'Value',

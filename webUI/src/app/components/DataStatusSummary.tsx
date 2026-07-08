@@ -12,7 +12,6 @@ export function DataStatusSummary({ showDetails = true }: { showDetails?: boolea
   const coverage = fieldValue(riskModel.contextFields, 'coverage', copy('value.notConfirmed'));
   const eligibility = fieldValue(riskModel.contextFields, 'eligibility', copy('value.notConfirmed'));
 
-
   return (
     <section className="ui-card ui-data-status" aria-label="Estado dos dados">
       <div className="ui-section-heading">

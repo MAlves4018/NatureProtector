@@ -1,15 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { GitCompareArrows } from 'lucide-react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  LabelList,
-} from 'recharts';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, LabelList } from 'recharts';
 import { PageHeader } from '../components/PageHeader';
 import { useUiLocale } from '../state/LocaleContext';
 import { useUiArea } from '../state/AreaContext';
@@ -182,12 +173,7 @@ export function ScenarioComparisonPage() {
           </select>
         </label>
         <div className="ui-button-row">
-          <button
-            type="button"
-            className="ui-button"
-            onClick={handleCompare}
-            disabled={!resolvedAreaCode || loading}
-          >
+          <button type="button" className="ui-button" onClick={handleCompare} disabled={!resolvedAreaCode || loading}>
             <GitCompareArrows size={16} />
             {loading ? copy('state.loading') : copy('scenario-compare.execute')}
           </button>

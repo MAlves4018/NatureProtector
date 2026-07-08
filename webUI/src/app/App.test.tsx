@@ -173,7 +173,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
     expect(await screen.findByRole('heading', { name: /Pipeline e observabilidade/i })).toBeInTheDocument();
-    
+
     fireEvent.click(screen.getByRole('button', { name: /Qualidade e evidencia/i }));
     expect(await screen.findByRole('heading', { name: /Qualidade e evidência/i })).toBeInTheDocument();
     expect(screen.getByText(/Latest test execution/i)).toBeInTheDocument();

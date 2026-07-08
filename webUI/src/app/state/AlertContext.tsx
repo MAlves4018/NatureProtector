@@ -29,7 +29,8 @@ export function UiAlertProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     const fetchAlerts = () => {
-      api.getAlerts(resolvedAreaCode)
+      api
+        .getAlerts(resolvedAreaCode)
         .then((data) => {
           if (!cancelled) setAlerts(data);
         })

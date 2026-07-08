@@ -1,5 +1,3 @@
-import { Status } from "@chakra-ui/react/";
-
 export interface RuntimeSummaryResponse {
   generatedAtUtc: string;
   recentWindowMinutes: number;

@@ -268,7 +268,10 @@ export const api = {
   },
 
   getAlerts: (areaCode: string) => {
-    return httpClient.get<AlertStateResponse[]>(`/control/areas/${encodeURIComponent(areaCode)}/alerts/active`, api.getRequestOptions());
+    return httpClient.get<AlertStateResponse[]>(
+      `/control/areas/${encodeURIComponent(areaCode)}/alerts/active`,
+      api.getRequestOptions(),
+    );
   },
 
   withAuthToken(token: string) {

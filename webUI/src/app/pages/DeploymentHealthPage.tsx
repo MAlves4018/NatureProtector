@@ -71,11 +71,7 @@ export function DeploymentHealthPage() {
         <div className="ui-section-heading">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <GlobalIcon size={20} style={{ color: STATUS_COLORS[status] }} />
-            {status === 'Healthy'
-              ? 'All systems operational'
-              : status === 'Degraded'
-                ? 'Degraded'
-                : 'Unhealthy'}
+            {status === 'Healthy' ? 'All systems operational' : status === 'Degraded' ? 'Degraded' : 'Unhealthy'}
           </h3>
           <span className="ui-badge">
             {components.filter((c) => c.status === 'Healthy').length}/{components.length} healthy
@@ -111,9 +107,7 @@ export function DeploymentHealthPage() {
           <div className="ui-card">
             <div className="ui-section-heading">
               <h3>Modulos</h3>
-              <span className="ui-badge">
-                Observado em {new Date(operationalHealth.observedAt).toLocaleString()}
-              </span>
+              <span className="ui-badge">Observado em {new Date(operationalHealth.observedAt).toLocaleString()}</span>
             </div>
             <div className="ui-table-wrap">
               <table className="ui-table">
@@ -140,7 +134,14 @@ export function DeploymentHealthPage() {
                         <tr key={comp.component}>
                           <td style={{ fontWeight: 700 }}>{comp.component}</td>
                           <td>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: STATUS_COLORS[comp.status] ?? 'var(--ui-muted)' }}>
+                            <span
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                color: STATUS_COLORS[comp.status] ?? 'var(--ui-muted)',
+                              }}
+                            >
                               <Icon size={14} />
                               {STATUS_LABELS[comp.status] ?? comp.status}
                             </span>

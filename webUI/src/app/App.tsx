@@ -26,7 +26,9 @@ const RunsPage = lazy(() => import('./pages/RunsPage').then((module) => ({ defau
 const SimulationPage = lazy(() =>
   import('./pages/SimulationPage').then((module) => ({ default: module.SimulationPage })),
 );
-const ScenarioComparisonPage = lazy(() => import('./pages/ScenarioComparisonPage').then((module) => ({ default: module.ScenarioComparisonPage })));
+const ScenarioComparisonPage = lazy(() =>
+  import('./pages/ScenarioComparisonPage').then((module) => ({ default: module.ScenarioComparisonPage })),
+);
 const AboutPage = lazy(() => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const PipelinePage = lazy(() => import('./pages/PipelinePage').then((module) => ({ default: module.PipelinePage })));
 const QualityEvidencePage = lazy(() =>
@@ -239,8 +241,9 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
             <p className="ui-lead">
               {isPublic
                 ? 'Entrada pública orientada ao produto: propósito, limites e estado dos dados sem superfícies internas.'
-                : `Perfil ativo: ${user?.roles.join(', ') || 'sem funções'}. Autorização: ${capabilitiesLoading ? 'a validar no backend' : capabilityAuthority
-                }.`}
+                : `Perfil ativo: ${user?.roles.join(', ') || 'sem funções'}. Autorização: ${
+                    capabilitiesLoading ? 'a validar no backend' : capabilityAuthority
+                  }.`}
             </p>
           </div>
           <div className="ui-hero-actions">
