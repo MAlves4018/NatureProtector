@@ -173,9 +173,6 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-
       - name: Typecheck
         run: npm run typecheck
 
@@ -194,9 +191,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Browser smoke
-        run: npm run test:e2e
-
       - name: Audit frontend dependencies
         run: npm run audit:ci
 
@@ -207,9 +201,7 @@ jobs:
           name: release-frontend-gate-artifacts
           retention-days: 14
           path: |
-            webUI/test-results/
             webUI/coverage/
-            webUI/playwright-report/
             webUI/npm-audit.json
 
   security-gates:

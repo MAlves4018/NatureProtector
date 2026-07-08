@@ -201,9 +201,9 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
   const handleNavigate = useCallback(
     (target: UiNavTarget) => {
       setActivePage(target);
-      navigate(getRoutePrefix(location.pathname) + '/' + target);
+      navigate('/' + target);
     },
-    [location.pathname, navigate, setActivePage],
+    [navigate, setActivePage],
   );
 
   const mainId = 'ui-main';
@@ -239,9 +239,8 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
             <p className="ui-lead">
               {isPublic
                 ? 'Entrada pública orientada ao produto: propósito, limites e estado dos dados sem superfícies internas.'
-                : `Perfil ativo: ${user?.roles.join(', ') || 'sem funções'}. Autorização: ${
-                    capabilitiesLoading ? 'a validar no backend' : capabilityAuthority
-                  }.`}
+                : `Perfil ativo: ${user?.roles.join(', ') || 'sem funções'}. Autorização: ${capabilitiesLoading ? 'a validar no backend' : capabilityAuthority
+                }.`}
             </p>
           </div>
           <div className="ui-hero-actions">
@@ -311,16 +310,12 @@ function getRoutePage(pathname: string): UiNavTarget | undefined {
   return (segments[0] === 'ui-v2' ? segments[1] : segments[0]) as UiNavTarget | undefined;
 }
 
-function getRoutePrefix(pathname: string) {
-  return pathname.split('/').filter(Boolean)[0] === 'ui-v2' ? '/ui-v2' : '';
-}
-
 function UiDefaultRedirect() {
   const { pages, capabilities } = useUiCapabilities();
   const fallbackPage = defaultPageFor(capabilities);
   const targetPage = pages.some((page) => page.id === fallbackPage) ? fallbackPage : 'demo';
 
-  return <Navigate to={targetPage} replace />;
+  return <Navigate to={'/' + targetPage} replace />;
 }
 
 function UiRouteLoading() {
