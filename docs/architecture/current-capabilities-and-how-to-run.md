@@ -12,6 +12,8 @@ Serve para responder, de forma operacional, a estas perguntas:
 - o que devo esperar em cada passo;
 - onde posso verificar que o sistema está vivo.
 
+Para clone-to-run, a fonte principal é [docs/setup/local-baseline-setup.md](../setup/local-baseline-setup.md), com `scripts/np.ps1` como entrypoint recomendado. Este documento é uma referência técnica complementar para perceber componentes, verificações e caminhos manuais/diagnósticos.
+
 Para a explicação arquitetural detalhada, ver [architecture.md](architecture.md). Para o detalhe consolidado do papel do `PostgreSQL`, ver [postgresql-architecture.md](postgresql-architecture.md). Para um percurso de leitura do código e dos docs, ver [repository-exploration-guide.md](repository-exploration-guide.md).
 
 ## O que este documento cobre e o que não cobre
@@ -20,7 +22,8 @@ Este documento cobre:
 
 - baseline local com Docker Compose;
 - bootstrap do plano de controlo em `PostgreSQL`;
-- arranque de `Backoffice.Api`, `Prevention.Host` e `Simulator.Host`;
+- arranque de `Backoffice.Api`, `Prevention.Host` e webUI;
+- execução normal de simulações pelo Run Orchestrator, que lança `Simulator.Host` por run;
 - o que já é observável em `RabbitMQ`, `PostgreSQL`, `InfluxDB`, `Grafana` e na API;
 - percursos práticos para validar o fluxo end-to-end.
 
@@ -35,10 +38,10 @@ Este documento não cobre:
 
 | Capacidade | Estado | Ponto de entrada principal |
 | --- | --- | --- |
-| levantar baseline local com broker, base relacional, Influx e Grafana | `Implementado` | [`../../infra/scripts/up.ps1`](../../infra/scripts/up.ps1) |
+| levantar baseline local com broker, base relacional, Influx e Grafana | `Implementado` | [`../../scripts/np.ps1`](../../scripts/np.ps1) `up` |
 | materializar o plano de controlo em `PostgreSQL` | `Implementado` | [`../../scripts/postgres/bootstrap-control-plane.ps1`](../../scripts/postgres/bootstrap-control-plane.ps1) |
 | arrancar a API de consulta do plano de controlo e do estado operacional | `Implementado` | [`../../src/NatureProtector.Backoffice.Api/Program.cs`](../../src/NatureProtector.Backoffice.Api/Program.cs) |
-| arrancar o simulador em modo com plano de controlo | `Implementado` | [`../../src/NatureProtector.Simulator.Host/Program.cs`](../../src/NatureProtector.Simulator.Host/Program.cs) |
+| executar uma simulação pelo fluxo normal | `Implementado` | Run Orchestrator na webUI/API; `Simulator.Host` é lançado por run |
 | consumir eventos e materializar estado operacional durável | `Implementado` | [`../../src/NatureProtector.Prevention.Host/Program.cs`](../../src/NatureProtector.Prevention.Host/Program.cs) |
 | observar o broker e a topologia principal | `Implementado` | `RabbitMQ Management` |
 | observar schemas `control`, `pipeline` e `projection` | `Implementado` | `PostgreSQL` |
@@ -71,13 +74,17 @@ Pré-condição importante para os comandos `dotnet`:
 ### Comandos
 
 ```powershell
-.\scripts\workspace.ps1 up
-.\infra\scripts\smoke-test.ps1
+.\scripts\np.ps1 doctor
+.\scripts\np.ps1 init-local -Force
+.\scripts\np.ps1 up
+.\scripts\np.ps1 start
+.\scripts\np.ps1 health
 ```
 
 ### O que estes scripts fazem
 
-- [`../../scripts/workspace.ps1`](../../scripts/workspace.ps1) executa setup local, sobe o `docker compose`, executa bootstrap do control plane e valida a infraestrutura;
+- [`../../scripts/np.ps1`](../../scripts/np.ps1) é o entrypoint recomendado para clone-to-run local;
+- [`../../scripts/workspace.ps1`](../../scripts/workspace.ps1) permanece como compatibilidade para fluxos antigos;
 - [`../../infra/scripts/up.ps1`](../../infra/scripts/up.ps1) e o wrapper de baixo nivel de Docker Compose; exige `.env` existente e nao cria nem altera esse ficheiro;
 - [`../../scripts/influx/Ensure-InfluxDatabase.ps1`](../../scripts/influx/Ensure-InfluxDatabase.ps1) e idempotente e pode ser corrido manualmente para confirmar/criar `np_telemetry`;
 - [`../../infra/scripts/smoke-test.ps1`](../../infra/scripts/smoke-test.ps1) mostra o estado dos contentores.

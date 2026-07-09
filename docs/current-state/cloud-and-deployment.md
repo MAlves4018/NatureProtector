@@ -13,7 +13,9 @@ review_triggers: code, workflow, role, environment or evidence changes
 
 ## Intended topology
 
-The cloud implementation uses isolated GCP environments, Artifact Registry, GKE/Autopilot, Cloud SQL/PostgreSQL integration, RabbitMQ operators, KEDA, cert-manager, Cloud Deploy and GitHub Actions with Workload Identity Federation.
+The repository contains a cloud/deployment implementation and configuration for isolated GCP environments, Artifact Registry, GKE/Autopilot, Cloud SQL/PostgreSQL integration, RabbitMQ operators, KEDA, cert-manager, Cloud Deploy and GitHub Actions with Workload Identity Federation.
+
+Status: CONFIGURED_NOT_EXECUTED for static documentation claims unless paired with a captured cloud run, smoke result and evidence bundle from the owner's environment. The checked-in docs must not be read as proof of a deployed staging or production system by themselves.
 
 Staging must be proved before production. Production promotion is based on an immutable release/digest and explicit evidence, not a rebuild of an arbitrary branch.
 

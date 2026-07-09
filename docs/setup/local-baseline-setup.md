@@ -8,6 +8,30 @@ O objetivo é permitir que uma pessoa clone o repositório, crie a configuraçã
 
 ---
 
+## Percurso rápido
+
+Use este percurso para um clone local em `Development`, sem cloud e sem produção:
+
+```powershell
+.\scripts\np.ps1 doctor
+.\scripts\np.ps1 init-local -Force
+.\scripts\np.ps1 clean-local
+.\scripts\np.ps1 up
+.\scripts\np.ps1 start
+.\scripts\np.ps1 health
+```
+
+Depois abra a webUI local, entre com as credenciais de desenvolvimento e execute `scenario_b` no Run Orchestrator. O sucesso mínimo é: runtime saudável, run terminada, dados persistidos no PostgreSQL e ausência de um processo persistente `NatureProtector.Simulator.Host` após a run.
+
+Para parar:
+
+```powershell
+.\scripts\np.ps1 stop
+.\scripts\np.ps1 down
+```
+
+Este percurso valida a baseline local. Não valida cloud, staging, produção, carga, calibração científica, alerta oficial ou adoção institucional.
+
 ## 1. Fluxo suportado
 
 ```text
@@ -22,7 +46,7 @@ Run Orchestrator
 
 Responsabilidades principais:
 
-- `scripts/np.ps1` e o ponto de entrada canonico para clone-to-run local: `doctor`, `init-local`, `clean-local`, `up`, `start`, `health`, `stop` e `down`.
+- `scripts/np.ps1` é o ponto de entrada canonico para clone-to-run local: `doctor`, `init-local`, `clean-local`, `up`, `start`, `health`, `stop` e `down`.
 - `scripts/workspace.ps1` continua disponivel como compatibilidade para `setup`, `up`, `validate`, `down` e `reset`.
 - `infra/scripts/up.ps1` sobe a infraestrutura Docker: PostgreSQL, RabbitMQ, InfluxDB e Grafana. Este script exige `.env` existente e nao cria nem altera esse ficheiro.
 - `scripts/postgres/bootstrap-control-plane.ps1` inicializa/importa a baseline da base de dados local.
@@ -101,7 +125,7 @@ Verificar containers:
 docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 ```
 
-No fluxo canonico, `workspace.ps1 up` tambem executa o bootstrap do control plane e valida a infraestrutura. O passo seguinte fica como fallback manual para quem usar diretamente os scripts de baixo nivel.
+No fluxo canonico `np.ps1`, o bootstrap do control plane é tratado pelo arranque local documentado abaixo. O `workspace.ps1 up` permanece como compatibilidade para fluxos antigos que juntavam setup, infraestrutura, bootstrap e validação num único wrapper. O passo seguinte fica como fallback manual para quem usar diretamente os scripts de baixo nivel.
 
 ### Nota sobre `dotnet test` e infraestrutura local
 
@@ -117,7 +141,7 @@ Alguns testes, nomeadamente testes de API/integração, dependem dos serviços l
 dotnet test .\NatureProtector.sln --no-restore --nologo -v minimal -m:1
 ```
 
-Fluxo recomendado para validação técnica:
+Fluxo de compatibilidade para validação técnica antiga:
 
 ```powershell
 .\scripts\workspace.ps1 up
@@ -125,13 +149,13 @@ Fluxo recomendado para validação técnica:
 .\scripts\workspace.ps1 validate -Profile Full
 ```
 
-Se o runtime local já estiver ativo, ver primeiro a secção de troubleshooting sobre ficheiros bloqueados durante o build.
+Para clone-to-run novo, preferir primeiro `.\scripts\np.ps1 doctor`, `init-local`, `up`, `start` e `health`. Se o runtime local já estiver ativo, ver primeiro a secção de troubleshooting sobre ficheiros bloqueados durante o build.
 
 ---
 
 ## 5. Inicializar a base de dados local
 
-Se o fluxo `.\scripts\workspace.ps1 up` foi usado, este passo ja foi executado. Use o comando abaixo apenas no fluxo manual de baixo nivel ou depois de limpar volumes Docker.
+Se o fluxo de compatibilidade `.\scripts\workspace.ps1 up` foi usado, este passo ja foi executado. Use o comando abaixo apenas no fluxo manual de baixo nivel ou depois de limpar volumes Docker.
 
 Num clone novo ou depois de limpar volumes Docker, executar:
 
