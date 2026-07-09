@@ -1,9 +1,10 @@
+import { useEffect } from 'react';
 import { PlayCircle } from 'lucide-react';
 import { AreaSelector } from '../components/AreaSelector';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
-import { useUiSimulation } from '../state/SimulationContext';
+import { toggleDegradationProfile, useUiSimulation } from '../state/SimulationContext';
 import { useUiActivity } from '../state/ActivityContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,10 +26,12 @@ export function SimulationPage() {
 
   const navigate = useNavigate();
 
-  if (simulationResult?.run?.id) {
-    setSimulationResult(null);
-    navigate(`/runs`);
-  }
+  useEffect(() => {
+    if (simulationResult?.run?.id) {
+      setSimulationResult(null);
+      navigate('/runs');
+    }
+  }, [navigate, setSimulationResult, simulationResult?.run?.id]);
 
   return (
     <section className="ui-page">
@@ -84,20 +87,35 @@ export function SimulationPage() {
               onChange={(event) => setSimulationForm((form) => ({ ...form, seed: event.target.value }))}
             />
           </label>
-          <label className="ui-field">
-            <span>{copy('simulation.degradation')}</span>
-            <select
-              className="ui-select"
-              value={simulationForm.degradationProfile || 'none'}
-              onChange={(event) => setSimulationForm((form) => ({ ...form, degradationProfile: event.target.value }))}
-            >
-              {degradationProfiles.map((profile) => (
-                <option key={profile} value={profile}>
-                  {profile}
-                </option>
-              ))}
-            </select>
-          </label>
+          <fieldset className="ui-field">
+            <legend>{copy('simulation.degradation')}</legend>
+            {degradationProfiles.map((profile) => {
+              const checked =
+                profile === 'none'
+                  ? simulationForm.degradationProfiles.length === 0
+                  : simulationForm.degradationProfiles.includes(profile);
+
+              return (
+                <label key={profile} className="ui-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(event) =>
+                      setSimulationForm((form) => ({
+                        ...form,
+                        degradationProfiles: toggleDegradationProfile(
+                          form.degradationProfiles,
+                          profile,
+                          event.target.checked,
+                        ),
+                      }))
+                    }
+                  />
+                  <span>{profile}</span>
+                </label>
+              );
+            })}
+          </fieldset>
           <label className="ui-field">
             <span>{copy('simulation.runLabel')}</span>
             <input

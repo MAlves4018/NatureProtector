@@ -877,8 +877,8 @@ documents:
   kind: file
   authority: supporting
 - path: docfx/api/toc.yml
-  status: CURRENT
-  kind: structured
+  status: GENERATED
+  kind: build-output
   authority: supporting
 - path: docfx/docfx.json
   status: GENERATED

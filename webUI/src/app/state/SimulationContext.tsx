@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '../services/api';
 import { useUiActivity } from './ActivityContext';
 import { useUiCapabilities } from './CapabilityContext';
@@ -7,13 +7,14 @@ import { useUiLocale } from './LocaleContext';
 import type { RuntimeRunStartRequest, RuntimeRunStartResponse } from '../types';
 import type { UiMessageKey } from '../i18n';
 import { buildUiSimulationReview, type UiSimulationReviewModel } from '../coreContext';
+import { DEGRADATION_PROFILE_OPTIONS } from '../content/technicalLabels';
 
 export interface SimulationFormState {
   sensorCount: number;
   numberOfCycles: number;
   intervalSeconds: number;
   seed: string;
-  degradationProfile: string;
+  degradationProfiles: string[];
   runLabel: string;
   waitForCompletion: boolean;
   collectEvidence: boolean;
@@ -26,7 +27,7 @@ export const initialSimulationForm: SimulationFormState = {
   numberOfCycles: 3,
   intervalSeconds: 60,
   seed: '42',
-  degradationProfile: '',
+  degradationProfiles: [],
   runLabel: 'ui-structural',
   waitForCompletion: false,
   collectEvidence: false,
@@ -34,13 +35,7 @@ export const initialSimulationForm: SimulationFormState = {
   timeoutSeconds: 60,
 };
 
-const DEGRADATION_PROFILE_OPTIONS = [
-  'none',
-  'sensor-failure-random',
-  'sensor-failure-clustered',
-  'communication-loss',
-  'power-degradation',
-] as const;
+export const SIMULATION_FORM_STORAGE_KEY = 'natureprotector.ui.simulationForm.v1';
 
 interface UiSimulationContextValue {
   simulationForm: SimulationFormState;
@@ -64,7 +59,7 @@ export function UiSimulationProvider({ children }: { children: ReactNode }) {
   const { selectedScenarioCode, setSelectedRunId } = useUiActivity();
   const { copy } = useUiLocale();
 
-  const [simulationForm, setSimulationForm] = useState<SimulationFormState>(initialSimulationForm);
+  const [simulationForm, setSimulationForm] = useState<SimulationFormState>(() => hydrateSimulationForm());
   const [simulationResult, setSimulationResult] = useState<RuntimeRunStartResponse | null>(null);
   const [simulationSubmitting, setSimulationSubmitting] = useState(false);
   const [simulationError, setSimulationError] = useState<Error | null>(null);
@@ -80,6 +75,10 @@ export function UiSimulationProvider({ children }: { children: ReactNode }) {
     () => buildUiSimulationReview(simulationRequest, simulationResult, 'pt-PT'),
     [simulationRequest, simulationResult],
   );
+
+  useEffect(() => {
+    persistSimulationForm(simulationForm);
+  }, [simulationForm]);
 
   const submitSimulation = useCallback(async () => {
     const blocker = simulationBlocker(copy, canExecuteSimulation, resolvedAreaCode, selectedScenarioCode);
@@ -149,13 +148,14 @@ export function useUiSimulation() {
   return context;
 }
 
-function buildSimulationRequest(
+export function buildSimulationRequest(
   areaCode: string,
   scenarioCode: string,
   form: SimulationFormState,
 ): RuntimeRunStartRequest {
   const seed = form.seed.trim();
-  const degradationProfile = form.degradationProfile.trim();
+  const degradationProfiles = normalizeDegradationProfiles(form.degradationProfiles);
+  const legacyDegradationProfile = degradationProfiles[0] ?? null;
   const runLabel = form.runLabel.trim();
 
   return {
@@ -165,14 +165,122 @@ function buildSimulationRequest(
     numberOfCycles: form.numberOfCycles,
     intervalSeconds: form.intervalSeconds,
     seed: seed ? Number(seed) : null,
-    degradationProfile: degradationProfile && degradationProfile !== 'none' ? degradationProfile : null,
+    degradationProfile: legacyDegradationProfile,
     collectEvidence: form.collectEvidence,
     waitForCompletion: form.waitForCompletion,
     timeoutSeconds: form.timeoutSeconds,
     allowParallelRun: form.allowParallelRun,
     runLabel: runLabel || null,
-    degradationProfiles: degradationProfile && degradationProfile !== 'none' ? [degradationProfile] : null,
+    degradationProfiles: degradationProfiles.length > 0 ? degradationProfiles : null,
   };
+}
+
+export function toggleDegradationProfile(
+  currentProfiles: readonly string[],
+  profile: string,
+  checked: boolean,
+): string[] {
+  if (!DEGRADATION_PROFILE_OPTIONS.includes(profile as (typeof DEGRADATION_PROFILE_OPTIONS)[number])) {
+    return normalizeDegradationProfiles(currentProfiles);
+  }
+
+  if (profile === 'none') {
+    return [];
+  }
+
+  const nextProfiles = checked
+    ? [...currentProfiles, profile]
+    : currentProfiles.filter((currentProfile) => currentProfile !== profile);
+
+  return normalizeDegradationProfiles(nextProfiles);
+}
+
+export function normalizeDegradationProfiles(value: unknown): string[] {
+  const values = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
+  const canonicalProfiles = new Set(DEGRADATION_PROFILE_OPTIONS);
+  const normalized = values
+    .filter((profile): profile is string => typeof profile === 'string')
+    .map((profile) => profile.trim())
+    .filter((profile) => profile && canonicalProfiles.has(profile as (typeof DEGRADATION_PROFILE_OPTIONS)[number]));
+
+  return [...new Set(normalized)].filter((profile) => profile !== 'none');
+}
+
+export function hydrateSimulationForm(storage: Pick<Storage, 'getItem'> | null = getSimulationFormStorage()) {
+  if (!storage) {
+    return initialSimulationForm;
+  }
+
+  try {
+    const rawValue = storage.getItem(SIMULATION_FORM_STORAGE_KEY);
+    if (!rawValue) {
+      return initialSimulationForm;
+    }
+
+    const value = JSON.parse(rawValue) as Partial<SimulationFormState> & { degradationProfile?: unknown };
+    const persistedProfiles =
+      'degradationProfiles' in value ? value.degradationProfiles : (value.degradationProfile ?? []);
+
+    return {
+      sensorCount: positiveNumberOrDefault(value.sensorCount, initialSimulationForm.sensorCount),
+      numberOfCycles: positiveNumberOrDefault(value.numberOfCycles, initialSimulationForm.numberOfCycles),
+      intervalSeconds: positiveNumberOrDefault(value.intervalSeconds, initialSimulationForm.intervalSeconds),
+      seed: stringOrDefault(value.seed, initialSimulationForm.seed),
+      degradationProfiles: normalizeDegradationProfiles(persistedProfiles),
+      runLabel: stringOrDefault(value.runLabel, initialSimulationForm.runLabel),
+      waitForCompletion: booleanOrDefault(value.waitForCompletion, initialSimulationForm.waitForCompletion),
+      collectEvidence: booleanOrDefault(value.collectEvidence, initialSimulationForm.collectEvidence),
+      allowParallelRun: booleanOrDefault(value.allowParallelRun, initialSimulationForm.allowParallelRun),
+      timeoutSeconds: positiveNumberOrDefault(value.timeoutSeconds, initialSimulationForm.timeoutSeconds),
+    };
+  } catch {
+    return initialSimulationForm;
+  }
+}
+
+export function persistSimulationForm(
+  form: SimulationFormState,
+  storage: Pick<Storage, 'setItem' | 'removeItem'> | null = getSimulationFormStorage(),
+) {
+  if (!storage) {
+    return;
+  }
+
+  try {
+    storage.setItem(
+      SIMULATION_FORM_STORAGE_KEY,
+      JSON.stringify({
+        sensorCount: form.sensorCount,
+        numberOfCycles: form.numberOfCycles,
+        intervalSeconds: form.intervalSeconds,
+        seed: form.seed,
+        degradationProfiles: normalizeDegradationProfiles(form.degradationProfiles),
+        runLabel: form.runLabel,
+        waitForCompletion: form.waitForCompletion,
+        collectEvidence: form.collectEvidence,
+        allowParallelRun: form.allowParallelRun,
+        timeoutSeconds: form.timeoutSeconds,
+      }),
+    );
+  } catch {
+    storage.removeItem(SIMULATION_FORM_STORAGE_KEY);
+  }
+}
+
+function getSimulationFormStorage() {
+  return typeof sessionStorage === 'undefined' ? null : sessionStorage;
+}
+
+function positiveNumberOrDefault(value: unknown, fallback: number) {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function stringOrDefault(value: unknown, fallback: string) {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function booleanOrDefault(value: unknown, fallback: boolean) {
+  return typeof value === 'boolean' ? value : fallback;
 }
 
 function simulationBlocker(

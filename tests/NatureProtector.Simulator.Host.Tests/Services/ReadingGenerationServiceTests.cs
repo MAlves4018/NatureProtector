@@ -275,6 +275,25 @@ public sealed class ReadingGenerationServiceTests
     }
 
     [Fact]
+    public void LocalObservation_UsesLogicalTimestampAsIngestTime_ForSyntheticSimulatorEvents()
+    {
+        var sensor = CreateSensor(SensorType.Temperature, "Sensor-T");
+        var context = CreateContext(sensors: [sensor], failureRate: 0.0);
+        var eventTime = context.StartTimestamp.AddSeconds(30);
+
+        var envelope = _service.GenerateReading(
+            context,
+            simulationRunId: Guid.NewGuid(),
+            sensor: sensor,
+            cycleIndex: 1,
+            eventTime: eventTime,
+            random: new Random(123));
+
+        Assert.Equal(eventTime, envelope.EventTime);
+        Assert.Equal(eventTime, envelope.IngestTime);
+    }
+
+    [Fact]
     public void LocalObservation_AsMissing_CannotBeConvertedToPayload()
     {
         var sensor = CreateSensor(SensorType.Wind, "Sensor-W");

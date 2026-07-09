@@ -10,7 +10,7 @@ O .NET SDK está fixado por `global.json` na feature band `9.0.306` com `rollFor
 
 | Área | Comando | Notas |
 | --- | --- | --- |
-| Setup do workspace | `.\scripts\workspace.ps1 setup` | Entrada canónica de setup local. Não executa comandos Git e não cria nem edita `.env`. |
+| Setup do workspace | `.\scripts\workspace.ps1 setup` | Entrada de compatibilidade para setup de engenharia. Para clone-to-run local, a entrada canónica é `.\scripts\np.ps1` conforme `docs/setup/local-baseline-setup.md`. Não executa comandos Git e não cria nem edita `.env`. |
 | Validação rápida do workspace | `.\scripts\workspace.ps1 validate -Profile Quick` | Executa a gate local estreita de engenharia: build Release sem restore e check de toolchain frontend. |
 | Validação de segurança do workspace | `.\scripts\workspace.ps1 validate -Profile Security` | Executa auditoria NuGet com artifact, política npm audit, canary scan sem Git e testes focados JWT/autorização/evidence traversal. Escreve em `artifacts/validation/workspace-profiles/security/`. |
 | Smoke de performance do workspace | `.\scripts\workspace.ps1 validate -Profile PerformanceSmoke` | Executa o wrapper bounded de BenchmarkDotNet em B0 para `SerializationBenchmarks.SerializeEnvelopeBatch`, com timeout e summaries em `artifacts/validation/workspace-profiles/performance-smoke/`. Não é benchmark sistémico nem SLO. |
@@ -48,11 +48,11 @@ O .NET SDK está fixado por `global.json` na feature band `9.0.306` com `rollFor
 A validação com Docker é local/manual por desenho e não é exigida pelo workflow CI por defeito.
 
 ```powershell
-.\scripts\workspace.ps1 up
+.\scripts\np.ps1 up
 .\scripts\workspace.ps1 validate -Profile Infrastructure
 ```
 
-`workspace.ps1 up` encapsula setup local, arranque Docker Compose, bootstrap do control plane e validação de infraestrutura. Exige `.env` existente; o script não cria, copia nem edita `.env` ou `.env.example`.
+`np.ps1 up` é o caminho recomendado para subir a infraestrutura local no fluxo clone-to-run. `workspace.ps1 up` permanece disponível como compatibilidade de engenharia para fluxos antigos que juntavam setup local, Docker Compose, bootstrap do control plane e validação de infraestrutura. Exige `.env` existente; o script não cria, copia nem edita `.env` ou `.env.example`.
 
 ## Âmbito CI
 

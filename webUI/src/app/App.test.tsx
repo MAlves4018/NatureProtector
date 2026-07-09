@@ -191,7 +191,10 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: /simulação/i }));
 
     expect(await screen.findByRole('heading', { name: /^Simulação$/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /^Degradação$/i })).toHaveDisplayValue('none');
+    expect(screen.getByRole('group', { name: /^Degradação$/i })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'none' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'missing-readings' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'noise' })).toBeInTheDocument();
     expect(screen.queryByText(/Sem capability de execucao/i)).not.toBeInTheDocument();
   });
 

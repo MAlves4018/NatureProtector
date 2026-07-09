@@ -18,6 +18,8 @@ Esta pasta concentra a documentação de arquitetura do projeto, com foco princi
   - referência do modo configurável de escrita em `InfluxDB`, incluindo `NoOp`, tolerância a falhas e batch por evento;
 - [postgresql-architecture.md](postgresql-architecture.md)
   - referência consolidada do papel do `PostgreSQL` na arquitetura atual, unificando a leitura das fases 1 a 9;
+- [diagrams/current/README.md](diagrams/current/README.md)
+  - ponto de navegação canónico do portefólio de diagramas atual declarado no manifest; os assets canónicos foram restaurados e ficam `RESTORED_NOT_VISUALLY_VALIDATED` até smoke visual/revisão documental;
 - [diagrams/](diagrams/)
   - ficheiros fonte em Draw.io, incluindo diagramas já importados para revisão e novos diagramas preparados para evolução;
 - [images/](images/)
@@ -28,7 +30,8 @@ Esta pasta concentra a documentação de arquitetura do projeto, com foco princi
 - `architecture.md` é a referência principal para leitura técnica, apresentação e apoio ao relatório.
 - `implementation.md` é a referência principal para perceber a implementação atual sem partir diretamente para leitura dispersa do código.
 - `postgresql-architecture.md` é a referência principal para perceber `control`, `pipeline` e `projection` sem ter de ler as fases históricas uma a uma.
-- Cada imagem em `images/` tem um ficheiro Draw.io homónimo em `diagrams/`.
+- O portefólio canónico de diagramas é [diagrams/current/README.md](diagrams/current/README.md). A presença dos assets restaurados deve ser confirmada no filesystem antes de referenciar uma figura em relatório ou material externo, e a sua leitura visual continua separada da validação técnica/científica.
+- Cada imagem em `images/` deve ter um ficheiro Draw.io homónimo em `diagrams/`, mas a presença real dos assets tem de ser confirmada no filesystem antes de referenciar a figura em relatório ou material externo.
 - O ficheiro [diagrams/00-legacy-current-repo-architecture.drawio.xml](diagrams/00-legacy-current-repo-architecture.drawio.xml) foi preservado apenas como artefacto legado e não deve ser tratado como diagrama final.
 
 ## Nota de trabalho
