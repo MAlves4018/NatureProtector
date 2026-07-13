@@ -2,6 +2,8 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using NatureProtector.Backoffice.Api.Configuration;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Shared.Configuration;
@@ -15,17 +17,20 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
     private readonly IDbContextFactory<NatureProtectorControlDbContext> _dbContextFactory;
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly RabbitMqOptions _rabbitMqOptions;
     private readonly RuntimeEvidenceCatalog _evidenceCatalog;
 
     public RuntimeObservabilityService(
         IDbContextFactory<NatureProtectorControlDbContext> dbContextFactory,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
+        IOptions<RabbitMqOptions> rabbitMqOptions,
         IWebHostEnvironment environment)
     {
         _dbContextFactory = dbContextFactory;
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
+        _rabbitMqOptions = rabbitMqOptions.Value;
         _evidenceCatalog = new RuntimeEvidenceCatalog(ResolveRepositoryRoot(environment.ContentRootPath));
     }
 
@@ -85,15 +90,16 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
     public async Task<RabbitMqMetricsResponse> GetRabbitMqMetricsAsync(CancellationToken cancellationToken)
     {
         var observedAt = DateTimeOffset.UtcNow;
-        var options = GetRabbitMqOptions();
+        var options = _rabbitMqOptions;
         var queueDefinitions = options.GetQueueDefinitions().ToArray();
 
         try
         {
-            var managementUri = GetRabbitMqManagementUri(options);
-            var client = _httpClientFactory.CreateClient(nameof(RuntimeObservabilityService));
+            var managementUri = RabbitMqManagementHttpClient.BuildQueuesUri(options);
+            var client = _httpClientFactory.CreateClient(RabbitMqManagementHttpClient.ClientName);
             using var request = new HttpRequestMessage(HttpMethod.Get, managementUri);
-            var auth = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{options.UserName}:{options.Password}"));
+            var auth = Convert.ToBase64String(Encoding.UTF8.GetBytes(
+                $"{options.GetEffectiveManagementUserName()}:{options.GetEffectiveManagementPassword()}"));
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", auth);
 
             using var response = await client.SendAsync(request, cancellationToken);
@@ -332,7 +338,7 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
     {
         try
         {
-            var client = _httpClientFactory.CreateClient(nameof(RuntimeObservabilityService));
+            var client = _httpClientFactory.CreateClient();
             using var response = await client.GetAsync(uri, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
@@ -505,16 +511,6 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
         }
 
         return limitations.Count == 0 ? null : string.Join(" ", limitations);
-    }
-
-    private RabbitMqOptions GetRabbitMqOptions()
-        => _configuration.GetSection(RabbitMqOptions.SectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();
-
-    private Uri GetRabbitMqManagementUri(RabbitMqOptions options)
-    {
-        var managementPort = _configuration.GetValue<int?>("RabbitMq:ManagementPort") ?? 15672;
-        var hostName = string.IsNullOrWhiteSpace(options.HostName) ? "localhost" : options.HostName;
-        return new Uri($"http://{hostName}:{managementPort}/api/queues");
     }
 
     private Uri GetConfiguredUri(string key, string fallback)

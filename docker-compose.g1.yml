@@ -74,6 +74,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is required for backoffice-api}
       RabbitMq__HostName: rabbitmq
       RabbitMq__Port: 5672
+      RabbitMq__ManagementScheme: http
+      RabbitMq__ManagementPort: 15672
+      RabbitMq__ManagementAllowInsecureHttp: "true"
+      RabbitMq__ManagementTimeoutSeconds: 5
       RabbitMq__UserName: ${RABBITMQ_DEFAULT_USER}
       RabbitMq__Password: ${RABBITMQ_DEFAULT_PASS}
       RabbitMq__ObservabilityRawEnabled: "false"

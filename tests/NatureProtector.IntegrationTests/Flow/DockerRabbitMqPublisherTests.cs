@@ -132,9 +132,11 @@ public sealed class DockerRabbitMqPublisherTests
         channel.QueueDelete(options.IngestionReadingsQueueName, ifUnused: false, ifEmpty: false);
         channel.QueueDelete(options.ObservabilityRawQueueName, ifUnused: false, ifEmpty: false);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var ex = await Assert.ThrowsAsync<RabbitMqUnroutableMessageException>(() =>
             publisher.PublishAsync(CreateEnvelope(), CancellationToken.None));
 
+        Assert.Equal(RabbitMqPublishDeliveryCertainty.NotDeliveredToAnyQueue, ex.DeliveryCertainty);
+        Assert.False(ex.PossiblePartialDelivery);
         Assert.Contains("unroutable", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("RoutingKey", ex.Message, StringComparison.Ordinal);
 

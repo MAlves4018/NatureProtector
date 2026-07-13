@@ -83,6 +83,7 @@ public sealed class RabbitMqReadingPublisher(
                 channel,
                 _options.ExchangeName,
                 RoutingKeys.SensorReadingProduced,
+                _options.IngestionReadingsQueueName,
                 properties,
                 body,
                 TimeSpan.FromSeconds(_options.PublisherConfirmTimeoutSeconds),

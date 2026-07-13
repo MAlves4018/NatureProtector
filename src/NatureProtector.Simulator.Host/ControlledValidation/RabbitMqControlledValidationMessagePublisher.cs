@@ -50,6 +50,7 @@ public sealed class RabbitMqControlledValidationMessagePublisher(
                 channel,
                 _options.ExchangeName,
                 RoutingKeys.SensorReadingProduced,
+                _options.IngestionReadingsQueueName,
                 properties,
                 message.Body,
                 TimeSpan.FromSeconds(_options.PublisherConfirmTimeoutSeconds),

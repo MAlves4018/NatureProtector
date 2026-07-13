@@ -4,6 +4,8 @@ using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
+using NatureProtector.Backoffice.Api.Configuration;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 using NatureProtector.Backoffice.Api.Tests.TestInfrastructure;
@@ -59,10 +61,10 @@ public sealed class RuntimeObservabilityServiceTests
                 Assert.Null(auxiliary.MessagesReady);
                 Assert.Equal("Queue is disabled by configuration.", auxiliary.Limitation);
             });
-        Assert.Equal(new Uri("http://rabbitmq-amqp.local:15692/api/queues"), handler.RequestUri);
+        Assert.Equal(new Uri("https://rabbitmq-management.local:15692/api/queues"), handler.RequestUri);
         Assert.Equal("Basic", handler.Authorization?.Scheme);
         Assert.Equal(
-            Convert.ToBase64String(Encoding.UTF8.GetBytes("np-app:np-app-pass")),
+            Convert.ToBase64String(Encoding.UTF8.GetBytes("np-monitor:np-monitor-pass")),
             handler.Authorization?.Parameter);
     }
 
@@ -326,24 +328,30 @@ public sealed class RuntimeObservabilityServiceTests
         bool rawEnabled = false)
     {
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                [$"{RabbitMqOptions.SectionName}:HostName"] = "rabbitmq-amqp.local",
-                [$"{RabbitMqOptions.SectionName}:ManagementPort"] = "15692",
-                [$"{RabbitMqOptions.SectionName}:UserName"] = "np-app",
-                [$"{RabbitMqOptions.SectionName}:Password"] = "np-app-pass",
-                [$"{RabbitMqOptions.SectionName}:IngestionReadingsQueueName"] =
-                    ingestionQueueName ?? NatureProtectorRabbitMqTopology.IngestionReadingsQueue,
-                [$"{RabbitMqOptions.SectionName}:ObservabilityRawQueueName"] =
-                    rawQueueName ?? NatureProtectorRabbitMqTopology.ObservabilityRawQueue,
-                [$"{RabbitMqOptions.SectionName}:ObservabilityRawEnabled"] = rawEnabled.ToString()
-            })
+            .AddInMemoryCollection(new Dictionary<string, string?>())
             .Build();
+        var rabbitMqOptions = new RabbitMqOptions
+        {
+            HostName = "rabbitmq-amqp.local",
+            UserName = "np-app",
+            Password = "np-app-pass",
+            ManagementScheme = "https",
+            ManagementHost = "rabbitmq-management.local",
+            ManagementPort = 15692,
+            ManagementUserName = "np-monitor",
+            ManagementPassword = "np-monitor-pass",
+            IngestionReadingsQueueName =
+                ingestionQueueName ?? NatureProtectorRabbitMqTopology.IngestionReadingsQueue,
+            ObservabilityRawQueueName =
+                rawQueueName ?? NatureProtectorRabbitMqTopology.ObservabilityRawQueue,
+            ObservabilityRawEnabled = rawEnabled
+        };
 
         return new RuntimeObservabilityService(
             db.Factory,
             configuration,
             new SingleClientFactory(client),
+            Options.Create(rabbitMqOptions),
             new TestWebHostEnvironment());
     }
 

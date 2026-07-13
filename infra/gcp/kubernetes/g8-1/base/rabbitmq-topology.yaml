@@ -25,15 +25,15 @@ spec:
 apiVersion: rabbitmq.com/v1beta1
 kind: Policy
 metadata:
-  name: natureprotector-quorum-policy
+  name: natureprotector-primary-work-queue-policy
 spec:
-  name: natureprotector-quorum
-  pattern: '^np\.'
+  name: natureprotector-primary-work-queue
+  pattern: '^np\.ingestion\.readings$'
   applyTo: queues
   definition:
     overflow: reject-publish
     max-length-bytes: 1073741824
     delivery-limit: 8
-  priority: 10
+  priority: 20
   rabbitmqClusterReference:
     connectionSecret: {name: natureprotector-rabbitmq-default-user}

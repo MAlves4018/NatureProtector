@@ -106,8 +106,13 @@ builder.Services.AddSingleton<ICloudEnvironmentCatalogService, CloudEnvironmentC
 
 if (backofficeOptions.ControlPlaneEnabled)
 {
+    // RabbitMQ Management is an observability surface, not a readiness
+    // dependency. It nevertheless requires a dedicated, validated HTTP client
+    // so cloud HTTPS/private-CA configuration is not silently downgraded.
+    builder.Services.AddRabbitMqManagementHttpClient(builder.Configuration);
+
     // Quando o control plane está ativo, a API expõe dados reais persistidos em
-    // PostgreSQL.
+    // PostgreSQL e só fica ready quando essa dependência obrigatória responde.
     builder.Services.AddNatureProtectorControlPlanePostgres(builder.Environment.ContentRootPath);
     healthChecks.AddCheck<ControlPlaneDatabaseHealthCheck>(
         "control-plane-postgres",
@@ -203,6 +208,8 @@ app.UseAuthorization();
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
+    // Liveness representa apenas o processo HTTP; dependências externas não
+    // devem provocar reinícios contínuos do container.
     Predicate = _ => false
 });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions

@@ -129,7 +129,10 @@ public sealed class DockerRabbitMqOperationalAuditTests
             var publishFailure = await Record.ExceptionAsync(() =>
                 publisher.PublishAsync(nackedEnvelope, CancellationToken.None));
 
-            Assert.NotNull(publishFailure);
+            var ambiguousFailure = Assert.IsType<RabbitMqPublishOutcomeUnknownException>(publishFailure);
+            Assert.True(ambiguousFailure.PossiblePartialDelivery);
+            Assert.Equal(nackedEnvelope.EventId.ToString(), ambiguousFailure.MessageId);
+            Assert.Equal(options.IngestionReadingsQueueName, ambiguousFailure.PrimaryQueueName);
 
             var partiallyAcceptedIngestionCopy = await WaitForMessageAsync(
                 inspectionChannel,
@@ -149,7 +152,7 @@ public sealed class DockerRabbitMqOperationalAuditTests
 
             Console.WriteLine(
                 "PHASE1_PARTIAL_NACK_REPRODUCED " +
-                $"exception={publishFailure.GetType().FullName} " +
+                $"exception={ambiguousFailure.GetType().FullName} " +
                 $"nacked_event={nackedEnvelope.EventId} " +
                 "ingestion_accepted=true raw_accepted=false");
         }

@@ -74,6 +74,7 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: new NoOpSimulationRunStore(),
             readingPublisher: publisher,
+            processExitCode: new NoOpSimulatorProcessExitCode(),
             applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
@@ -127,6 +128,7 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: new NoOpSimulationRunStore(),
             readingPublisher: publisher,
+            processExitCode: new NoOpSimulatorProcessExitCode(),
             applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
@@ -155,6 +157,7 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: new NoOpSimulationRunStore(),
             readingPublisher: new CollectingReadingPublisher(),
+            processExitCode: new NoOpSimulatorProcessExitCode(),
             applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
@@ -268,7 +271,8 @@ public sealed class SimulationRunnerTests
         options.NumberOfCycles = 1;
         var runStore = new RecordingSimulationRunStore();
         var publisher = new ThrowingReadingPublisher();
-        var runner = CreateRunner(options, publisher, runStore);
+        var processExitCode = new RecordingSimulatorProcessExitCode();
+        var runner = CreateRunner(options, publisher, runStore, processExitCode);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None));
@@ -283,6 +287,7 @@ public sealed class SimulationRunnerTests
             },
             runStore.Upserts.Select(x => x.Status));
         Assert.NotNull(runStore.Upserts[2].EndedAt);
+        Assert.True(processExitCode.FailureMarked);
     }
 
     [Fact]
@@ -300,6 +305,7 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: runStore,
             readingPublisher: new CollectingReadingPublisher(),
+            processExitCode: new NoOpSimulatorProcessExitCode(),
             applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
@@ -315,6 +321,7 @@ public sealed class SimulationRunnerTests
         options.IntervalSeconds = 1;
 
         var applicationLifetime = new RecordingApplicationLifetime();
+        var processExitCode = new RecordingSimulatorProcessExitCode();
 
         var runner = new SimulationRunner(
             logger: NullLogger<SimulationRunner>.Instance,
@@ -324,17 +331,20 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: new NoOpSimulationRunStore(),
             readingPublisher: new CollectingReadingPublisher(),
+            processExitCode: processExitCode,
             applicationLifetime: applicationLifetime);
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
 
         Assert.True(applicationLifetime.StopApplicationCalled);
+        Assert.False(processExitCode.FailureMarked);
     }
 
     private static SimulationRunner CreateRunner(
         NatureProtector.Simulator.Host.Configuration.SimulatorOptions options,
         IReadingPublisher publisher,
-        ISimulationRunStore? simulationRunStore = null)
+        ISimulationRunStore? simulationRunStore = null,
+        ISimulatorProcessExitCode? processExitCode = null)
     {
         return new SimulationRunner(
             logger: NullLogger<SimulationRunner>.Instance,
@@ -344,6 +354,7 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: simulationRunStore ?? new NoOpSimulationRunStore(),
             readingPublisher: publisher,
+            processExitCode: processExitCode ?? new NoOpSimulatorProcessExitCode(),
             applicationLifetime: new NoOpApplicationLifetime());
     }
 
@@ -493,6 +504,23 @@ public sealed class SimulationRunnerTests
         }
     }
     
+    private sealed class NoOpSimulatorProcessExitCode : ISimulatorProcessExitCode
+    {
+        public void MarkFailure()
+        {
+        }
+    }
+
+    private sealed class RecordingSimulatorProcessExitCode : ISimulatorProcessExitCode
+    {
+        public bool FailureMarked { get; private set; }
+
+        public void MarkFailure()
+        {
+            FailureMarked = true;
+        }
+    }
+
     private sealed class NoOpApplicationLifetime : IHostApplicationLifetime
     {
         public CancellationToken ApplicationStarted => CancellationToken.None;

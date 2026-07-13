@@ -36,6 +36,7 @@ public sealed class SimulationRunner(
     ReadingGenerationService readingGenerationService,
     ISimulationRunStore simulationRunStore,
     IReadingPublisher readingPublisher,
+    ISimulatorProcessExitCode processExitCode,
     IHostApplicationLifetime applicationLifetime) : BackgroundService
 {
     private readonly SimulatorOptions _options = simulatorOptions.Value;
@@ -206,8 +207,19 @@ public sealed class SimulationRunner(
             logger.LogInformation(
                 "Simulation runner cancellation requested. Execution is stopping gracefully.");
         }
-        catch
+        catch (Exception exception)
         {
+            processExitCode.MarkFailure();
+
+            logger.LogError(
+                exception,
+                "Simulation run failed | SimulationRunId={SimulationRunId} | " +
+                "FailureType={FailureType} | PossiblePartialDelivery={PossiblePartialDelivery}",
+                run.Id,
+                exception.GetType().FullName,
+                exception is RabbitMqPublishException publishException &&
+                publishException.PossiblePartialDelivery);
+
             if (run.Status is SimulationRunStatus.Running)
             {
                 run.Fail(DateTimeOffset.UtcNow);

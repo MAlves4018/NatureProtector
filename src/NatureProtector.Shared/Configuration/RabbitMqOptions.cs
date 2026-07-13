@@ -14,6 +14,30 @@ public sealed class RabbitMqOptions
     public bool TlsEnabled { get; init; }
     public string? TlsServerName { get; init; }
     public string? TlsCertificateAuthorityPath { get; init; }
+
+    // RabbitMQ Management API is a separate HTTP surface from AMQP. These
+    // options intentionally allow separate host and least-privilege credentials,
+    // while preserving controlled fallback to the AMQP values for existing
+    // deployments during remediation.
+    public string ManagementScheme { get; init; } = "http";
+    public string? ManagementHost { get; init; }
+    public int ManagementPort { get; init; } = 15672;
+    public string? ManagementUserName { get; init; }
+    public string? ManagementPassword { get; init; }
+    public string? ManagementCertificateAuthorityPath { get; init; }
+    public bool ManagementCheckCertificateRevocation { get; init; }
+    public bool ManagementAllowInsecureHttp { get; init; }
+    public int ManagementTimeoutSeconds { get; init; } = 5;
+
+    public string GetEffectiveManagementHost()
+        => string.IsNullOrWhiteSpace(ManagementHost) ? HostName : ManagementHost;
+
+    public string GetEffectiveManagementUserName()
+        => string.IsNullOrWhiteSpace(ManagementUserName) ? UserName : ManagementUserName;
+
+    public string GetEffectiveManagementPassword()
+        => string.IsNullOrWhiteSpace(ManagementPassword) ? Password : ManagementPassword;
+
     public string ExchangeName { get; init; } = "np.events";
     public int PublisherConfirmTimeoutSeconds { get; init; } = 10;
     public string IngestionReadingsQueueName { get; init; } =

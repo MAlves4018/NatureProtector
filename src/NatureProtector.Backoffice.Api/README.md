@@ -100,6 +100,19 @@ Quando `BackofficeApi:ControlPlaneEnabled = true`, a API:
 
 Quando `BackofficeApi:ControlPlaneEnabled = false`, a API continua a arrancar, mas devolve indisponibilidade controlada para estes endpoints.
 
+### RabbitMQ Management
+
+A observabilidade RabbitMQ usa um `HttpClient` dedicado e opções tipadas:
+
+- `RabbitMq:ManagementScheme` (`http` ou `https`);
+- `RabbitMq:ManagementHost`, com fallback controlado para `RabbitMq:HostName`;
+- `RabbitMq:ManagementPort`;
+- `RabbitMq:ManagementUserName` e `ManagementPassword`, com fallback temporário para as credenciais AMQP;
+- `RabbitMq:ManagementCertificateAuthorityPath`;
+- `RabbitMq:ManagementTimeoutSeconds`.
+
+Em HTTPS, a CA privada configurada é carregada sem desativar validação de hostname ou cadeia. HTTP exige `RabbitMq:ManagementAllowInsecureHttp=true` e destina-se apenas a desenvolvimento/Compose isolado. Redirects automáticos estão desativados para impedir downgrade silencioso. Falha da Management API degrada apenas as métricas de observabilidade e não altera `/health/ready`.
+
 ## O que este módulo já fecha
 
 - consulta da configuração ativa;

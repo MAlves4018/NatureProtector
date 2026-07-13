@@ -59,6 +59,7 @@ spec:
             - {name: RabbitMq__HostName, value: natureprotector-rabbitmq}
             - {name: RabbitMq__Port, value: "5671"}
             - {name: RabbitMq__TlsEnabled, value: "true"}
+            - {name: RabbitMq__ObservabilityRawEnabled, value: "false"}
             - name: RabbitMq__TlsServerName
               value: missing-rabbitmq-server-name # from-param: ${rabbitmq_tls_server_name}
             - {name: RabbitMq__TlsCertificateAuthorityPath, value: /var/run/secrets/rabbitmq/ca.crt}
