@@ -17,6 +17,19 @@ public sealed class OperationCatalogTests
     }
 
     [Theory]
+    [InlineData("playwright-fixture")]
+    [InlineData("playwright-full-stack")]
+    public void QualitySuiteWithoutWorkflowMapping_RemainsBlocked(string operationId)
+    {
+        var operation = Assert.IsType<OperationDefinition>(_catalog.Find(operationId));
+
+        Assert.Equal("blocked-workflow-suite-not-mapped", operation.Availability, ignoreCase: true);
+        Assert.Equal("NOT_PROVED", operation.EvidenceLevel, ignoreCase: true);
+        Assert.NotNull(operation.Limitation);
+        Assert.Contains("does not map", operation.Limitation!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
     [InlineData("production-plan")]
     [InlineData("production-rollback")]
     [InlineData("cloud-destroy-plan")]
