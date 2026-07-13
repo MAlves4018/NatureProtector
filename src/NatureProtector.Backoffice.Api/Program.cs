@@ -17,6 +17,7 @@ using NatureProtector.Backoffice.Api.OpenApi;
 using NatureProtector.Backoffice.Api.Operations.Authorization;
 using NatureProtector.Backoffice.Api.Operations.Configuration;
 using NatureProtector.Backoffice.Api.Operations.Services;
+using NatureProtector.Backoffice.Api.RuntimeOrchestration;
 using NatureProtector.Backoffice.Api.UserPlane.Services;
 using NatureProtector.Infrastructure.Postgres.DependencyInjection;
 using NatureProtector.Infrastructure.Postgres.Persistence;
@@ -47,6 +48,7 @@ builder.Services.AddNatureProtectorOpenTelemetry(
 builder.Services.AddControllers();
 var healthChecks = builder.Services.AddHealthChecks();
 builder.Services.AddHttpClient();
+builder.Services.AddNatureProtectorRuntimeOrchestration(builder.Configuration, builder.Environment);
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer<BackofficeOpenApiSecurityDocumentTransformer>();
