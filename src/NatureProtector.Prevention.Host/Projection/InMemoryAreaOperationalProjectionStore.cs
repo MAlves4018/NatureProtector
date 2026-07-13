@@ -53,7 +53,8 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         AreaRiskSnapshot snapshot,
         int assessmentCount,
         CancellationToken cancellationToken,
-        Guid? simulationRunId = null)
+        Guid? simulationRunId = null,
+        int? cycleIndex = null)
     {
         await _gate.WaitAsync(cancellationToken);
 

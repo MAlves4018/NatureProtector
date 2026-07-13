@@ -65,6 +65,10 @@ public sealed class NatureProtectorControlDbContext : DbContext
     public DbSet<CellOperationalStateRecord> CellOperationalStates => Set<CellOperationalStateRecord>();
     public DbSet<AreaOperationalStateRecord> AreaOperationalStates => Set<AreaOperationalStateRecord>();
     public DbSet<AlertStateRecord> AlertStates => Set<AlertStateRecord>();
+    public DbSet<CycleSettlementRecord> CycleSettlements => Set<CycleSettlementRecord>();
+    public DbSet<CycleObservationRecord> CycleObservations => Set<CycleObservationRecord>();
+    public DbSet<CellCycleSnapshotRecord> CellCycleSnapshots => Set<CellCycleSnapshotRecord>();
+    public DbSet<AreaCycleSnapshotRecord> AreaCycleSnapshots => Set<AreaCycleSnapshotRecord>();
 
     /// <summary>
     /// Aplica conversores globais para garantir persistência consistente em UTC.
@@ -110,6 +114,10 @@ public sealed class NatureProtectorControlDbContext : DbContext
         ConfigureCellOperationalStates(modelBuilder);
         ConfigureAreaOperationalStates(modelBuilder);
         ConfigureAlertStates(modelBuilder);
+        ConfigureCycleSettlements(modelBuilder);
+        ConfigureCycleObservations(modelBuilder);
+        ConfigureCellCycleSnapshots(modelBuilder);
+        ConfigureAreaCycleSnapshots(modelBuilder);
     }
 
     private static void ConfigureConfigurationVersions(ModelBuilder modelBuilder)
@@ -701,5 +709,48 @@ public sealed class NatureProtectorControlDbContext : DbContext
             .WithMany(parent => parent.Alerts)
             .HasForeignKey(entity => entity.AreaOperationalStateId)
             .OnDelete(DeleteBehavior.Cascade);
+    }
+
+    private static void ConfigureCycleSettlements(ModelBuilder modelBuilder)
+    {
+        var builder = modelBuilder.Entity<CycleSettlementRecord>();
+        builder.ToTable("cycle_settlement", PostgresSchemaNames.Projection);
+        builder.HasKey(entity => entity.Id);
+        builder.Property(entity => entity.Status).HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.FinalizationReason).HasMaxLength(50);
+        builder.HasIndex(entity => new { entity.SimulationRunId, entity.CycleIndex }).IsUnique();
+        builder.HasIndex(entity => new { entity.AreaId, entity.Status });
+    }
+
+    private static void ConfigureCycleObservations(ModelBuilder modelBuilder)
+    {
+        var builder = modelBuilder.Entity<CycleObservationRecord>();
+        builder.ToTable("cycle_observation", PostgresSchemaNames.Projection);
+        builder.HasKey(entity => entity.Id);
+        builder.Property(entity => entity.MetricOrigin).HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.Outcome).HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.RiskLevel).HasMaxLength(50);
+        builder.HasIndex(entity => new { entity.SimulationRunId, entity.CycleIndex, entity.SensorId }).IsUnique();
+        builder.HasIndex(entity => entity.EventId).IsUnique();
+    }
+
+    private static void ConfigureCellCycleSnapshots(ModelBuilder modelBuilder)
+    {
+        var builder = modelBuilder.Entity<CellCycleSnapshotRecord>();
+        builder.ToTable("cell_cycle_snapshot", PostgresSchemaNames.Projection);
+        builder.HasKey(entity => entity.Id);
+        builder.Property(entity => entity.AggregateRiskLevel).HasMaxLength(50).IsRequired();
+        builder.HasIndex(entity => new { entity.SimulationRunId, entity.CycleIndex, entity.GridCellId }).IsUnique();
+    }
+
+    private static void ConfigureAreaCycleSnapshots(ModelBuilder modelBuilder)
+    {
+        var builder = modelBuilder.Entity<AreaCycleSnapshotRecord>();
+        builder.ToTable("area_cycle_snapshot", PostgresSchemaNames.Projection);
+        builder.HasKey(entity => entity.Id);
+        builder.Property(entity => entity.AggregateRiskLevel).HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.AlertOutcome).HasMaxLength(50).IsRequired();
+        builder.HasIndex(entity => new { entity.SimulationRunId, entity.CycleIndex, entity.AreaId }).IsUnique();
+        builder.HasIndex(entity => new { entity.AreaId, entity.CycleIndex });
     }
 }

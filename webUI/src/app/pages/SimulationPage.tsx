@@ -148,7 +148,10 @@ export function SimulationPage() {
             <h3>{copy('simulation.review')}</h3>
             <StatusBadge
               label={runtimeOperation?.state ?? simulationReview.resultStatus}
-              state={executionStatusState(runtimeOperation?.state ?? simulationReview.resultStatus, copy('simulation.idle'))}
+              state={executionStatusState(
+                runtimeOperation?.state ?? simulationReview.resultStatus,
+                copy('simulation.idle'),
+              )}
             />
           </div>
           <p>{runtimeOperation?.failureDetail ?? simulationReview.resultMessage}</p>

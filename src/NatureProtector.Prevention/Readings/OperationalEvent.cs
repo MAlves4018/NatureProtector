@@ -29,7 +29,8 @@ public sealed record OperationalEvent(
     IReadOnlyList<string> QualityFlags,
     IReadOnlyList<ClassifierResult> ClassifierResults,
     int? CycleIndex = null,
-    string? GridCellId = null)
+    string? GridCellId = null,
+    MetricOrigin Origin = MetricOrigin.Observed)
 {
     private static readonly IReadOnlyList<string> EmptyQualityFlags = Array.Empty<string>();
     private static readonly IReadOnlyList<ClassifierResult> EmptyClassifierResults = Array.Empty<ClassifierResult>();
@@ -62,6 +63,7 @@ public sealed record OperationalEvent(
             QualityFlags: qualityFlags ?? EmptyQualityFlags,
             ClassifierResults: classifierResults ?? EmptyClassifierResults,
             CycleIndex: envelope.Payload.CycleIndex,
-            GridCellId: envelope.Payload.GridCellId);
+            GridCellId: envelope.Payload.GridCellId,
+            Origin: envelope.Payload.Origin);
     }
 }

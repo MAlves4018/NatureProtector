@@ -19,7 +19,8 @@ public sealed record NormalizedReading(
     DateTimeOffset EventTime,
     DateTimeOffset? IngestTime,
     int? CycleIndex = null,
-    string? GridCellId = null)
+    string? GridCellId = null,
+    MetricOrigin Origin = MetricOrigin.Observed)
 {
     private static readonly IReadOnlyList<string> EmptyQualityFlags = Array.Empty<string>();
     private static readonly IReadOnlyList<ClassifierResult> EmptyClassifierResults = Array.Empty<ClassifierResult>();
@@ -54,7 +55,8 @@ public sealed record NormalizedReading(
             EventTime: operationalEvent.EventTime,
             IngestTime: operationalEvent.IngestTime,
             CycleIndex: operationalEvent.CycleIndex,
-            GridCellId: operationalEvent.GridCellId)
+            GridCellId: operationalEvent.GridCellId,
+            Origin: operationalEvent.Origin)
         {
             QualityFlags = operationalEvent.QualityFlags ?? EmptyQualityFlags,
             ClassifierResults = operationalEvent.ClassifierResults ?? EmptyClassifierResults

@@ -205,7 +205,10 @@ public sealed partial class PostgresControlPlaneService
         var retry = Count(InboxEventStatus.RetryPending);
         var processed = Count(InboxEventStatus.Processed);
         var quarantined = Count(InboxEventStatus.Quarantined);
-        var settled = run.Status == SimulationRunStatus.Completed && accepted >= expected &&
+        var finalizedCycles = await dbContext.CycleSettlements.AsNoTracking()
+            .CountAsync(entity => entity.SimulationRunId == runId && entity.FinalizedAt != null, cancellationToken);
+        var temporalSettled = finalizedCycles == run.NumberOfCycles;
+        var settled = run.Status == SimulationRunStatus.Completed && (accepted >= expected || temporalSettled) &&
             pending == 0 && processing == 0 && retry == 0 && processed + quarantined == accepted;
         return new RuntimeOperationAccountingResponse(expected, accepted, pending, processing, retry, processed, quarantined, settled);
     }

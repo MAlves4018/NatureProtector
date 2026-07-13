@@ -76,6 +76,10 @@ if (preventionHostOptions.PipelinePersistenceEnabled)
     builder.Services.AddSingleton<IReadingSemanticValidator, ReadingSemanticValidator>();
     builder.Services.AddSingleton<IReadingEventInbox, PostgresReadingEventInbox>();
     builder.Services.AddSingleton<IAreaOperationalProjectionStore, PostgresAreaOperationalProjectionStore>();
+    builder.Services.AddSingleton<PostgresCycleProjectionCoordinator>();
+    builder.Services.AddSingleton<ICycleProjectionCoordinator>(services =>
+        services.GetRequiredService<PostgresCycleProjectionCoordinator>());
+    builder.Services.AddHostedService<CycleSettlementWorker>();
     builder.Services.AddSingleton<IAcceptedReadingRepository, PostgresAcceptedReadingRepository>();
     builder.Services.AddSingleton<IDailyCellStateRepository, PostgresDailyCellStateRepository>();
     builder.Services.AddSingleton<IRiskAssessmentRepository, PostgresRiskAssessmentRepository>();
