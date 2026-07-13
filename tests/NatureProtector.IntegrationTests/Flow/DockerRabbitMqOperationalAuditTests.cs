@@ -25,7 +25,9 @@ public sealed class DockerRabbitMqOperationalAuditTests
         }
 
         var exchangeName = $"np.audit.raw-growth.{Guid.NewGuid():N}";
-        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(exchangeName);
+        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(
+            exchangeName,
+            observabilityRawEnabled: true);
         await using var virtualHost = await TemporaryRabbitMqVirtualHost.CreateAsync(
             baseOptions,
             CancellationToken.None);
@@ -84,7 +86,9 @@ public sealed class DockerRabbitMqOperationalAuditTests
 
         var exchangeName = $"np.audit.partial-nack.{Guid.NewGuid():N}";
         var policyName = $"np-audit-raw-reject-{Guid.NewGuid():N}";
-        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(exchangeName);
+        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(
+            exchangeName,
+            observabilityRawEnabled: true);
         await using var virtualHost = await TemporaryRabbitMqVirtualHost.CreateAsync(
             baseOptions,
             CancellationToken.None);
@@ -168,7 +172,9 @@ public sealed class DockerRabbitMqOperationalAuditTests
         }
 
         var exchangeName = $"np.audit.ingestion-only.{Guid.NewGuid():N}";
-        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(exchangeName);
+        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(
+            exchangeName,
+            observabilityRawEnabled: true);
         await using var virtualHost = await TemporaryRabbitMqVirtualHost.CreateAsync(
             baseOptions,
             CancellationToken.None);
@@ -217,7 +223,9 @@ public sealed class DockerRabbitMqOperationalAuditTests
         }
 
         var exchangeName = $"np.audit.raw-only.{Guid.NewGuid():N}";
-        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(exchangeName);
+        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(
+            exchangeName,
+            observabilityRawEnabled: true);
         await using var virtualHost = await TemporaryRabbitMqVirtualHost.CreateAsync(
             baseOptions,
             CancellationToken.None);

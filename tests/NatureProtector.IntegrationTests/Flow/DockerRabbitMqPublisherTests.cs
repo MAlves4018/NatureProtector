@@ -20,7 +20,9 @@ public sealed class DockerRabbitMqPublisherTests
     {
         var exchangeName = $"np.it.{Guid.NewGuid():N}";
         var envelope = CreateEnvelope();
-        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(exchangeName);
+        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(
+            exchangeName,
+            observabilityRawEnabled: true);
         var defaultVhostFactory = new ConnectionFactory
         {
             HostName = baseOptions.HostName,
@@ -69,10 +71,50 @@ public sealed class DockerRabbitMqPublisherTests
 
     [Fact]
     [Trait("Category", "DockerIntegration")]
+    public async Task RabbitMqReadingPublisher_DoesNotCreateRawQueue_WhenDisabled_OnRealRabbitMq()
+    {
+        var exchangeName = $"np.it.{Guid.NewGuid():N}";
+        var envelope = CreateEnvelope();
+        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(exchangeName);
+        await using var virtualHost = await TemporaryRabbitMqVirtualHost.CreateAsync(
+            baseOptions,
+            CancellationToken.None);
+        var options = virtualHost.CreateOptions(exchangeName);
+        var factory = virtualHost.CreateConnectionFactory();
+
+        using var connection = factory.CreateConnection();
+        using var channel = connection.CreateModel();
+        using var publisher = new RabbitMqReadingPublisher(
+            NullLogger<RabbitMqReadingPublisher>.Instance,
+            Options.Create(options));
+
+        await publisher.PublishAsync(envelope, CancellationToken.None);
+
+        var ingestionCopy = await WaitForMessageAsync(
+            channel,
+            options.IngestionReadingsQueueName,
+            envelope.EventId);
+        channel.BasicAck(ingestionCopy.DeliveryTag, multiple: false);
+
+        using var rawProbeChannel = connection.CreateModel();
+        var missingRawQueue = Assert.Throws<OperationInterruptedException>(() =>
+            rawProbeChannel.QueueDeclarePassive(options.ObservabilityRawQueueName));
+
+        Assert.NotNull(missingRawQueue.ShutdownReason);
+        Assert.Equal((ushort)404, missingRawQueue.ShutdownReason.ReplyCode);
+
+        await virtualHost.DeleteAsync(CancellationToken.None);
+        Assert.False(await virtualHost.ExistsAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    [Trait("Category", "DockerIntegration")]
     public async Task RabbitMqReadingPublisher_Throws_WhenMandatoryMessageIsUnroutable_OnRealRabbitMq()
     {
         var exchangeName = $"np.it.{Guid.NewGuid():N}";
-        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(exchangeName);
+        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(
+            exchangeName,
+            observabilityRawEnabled: true);
         await using var virtualHost = await TemporaryRabbitMqVirtualHost.CreateAsync(baseOptions, CancellationToken.None);
         var options = virtualHost.CreateOptions(exchangeName);
         var factory = virtualHost.CreateConnectionFactory();
@@ -105,7 +147,9 @@ public sealed class DockerRabbitMqPublisherTests
     public async Task RabbitMqReadingPublisher_RecreatesClosedChannelAndConnection_OnRealRabbitMq()
     {
         var exchangeName = $"np.it.{Guid.NewGuid():N}";
-        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(exchangeName);
+        var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(
+            exchangeName,
+            observabilityRawEnabled: true);
         await using var virtualHost = await TemporaryRabbitMqVirtualHost.CreateAsync(baseOptions, CancellationToken.None);
         var options = virtualHost.CreateOptions(exchangeName);
         var factory = virtualHost.CreateConnectionFactory();

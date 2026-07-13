@@ -22,21 +22,60 @@ public sealed class RabbitMqOptionsTests
         Assert.Equal(NatureProtectorRabbitMqTopology.ExchangeName, options.ExchangeName);
         Assert.Equal(10, options.PublisherConfirmTimeoutSeconds);
         Assert.Equal(NatureProtectorRabbitMqTopology.IngestionReadingsQueue, options.IngestionReadingsQueueName);
+        Assert.False(options.ObservabilityRawEnabled);
         Assert.Equal(NatureProtectorRabbitMqTopology.ObservabilityRawQueue, options.ObservabilityRawQueueName);
-        Assert.Equal(
-            NatureProtectorRabbitMqTopology.Bindings,
-            options.GetBindings());
+        Assert.Collection(
+            options.GetQueueNames(),
+            queueName => Assert.Equal(
+                NatureProtectorRabbitMqTopology.IngestionReadingsQueue,
+                queueName));
+        Assert.Collection(
+            options.GetBindings(),
+            binding =>
+            {
+                Assert.Equal(
+                    NatureProtectorRabbitMqTopology.IngestionReadingsQueue,
+                    binding.QueueName);
+                Assert.Equal(RoutingKeys.SensorReadingProduced, binding.RoutingKey);
+            });
     }
 
     [Fact]
-    public void GetBindings_UsesConfiguredQueueNames_ForIsolatedTestTopology()
+    public void GetBindings_UsesConfiguredPrimaryQueueName_WhenRawIsDisabled()
     {
         var options = new RabbitMqOptions
         {
             IngestionReadingsQueueName = "np.it.ingestion",
+            ObservabilityRawEnabled = false,
             ObservabilityRawQueueName = "np.it.raw"
         };
 
+        Assert.Collection(
+            options.GetQueueNames(),
+            queueName => Assert.Equal("np.it.ingestion", queueName));
+        Assert.Collection(
+            options.GetBindings(),
+            binding =>
+            {
+                Assert.Equal("np.it.ingestion", binding.QueueName);
+                Assert.Equal(RoutingKeys.SensorReadingProduced, binding.RoutingKey);
+            });
+    }
+
+    [Fact]
+    public void GetBindings_IncludesConfiguredRawQueue_WhenExplicitlyEnabled()
+    {
+        var options = new RabbitMqOptions
+        {
+            IngestionReadingsQueueName = "np.it.ingestion",
+            ObservabilityRawEnabled = true,
+            ObservabilityRawQueueName = "np.it.raw"
+        };
+
+        Assert.Collection(
+            options.GetQueueNames(),
+            queueName => Assert.Equal("np.it.ingestion", queueName),
+            queueName => Assert.Equal("np.it.raw", queueName));
         Assert.Collection(
             options.GetBindings(),
             binding =>

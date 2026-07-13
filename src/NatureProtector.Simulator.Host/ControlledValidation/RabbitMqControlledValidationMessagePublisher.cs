@@ -138,17 +138,14 @@ public sealed class RabbitMqControlledValidationMessagePublisher(
             durable: true,
             autoDelete: false);
 
-        channel.QueueDeclare(
-            queue: _options.IngestionReadingsQueueName,
-            durable: true,
-            exclusive: false,
-            autoDelete: false);
-
-        channel.QueueDeclare(
-            queue: _options.ObservabilityRawQueueName,
-            durable: true,
-            exclusive: false,
-            autoDelete: false);
+        foreach (var queueName in _options.GetQueueNames())
+        {
+            channel.QueueDeclare(
+                queue: queueName,
+                durable: true,
+                exclusive: false,
+                autoDelete: false);
+        }
 
         foreach (var (queueName, routingKey) in _options.GetBindings())
         {

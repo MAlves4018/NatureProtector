@@ -255,17 +255,14 @@ internal static bool IsTransientRabbitMqConnectionFailure(Exception exception)
             durable: true,
             autoDelete: false);
 
-        channel.QueueDeclare(
-            queue: options.IngestionReadingsQueueName,
-            durable: true,
-            exclusive: false,
-            autoDelete: false);
-
-        channel.QueueDeclare(
-            queue: options.ObservabilityRawQueueName,
-            durable: true,
-            exclusive: false,
-            autoDelete: false);
+        foreach (var queueName in options.GetQueueNames())
+        {
+            channel.QueueDeclare(
+                queue: queueName,
+                durable: true,
+                exclusive: false,
+                autoDelete: false);
+        }
 
         foreach (var (queueName, routingKey) in options.GetBindings())
         {

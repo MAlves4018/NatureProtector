@@ -21,7 +21,8 @@ internal static class DockerIntegrationSettings
         string exchangeName,
         string virtualHost = "/",
         string? ingestionReadingsQueueName = null,
-        string? observabilityRawQueueName = null)
+        string? observabilityRawQueueName = null,
+        bool observabilityRawEnabled = false)
     {
         return new RabbitMqOptions
         {
@@ -32,6 +33,7 @@ internal static class DockerIntegrationSettings
             VirtualHost = virtualHost,
             ExchangeName = exchangeName,
             IngestionReadingsQueueName = ingestionReadingsQueueName ?? $"np.it.ingestion.{Guid.NewGuid():N}",
+            ObservabilityRawEnabled = observabilityRawEnabled,
             ObservabilityRawQueueName = observabilityRawQueueName ?? $"np.it.raw.{Guid.NewGuid():N}"
         };
     }

@@ -419,6 +419,7 @@ public sealed partial class DockerPublishedRuntimeProcessTests
             ["RabbitMq__VirtualHost"] = rabbitMq.VirtualHost,
             ["RabbitMq__ExchangeName"] = rabbitMq.ExchangeName,
             ["RabbitMq__IngestionReadingsQueueName"] = rabbitMq.IngestionReadingsQueueName,
+            ["RabbitMq__ObservabilityRawEnabled"] = rabbitMq.ObservabilityRawEnabled.ToString(),
             ["RabbitMq__ObservabilityRawQueueName"] = rabbitMq.ObservabilityRawQueueName,
             ["PreventionHost__ConsumerPrefetchCount"] = "1",
             ["PreventionHost__MaxProcessingAttempts"] = "3",

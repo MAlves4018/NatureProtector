@@ -18,15 +18,22 @@ public sealed class RabbitMqOptions
     public int PublisherConfirmTimeoutSeconds { get; init; } = 10;
     public string IngestionReadingsQueueName { get; init; } =
         NatureProtectorRabbitMqTopology.IngestionReadingsQueue;
+    public bool ObservabilityRawEnabled { get; init; }
     public string ObservabilityRawQueueName { get; init; } =
         NatureProtectorRabbitMqTopology.ObservabilityRawQueue;
 
-    public IReadOnlyCollection<(string QueueName, string RoutingKey)> GetBindings()
+    public IReadOnlyCollection<string> GetQueueNames()
     {
-        return
-        [
-            (IngestionReadingsQueueName, RoutingKeys.SensorReadingProduced),
-            (ObservabilityRawQueueName, RoutingKeys.SensorReadingProduced)
-        ];
+        if (!ObservabilityRawEnabled)
+        {
+            return [IngestionReadingsQueueName];
+        }
+
+        return [IngestionReadingsQueueName, ObservabilityRawQueueName];
     }
+
+    public IReadOnlyCollection<(string QueueName, string RoutingKey)> GetBindings()
+        => GetQueueNames()
+            .Select(queueName => (queueName, RoutingKeys.SensorReadingProduced))
+            .ToArray();
 }

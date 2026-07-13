@@ -74,13 +74,16 @@ internal sealed class TemporaryRabbitMqVirtualHost : IAsyncDisposable
             "or NP_TEST_RABBITMQ_CONTAINER for DockerIntegration tests.");
     }
 
-    public RabbitMqOptions CreateOptions(string exchangeName)
+    public RabbitMqOptions CreateOptions(
+        string exchangeName,
+        bool? observabilityRawEnabled = null)
     {
         return DockerIntegrationSettings.CreateRabbitMqOptions(
             exchangeName,
             Name,
             $"np.it.ingestion.{Guid.NewGuid():N}",
-            $"np.it.raw.{Guid.NewGuid():N}");
+            $"np.it.raw.{Guid.NewGuid():N}",
+            observabilityRawEnabled ?? _baseOptions.ObservabilityRawEnabled);
     }
 
     public ConnectionFactory CreateConnectionFactory()
