@@ -298,7 +298,7 @@ function Get-Authorities {
     )
 }
 
-$LocalCommands = @("help", "doctor", "init-local", "clean-local", "reset-local", "up", "start", "health", "stop", "down")
+$LocalCommands = @("help", "doctor", "init-local", "prepare-local", "clean-local", "reset-local", "up", "start", "health", "stop", "down")
 
 function Test-LocalFlag {
     param([string]$Name)
@@ -357,6 +357,7 @@ NatureProtector local command
 Usage:
   .\scripts\np.ps1 doctor
   .\scripts\np.ps1 init-local [-Force]
+  .\scripts\np.ps1 prepare-local [-ForceFrontendInstall]
   .\scripts\np.ps1 clean-local
   .\scripts\np.ps1 up
   .\scripts\np.ps1 start [-ForceRestart] [-OpenBrowser|-NoBrowser]
@@ -377,6 +378,13 @@ Compatibility:
             $args = @()
             if (Test-LocalFlag "-Force") { $args += "-Force" }
             return Invoke-LocalPowerShellScript 'scripts\setup\New-LocalDotEnv.ps1' $args
+        }
+        "prepare-local" {
+            $args = @()
+            if (Test-LocalFlag "-ForceFrontendInstall") { $args += "-ForceFrontendInstall" }
+            if (Test-LocalFlag "-SkipDotnetRestore") { $args += "-SkipDotnetRestore" }
+            if (Test-LocalFlag "-SkipFrontendInstall") { $args += "-SkipFrontendInstall" }
+            return Invoke-LocalPowerShellScript 'scripts\setup\Initialize-LocalWorkspace.ps1' $args
         }
         "clean-local" {
             return Invoke-LocalPowerShellScript 'scripts\docker\Clear-NatureProtectorDocker.ps1'
@@ -445,6 +453,7 @@ try {
         "validate" {
             $commands = @(
                 @{ name="configuration-authorities"; cmd="python"; args=@("tools/config-audit/validate.py", "--repo", ".") },
+                @{ name="local-clone-to-run-contract"; cmd="python"; args=@("tests/local/test_local_clone_to_run_contract.py") },
                 @{ name="script-tooling-authority"; cmd="python"; args=@("tools/script-audit/validate.py", "--repo", ".") },
                 @{ name="quality-guardrail-policy"; cmd="python"; args=@("tools/quality-gates/validate.py", "--repo", ".") },
                 @{ name="control-plane-decomposition"; cmd="python"; args=@("tools/control-plane-audit/validate.py", "--repo", ".") },
