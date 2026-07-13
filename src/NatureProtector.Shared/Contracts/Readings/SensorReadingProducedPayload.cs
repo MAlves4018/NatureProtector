@@ -9,5 +9,7 @@ public sealed record SensorReadingProducedPayload(
     double Value,
     double Latitude,
     double Longitude,
-    SensorOperationalState OperationalState
+    SensorOperationalState OperationalState,
+    int? CycleIndex = null,
+    string? GridCellId = null
     );
