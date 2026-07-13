@@ -48,6 +48,17 @@ Este documento não cobre:
 | observar telemetria em `InfluxDB` | `Implementado`, quando `InfluxDb:Enabled=true` e existe token válido | `Prevention.Host` + `InfluxDB` |
 | usar Grafana como observabilidade de apoio | `Parcial` | baseline local |
 
+### Contratos de apresentação da webUI
+
+- para utilizadores autenticados, as capabilities da resposta da API são a autoridade; enquanto essa resposta está
+  pendente ou indisponível, a webUI mantém apenas capabilities públicas e bloqueia rotas protegidas;
+- as rotas históricas `/qa-tests` e `/db-queries` não executam testes nem queries no browser e apresentam uma
+  superfície indisponível;
+- estados `Queued`, `Running`, desconhecidos ou simulados não são apresentados como conclusão comprovada;
+- a execução de simulações pela webUI fica desativada no bundle de produção;
+- detalhes de run são fail-closed quando os identificadores DataScope divergem, e respostas tardias de uma área ou run
+  anterior não podem substituir o contexto selecionado.
+
 ## Pré-condições mínimas
 
 Antes de arrancar o sistema, assume estas condições.
