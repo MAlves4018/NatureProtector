@@ -101,6 +101,20 @@ internal sealed class TemporaryPostgresDatabase : IAsyncDisposable
         await DropDatabaseIfExistsAsync(_adminConnectionString, DatabaseName);
     }
 
+    public async Task RecreateAsync(CancellationToken cancellationToken = default)
+    {
+        await using (var connection = new NpgsqlConnection(_adminConnectionString))
+        {
+            await connection.OpenAsync(cancellationToken);
+            await using var createCommand = connection.CreateCommand();
+            createCommand.CommandText = $"""CREATE DATABASE "{DatabaseName}";""";
+            await createCommand.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using var dbContext = CreateDbContext();
+        await dbContext.Database.MigrateAsync(cancellationToken);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await DropDatabaseIfExistsAsync(_adminConnectionString, DatabaseName);

@@ -12,7 +12,7 @@ using System.Net.Sockets;
 namespace NatureProtector.IntegrationTests.Flow;
 
 [Collection(DockerIntegrationCollection.Name)]
-public sealed class DockerPublishedRuntimeProcessTests
+public sealed partial class DockerPublishedRuntimeProcessTests
 {
     private const string AreaCode = "process-smoke-area";
     private const string ScenarioCode = "process_smoke_scenario";

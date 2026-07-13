@@ -95,6 +95,94 @@ internal sealed class TemporaryRabbitMqVirtualHost : IAsyncDisposable
         };
     }
 
+
+    public async Task SetQueuePolicyAsync(
+        string policyName,
+        string queueName,
+        IReadOnlyDictionary<string, object> definition,
+        int priority = 100,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(policyName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(queueName);
+        ArgumentNullException.ThrowIfNull(definition);
+
+        var pattern = $"^{System.Text.RegularExpressions.Regex.Escape(queueName)}$";
+
+        if (_managementUrl is not null)
+        {
+            using var client = CreateManagementClient(_baseOptions, _managementUrl);
+            var body = JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                ["pattern"] = pattern,
+                ["definition"] = definition,
+                ["priority"] = priority,
+                ["apply-to"] = "queues"
+            });
+            using var response = await client.PutAsync(
+                $"api/policies/{Uri.EscapeDataString(Name)}/{Uri.EscapeDataString(policyName)}",
+                new StringContent(body, Encoding.UTF8, "application/json"),
+                cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return;
+        }
+
+        if (_dockerContainerName is null)
+        {
+            throw new InvalidOperationException(
+                $"Cannot set RabbitMQ policy '{policyName}' because no management API or Docker container is available.");
+        }
+
+        await RunRabbitMqCtlAsync(
+            _dockerContainerName,
+            cancellationToken,
+            "set_policy",
+            "-p",
+            Name,
+            "--apply-to",
+            "queues",
+            "--priority",
+            priority.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            policyName,
+            pattern,
+            JsonSerializer.Serialize(definition));
+    }
+
+    public async Task ClearPolicyAsync(
+        string policyName,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(policyName);
+
+        if (_managementUrl is not null)
+        {
+            using var client = CreateManagementClient(_baseOptions, _managementUrl);
+            using var response = await client.DeleteAsync(
+                $"api/policies/{Uri.EscapeDataString(Name)}/{Uri.EscapeDataString(policyName)}",
+                cancellationToken);
+            if (response.StatusCode is HttpStatusCode.NotFound)
+            {
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            return;
+        }
+
+        if (_dockerContainerName is null)
+        {
+            return;
+        }
+
+        await RunRabbitMqCtlAsync(
+            _dockerContainerName,
+            cancellationToken,
+            "clear_policy",
+            "-p",
+            Name,
+            policyName);
+    }
+
     public async Task<bool> ExistsAsync(CancellationToken cancellationToken)
     {
         if (_managementUrl is not null)

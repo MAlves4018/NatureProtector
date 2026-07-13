@@ -34,7 +34,7 @@ Este projeto guarda os contratos e utilitários partilhados que hoje permitem ao
 - Routing key de produção:
   - `simulation.reading.produced`
 
-Neste momento, ambas as filas são ligadas à mesma routing key de produção.
+A fila principal é sempre ligada à routing key de produção. A fila raw só é declarada e ligada quando `RabbitMq__ObservabilityRawEnabled=true`; o default é `false`. Recursos duráveis criados por revisões antigas continuam a exigir migração explícita no broker. O contrato e o rollout estão em [`../../docs/contracts/rabbitmq-runtime-topology-and-delivery-contract.md`](../../docs/contracts/rabbitmq-runtime-topology-and-delivery-contract.md).
 
 ## Porque este módulo é importante
 
