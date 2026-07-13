@@ -34,10 +34,10 @@
     "react-dom": "18.3.1",
     "react-router-dom": "^7.17.0",
     "recharts": "2.15.2",
-    "tailwind-merge": "3.2.0"
+    "tailwind-merge": "3.6.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
+    "@biomejs/biome": "^2.5.3",
     "@tailwindcss/vite": "^4.3.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -46,7 +46,7 @@
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "4.7.0",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.10",
     "axe-core": "^4.12.1",
     "jsdom": "^26.1.0",
     "tailwindcss": "^4.3.1",
