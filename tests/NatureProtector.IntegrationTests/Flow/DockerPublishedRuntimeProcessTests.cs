@@ -715,20 +715,28 @@ public sealed partial class DockerPublishedRuntimeProcessTests
             var completedRuns = await dbContext.SimulationRuns.CountAsync(entity =>
                 entity.AreaId == areaId &&
                 entity.Status == SimulationRunStatus.Completed);
+            var runId = await dbContext.SimulationRuns
+                .Where(entity => entity.AreaId == areaId && entity.Status == SimulationRunStatus.Completed)
+                .Select(entity => entity.Id)
+                .SingleOrDefaultAsync();
             var inboxEvents = await dbContext.InboxEvents.ToListAsync();
             var processedInbox = inboxEvents.Count(entity => entity.Status == InboxEventStatus.Processed);
             var attempts = await dbContext.ProcessingAttempts.ToListAsync();
             var acceptedReadings = await dbContext.AcceptedReadingLogs.CountAsync();
-            var assessments = await dbContext.RiskAssessmentLogs.CountAsync();
-            var areaSnapshots = await dbContext.AreaRiskSnapshotLogs.CountAsync(entity => entity.AreaId == areaId);
-            var cellStates = await dbContext.CellOperationalStates.CountAsync(entity => entity.GridCellId == gridCellId);
-            var areaStates = await dbContext.AreaOperationalStates.CountAsync(entity => entity.AreaId == areaId);
+            var assessments = await dbContext.RiskAssessmentLogs.CountAsync(entity => entity.SimulationRunId == runId);
+            var settlements = await dbContext.CycleSettlements.CountAsync(entity =>
+                entity.SimulationRunId == runId && entity.FinalizedAt != null);
+            var observations = await dbContext.CycleObservations.CountAsync(entity => entity.SimulationRunId == runId);
+            var cellSnapshots = await dbContext.CellCycleSnapshots.CountAsync(entity =>
+                entity.SimulationRunId == runId && entity.GridCellId == gridCellId);
+            var areaSnapshots = await dbContext.AreaCycleSnapshots.CountAsync(entity =>
+                entity.SimulationRunId == runId && entity.AreaId == areaId);
 
             lastState =
-                $"completedRuns={completedRuns} inbox={processedInbox}/{inboxEvents.Count} " +
+                $"runId={runId} completedRuns={completedRuns} inbox={processedInbox}/{inboxEvents.Count} " +
                 $"attempts=[{string.Join(",", attempts.Select(entity => entity.Outcome))}] " +
-                $"accepted={acceptedReadings} assessments={assessments} snapshots={areaSnapshots} " +
-                $"cellStates={cellStates} areaStates={areaStates}";
+                $"accepted={acceptedReadings} assessments={assessments} settlements={settlements} " +
+                $"observations={observations} cellSnapshots={cellSnapshots} areaSnapshots={areaSnapshots}";
 
             if (completedRuns == 1 &&
                 inboxEvents.Count == 1 &&
@@ -737,9 +745,11 @@ public sealed partial class DockerPublishedRuntimeProcessTests
                 attempts.Single().Outcome == ProcessingAttemptOutcome.Succeeded &&
                 acceptedReadings == 1 &&
                 assessments == 1 &&
+                settlements == 1 &&
+                observations == 1 &&
+                cellSnapshots == 1 &&
                 areaSnapshots == 1 &&
-                cellStates == 1 &&
-                areaStates == 1)
+                runId != Guid.Empty)
             {
                 return;
             }
