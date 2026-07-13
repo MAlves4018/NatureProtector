@@ -31,6 +31,7 @@ Sequencia suportada:
 
 ```powershell
 .\scripts\np.ps1 init-local -Force
+.\scripts\np.ps1 prepare-local
 .\scripts\np.ps1 clean-local
 .\scripts\np.ps1 doctor
 .\scripts\np.ps1 up

@@ -76,6 +76,7 @@ Pré-condição importante para os comandos `dotnet`:
 ```powershell
 .\scripts\np.ps1 doctor
 .\scripts\np.ps1 init-local -Force
+.\scripts\np.ps1 prepare-local
 .\scripts\np.ps1 up
 .\scripts\np.ps1 start
 .\scripts\np.ps1 health
@@ -83,7 +84,7 @@ Pré-condição importante para os comandos `dotnet`:
 
 ### O que estes scripts fazem
 
-- [`../../scripts/np.ps1`](../../scripts/np.ps1) é o entrypoint recomendado para clone-to-run local;
+- [`../../scripts/np.ps1`](../../scripts/np.ps1) é o entrypoint recomendado para clone-to-run local; `prepare-local` restaura .NET e instala a webUI a partir dos lockfiles;
 - [`../../scripts/workspace.ps1`](../../scripts/workspace.ps1) permanece como compatibilidade para fluxos antigos;
 - [`../../infra/scripts/up.ps1`](../../infra/scripts/up.ps1) e o wrapper de baixo nivel de Docker Compose; exige `.env` existente e nao cria nem altera esse ficheiro;
 - [`../../scripts/influx/Ensure-InfluxDatabase.ps1`](../../scripts/influx/Ensure-InfluxDatabase.ps1) e idempotente e pode ser corrido manualmente para confirmar/criar `np_telemetry`;
@@ -95,7 +96,7 @@ Pré-condição importante para os comandos `dotnet`:
 | --- | --- | --- |
 | `RabbitMQ` | `5672` | [`../../.env.example`](../../.env.example) |
 | `RabbitMQ Management` | `15672` | [`../../.env.example`](../../.env.example) |
-| `PostgreSQL` | `5432` | [`../../.env.example`](../../.env.example) |
+| `PostgreSQL` | `5433` | [`../../.env.example`](../../.env.example) |
 | `InfluxDB` | `8181` | [`../../.env.example`](../../.env.example) |
 | `Grafana` | `3000` | [`../../.env.example`](../../.env.example) |
 
@@ -103,7 +104,7 @@ Pré-condição importante para os comandos `dotnet`:
 
 - contentores `np-rabbitmq`, `np-postgres`, `np-influxdb` e `np-grafana` visíveis em `docker compose ps`;
 - o `RabbitMQ` expõe a interface de gestão;
-- o `PostgreSQL` fica acessível em `localhost:5432`.
+- o `PostgreSQL` fica acessível em `localhost:5433` pela configuração local por omissão.
 
 Credenciais práticas da baseline por omissão:
 
@@ -120,7 +121,7 @@ Credenciais práticas da baseline por omissão:
 
 ### O que o script faz
 
-- valida que `PostgreSQL` está acessível em `localhost:5432`;
+- resolve `POSTGRES_HOST`/`POSTGRES_PORT` por ambiente ou `.env` e valida esse endpoint exato;
 - prepara o ambiente `dotnet` local ao repositório;
 - compila a solução, salvo se usares `-SkipBuild`;
 - corre [`../../src/NatureProtector.Postgres.Bootstrap/Program.cs`](../../src/NatureProtector.Postgres.Bootstrap/Program.cs).
