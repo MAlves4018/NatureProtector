@@ -59,7 +59,8 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             return RuntimeRunResponse("Rejected", $"Scenario '{request.ScenarioCode}' was not found for area '{request.AreaCode}'.", null, null);
         }
 
-        if (!request.AllowParallelRun)
+        // Operational runtime is globally single-run; caller flags cannot bypass admission.
+        // Admission check is deliberately unconditional.
         {
             var activeRunCount = await dbContext.SimulationRuns
                 .AsNoTracking()
@@ -92,6 +93,12 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         {
             warnings.Add("Runtime process launch is disabled for this service instance; request was validated only.");
             return RuntimeRunResponse("Validated", "Run request is valid; process launch is disabled in this context.", null, null);
+        }
+
+        if (request.WaitForCompletion && request.NumberOfCycles.HasValue && request.IntervalSeconds.HasValue &&
+            request.TimeoutSeconds < request.NumberOfCycles.Value * request.IntervalSeconds.Value)
+        {
+            return RuntimeRunResponse("Rejected", "timeoutSeconds is shorter than the predicted simulation duration.", null, null);
         }
 
         var logDirectory = PrepareApiRunLogDirectory(requestedAtUtc, request.RunLabel ?? request.ScenarioCode);
@@ -141,6 +148,11 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             return RuntimeRunResponse("FailedToStart", "Simulator.Host process could not be started.", null, logDirectory);
         }
 
+        if (process.HasExited && process.ExitCode != 0)
+        {
+            return RuntimeRunResponse("Failed", $"Simulator.Host exited with code {process.ExitCode} before a run was observed.", null, logDirectory);
+        }
+
         Task<string>? stdoutTask = request.CollectEvidence ? process.StandardOutput.ReadToEndAsync(cancellationToken) : null;
         Task<string>? stderrTask = request.CollectEvidence ? process.StandardError.ReadToEndAsync(cancellationToken) : null;
 
@@ -174,9 +186,12 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             orchestratorCorrelationId,
             cancellationToken);
 
+        var completedWithoutRun = request.WaitForCompletion && process.HasExited && run is null;
         var response = RuntimeRunResponse(
-            run is null ? "Started" : run.Status,
-            run is null ? "Simulator.Host was started; the run has not appeared in control.simulation_runs yet." : "Simulator.Host was started and the run was observed.",
+            completedWithoutRun ? "Failed" : run is null ? "Started" : run.Status,
+            completedWithoutRun
+                ? "Simulator.Host exited without persisting the correlated SimulationRun."
+                : run is null ? "Simulator.Host was started; the run has not appeared in control.simulation_runs yet." : "Simulator.Host was started and the run was observed.",
             ToRuntimeRun(run, warnings),
             logDirectory);
 

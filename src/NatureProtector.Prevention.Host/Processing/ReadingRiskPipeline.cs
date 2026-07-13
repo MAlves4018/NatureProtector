@@ -163,7 +163,7 @@ public sealed class ReadingRiskPipeline(
         var assessment = riskScoringService.CreateAssessment(riskInput);
 
         var riskAssessmentPersistStopwatch = Stopwatch.StartNew();
-        await riskAssessmentRepository.AddAsync(
+        assessment = await riskAssessmentRepository.AddAsync(
             normalizedReading.AreaId,
             normalizedReading.SensorId,
             normalizedReading.EventId,

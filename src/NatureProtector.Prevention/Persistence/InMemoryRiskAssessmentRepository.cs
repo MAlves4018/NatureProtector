@@ -10,7 +10,7 @@ public sealed class InMemoryRiskAssessmentRepository : IRiskAssessmentRepository
     private readonly SemaphoreSlim _gate = new(1, 1);
     private long _nextSequence;
 
-    public async Task AddAsync(
+    public async Task<RiskAssessment> AddAsync(
         Guid areaId,
         Guid sensorId,
         Guid sourceEventId,
@@ -24,9 +24,13 @@ public sealed class InMemoryRiskAssessmentRepository : IRiskAssessmentRepository
 
         try
         {
-            if (_seenSourceEvents.Contains(sourceEventId))
+            var existing = _items.Values.SelectMany(items => items)
+                .SingleOrDefault(item => item.SourceEventId == sourceEventId);
+            if (existing is not null)
             {
-                return;
+                if (existing.SensorId != sensorId || existing.SimulationRunId != simulationRunId)
+                    throw new InvalidOperationException($"Source event '{sourceEventId}' is already associated with a different assessment identity.");
+                return existing.Assessment;
             }
 
             if (!_items.TryGetValue(areaId, out var list))
@@ -55,6 +59,8 @@ public sealed class InMemoryRiskAssessmentRepository : IRiskAssessmentRepository
             {
                 latestBySensor[sensorId] = stored;
             }
+
+            return assessment;
         }
         finally
         {

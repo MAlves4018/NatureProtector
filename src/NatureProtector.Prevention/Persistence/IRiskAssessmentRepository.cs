@@ -4,7 +4,7 @@ namespace NatureProtector.Prevention.Persistence;
 
 public interface IRiskAssessmentRepository
 {
-    Task AddAsync(
+    Task<RiskAssessment> AddAsync(
         Guid areaId,
         Guid sensorId,
         Guid sourceEventId,
