@@ -99,6 +99,7 @@ internal sealed class TemporaryPostgresDatabase : IAsyncDisposable
     public async Task DropAsync()
     {
         await DropDatabaseIfExistsAsync(_adminConnectionString, DatabaseName);
+        NpgsqlConnection.ClearAllPools();
     }
 
     public async Task RecreateAsync(CancellationToken cancellationToken = default)

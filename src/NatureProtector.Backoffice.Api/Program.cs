@@ -2,14 +2,17 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using NatureProtector.Backoffice.Api.Bootstrap;
 using NatureProtector.Backoffice.Api.Configuration;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Backoffice.Api.Health;
 using NatureProtector.Backoffice.Api.OpenApi;
 using NatureProtector.Backoffice.Api.Operations.Authorization;
 using NatureProtector.Backoffice.Api.Operations.Configuration;
@@ -42,7 +45,7 @@ builder.Services.AddNatureProtectorOpenTelemetry(
     enableAspNetCoreInstrumentation: true);
 
 builder.Services.AddControllers();
-builder.Services.AddHealthChecks();
+var healthChecks = builder.Services.AddHealthChecks();
 builder.Services.AddHttpClient();
 builder.Services.AddOpenApi(options =>
 {
@@ -106,6 +109,11 @@ if (backofficeOptions.ControlPlaneEnabled)
     // Quando o control plane está ativo, a API expõe dados reais persistidos em
     // PostgreSQL.
     builder.Services.AddNatureProtectorControlPlanePostgres(builder.Environment.ContentRootPath);
+    healthChecks.AddCheck<ControlPlaneDatabaseHealthCheck>(
+        "control-plane-postgres",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready"],
+        timeout: TimeSpan.FromSeconds(5));
     builder.Services.AddScoped<IControlPlaneService>(services =>
         new PostgresControlPlaneService(
             services.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<NatureProtector.Infrastructure.Postgres.Persistence.NatureProtectorControlDbContext>>(),
@@ -193,8 +201,14 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHealthChecks("/health");
-app.MapHealthChecks("/health/live");
-app.MapHealthChecks("/health/ready");
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false
+});
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("ready")
+});
 app.MapControllers();
 
 app.Run();

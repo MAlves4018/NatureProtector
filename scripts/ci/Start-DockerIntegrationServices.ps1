@@ -64,7 +64,8 @@ Wait-Until "RabbitMQ management API" {
 }
 
 Wait-Until "InfluxDB" {
-    & docker exec np-influxdb-it sh -lc 'influxdb3 create database --host http://127.0.0.1:8181 np_telemetry >/dev/null 2>&1 || true; influxdb3 query --host http://127.0.0.1:8181 --database np_telemetry "SELECT 1" >/dev/null'
+    & docker exec np-influxdb-it sh -lc 'influxdb3 create database --host http://127.0.0.1:8181 np_telemetry >/dev/null 2>&1 || true'
+    & docker exec np-influxdb-it influxdb3 query --host http://127.0.0.1:8181 --database np_telemetry 'SELECT 1' 2>$null
 }
 
 Write-Host "Docker integration services are ready."

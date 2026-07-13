@@ -32,7 +32,14 @@ Já inclui autenticação JWT e autorização por roles nos endpoints atuais. A 
 - `GET /health/live`
 - `GET /health/ready`
 
-Estes endpoints usam ASP.NET health checks simples para probes tecnicos locais. Nao substituem o health operacional detalhado em `GET /api/control/runtime/observability/health`.
+Estes endpoints usam ASP.NET health checks e não substituem o health operacional detalhado em `GET /api/control/runtime/observability/health`.
+
+Semântica atual:
+
+- `/health/live` prova apenas que o processo HTTP está vivo; não consulta dependências externas;
+- `/health/ready` exige PostgreSQL quando `BackofficeApi:ControlPlaneEnabled=true`;
+- `/health` agrega os checks registados e, com o control plane ativo, também devolve indisponibilidade quando PostgreSQL não responde;
+- quando `BackofficeApi:ControlPlaneEnabled=false`, não existe dependência PostgreSQL obrigatória e os três endpoints podem responder `200`.
 
 ### Configuração
 
