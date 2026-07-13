@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Play, ShieldAlert } from 'lucide-react';
+import { ClipboardCheck, ShieldAlert } from 'lucide-react';
 import type { OperationDefinitionResponse, StartOperationRequest } from '../types/operations';
 import { useOperations } from './OperationsContext';
 
@@ -31,9 +31,11 @@ export function OperationLauncher({ definition }: { definition: OperationDefinit
     };
     try {
       const operation = await start(request);
-      setMessage(`Operação ${operation.id} registada com estado ${operation.status}.`);
+      setMessage(
+        `Pedido ${operation.id} registado com estado ${operation.status}. Este estado não prova conclusão sem resultado terminal e evidence verificável.`,
+      );
     } catch (value) {
-      setMessage(value instanceof Error ? value.message : 'Não foi possível iniciar a operação.');
+      setMessage(value instanceof Error ? value.message : 'Não foi possível registar o pedido de operação.');
     } finally {
       setSubmitting(false);
     }
@@ -51,6 +53,13 @@ export function OperationLauncher({ definition }: { definition: OperationDefinit
         </span>
       </div>
       <p>{definition.description}</p>
+      <div className="ui-notice ui-warning">
+        <ShieldAlert size={16} />
+        <span>
+          This control registers a closed operation request. Catalog availability does not prove dispatcher readiness,
+          provider execution or terminal success. A Queued result means dispatch/request tracking only.
+        </span>
+      </div>
       <div className="ui-fact-list">
         <span>
           <strong>Capability</strong>
@@ -119,8 +128,12 @@ export function OperationLauncher({ definition }: { definition: OperationDefinit
         disabled={!enabled || submitting || (definition.requiresConfirmation && confirmation !== expectedConfirmation)}
         onClick={submit}
       >
-        <Play size={16} />{' '}
-        {submitting ? 'A registar…' : definition.requiresApproval ? 'Pedir aprovação' : 'Executar operação'}
+        <ClipboardCheck size={16} />{' '}
+        {submitting
+          ? 'A registar pedido…'
+          : definition.requiresApproval
+            ? 'Registar pedido de aprovação'
+            : 'Registar pedido de operação'}
       </button>
       {message && <p className="ui-notice">{message}</p>}
     </article>

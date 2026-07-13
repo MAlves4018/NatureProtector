@@ -1,7 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '../services/api';
 import { useToken } from '../context/TokenContext';
-import { getUiCapabilities, hasUiCapability, type UiCapability, type UiNavTarget } from '../capabilities';
+import {
+  getUiCapabilities,
+  hasUiCapability,
+  UI_V3_PUBLIC_CAPABILITIES,
+  type UiCapability,
+  type UiNavTarget,
+} from '../capabilities';
 import { defaultPageFor, getUiPages, type UiPageDefinition } from '../navigation/pageRegistry';
 
 interface UiCapabilityContextValue {
@@ -9,6 +15,7 @@ interface UiCapabilityContextValue {
   capabilities: Set<UiCapability>;
   capabilityAuthority: string;
   capabilitiesLoading: boolean;
+  capabilitiesError: Error | null;
   pages: readonly UiPageDefinition[];
   activePage: UiNavTarget;
   setActivePage: (page: UiNavTarget) => void;
@@ -26,23 +33,21 @@ interface UiCapabilityContextValue {
 }
 
 const UiCapabilityContext = createContext<UiCapabilityContextValue | null>(null);
+const FAIL_CLOSED_CAPABILITIES = new Set<UiCapability>(UI_V3_PUBLIC_CAPABILITIES);
 
 export function UiCapabilityProvider({ children, isDark = false }: { children: ReactNode; isDark?: boolean }) {
   const { user } = useToken();
   const [activePage, setActivePage] = useState<UiNavTarget>('demo');
   const [serverCapabilities, setServerCapabilities] = useState<Set<UiCapability> | null>(null);
-  const [capabilityAuthority, setCapabilityAuthority] = useState('frontend-fallback');
+  const [capabilityAuthority, setCapabilityAuthority] = useState('public-capability-policy');
   const [capabilitiesLoading, setCapabilitiesLoading] = useState(false);
+  const [capabilitiesError, setCapabilitiesError] = useState<Error | null>(null);
 
-  const fallbackCapabilities = useMemo(() => getUiCapabilities(user), [user]);
+  const publicCapabilities = useMemo(() => new Set<UiCapability>(FAIL_CLOSED_CAPABILITIES), []);
   const capabilities = useMemo(() => {
-    if (!serverCapabilities) return fallbackCapabilities;
-    const merged = new Set(fallbackCapabilities);
-    for (const cap of serverCapabilities) {
-      merged.add(cap);
-    }
-    return merged;
-  }, [fallbackCapabilities, serverCapabilities]);
+    if (!user) return publicCapabilities;
+    return serverCapabilities ?? publicCapabilities;
+  }, [publicCapabilities, serverCapabilities, user]);
   const pages = useMemo(() => getUiPages(capabilities), [capabilities]);
   const isPublic = !user;
 
@@ -84,13 +89,17 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
   useEffect(() => {
     if (!user) {
       setServerCapabilities(null);
-      setCapabilityAuthority('public-fallback');
+      setCapabilityAuthority('public-capability-policy');
       setCapabilitiesLoading(false);
+      setCapabilitiesError(null);
       return;
     }
 
     let cancelled = false;
+    setServerCapabilities(null);
+    setCapabilityAuthority('backend-capabilities-pending-fail-closed');
     setCapabilitiesLoading(true);
+    setCapabilitiesError(null);
     api
       .getCurrentCapabilities()
       .then((profile) => {
@@ -99,11 +108,11 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
         setServerCapabilities(allowed);
         setCapabilityAuthority(profile.authority || 'backend-role-capability-policy');
       })
-      .catch(() => {
-        if (!cancelled) {
-          setServerCapabilities(null);
-          setCapabilityAuthority('frontend-fallback-after-backend-error');
-        }
+      .catch((value) => {
+        if (cancelled) return;
+        setServerCapabilities(null);
+        setCapabilityAuthority('backend-capabilities-unavailable-fail-closed');
+        setCapabilitiesError(value instanceof Error ? value : new Error('Capability authority unavailable.'));
       })
       .finally(() => {
         if (!cancelled) setCapabilitiesLoading(false);
@@ -127,6 +136,7 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
       capabilities,
       capabilityAuthority,
       capabilitiesLoading,
+      capabilitiesError,
       pages,
       activePage,
       setActivePage,
@@ -139,6 +149,7 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
       capabilities,
       capabilityAuthority,
       capabilitiesLoading,
+      capabilitiesError,
       pages,
       activePage,
       isPublic,

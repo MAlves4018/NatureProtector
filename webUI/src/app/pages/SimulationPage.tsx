@@ -7,6 +7,7 @@ import { useUiLocale } from '../state/LocaleContext';
 import { toggleDegradationProfile, useUiSimulation } from '../state/SimulationContext';
 import { useUiActivity } from '../state/ActivityContext';
 import { useNavigate } from 'react-router-dom';
+import { executionStatusState } from '../truthfulPresentation';
 
 export function SimulationPage() {
   const { copy } = useUiLocale();
@@ -20,6 +21,7 @@ export function SimulationPage() {
     simulationResult,
     setSimulationResult,
     canExecuteSimulation,
+    runtimeLaunchAvailable,
     submitSimulation,
     degradationProfiles,
   } = useUiSimulation();
@@ -143,7 +145,14 @@ export function SimulationPage() {
             <PlayCircle size={16} />
             {simulationSubmitting ? copy('simulation.executing') : copy('simulation.execute')}
           </button>
-          {!canExecuteSimulation && <p className="ui-notice">{copy('simulation.readOnly')}</p>}
+          {!runtimeLaunchAvailable ? (
+            <p className="ui-notice">
+              A execução de simulações não está disponível neste build. O endpoint atual está limitado ao ambiente de
+              desenvolvimento.
+            </p>
+          ) : (
+            !canExecuteSimulation && <p className="ui-notice">{copy('simulation.readOnly')}</p>
+          )}
           {simulationError && <p className="ui-notice ui-error">{simulationError.message}</p>}
         </form>
         <section className="ui-card">
@@ -151,7 +160,7 @@ export function SimulationPage() {
             <h3>{copy('simulation.review')}</h3>
             <StatusBadge
               label={simulationReview.resultStatus}
-              state={simulationReview.resultStatus === copy('simulation.idle') ? 'partial' : 'ready'}
+              state={executionStatusState(simulationReview.resultStatus, copy('simulation.idle'))}
             />
           </div>
           <p>{simulationReview.resultMessage}</p>

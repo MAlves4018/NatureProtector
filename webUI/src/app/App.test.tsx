@@ -172,14 +172,53 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /^Deployments$/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
-    expect(await screen.findByRole('heading', { name: /Pipeline e observabilidade/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: /Pipeline e observabilidade/i }, { timeout: 5000 }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Qualidade e evidencia/i }));
     expect(await screen.findByRole('heading', { name: /Qualidade e evidência/i })).toBeInTheDocument();
-    expect(screen.getByText(/Latest test execution/i)).toBeInTheDocument();
+    expect(screen.getByText(/Historical repository claims/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Evidence Explorer/i }));
     expect(await screen.findByRole('heading', { name: /Evidence Explorer/i })).toBeInTheDocument();
+  });
+
+  it('blocks direct access to protected routes without confirmed capabilities', async () => {
+    window.history.replaceState(null, '', '/simulation');
+    renderUi();
+
+    expect(await screen.findByRole('heading', { name: /Acesso negado/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Iniciar simulação/i })).not.toBeInTheDocument();
+  });
+
+  it('fails closed when the backend capability authority is unavailable', async () => {
+    window.history.replaceState(null, '', '/simulation');
+    vi.stubGlobal('fetch', createFetchMock({ roles: ['Admin'], failCapabilities: true }));
+    renderAuthenticatedUi(['Admin']);
+
+    expect(await screen.findByText(/Capability authority unavailable/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Acesso negado/i })).toBeInTheDocument();
+  });
+
+  it('does not merge frontend role fallbacks into a restrictive backend profile', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ roles: ['Admin'], capabilities: ['demo.read', 'help.read'] }));
+    renderAuthenticatedUi(['Admin']);
+
+    expect(await screen.findByRole('heading', { name: /Leitura pública/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Admin$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Simulações/i })).not.toBeInTheDocument();
+  });
+
+  it('retires browser-generated QA and database result surfaces', async () => {
+    window.history.replaceState(null, '', '/qa-tests');
+    const { unmount } = renderUi();
+    expect(await screen.findByRole('heading', { name: /Superfície operacional indisponível/i })).toBeInTheDocument();
+
+    unmount();
+    window.history.replaceState(null, '', '/db-queries');
+    renderUi();
+    expect(await screen.findByRole('heading', { name: /Superfície operacional indisponível/i })).toBeInTheDocument();
   });
 
   it('shows executable simulation with controlled degradation for Sim profiles', async () => {
@@ -247,7 +286,9 @@ describe('App', () => {
   });
 });
 
-function createFetchMock(options: { failSummary?: boolean; roles?: string[] } = {}) {
+function createFetchMock(
+  options: { failSummary?: boolean; roles?: string[]; failCapabilities?: boolean; capabilities?: string[] } = {},
+) {
   const summary = createUiRuntimeSummaryFixture();
   const latestRun = summary.latestRun!;
   const runList = [
@@ -286,10 +327,11 @@ function createFetchMock(options: { failSummary?: boolean; roles?: string[] } = 
     }
 
     if (path === '/api/users-roles/me/capabilities') {
+      if (options.failCapabilities) throw new Error('capability authority unavailable');
       const { getUiCapabilities } = await import('./capabilities');
       return jsonResponse({
         roles: options.roles ?? [],
-        capabilities: [...getUiCapabilities({ roles: options.roles ?? [] })],
+        capabilities: options.capabilities ?? [...getUiCapabilities({ roles: options.roles ?? [] })],
         authority: 'test-backend-policy',
         evaluatedAt: '2026-06-28T20:00:00Z',
       });

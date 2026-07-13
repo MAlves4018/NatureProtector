@@ -37,6 +37,10 @@ export const initialSimulationForm: SimulationFormState = {
 
 export const SIMULATION_FORM_STORAGE_KEY = 'natureprotector.ui.simulationForm.v1';
 
+export function isRuntimeLaunchAvailable(mode: string = import.meta.env.MODE) {
+  return mode !== 'production';
+}
+
 interface UiSimulationContextValue {
   simulationForm: SimulationFormState;
   setSimulationForm: React.Dispatch<React.SetStateAction<SimulationFormState>>;
@@ -47,6 +51,7 @@ interface UiSimulationContextValue {
   simulationSubmitting: boolean;
   simulationError: Error | null;
   canExecuteSimulation: boolean;
+  runtimeLaunchAvailable: boolean;
   submitSimulation: () => Promise<void>;
   degradationProfiles: readonly string[];
 }
@@ -55,7 +60,9 @@ const UiSimulationContext = createContext<UiSimulationContextValue | null>(null)
 
 export function UiSimulationProvider({ children }: { children: ReactNode }) {
   const { resolvedAreaCode, reloadAreaContext, selectedAreaCode } = useUiArea();
-  const { canExecuteSimulation } = useUiCapabilities();
+  const { canExecuteSimulation: hasSimulationCapability } = useUiCapabilities();
+  const runtimeLaunchAvailable = isRuntimeLaunchAvailable();
+  const canExecuteSimulation = hasSimulationCapability && runtimeLaunchAvailable;
   const { selectedScenarioCode, setSelectedRunId } = useUiActivity();
   const { copy } = useUiLocale();
 
@@ -122,6 +129,7 @@ export function UiSimulationProvider({ children }: { children: ReactNode }) {
       simulationSubmitting,
       simulationError,
       canExecuteSimulation,
+      runtimeLaunchAvailable,
       submitSimulation,
       degradationProfiles: DEGRADATION_PROFILE_OPTIONS,
     }),
@@ -133,6 +141,7 @@ export function UiSimulationProvider({ children }: { children: ReactNode }) {
       simulationSubmitting,
       simulationError,
       canExecuteSimulation,
+      runtimeLaunchAvailable,
       submitSimulation,
     ],
   );
