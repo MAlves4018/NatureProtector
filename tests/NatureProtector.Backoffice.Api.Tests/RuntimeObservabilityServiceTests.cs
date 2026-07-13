@@ -15,60 +15,145 @@ namespace NatureProtector.Backoffice.Api.Tests;
 public sealed class RuntimeObservabilityServiceTests
 {
     [Fact]
-    public async Task GetRabbitMqMetricsAsync_ReturnsMeasuredQueues_FromManagementApi()
+    public async Task GetRabbitMqMetricsAsync_UsesEffectiveTopologyAndQueueRoles_WhenRawIsDisabled()
     {
         await using var db = new SqliteControlDbContextScope();
-        var queues = DistinctTopologyQueues();
-        var handler = new CapturingHandler(_ => JsonResponse(BuildQueueMetricsJson(queues)));
+        var handler = new CapturingHandler(_ => JsonResponse(BuildQueueMetricsJson(["np.custom.ingestion"])));
         using var client = new HttpClient(handler);
-        var service = CreateService(db, client);
+        var service = CreateService(
+            db,
+            client,
+            ingestionQueueName: "np.custom.ingestion",
+            rawQueueName: "np.custom.raw",
+            rawEnabled: false);
 
         var metrics = await service.GetRabbitMqMetricsAsync(CancellationToken.None);
 
         Assert.Equal(RuntimeMetricCollectionStatus.Measured, metrics.CollectionStatus);
-        Assert.Equal("RabbitMQ Management HTTP API", metrics.Source);
+        Assert.Equal("RabbitMQ Management API", metrics.Source);
         Assert.Empty(metrics.Limitations);
-        Assert.Equal(queues.Length, metrics.Queues.Count);
-        Assert.All(metrics.Queues, queue =>
-        {
-            Assert.Equal(RuntimeMetricCollectionStatus.Measured, queue.CollectionStatus);
-            Assert.Null(queue.Limitation);
-            Assert.Equal(3, queue.MessagesReady);
-            Assert.Equal(1, queue.MessagesUnacknowledged);
-            Assert.Equal(4, queue.MessagesTotal);
-            Assert.Equal(2, queue.Consumers);
-        });
-        Assert.Equal(new Uri("http://rabbitmq.local:15692/api/queues"), handler.RequestUri);
+        Assert.Collection(
+            metrics.Queues,
+            primary =>
+            {
+                Assert.Equal("np.custom.ingestion", primary.QueueName);
+                Assert.Equal(RabbitMqQueueRoles.PrimaryWorkQueue, primary.QueueRole);
+                Assert.True(primary.Enabled);
+                Assert.True(primary.ConsumerRequired);
+                Assert.True(primary.BlocksRuntimeHealth);
+                Assert.Equal(RuntimeMetricCollectionStatus.Measured, primary.CollectionStatus);
+                Assert.Equal(3, primary.MessagesReady);
+                Assert.Equal(1, primary.MessagesUnacknowledged);
+                Assert.Equal(4, primary.MessagesTotal);
+                Assert.Equal(2, primary.Consumers);
+                Assert.Null(primary.Limitation);
+            },
+            auxiliary =>
+            {
+                Assert.Equal("np.custom.raw", auxiliary.QueueName);
+                Assert.Equal(RabbitMqQueueRoles.AuxiliaryDiagnosticQueue, auxiliary.QueueRole);
+                Assert.False(auxiliary.Enabled);
+                Assert.False(auxiliary.ConsumerRequired);
+                Assert.False(auxiliary.BlocksRuntimeHealth);
+                Assert.Equal(RuntimeMetricCollectionStatus.NotApplicable, auxiliary.CollectionStatus);
+                Assert.Null(auxiliary.MessagesReady);
+                Assert.Equal("Queue is disabled by configuration.", auxiliary.Limitation);
+            });
+        Assert.Equal(new Uri("http://rabbitmq-amqp.local:15692/api/queues"), handler.RequestUri);
+        Assert.Equal("Basic", handler.Authorization?.Scheme);
         Assert.Equal(
-            "Basic",
-            handler.Authorization?.Scheme);
-        Assert.Equal(
-            Convert.ToBase64String(Encoding.UTF8.GetBytes("np-user:np-pass")),
+            Convert.ToBase64String(Encoding.UTF8.GetBytes("np-app:np-app-pass")),
             handler.Authorization?.Parameter);
     }
 
     [Fact]
-    public async Task GetRabbitMqMetricsAsync_MarksMissingQueueUnavailable()
+    public async Task GetRabbitMqMetricsAsync_ReportsDisabledDurableQueue_WhenItStillExists()
     {
         await using var db = new SqliteControlDbContextScope();
-        var queues = DistinctTopologyQueues();
-        var returnedQueues = queues.Skip(1).ToArray();
-        var handler = new CapturingHandler(_ => JsonResponse(BuildQueueMetricsJson(returnedQueues)));
+        var handler = new CapturingHandler(_ => JsonResponse(BuildQueueMetricsJson(
+            ["np.custom.ingestion", "np.custom.raw"])));
         using var client = new HttpClient(handler);
-        var service = CreateService(db, client);
+        var service = CreateService(
+            db,
+            client,
+            ingestionQueueName: "np.custom.ingestion",
+            rawQueueName: "np.custom.raw",
+            rawEnabled: false);
+
+        var metrics = await service.GetRabbitMqMetricsAsync(CancellationToken.None);
+
+        Assert.Equal(RuntimeMetricCollectionStatus.Measured, metrics.CollectionStatus);
+        var staleRaw = Assert.Single(metrics.Queues, queue => queue.QueueRole == RabbitMqQueueRoles.AuxiliaryDiagnosticQueue);
+        Assert.False(staleRaw.Enabled);
+        Assert.Equal(RuntimeMetricCollectionStatus.Measured, staleRaw.CollectionStatus);
+        Assert.Contains("cleanup may be pending", staleRaw.Limitation, StringComparison.Ordinal);
+        Assert.Contains(metrics.Limitations, limitation =>
+            limitation.Code == "rabbitmq_disabled_queue_present" &&
+            limitation.Message.Contains("np.custom.raw", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task GetRabbitMqMetricsAsync_MarksEnabledRawQueueUnavailable_WhenItIsMissing()
+    {
+        await using var db = new SqliteControlDbContextScope();
+        var handler = new CapturingHandler(_ => JsonResponse(BuildQueueMetricsJson(["np.custom.ingestion"])));
+        using var client = new HttpClient(handler);
+        var service = CreateService(
+            db,
+            client,
+            ingestionQueueName: "np.custom.ingestion",
+            rawQueueName: "np.custom.raw",
+            rawEnabled: true);
 
         var metrics = await service.GetRabbitMqMetricsAsync(CancellationToken.None);
 
         Assert.Equal(RuntimeMetricCollectionStatus.Unavailable, metrics.CollectionStatus);
-        var missingQueue = Assert.Single(metrics.Queues, queue => queue.QueueName == queues[0]);
-        Assert.Equal(RuntimeMetricCollectionStatus.Unavailable, missingQueue.CollectionStatus);
-        Assert.Equal("Queue was not returned by RabbitMQ Management API.", missingQueue.Limitation);
-        Assert.All(metrics.Queues.Where(queue => queue.QueueName != queues[0]), queue =>
-            Assert.Equal(RuntimeMetricCollectionStatus.Measured, queue.CollectionStatus));
+        var missingRaw = Assert.Single(metrics.Queues, queue => queue.QueueName == "np.custom.raw");
+        Assert.True(missingRaw.Enabled);
+        Assert.Equal(RabbitMqQueueRoles.AuxiliaryDiagnosticQueue, missingRaw.QueueRole);
+        Assert.Equal(RuntimeMetricCollectionStatus.Unavailable, missingRaw.CollectionStatus);
+        Assert.Equal("Enabled queue was not returned by RabbitMQ Management API.", missingRaw.Limitation);
     }
 
     [Fact]
-    public async Task GetRabbitMqMetricsAsync_ReturnsError_WhenManagementApiPayloadIsMalformed()
+    public async Task GetOperationalHealthAsync_KeepsPrimaryHealthy_WhenEnabledAuxiliaryMetricsAreUnavailable()
+    {
+        await using var db = new SqliteControlDbContextScope();
+        var handler = new CapturingHandler(request =>
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            if (string.Equals(path, "/api/queues", StringComparison.Ordinal))
+            {
+                return JsonResponse(BuildQueueMetricsJson(
+                    ["np.custom.ingestion"],
+                    messagesReady: 0,
+                    messagesUnacknowledged: 0,
+                    messagesTotal: 0,
+                    consumers: 1));
+            }
+
+            return JsonResponse("""{ "status": "ok", "database": "ok" }""");
+        });
+        using var client = new HttpClient(handler);
+        var service = CreateService(
+            db,
+            client,
+            ingestionQueueName: "np.custom.ingestion",
+            rawQueueName: "np.custom.raw",
+            rawEnabled: true);
+
+        var health = await service.GetOperationalHealthAsync(CancellationToken.None);
+
+        var components = health.Components.ToDictionary(component => component.Component, StringComparer.Ordinal);
+        Assert.Equal(RuntimeMetricCollectionStatus.Unavailable, health.RabbitMq.CollectionStatus);
+        Assert.Equal(RuntimeOperationalHealthStatus.Healthy, components["RabbitMQ"].Status);
+        Assert.Equal(RuntimeOperationalHealthStatus.Healthy, components["Prevention.Host"].Status);
+        Assert.Contains("np.custom.raw", components["RabbitMQ"].Limitation, StringComparison.Ordinal);
+        Assert.Contains("primary work queues", components["RabbitMQ"].Limitation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetRabbitMqMetricsAsync_ReturnsErrorOnlyForEnabledQueues_WhenPayloadIsMalformed()
     {
         await using var db = new SqliteControlDbContextScope();
         var handler = new CapturingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
@@ -76,33 +161,32 @@ public sealed class RuntimeObservabilityServiceTests
             Content = new StringContent("{ invalid json", Encoding.UTF8, "application/json")
         });
         using var client = new HttpClient(handler);
-        var service = CreateService(db, client);
+        var service = CreateService(db, client, rawEnabled: false);
 
         var metrics = await service.GetRabbitMqMetricsAsync(CancellationToken.None);
 
         Assert.Equal(RuntimeMetricCollectionStatus.Error, metrics.CollectionStatus);
-        Assert.All(metrics.Queues, queue =>
-        {
-            Assert.Equal(RuntimeMetricCollectionStatus.Error, queue.CollectionStatus);
-            Assert.Equal("RabbitMQ metrics collection failed: JsonReaderException.", queue.Limitation);
-        });
+        var primary = Assert.Single(metrics.Queues, queue => queue.Enabled);
+        Assert.Equal(RuntimeMetricCollectionStatus.Error, primary.CollectionStatus);
+        Assert.Equal("RabbitMQ metrics collection failed: JsonReaderException.", primary.Limitation);
+        var raw = Assert.Single(metrics.Queues, queue => !queue.Enabled);
+        Assert.Equal(RuntimeMetricCollectionStatus.NotApplicable, raw.CollectionStatus);
         Assert.Contains(metrics.Limitations, limitation =>
             limitation.Code == "rabbitmq_metrics_unavailable" &&
             limitation.Message == "RabbitMQ metrics collection failed: JsonReaderException.");
     }
 
     [Fact]
-    public async Task GetOperationalHealthAsync_ReportsDegradedRuntimeSignals_WhenQueuesHaveNoConsumersAndGrafanaIsNotReady()
+    public async Task GetOperationalHealthAsync_UsesPrimaryRoleForCustomQueueName()
     {
         await using var db = new SqliteControlDbContextScope();
-        var queues = DistinctTopologyQueues();
         var handler = new CapturingHandler(request =>
         {
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
             if (string.Equals(path, "/api/queues", StringComparison.Ordinal))
             {
                 return JsonResponse(BuildQueueMetricsJson(
-                    queues,
+                    ["np.custom.ingestion"],
                     messagesReady: 5,
                     messagesUnacknowledged: 0,
                     messagesTotal: 5,
@@ -117,31 +201,31 @@ public sealed class RuntimeObservabilityServiceTests
             return JsonResponse("""{ "status": "ok" }""");
         });
         using var client = new HttpClient(handler);
-        var service = CreateService(db, client);
+        var service = CreateService(
+            db,
+            client,
+            ingestionQueueName: "np.custom.ingestion",
+            rawQueueName: "np.custom.raw",
+            rawEnabled: false);
 
         var health = await service.GetOperationalHealthAsync(CancellationToken.None);
 
         var components = health.Components.ToDictionary(component => component.Component, StringComparer.Ordinal);
-        Assert.Equal(RuntimeOperationalHealthStatus.Healthy, components["Backoffice.Api"].Status);
-        Assert.Equal(RuntimeOperationalHealthStatus.Healthy, components["PostgreSQL"].Status);
         Assert.Equal(RuntimeOperationalHealthStatus.Degraded, components["RabbitMQ"].Status);
         Assert.Equal(RuntimeOperationalHealthStatus.Degraded, components["Prevention.Host"].Status);
-        Assert.Equal(RuntimeOperationalHealthStatus.NotApplicable, components["Simulator.Host"].Status);
-        Assert.Equal(RuntimeOperationalHealthStatus.Healthy, components["InfluxDB"].Status);
-        Assert.Equal(RuntimeOperationalHealthStatus.Degraded, components["Grafana"].Status);
+        Assert.Contains("np.custom.ingestion", components["Prevention.Host"].Source, StringComparison.Ordinal);
         Assert.Equal(RuntimeMetricCollectionStatus.Measured, health.RabbitMq.CollectionStatus);
-        Assert.Contains("Health response", components["Grafana"].Limitation, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task GetOperationalHealthAsync_DoesNotDegradeRabbitMq_ForDiagnosticRawQueueBacklog()
+    public async Task GetOperationalHealthAsync_DoesNotDegradeRabbitMq_ForEnabledAuxiliaryBacklog()
     {
         await using var db = new SqliteControlDbContextScope();
-        var queues = DistinctTopologyQueues();
-        var queueMetrics = queues.Select(queueName =>
-            string.Equals(queueName, NatureProtectorRabbitMqTopology.IngestionReadingsQueue, StringComparison.Ordinal)
-                ? (queueName, MessagesReady: 0, MessagesUnacknowledged: 0, MessagesTotal: 0, Consumers: 1)
-                : (queueName, MessagesReady: 12, MessagesUnacknowledged: 0, MessagesTotal: 12, Consumers: 0));
+        var queueMetrics = new[]
+        {
+            (QueueName: "np.custom.ingestion", MessagesReady: 0, MessagesUnacknowledged: 0, MessagesTotal: 0, Consumers: 1),
+            (QueueName: "np.custom.raw", MessagesReady: 12, MessagesUnacknowledged: 0, MessagesTotal: 12, Consumers: 0)
+        };
         var handler = new CapturingHandler(request =>
         {
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
@@ -153,27 +237,66 @@ public sealed class RuntimeObservabilityServiceTests
             return JsonResponse("""{ "status": "ok", "database": "ok" }""");
         });
         using var client = new HttpClient(handler);
-        var service = CreateService(db, client);
+        var service = CreateService(
+            db,
+            client,
+            ingestionQueueName: "np.custom.ingestion",
+            rawQueueName: "np.custom.raw",
+            rawEnabled: true);
 
         var health = await service.GetOperationalHealthAsync(CancellationToken.None);
 
         var components = health.Components.ToDictionary(component => component.Component, StringComparer.Ordinal);
         Assert.Equal(RuntimeOperationalHealthStatus.Healthy, components["RabbitMQ"].Status);
         Assert.Equal(RuntimeOperationalHealthStatus.Healthy, components["Prevention.Host"].Status);
-        Assert.Contains(NatureProtectorRabbitMqTopology.ObservabilityRawQueue, components["RabbitMQ"].Limitation, StringComparison.Ordinal);
+        Assert.Contains("np.custom.raw", components["RabbitMQ"].Limitation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetOperationalHealthAsync_ReportsLegacyDisabledQueueAsAdvisoryOnly()
+    {
+        await using var db = new SqliteControlDbContextScope();
+        var handler = new CapturingHandler(request =>
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            if (string.Equals(path, "/api/queues", StringComparison.Ordinal))
+            {
+                return JsonResponse(BuildQueueMetricsJson(
+                    ["np.custom.ingestion", "np.custom.raw"],
+                    messagesReady: 0,
+                    messagesUnacknowledged: 0,
+                    messagesTotal: 0,
+                    consumers: 1));
+            }
+
+            return JsonResponse("""{ "status": "ok", "database": "ok" }""");
+        });
+        using var client = new HttpClient(handler);
+        var service = CreateService(
+            db,
+            client,
+            ingestionQueueName: "np.custom.ingestion",
+            rawQueueName: "np.custom.raw",
+            rawEnabled: false);
+
+        var health = await service.GetOperationalHealthAsync(CancellationToken.None);
+
+        var rabbitMq = Assert.Single(health.Components, component => component.Component == "RabbitMQ");
+        Assert.Equal(RuntimeOperationalHealthStatus.Healthy, rabbitMq.Status);
+        Assert.Contains("disabled by configuration", rabbitMq.Limitation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("np.custom.raw", rabbitMq.Limitation, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task GetOperationalHealthAsync_ReportsAuthRequired_WhenHttpHealthEndpointReturnsUnauthorized()
     {
         await using var db = new SqliteControlDbContextScope();
-        var queues = DistinctTopologyQueues();
         var handler = new CapturingHandler(request =>
         {
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
             if (string.Equals(path, "/api/queues", StringComparison.Ordinal))
             {
-                return JsonResponse(BuildQueueMetricsJson(queues));
+                return JsonResponse(BuildQueueMetricsJson([NatureProtectorRabbitMqTopology.IngestionReadingsQueue]));
             }
 
             if (string.Equals(path, "/health", StringComparison.Ordinal))
@@ -195,15 +318,25 @@ public sealed class RuntimeObservabilityServiceTests
         Assert.Contains(health.Limitations, limitation => limitation.Code == "health_auth_required_is_explicit");
     }
 
-    private static RuntimeObservabilityService CreateService(SqliteControlDbContextScope db, HttpClient client)
+    private static RuntimeObservabilityService CreateService(
+        SqliteControlDbContextScope db,
+        HttpClient client,
+        string? ingestionQueueName = null,
+        string? rawQueueName = null,
+        bool rawEnabled = false)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                [$"{RabbitMqOptions.SectionName}:HostName"] = "rabbitmq.local",
+                [$"{RabbitMqOptions.SectionName}:HostName"] = "rabbitmq-amqp.local",
                 [$"{RabbitMqOptions.SectionName}:ManagementPort"] = "15692",
-                [$"{RabbitMqOptions.SectionName}:UserName"] = "np-user",
-                [$"{RabbitMqOptions.SectionName}:Password"] = "np-pass"
+                [$"{RabbitMqOptions.SectionName}:UserName"] = "np-app",
+                [$"{RabbitMqOptions.SectionName}:Password"] = "np-app-pass",
+                [$"{RabbitMqOptions.SectionName}:IngestionReadingsQueueName"] =
+                    ingestionQueueName ?? NatureProtectorRabbitMqTopology.IngestionReadingsQueue,
+                [$"{RabbitMqOptions.SectionName}:ObservabilityRawQueueName"] =
+                    rawQueueName ?? NatureProtectorRabbitMqTopology.ObservabilityRawQueue,
+                [$"{RabbitMqOptions.SectionName}:ObservabilityRawEnabled"] = rawEnabled.ToString()
             })
             .Build();
 
@@ -213,12 +346,6 @@ public sealed class RuntimeObservabilityServiceTests
             new SingleClientFactory(client),
             new TestWebHostEnvironment());
     }
-
-    private static string[] DistinctTopologyQueues()
-        => NatureProtectorRabbitMqTopology.Bindings
-            .Select(binding => binding.QueueName)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
 
     private static HttpResponseMessage JsonResponse(string json)
         => new(HttpStatusCode.OK)

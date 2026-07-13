@@ -11,7 +11,7 @@ namespace NatureProtector.Backoffice.Api.ControlPlane.Services;
 
 public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
 {
-    private const string RabbitMqSource = "RabbitMQ Management HTTP API";
+    private const string RabbitMqSource = "RabbitMQ Management API";
     private readonly IDbContextFactory<NatureProtectorControlDbContext> _dbContextFactory;
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -85,14 +85,11 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
     public async Task<RabbitMqMetricsResponse> GetRabbitMqMetricsAsync(CancellationToken cancellationToken)
     {
         var observedAt = DateTimeOffset.UtcNow;
-        var queues = NatureProtectorRabbitMqTopology.Bindings
-            .Select(binding => binding.QueueName)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
+        var options = GetRabbitMqOptions();
+        var queueDefinitions = options.GetQueueDefinitions().ToArray();
 
         try
         {
-            var options = GetRabbitMqOptions();
             var managementUri = GetRabbitMqManagementUri(options);
             var client = _httpClientFactory.CreateClient(nameof(RuntimeObservabilityService));
             using var request = new HttpRequestMessage(HttpMethod.Get, managementUri);
@@ -104,7 +101,7 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
             {
                 return RabbitMqUnavailable(
                     observedAt,
-                    queues,
+                    queueDefinitions,
                     RuntimeMetricCollectionStatus.Unavailable,
                     $"RabbitMQ Management API returned HTTP {(int)response.StatusCode}.");
             }
@@ -115,48 +112,33 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
                 .Where(item => item.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String)
                 .ToDictionary(item => item.GetProperty("name").GetString() ?? string.Empty, StringComparer.Ordinal);
 
-            var metrics = queues.Select(queueName =>
-            {
-                if (!byQueue.TryGetValue(queueName, out var queue))
-                {
-                    return new RabbitMqQueueMetricResponse(
-                        queueName,
-                        null,
-                        null,
-                        null,
-                        null,
-                        observedAt,
-                        RabbitMqSource,
-                        RuntimeMetricCollectionStatus.Unavailable,
-                        "Queue was not returned by RabbitMQ Management API.");
-                }
-
-                return new RabbitMqQueueMetricResponse(
-                    queueName,
-                    TryGetInt(queue, "messages_ready"),
-                    TryGetInt(queue, "messages_unacknowledged"),
-                    TryGetInt(queue, "messages"),
-                    TryGetInt(queue, "consumers"),
-                    observedAt,
-                    RabbitMqSource,
-                    RuntimeMetricCollectionStatus.Measured,
-                    null);
-            }).ToArray();
+            var metrics = queueDefinitions
+                .Select(definition => BuildQueueMetric(definition, byQueue, observedAt))
+                .ToArray();
+            var enabledMetrics = metrics.Where(metric => metric.Enabled).ToArray();
+            var limitations = metrics
+                .Where(metric =>
+                    !metric.Enabled &&
+                    metric.CollectionStatus == RuntimeMetricCollectionStatus.Measured)
+                .Select(metric => new RuntimeLimitationResponse(
+                    "rabbitmq_disabled_queue_present",
+                    $"Queue {metric.QueueName} is disabled by configuration but remains present in RabbitMQ; durable resource or binding cleanup may be pending."))
+                .ToArray();
 
             return new RabbitMqMetricsResponse(
                 observedAt,
                 RabbitMqSource,
-                metrics.All(metric => metric.CollectionStatus == RuntimeMetricCollectionStatus.Measured)
+                enabledMetrics.All(metric => metric.CollectionStatus == RuntimeMetricCollectionStatus.Measured)
                     ? RuntimeMetricCollectionStatus.Measured
                     : RuntimeMetricCollectionStatus.Unavailable,
                 metrics,
-                []);
+                limitations);
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
         {
             return RabbitMqUnavailable(
                 observedAt,
-                queues,
+                queueDefinitions,
                 RuntimeMetricCollectionStatus.Error,
                 $"RabbitMQ metrics collection failed: {exception.GetType().Name}.");
         }
@@ -200,27 +182,47 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
         RabbitMqMetricsResponse rabbitMq,
         DateTimeOffset observedAt)
     {
-        if (rabbitMq.CollectionStatus != RuntimeMetricCollectionStatus.Measured)
+        var blockingQueues = rabbitMq.Queues
+            .Where(queue => queue.Enabled && queue.BlocksRuntimeHealth)
+            .ToArray();
+        if (blockingQueues.Length == 0 ||
+            blockingQueues.Any(queue => queue.CollectionStatus != RuntimeMetricCollectionStatus.Measured))
         {
             return Component(
                 "RabbitMQ",
                 RuntimeOperationalHealthStatus.Unknown,
                 observedAt,
-                "RabbitMQ Management API metrics were unavailable.",
+                "RabbitMQ Management API metrics were unavailable for at least one enabled blocking runtime queue.",
                 RabbitMqSource,
-                "RabbitMQ broker health cannot be inferred without a positive management API signal.");
+                "RabbitMQ runtime health cannot be inferred without a positive signal for every enabled blocking queue.");
         }
 
-        var hasBlockingUnconsumedBacklog = rabbitMq.Queues.Any(queue =>
-            IsBlockingRuntimeQueue(queue.QueueName) &&
+        var hasBlockingUnconsumedBacklog = blockingQueues.Any(queue =>
             queue.MessagesTotal.GetValueOrDefault() > 0 &&
             queue.Consumers.GetValueOrDefault() == 0);
 
-        var nonBlockingUnconsumedBacklogQueues = rabbitMq.Queues
+        var auxiliaryUnconsumedBacklogQueues = rabbitMq.Queues
             .Where(queue =>
-                !IsBlockingRuntimeQueue(queue.QueueName) &&
+                queue.Enabled &&
+                !queue.BlocksRuntimeHealth &&
+                queue.CollectionStatus == RuntimeMetricCollectionStatus.Measured &&
                 queue.MessagesTotal.GetValueOrDefault() > 0 &&
                 queue.Consumers.GetValueOrDefault() == 0)
+            .Select(queue => queue.QueueName)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var auxiliaryUnavailableQueues = rabbitMq.Queues
+            .Where(queue =>
+                queue.Enabled &&
+                !queue.BlocksRuntimeHealth &&
+                queue.CollectionStatus != RuntimeMetricCollectionStatus.Measured)
+            .Select(queue => queue.QueueName)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var disabledQueuesStillPresent = rabbitMq.Queues
+            .Where(queue =>
+                !queue.Enabled &&
+                queue.CollectionStatus == RuntimeMetricCollectionStatus.Measured)
             .Select(queue => queue.QueueName)
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -230,12 +232,15 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
             hasBlockingUnconsumedBacklog ? RuntimeOperationalHealthStatus.Degraded : RuntimeOperationalHealthStatus.Healthy,
             observedAt,
             hasBlockingUnconsumedBacklog
-                ? "At least one blocking runtime queue has measured messages and no measured consumers."
-                : "Relevant queues were measured by the management API.",
+                ? "At least one enabled blocking runtime queue has measured messages and no measured consumers."
+                : "Enabled blocking runtime queues were measured by the management API.",
             RabbitMqSource,
             hasBlockingUnconsumedBacklog
                 ? "Broker is reachable, but blocking queue consumption is degraded."
-                : BuildNonBlockingRabbitMqLimitation(nonBlockingUnconsumedBacklogQueues));
+                : BuildRabbitMqAdvisoryLimitation(
+                    auxiliaryUnconsumedBacklogQueues,
+                    auxiliaryUnavailableQueues,
+                    disabledQueuesStillPresent));
     }
 
     private RuntimeOperationalHealthComponentResponse BuildPreventionHealth(
@@ -243,14 +248,16 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
         DateTimeOffset observedAt)
     {
         var ingestion = rabbitMq.Queues.SingleOrDefault(queue =>
-            string.Equals(queue.QueueName, NatureProtectorRabbitMqTopology.IngestionReadingsQueue, StringComparison.Ordinal));
+            queue.Enabled &&
+            queue.ConsumerRequired &&
+            string.Equals(queue.QueueRole, RabbitMqQueueRoles.PrimaryWorkQueue, StringComparison.Ordinal));
         if (ingestion is null || ingestion.CollectionStatus != RuntimeMetricCollectionStatus.Measured)
         {
             return Component(
                 "Prevention.Host",
                 RuntimeOperationalHealthStatus.Unknown,
                 observedAt,
-                "No positive consumer signal was available for the ingestion queue.",
+                "No positive consumer signal was available for the enabled primary work queue.",
                 RabbitMqSource,
                 "Prevention.Host health is a RabbitMQ consumer proxy until a dedicated heartbeat exists.");
         }
@@ -262,9 +269,9 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
                 : RuntimeOperationalHealthStatus.Degraded,
             observedAt,
             ingestion.Consumers.GetValueOrDefault() > 0
-                ? "At least one consumer is attached to the ingestion queue."
-                : "The ingestion queue was measured with zero consumers.",
-            $"{RabbitMqSource}: {NatureProtectorRabbitMqTopology.IngestionReadingsQueue}",
+                ? "At least one consumer is attached to the primary work queue."
+                : "The primary work queue was measured with zero consumers.",
+            $"{RabbitMqSource}: {ingestion.QueueName}",
             ingestion.Consumers.GetValueOrDefault() > 0 ? null : "Expected prevention consumer was not observed.");
     }
 
@@ -374,24 +381,74 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
 
     private RabbitMqMetricsResponse RabbitMqUnavailable(
         DateTimeOffset observedAt,
-        IReadOnlyList<string> queues,
+        IReadOnlyList<RabbitMqQueueDefinition> queueDefinitions,
         string status,
         string reason)
         => new(
             observedAt,
             RabbitMqSource,
             status,
-            queues.Select(queue => new RabbitMqQueueMetricResponse(
-                queue,
+            queueDefinitions.Select(definition => new RabbitMqQueueMetricResponse(
+                definition.QueueName,
+                definition.QueueRole,
+                definition.Enabled,
+                definition.ConsumerRequired,
+                definition.BlocksRuntimeHealth,
                 null,
                 null,
                 null,
                 null,
                 observedAt,
                 RabbitMqSource,
-                status,
-                reason)).ToArray(),
+                definition.Enabled ? status : RuntimeMetricCollectionStatus.NotApplicable,
+                definition.Enabled ? reason : "Queue is disabled by configuration; no broker metric is required."))
+                .ToArray(),
             [new RuntimeLimitationResponse("rabbitmq_metrics_unavailable", reason)]);
+
+    private static RabbitMqQueueMetricResponse BuildQueueMetric(
+        RabbitMqQueueDefinition definition,
+        IReadOnlyDictionary<string, JsonElement> byQueue,
+        DateTimeOffset observedAt)
+    {
+        if (!byQueue.TryGetValue(definition.QueueName, out var queue))
+        {
+            return new RabbitMqQueueMetricResponse(
+                definition.QueueName,
+                definition.QueueRole,
+                definition.Enabled,
+                definition.ConsumerRequired,
+                definition.BlocksRuntimeHealth,
+                null,
+                null,
+                null,
+                null,
+                observedAt,
+                RabbitMqSource,
+                definition.Enabled
+                    ? RuntimeMetricCollectionStatus.Unavailable
+                    : RuntimeMetricCollectionStatus.NotApplicable,
+                definition.Enabled
+                    ? "Enabled queue was not returned by RabbitMQ Management API."
+                    : "Queue is disabled by configuration.");
+        }
+
+        return new RabbitMqQueueMetricResponse(
+            definition.QueueName,
+            definition.QueueRole,
+            definition.Enabled,
+            definition.ConsumerRequired,
+            definition.BlocksRuntimeHealth,
+            TryGetInt(queue, "messages_ready"),
+            TryGetInt(queue, "messages_unacknowledged"),
+            TryGetInt(queue, "messages"),
+            TryGetInt(queue, "consumers"),
+            observedAt,
+            RabbitMqSource,
+            RuntimeMetricCollectionStatus.Measured,
+            definition.Enabled
+                ? null
+                : "Queue is disabled by configuration but remains present in RabbitMQ; durable resource or binding cleanup may be pending.");
+    }
 
     private RuntimeOperationalHealthComponentResponse Component(
         string name,
@@ -417,15 +474,38 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
             "runtime-observability",
             limitation);
 
-    private static bool IsBlockingRuntimeQueue(string queueName)
-        => string.Equals(queueName, NatureProtectorRabbitMqTopology.IngestionReadingsQueue, StringComparison.Ordinal);
+    private static string? BuildRabbitMqAdvisoryLimitation(
+        IReadOnlyList<string> auxiliaryUnconsumedBacklogQueues,
+        IReadOnlyList<string> auxiliaryUnavailableQueues,
+        IReadOnlyList<string> disabledQueuesStillPresent)
+    {
+        var limitations = new List<string>();
+        if (auxiliaryUnconsumedBacklogQueues.Count > 0)
+        {
+            limitations.Add(
+                "Enabled auxiliary diagnostic queues have measured messages and no consumers: " +
+                string.Join(", ", auxiliaryUnconsumedBacklogQueues) +
+                ".");
+        }
 
-    private static string? BuildNonBlockingRabbitMqLimitation(IReadOnlyList<string> queueNames)
-        => queueNames.Count == 0
-            ? null
-            : "Non-blocking diagnostic queues have measured messages and no consumers: " +
-              string.Join(", ", queueNames) +
-              ".";
+        if (auxiliaryUnavailableQueues.Count > 0)
+        {
+            limitations.Add(
+                "Enabled auxiliary diagnostic queue metrics are unavailable: " +
+                string.Join(", ", auxiliaryUnavailableQueues) +
+                ". Blocking runtime health remains based on primary work queues.");
+        }
+
+        if (disabledQueuesStillPresent.Count > 0)
+        {
+            limitations.Add(
+                "Queues disabled by configuration remain present in RabbitMQ: " +
+                string.Join(", ", disabledQueuesStillPresent) +
+                ". Durable topology cleanup may be pending.");
+        }
+
+        return limitations.Count == 0 ? null : string.Join(" ", limitations);
+    }
 
     private RabbitMqOptions GetRabbitMqOptions()
         => _configuration.GetSection(RabbitMqOptions.SectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();

@@ -41,6 +41,31 @@ public sealed class RabbitMqOptionsTests
     }
 
     [Fact]
+    public void GetQueueDefinitions_SeparatesPrimaryAndAuxiliaryRoles()
+    {
+        var options = new RabbitMqOptions();
+
+        Assert.Collection(
+            options.GetQueueDefinitions(),
+            primary =>
+            {
+                Assert.Equal(NatureProtectorRabbitMqTopology.IngestionReadingsQueue, primary.QueueName);
+                Assert.Equal(RabbitMqQueueRoles.PrimaryWorkQueue, primary.QueueRole);
+                Assert.True(primary.Enabled);
+                Assert.True(primary.ConsumerRequired);
+                Assert.True(primary.BlocksRuntimeHealth);
+            },
+            auxiliary =>
+            {
+                Assert.Equal(NatureProtectorRabbitMqTopology.ObservabilityRawQueue, auxiliary.QueueName);
+                Assert.Equal(RabbitMqQueueRoles.AuxiliaryDiagnosticQueue, auxiliary.QueueRole);
+                Assert.False(auxiliary.Enabled);
+                Assert.False(auxiliary.ConsumerRequired);
+                Assert.False(auxiliary.BlocksRuntimeHealth);
+            });
+    }
+
+    [Fact]
     public void GetBindings_UsesConfiguredPrimaryQueueName_WhenRawIsDisabled()
     {
         var options = new RabbitMqOptions
@@ -76,6 +101,10 @@ public sealed class RabbitMqOptionsTests
             options.GetQueueNames(),
             queueName => Assert.Equal("np.it.ingestion", queueName),
             queueName => Assert.Equal("np.it.raw", queueName));
+        Assert.Collection(
+            options.GetEnabledQueueDefinitions(),
+            primary => Assert.Equal(RabbitMqQueueRoles.PrimaryWorkQueue, primary.QueueRole),
+            auxiliary => Assert.Equal(RabbitMqQueueRoles.AuxiliaryDiagnosticQueue, auxiliary.QueueRole));
         Assert.Collection(
             options.GetBindings(),
             binding =>

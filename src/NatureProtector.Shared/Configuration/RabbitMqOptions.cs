@@ -22,18 +22,37 @@ public sealed class RabbitMqOptions
     public string ObservabilityRawQueueName { get; init; } =
         NatureProtectorRabbitMqTopology.ObservabilityRawQueue;
 
-    public IReadOnlyCollection<string> GetQueueNames()
-    {
-        if (!ObservabilityRawEnabled)
-        {
-            return [IngestionReadingsQueueName];
-        }
+    public IReadOnlyCollection<RabbitMqQueueDefinition> GetQueueDefinitions()
+        =>
+        [
+            new RabbitMqQueueDefinition(
+                IngestionReadingsQueueName,
+                RoutingKeys.SensorReadingProduced,
+                RabbitMqQueueRoles.PrimaryWorkQueue,
+                Enabled: true,
+                ConsumerRequired: true,
+                BlocksRuntimeHealth: true),
+            new RabbitMqQueueDefinition(
+                ObservabilityRawQueueName,
+                RoutingKeys.SensorReadingProduced,
+                RabbitMqQueueRoles.AuxiliaryDiagnosticQueue,
+                Enabled: ObservabilityRawEnabled,
+                ConsumerRequired: false,
+                BlocksRuntimeHealth: false)
+        ];
 
-        return [IngestionReadingsQueueName, ObservabilityRawQueueName];
-    }
+    public IReadOnlyCollection<RabbitMqQueueDefinition> GetEnabledQueueDefinitions()
+        => GetQueueDefinitions()
+            .Where(definition => definition.Enabled)
+            .ToArray();
+
+    public IReadOnlyCollection<string> GetQueueNames()
+        => GetEnabledQueueDefinitions()
+            .Select(definition => definition.QueueName)
+            .ToArray();
 
     public IReadOnlyCollection<(string QueueName, string RoutingKey)> GetBindings()
-        => GetQueueNames()
-            .Select(queueName => (queueName, RoutingKeys.SensorReadingProduced))
+        => GetEnabledQueueDefinitions()
+            .Select(definition => (definition.QueueName, definition.RoutingKey))
             .ToArray();
 }

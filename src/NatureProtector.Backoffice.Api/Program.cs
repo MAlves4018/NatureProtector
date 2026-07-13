@@ -18,6 +18,7 @@ using NatureProtector.Backoffice.Api.UserPlane.Services;
 using NatureProtector.Infrastructure.Postgres.DependencyInjection;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Users;
+using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Observability;
 
 /*
@@ -123,7 +124,10 @@ else
             "The control-plane API is disabled. Set BackofficeApi:ControlPlaneEnabled=true to enable PostgreSQL-backed endpoints."));
     builder.Services.AddSingleton<IRuntimeObservabilityService>(
         _ => new UnavailableRuntimeObservabilityService(
-            "Runtime observability is disabled because the control plane is not enabled."));
+            "Runtime observability is disabled because the control plane is not enabled.",
+            builder.Configuration
+                .GetSection(RabbitMqOptions.SectionName)
+                .Get<RabbitMqOptions>()));
     builder.Services.AddSingleton<IUserRolePlaneService>(
         _ => new UnavailableUserRolePlaneService(
             "The user plane API is disabled because the control plane is not enabled."));

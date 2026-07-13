@@ -22,6 +22,14 @@ public sealed class MessagingConstantsTests
         Assert.Equal("ingestion.reading.normalized", RoutingKeys.ReadingNormalized);
     }
 
+
+    [Fact]
+    public void QueueRoles_AreStable()
+    {
+        Assert.Equal("PrimaryWorkQueue", RabbitMqQueueRoles.PrimaryWorkQueue);
+        Assert.Equal("AuxiliaryDiagnosticQueue", RabbitMqQueueRoles.AuxiliaryDiagnosticQueue);
+    }
+
     [Fact]
     public void Topology_DefinesExpectedExchangeQueuesAndBindings()
     {

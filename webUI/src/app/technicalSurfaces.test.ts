@@ -13,7 +13,7 @@ describe('technical surfaces', () => {
     expect(surface.limitations).toContain('Pipeline health is not inferred from absence of errors.');
   });
 
-  it('shows measured RabbitMQ zero separately from unavailable queue values', () => {
+  it('finds queues by role and separates measured primary from disabled auxiliary values', () => {
     const summary = createUiRuntimeSummaryFixture();
     const observedAt = '2026-06-14T10:00:00Z';
     const surface = buildUiPipelineSurface(
@@ -29,7 +29,11 @@ describe('technical surfaces', () => {
           limitations: [],
           queues: [
             {
-              queueName: 'np.ingestion.readings',
+              queueName: 'np.custom.ingestion',
+              queueRole: 'PrimaryWorkQueue',
+              enabled: true,
+              consumerRequired: true,
+              blocksRuntimeHealth: true,
               messagesReady: 0,
               messagesUnacknowledged: 0,
               messagesTotal: 0,
@@ -40,15 +44,19 @@ describe('technical surfaces', () => {
               limitation: null,
             },
             {
-              queueName: 'np.observability.raw',
+              queueName: 'np.custom.raw',
+              queueRole: 'AuxiliaryDiagnosticQueue',
+              enabled: false,
+              consumerRequired: false,
+              blocksRuntimeHealth: false,
               messagesReady: null,
               messagesUnacknowledged: null,
               messagesTotal: null,
               consumers: null,
               observedAt,
               source: 'RabbitMQ Management HTTP API',
-              collectionStatus: 'Unavailable',
-              limitation: 'Queue unavailable.',
+              collectionStatus: 'NotApplicable',
+              limitation: 'Queue is disabled by configuration.',
             },
           ],
         },
@@ -59,7 +67,10 @@ describe('technical surfaces', () => {
     expect(surface.fields.find((field) => field.label === 'Ingestion ready')?.value).toBe('0');
     expect(surface.fields.find((field) => field.label === 'Ingestion ready')?.state).toBe('ready');
     expect(surface.fields.find((field) => field.label === 'Observability ready')?.value).toBe('-');
-    expect(surface.fields.find((field) => field.label === 'Observability ready')?.state).toBe('not-available');
+    expect(surface.fields.find((field) => field.label === 'Observability ready')?.state).toBe('partial');
+    expect(surface.fields.find((field) => field.label === 'Ingestion ready')?.scope).toBe(
+      'np.custom.ingestion messages_ready',
+    );
   });
 
   it('distinguishes prior QA evidence from recorded M05 execution', () => {

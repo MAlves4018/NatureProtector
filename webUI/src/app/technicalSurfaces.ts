@@ -133,8 +133,8 @@ export function buildUiPipelineSurface(
   const postgres = findComponent(input.health, 'PostgreSQL');
   const influx = findComponent(input.health, 'InfluxDB');
   const grafana = findComponent(input.health, 'Grafana');
-  const ingestionQueue = findQueue(rabbitMq, 'np.ingestion.readings');
-  const observabilityQueue = findQueue(rabbitMq, 'np.observability.raw');
+  const ingestionQueue = findQueueByRole(rabbitMq, 'PrimaryWorkQueue');
+  const observabilityQueue = findQueueByRole(rabbitMq, 'AuxiliaryDiagnosticQueue');
 
   const fields: UiTechnicalField[] = [
     field(
@@ -338,7 +338,7 @@ export function buildUiPipelineSurface(
       queueMetricState(ingestionQueue),
       ingestionQueue?.source ?? 'RabbitMQ Management API',
       formatUiDate(ingestionQueue?.observedAt, locale),
-      'np.ingestion.readings messages_ready',
+      `${ingestionQueue?.queueName ?? 'PrimaryWorkQueue'} messages_ready`,
       ingestionQueue?.limitation ?? none(locale),
     ),
     field(
@@ -347,7 +347,7 @@ export function buildUiPipelineSurface(
       queueMetricState(ingestionQueue),
       ingestionQueue?.source ?? 'RabbitMQ Management API',
       formatUiDate(ingestionQueue?.observedAt, locale),
-      'np.ingestion.readings messages_unacknowledged',
+      `${ingestionQueue?.queueName ?? 'PrimaryWorkQueue'} messages_unacknowledged`,
       ingestionQueue?.limitation ?? none(locale),
     ),
     field(
@@ -356,7 +356,7 @@ export function buildUiPipelineSurface(
       queueMetricState(ingestionQueue),
       ingestionQueue?.source ?? 'RabbitMQ Management API',
       formatUiDate(ingestionQueue?.observedAt, locale),
-      'np.ingestion.readings consumers',
+      `${ingestionQueue?.queueName ?? 'PrimaryWorkQueue'} consumers`,
       ingestionQueue?.limitation ?? none(locale),
     ),
     field(
@@ -365,7 +365,7 @@ export function buildUiPipelineSurface(
       queueMetricState(observabilityQueue),
       observabilityQueue?.source ?? 'RabbitMQ Management API',
       formatUiDate(observabilityQueue?.observedAt, locale),
-      'np.observability.raw messages_ready',
+      `${observabilityQueue?.queueName ?? 'AuxiliaryDiagnosticQueue'} messages_ready`,
       observabilityQueue?.limitation ?? none(locale),
     ),
     field(
@@ -846,8 +846,8 @@ function findComponent(health: RuntimeOperationalHealthResponse | null | undefin
   return health?.components.find((item) => item.component === component) ?? null;
 }
 
-function findQueue(rabbitMq: RabbitMqMetricsResponse | null | undefined, queueName: string) {
-  return rabbitMq?.queues.find((item) => item.queueName === queueName) ?? null;
+function findQueueByRole(rabbitMq: RabbitMqMetricsResponse | null | undefined, queueRole: string) {
+  return rabbitMq?.queues.find((item) => item.queueRole === queueRole) ?? null;
 }
 
 function statusToState(status: string | null | undefined): UiTechnicalState {
@@ -873,6 +873,10 @@ function statusToState(status: string | null | undefined): UiTechnicalState {
 function queueMetricState(queue: RabbitMqQueueMetricResponse | null | undefined): UiTechnicalState {
   if (!queue) {
     return 'unknown';
+  }
+
+  if (!queue.enabled) {
+    return 'partial';
   }
 
   return queue.collectionStatus === 'Measured' ? 'ready' : statusToState(queue.collectionStatus);

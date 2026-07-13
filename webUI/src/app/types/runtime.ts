@@ -360,6 +360,10 @@ export interface RabbitMqMetricsResponse {
 
 export interface RabbitMqQueueMetricResponse {
   queueName: string;
+  queueRole: 'PrimaryWorkQueue' | 'AuxiliaryDiagnosticQueue' | string;
+  enabled: boolean;
+  consumerRequired: boolean;
+  blocksRuntimeHealth: boolean;
   messagesReady: number | null;
   messagesUnacknowledged: number | null;
   messagesTotal: number | null;

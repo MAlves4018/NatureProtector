@@ -1,5 +1,6 @@
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Messaging;
 
 namespace NatureProtector.Backoffice.Api.Tests;
@@ -7,9 +8,17 @@ namespace NatureProtector.Backoffice.Api.Tests;
 public sealed class UnavailableRuntimeObservabilityServiceTests
 {
     [Fact]
-    public async Task UnavailableService_ReportsExplicitRuntimeLimitations()
+    public async Task UnavailableService_ReportsEffectiveTopologyAndExplicitRuntimeLimitations()
     {
-        var service = new UnavailableRuntimeObservabilityService("Runtime disabled for tests.");
+        var options = new RabbitMqOptions
+        {
+            IngestionReadingsQueueName = "np.custom.ingestion",
+            ObservabilityRawQueueName = "np.custom.raw",
+            ObservabilityRawEnabled = false
+        };
+        var service = new UnavailableRuntimeObservabilityService(
+            "Runtime disabled for tests.",
+            options);
 
         Assert.False(service.IsAvailable);
         Assert.Equal("Runtime disabled for tests.", service.AvailabilityMessage);
@@ -31,17 +40,26 @@ public sealed class UnavailableRuntimeObservabilityServiceTests
         Assert.Contains(rabbitMq.Limitations, limitation =>
             limitation.Code == "rabbitmq_metrics_unavailable" &&
             limitation.Message == "Runtime disabled for tests.");
-        Assert.Equal(
-            NatureProtectorRabbitMqTopology.Bindings
-                .Select(binding => binding.QueueName)
-                .Distinct(StringComparer.Ordinal)
-                .Count(),
-            rabbitMq.Queues.Count);
-        Assert.All(rabbitMq.Queues, queue =>
-        {
-            Assert.Equal(RuntimeMetricCollectionStatus.Unavailable, queue.CollectionStatus);
-            Assert.Equal("Runtime disabled for tests.", queue.Limitation);
-        });
+        Assert.Collection(
+            rabbitMq.Queues,
+            primary =>
+            {
+                Assert.Equal("np.custom.ingestion", primary.QueueName);
+                Assert.Equal(RabbitMqQueueRoles.PrimaryWorkQueue, primary.QueueRole);
+                Assert.True(primary.Enabled);
+                Assert.True(primary.ConsumerRequired);
+                Assert.True(primary.BlocksRuntimeHealth);
+                Assert.Equal(RuntimeMetricCollectionStatus.Unavailable, primary.CollectionStatus);
+                Assert.Equal("Runtime disabled for tests.", primary.Limitation);
+            },
+            auxiliary =>
+            {
+                Assert.Equal("np.custom.raw", auxiliary.QueueName);
+                Assert.Equal(RabbitMqQueueRoles.AuxiliaryDiagnosticQueue, auxiliary.QueueRole);
+                Assert.False(auxiliary.Enabled);
+                Assert.Equal(RuntimeMetricCollectionStatus.NotApplicable, auxiliary.CollectionStatus);
+                Assert.Equal("Queue is disabled by configuration.", auxiliary.Limitation);
+            });
 
         var evidence = await service.ListEvidenceAsync(CancellationToken.None);
         Assert.Empty(evidence.Items);
