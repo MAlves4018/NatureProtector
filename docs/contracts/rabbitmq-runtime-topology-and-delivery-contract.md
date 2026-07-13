@@ -3,13 +3,11 @@
 ## Estado
 
 ```text
-TARGET_CONTRACT
-IMPLEMENTED_NOT_PROVED_PHASE3F
+IMPLEMENTED_LOCAL_VALIDATED
 ```
 
-Este documento define o alvo normativo para a remediação RabbitMQ. O estado
-executável atual continua descrito pela auditoria e pelos testes de
-caracterização da Fase 1 até a implementação passar os gates.
+Este contrato foi validado localmente por testes focais e Docker. Inventário,
+migração ou validação em staging/produção continuam fora desta prova local.
 
 ## Recursos
 

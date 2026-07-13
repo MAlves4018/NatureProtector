@@ -55,9 +55,23 @@ Este documento não cobre:
 - as rotas históricas `/qa-tests` e `/db-queries` não executam testes nem queries no browser e apresentam uma
   superfície indisponível;
 - estados `Queued`, `Running`, desconhecidos ou simulados não são apresentados como conclusão comprovada;
+- o arranque local cria uma operação persistida, consultável por `OperationId` ou `RequestId`, e a webUI acompanha apenas
+  essa identidade até existir uma ligação explícita à `SimulationRunId`;
+- `ProducerCompleted` não é apresentado como conclusão do sistema: o estado terminal depende do accounting persistido da
+  própria run; falhas, timeout e runs órfãs permanecem estados explícitos;
 - a execução de simulações pela webUI fica desativada no bundle de produção;
 - detalhes de run são fail-closed quando os identificadores DataScope divergem, e respostas tardias de uma área ou run
   anterior não podem substituir o contexto selecionado.
+
+### Contrato temporal da projeção
+
+- leituras com `CycleIndex` são agregadas por `SimulationRunId + CycleIndex`, com membership esperado persistido;
+- `Observed`, `Reference`, `CarriedForward`, `Missing` e `Blocked` são origens distintas; reference e carry-forward não
+  contam como cobertura observada;
+- cada ciclo finalizado materializa no máximo um snapshot por célula e um por área, ambos compostos exclusivamente por
+  dados do mesmo ciclo;
+- a avaliação de alerta ocorre no máximo uma vez por ciclo de área; runs sem operação operacional persistida não alteram
+  o estado corrente nem alertas operacionais.
 
 ## Pré-condições mínimas
 
