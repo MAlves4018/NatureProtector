@@ -1,9 +1,11 @@
 [CmdletBinding()]
 param(
-    [int]$ApiPort = 5254,
-    [int]$PreventionPort = 5260,
-    [int]$WebPort = 5173
+    [int]$ApiPort = 0,
+    [int]$PreventionPort = 0,
+    [int]$WebPort = 0
 )
+
+Import-Module (Join-Path $PSScriptRoot '../common/NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
 
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
@@ -43,9 +45,24 @@ function Test-HttpEndpoint {
     }
 }
 
+$repoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln')
+$dotEnv = Read-NpDotEnv -Path (Join-Path $repoRoot '.env')
+
+if ($ApiPort -le 0) {
+    $ApiPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'BACKOFFICE_API_PORT' -Fallback '5254' -EnvironmentFirst)
+}
+if ($PreventionPort -le 0) {
+    $PreventionPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'PREVENTION_HOST_PORT' -Fallback '5260' -EnvironmentFirst)
+}
+if ($WebPort -le 0) {
+    $WebPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'WEBUI_PORT' -Fallback '5173' -EnvironmentFirst)
+}
+
 $results = @(
-    Test-HttpEndpoint -Name 'Backoffice API health' -Uri "http://127.0.0.1:$ApiPort/health"
+    Test-HttpEndpoint -Name 'Backoffice API liveness' -Uri "http://127.0.0.1:$ApiPort/health/live"
+    Test-HttpEndpoint -Name 'Backoffice API readiness' -Uri "http://127.0.0.1:$ApiPort/health/ready"
     Test-HttpEndpoint -Name 'Prevention Host liveness' -Uri "http://127.0.0.1:$PreventionPort/health/live"
+    Test-HttpEndpoint -Name 'Prevention Host readiness' -Uri "http://127.0.0.1:$PreventionPort/health/ready"
     Test-HttpEndpoint -Name 'webUI' -Uri "http://127.0.0.1:$WebPort"
 )
 
