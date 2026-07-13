@@ -458,6 +458,42 @@ export interface RuntimeRunStartResponse {
   warnings: string[];
   logDirectory: string | null;
   evidenceDirectory: string | null;
+  operationId?: string | null;
+}
+
+export interface RuntimeOperationAccountingResponse {
+  expectedObservations: number;
+  acceptedObservations: number;
+  pendingInbox: number;
+  processingInbox: number;
+  retryPendingInbox: number;
+  processedInbox: number;
+  quarantinedInbox: number;
+  settled: boolean;
+}
+
+export interface RuntimeOperationResponse {
+  operationId: string;
+  requestId: string;
+  correlationId: string;
+  simulationRunId: string | null;
+  requestedState: string;
+  providerState: string;
+  runState: string;
+  processingState: string;
+  state: string;
+  terminalOutcome: string | null;
+  acceptedAt: string;
+  updatedAt: string;
+  startedAt: string | null;
+  producerCompletedAt: string | null;
+  systemCompletedAt: string | null;
+  finishedAt: string | null;
+  failureCode: string | null;
+  failureDetail: string | null;
+  evidenceId: string | null;
+  evidenceLocation: string | null;
+  accounting: RuntimeOperationAccountingResponse;
 }
 
 export interface RuntimeResetRequest {

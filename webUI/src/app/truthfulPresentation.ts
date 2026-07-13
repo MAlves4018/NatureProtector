@@ -2,14 +2,26 @@ import type { UiTechnicalState } from './technicalSurfaces';
 
 export type GlobalOperationalStatus = 'Healthy' | 'Degraded' | 'Unhealthy' | 'Unknown';
 
-const TERMINAL_SUCCESS = new Set(['completed', 'succeeded', 'validated', 'rolledback']);
-const IN_PROGRESS = new Set(['accepted', 'launchaccepted', 'started', 'queued', 'running', 'pending']);
+const TERMINAL_SUCCESS = new Set(['completed', 'systemcompleted', 'succeeded', 'validated', 'rolledback']);
+const IN_PROGRESS = new Set([
+  'accepted',
+  'launchaccepted',
+  'runobserved',
+  'producerscompleted',
+  'producercompleted',
+  'pipelinesettling',
+  'started',
+  'queued',
+  'running',
+  'pending',
+]);
 const NEGATIVE = new Set([
   'blocked',
   'failed',
   'timedout',
   'timed-out',
   'cancelled',
+  'orphaned',
   'rejected',
   'processexitedwithoutrun',
 ]);

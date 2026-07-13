@@ -251,8 +251,9 @@ describe('App', () => {
     await waitFor(() => expect(submitButton).not.toBeDisabled());
     fireEvent.click(submitButton);
 
-    expect(await screen.findByRole('heading', { name: /Contexto da execução/i })).toBeInTheDocument();
+    expect(await screen.findAllByText('SystemCompleted')).not.toHaveLength(0);
     expect(fetchMock).toHaveBeenCalledWith('/api/control/runtime/runs', expect.objectContaining({ method: 'POST' }));
+    expect(fetchMock).toHaveBeenCalledWith('/api/control/runtime/operations/operation-001', expect.anything());
   });
 
   it('shows proportional administration and experimental P3 only for Admin profiles', async () => {
@@ -406,6 +407,7 @@ function createFetchMock(
       const requested = JSON.parse(String(init.body));
       return jsonResponse({
         requestId: 'request-001',
+        operationId: 'operation-001',
         orchestratorCorrelationId: 'corr-001',
         status: 'Validated',
         message: 'Request validated by test fixture.',
@@ -422,6 +424,41 @@ function createFetchMock(
         warnings: [],
         logDirectory: null,
         evidenceDirectory: null,
+      });
+    }
+
+    if (path === '/api/control/runtime/operations/operation-001') {
+      return jsonResponse({
+        operationId: 'operation-001',
+        requestId: 'request-001',
+        correlationId: 'corr-001',
+        simulationRunId: latestRun.id,
+        requestedState: 'Requested',
+        providerState: 'ProducerCompleted',
+        runState: 'Completed',
+        processingState: 'SystemCompleted',
+        state: 'SystemCompleted',
+        terminalOutcome: 'SystemCompleted',
+        acceptedAt: '2026-06-13T22:10:00Z',
+        updatedAt: '2026-06-13T22:11:00Z',
+        startedAt: '2026-06-13T22:10:01Z',
+        producerCompletedAt: '2026-06-13T22:10:30Z',
+        systemCompletedAt: '2026-06-13T22:11:00Z',
+        finishedAt: '2026-06-13T22:11:00Z',
+        failureCode: null,
+        failureDetail: null,
+        evidenceId: 'evidence-001',
+        evidenceLocation: 'evidence/run-001',
+        accounting: {
+          expectedObservations: 3,
+          acceptedObservations: 3,
+          pendingInbox: 0,
+          processingInbox: 0,
+          retryPendingInbox: 0,
+          processedInbox: 3,
+          quarantinedInbox: 0,
+          settled: true,
+        },
       });
     }
 

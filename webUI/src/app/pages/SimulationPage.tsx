@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { PlayCircle } from 'lucide-react';
 import { AreaSelector } from '../components/AreaSelector';
 import { PageHeader } from '../components/PageHeader';
@@ -6,7 +5,6 @@ import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
 import { toggleDegradationProfile, useUiSimulation } from '../state/SimulationContext';
 import { useUiActivity } from '../state/ActivityContext';
-import { useNavigate } from 'react-router-dom';
 import { executionStatusState } from '../truthfulPresentation';
 
 export function SimulationPage() {
@@ -18,22 +16,12 @@ export function SimulationPage() {
     simulationReview,
     simulationSubmitting,
     simulationError,
-    simulationResult,
-    setSimulationResult,
+    runtimeOperation,
     canExecuteSimulation,
     runtimeLaunchAvailable,
     submitSimulation,
     degradationProfiles,
   } = useUiSimulation();
-
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (simulationResult?.run?.id) {
-      setSimulationResult(null);
-      navigate('/runs');
-    }
-  }, [navigate, setSimulationResult, simulationResult?.run?.id]);
 
   return (
     <section className="ui-page">
@@ -159,11 +147,28 @@ export function SimulationPage() {
           <div className="ui-section-heading">
             <h3>{copy('simulation.review')}</h3>
             <StatusBadge
-              label={simulationReview.resultStatus}
-              state={executionStatusState(simulationReview.resultStatus, copy('simulation.idle'))}
+              label={runtimeOperation?.state ?? simulationReview.resultStatus}
+              state={executionStatusState(runtimeOperation?.state ?? simulationReview.resultStatus, copy('simulation.idle'))}
             />
           </div>
-          <p>{simulationReview.resultMessage}</p>
+          <p>{runtimeOperation?.failureDetail ?? simulationReview.resultMessage}</p>
+          {runtimeOperation && (
+            <dl className="ui-definition-list">
+              <dt>OperationId</dt>
+              <dd>{runtimeOperation.operationId}</dd>
+              <dt>SimulationRunId</dt>
+              <dd>{runtimeOperation.simulationRunId ?? 'Pending'}</dd>
+              <dt>Processing</dt>
+              <dd>{runtimeOperation.processingState}</dd>
+              <dt>Accounting</dt>
+              <dd>
+                {runtimeOperation.accounting.processedInbox + runtimeOperation.accounting.quarantinedInbox}/
+                {runtimeOperation.accounting.expectedObservations}
+              </dd>
+              <dt>Evidence</dt>
+              <dd>{runtimeOperation.evidenceId ?? runtimeOperation.evidenceLocation ?? 'Not recorded'}</dd>
+            </dl>
+          )}
           <div className="ui-table-wrap">
             <table className="ui-table">
               <thead>

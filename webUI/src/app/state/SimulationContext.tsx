@@ -4,7 +4,7 @@ import { useUiActivity } from './ActivityContext';
 import { useUiCapabilities } from './CapabilityContext';
 import { useUiArea } from './AreaContext';
 import { useUiLocale } from './LocaleContext';
-import type { RuntimeRunStartRequest, RuntimeRunStartResponse } from '../types';
+import type { RuntimeOperationResponse, RuntimeRunStartRequest, RuntimeRunStartResponse } from '../types';
 import type { UiMessageKey } from '../i18n';
 import { buildUiSimulationReview, type UiSimulationReviewModel } from '../coreContext';
 import { DEGRADATION_PROFILE_OPTIONS } from '../content/technicalLabels';
@@ -47,7 +47,7 @@ interface UiSimulationContextValue {
   simulationRequest: RuntimeRunStartRequest;
   simulationReview: UiSimulationReviewModel;
   simulationResult: RuntimeRunStartResponse | null;
-  setSimulationResult: React.Dispatch<React.SetStateAction<RuntimeRunStartResponse | null>>;
+  runtimeOperation: RuntimeOperationResponse | null;
   simulationSubmitting: boolean;
   simulationError: Error | null;
   canExecuteSimulation: boolean;
@@ -68,6 +68,7 @@ export function UiSimulationProvider({ children }: { children: ReactNode }) {
 
   const [simulationForm, setSimulationForm] = useState<SimulationFormState>(() => hydrateSimulationForm());
   const [simulationResult, setSimulationResult] = useState<RuntimeRunStartResponse | null>(null);
+  const [runtimeOperation, setRuntimeOperation] = useState<RuntimeOperationResponse | null>(null);
   const [simulationSubmitting, setSimulationSubmitting] = useState(false);
   const [simulationError, setSimulationError] = useState<Error | null>(null);
 
@@ -87,6 +88,35 @@ export function UiSimulationProvider({ children }: { children: ReactNode }) {
     persistSimulationForm(simulationForm);
   }, [simulationForm]);
 
+  useEffect(() => {
+    const operationId = simulationResult?.operationId;
+    if (!operationId || runtimeOperation?.terminalOutcome) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async () => {
+      try {
+        const operation = await api.getRuntimeOperation(operationId);
+        if (cancelled) return;
+        setRuntimeOperation(operation);
+        setSimulationError(null);
+        if (operation.simulationRunId) setSelectedRunId(operation.simulationRunId);
+        if (operation.terminalOutcome) {
+          reloadAreaContext();
+          return;
+        }
+      } catch (err) {
+        if (!cancelled) setSimulationError(asError(err, 'Failed to read persisted runtime operation'));
+      }
+      if (!cancelled) timer = setTimeout(poll, 1500);
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [reloadAreaContext, runtimeOperation?.terminalOutcome, setSelectedRunId, simulationResult?.operationId]);
+
   const submitSimulation = useCallback(async () => {
     const blocker = simulationBlocker(copy, canExecuteSimulation, resolvedAreaCode, selectedScenarioCode);
     if (blocker) {
@@ -96,6 +126,7 @@ export function UiSimulationProvider({ children }: { children: ReactNode }) {
 
     setSimulationSubmitting(true);
     setSimulationError(null);
+    setRuntimeOperation(null);
     try {
       const result = await api.startRuntimeRun(simulationRequest);
       setSimulationResult(result);
@@ -125,7 +156,7 @@ export function UiSimulationProvider({ children }: { children: ReactNode }) {
       simulationRequest,
       simulationReview,
       simulationResult,
-      setSimulationResult,
+      runtimeOperation,
       simulationSubmitting,
       simulationError,
       canExecuteSimulation,
@@ -138,6 +169,7 @@ export function UiSimulationProvider({ children }: { children: ReactNode }) {
       simulationRequest,
       simulationReview,
       simulationResult,
+      runtimeOperation,
       simulationSubmitting,
       simulationError,
       canExecuteSimulation,
