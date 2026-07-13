@@ -751,6 +751,7 @@ public sealed partial class DockerPublishedRuntimeProcessTests
                 areaSnapshots == 1 &&
                 runId != Guid.Empty)
             {
+                Console.WriteLine($"E2E_ACCOUNTING {lastState}");
                 return;
             }
 
