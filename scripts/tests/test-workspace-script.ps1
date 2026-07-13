@@ -106,6 +106,9 @@ $envExampleHashBefore = Get-OptionalFileHash $envExamplePath
     (Join-Path $RepoRoot "scripts\release\test-postgres-backup-restore.ps1"),
     (Join-Path $RepoRoot "scripts\release\test-postgres-real-data-backup-restore.ps1"),
     (Join-Path $RepoRoot "scripts\dev\start-local-runtime.ps1"),
+    (Join-Path $RepoRoot "scripts\runtime\Start-LocalRuntime.ps1"),
+    (Join-Path $RepoRoot "scripts\runtime\Test-LocalRuntimeHealth.ps1"),
+    (Join-Path $RepoRoot "scripts\setup\Initialize-LocalWorkspace.ps1"),
     (Join-Path $RepoRoot "scripts\performance\run-system-capacity-workload.ps1"),
     (Join-Path $RepoRoot "scripts\docs\export-documentation-quality.ps1"),
     (Join-Path $RepoRoot "scripts\observability\export-telemetry-catalog.ps1"),
@@ -162,15 +165,30 @@ Assert-False ($upScript -match 'Copy-Item\s+["'']\.env\.example["'']\s+["'']\.en
 Assert-True ($upScript -match "will not create or edit \.env") "up.ps1 documents no .env mutation"
 
 $bootstrapScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\postgres\bootstrap-control-plane.ps1") -Raw
-Assert-True ($bootstrapScript -match '\[string\]\$Configuration = "Release"') "bootstrap defaults to Release configuration"
+Assert-True ($bootstrapScript -match '\[string\]\$Configuration\s*=\s*.+Release') "bootstrap defaults to Release configuration"
 Assert-True ($bootstrapScript -match "Bootstrap execution is blocked") "bootstrap blocks execution after build failure"
 Assert-False ($bootstrapScript -match "Write-Warning.*continu") "bootstrap no longer warns and continues after build failure"
+Assert-True ($bootstrapScript -match "POSTGRES_HOST" -and $bootstrapScript -match "POSTGRES_PORT" -and $bootstrapScript -match "EnvironmentFirst") "bootstrap resolves the configured PostgreSQL target"
+Assert-False ($bootstrapScript -match 'Test-NetConnection\s+-ComputerName\s+["'']localhost["'']\s+-Port\s+5433') "bootstrap does not hardcode localhost:5433"
+
+$prepareScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\setup\Initialize-LocalWorkspace.ps1") -Raw
+Assert-True ($prepareScript -match "dotnet restore" -and $prepareScript -match "NuGet.Config") "prepare-local restores the locked .NET dependency graph"
+Assert-True ($prepareScript -match "npm ci") "prepare-local installs frontend dependencies from package-lock.json"
+Assert-False ($prepareScript -match "npm install") "prepare-local does not mutate the frontend lockfile through npm install"
+
+$runtimeHealthScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\runtime\Test-LocalRuntimeHealth.ps1") -Raw
+Assert-True ($runtimeHealthScript -match "BACKOFFICE_API_PORT" -and $runtimeHealthScript -match "PREVENTION_HOST_PORT" -and $runtimeHealthScript -match "WEBUI_PORT") "runtime health consumes canonical local ports"
+Assert-True ($runtimeHealthScript -match "/health/live" -and $runtimeHealthScript -match "/health/ready") "runtime health distinguishes liveness and readiness"
+
+$runtimeStartScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\runtime\Start-LocalRuntime.ps1") -Raw
+Assert-True ($runtimeStartScript -match '&\s+\$launcher\s+@launcherParameters') "runtime wrapper invokes the persistent launcher in-process"
+Assert-False ($runtimeStartScript -match '&\s+pwsh\s+@arguments') "runtime wrapper does not retain native child pipes"
 
 $prereqScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\setup\Test-LocalPrerequisites.ps1") -Raw
 Assert-False ($prereqScript -match 'git"\s+@\("--version"\)') "local prerequisite check does not execute git --version"
 Assert-True ($prereqScript -match "without executing Git") "local prerequisite check records Git-safe behavior"
 Assert-False ($prereqScript -match "can create it from \\.env\\.example") "local prerequisite check does not claim scripts create .env"
-Assert-True ($prereqScript -match 'will not create or edit \.env') "local prerequisite check documents no .env mutation"
+Assert-True ($prereqScript -match "init-local -Force") "local prerequisite check points to the canonical .env initializer"
 
 $setupScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\setup\Setup-LocalEnvironment.ps1") -Raw
 Assert-False ($setupScript -match 'Copy-Item\s+\(Join-Path \$repoRoot "\.env\.example"\)\s+\$dotEnvPath') "setup orchestrator does not copy .env.example to .env"
