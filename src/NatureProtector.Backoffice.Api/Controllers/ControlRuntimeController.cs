@@ -117,6 +117,26 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
         return run is null ? NotFound(new { message = "No simulation run found." }) : Ok(run);
     }
 
+    [HttpGet("operations/{operationId:guid}")]
+    [ProducesResponseType(typeof(RuntimeOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = OperationCapabilities.RunRead)]
+    public async Task<ActionResult> GetOperation(Guid operationId, CancellationToken cancellationToken = default)
+    {
+        var operation = await ControlPlane.GetRuntimeOperationAsync(operationId, cancellationToken);
+        return operation is null ? NotFound(new { message = $"Runtime operation '{operationId}' was not found." }) : Ok(operation);
+    }
+
+    [HttpGet("operations/by-request/{requestId:guid}")]
+    [ProducesResponseType(typeof(RuntimeOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = OperationCapabilities.RunRead)]
+    public async Task<ActionResult> GetOperationByRequest(Guid requestId, CancellationToken cancellationToken = default)
+    {
+        var operation = await ControlPlane.GetRuntimeOperationByRequestAsync(requestId, cancellationToken);
+        return operation is null ? NotFound(new { message = $"Runtime request '{requestId}' was not found." }) : Ok(operation);
+    }
+
     [HttpGet("runs/{runId:guid}")]
     [ProducesResponseType(typeof(RuntimeRunSummaryResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

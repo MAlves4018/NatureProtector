@@ -101,7 +101,41 @@ public sealed record RuntimeRunStartResponse(
     RuntimeRunSummaryResponse? Run,
     IReadOnlyList<string> Warnings,
     string? LogDirectory,
-    string? EvidenceDirectory);
+    string? EvidenceDirectory,
+    Guid? OperationId = null);
+
+public sealed record RuntimeOperationResponse(
+    Guid OperationId,
+    Guid RequestId,
+    string CorrelationId,
+    Guid? SimulationRunId,
+    string RequestedState,
+    string ProviderState,
+    string RunState,
+    string ProcessingState,
+    string State,
+    string? TerminalOutcome,
+    DateTimeOffset AcceptedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? ProducerCompletedAt,
+    DateTimeOffset? SystemCompletedAt,
+    DateTimeOffset? FinishedAt,
+    string? FailureCode,
+    string? FailureDetail,
+    string? EvidenceId,
+    string? EvidenceLocation,
+    RuntimeOperationAccountingResponse Accounting);
+
+public sealed record RuntimeOperationAccountingResponse(
+    int ExpectedObservations,
+    int AcceptedObservations,
+    int PendingInbox,
+    int ProcessingInbox,
+    int RetryPendingInbox,
+    int ProcessedInbox,
+    int QuarantinedInbox,
+    bool Settled);
 
 public sealed record RuntimeResetRequest(
     string Scope,

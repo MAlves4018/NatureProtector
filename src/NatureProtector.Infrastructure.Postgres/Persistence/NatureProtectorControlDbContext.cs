@@ -50,6 +50,7 @@ public sealed class NatureProtectorControlDbContext : DbContext
     public DbSet<SensorNodeRecord> SensorNodes => Set<SensorNodeRecord>();
     public DbSet<ScenarioDefinitionRecord> ScenarioDefinitions => Set<ScenarioDefinitionRecord>();
     public DbSet<SimulationRunRecord> SimulationRuns => Set<SimulationRunRecord>();
+    public DbSet<RuntimeOperationRecord> RuntimeOperations => Set<RuntimeOperationRecord>();
     public DbSet<RuleSetVersionRecord> RuleSetVersions => Set<RuleSetVersionRecord>();
     public DbSet<DatasetArtifactRecord> DatasetArtifacts => Set<DatasetArtifactRecord>();
     public DbSet<ScenarioDatasetBindingRecord> ScenarioDatasetBindings => Set<ScenarioDatasetBindingRecord>();
@@ -94,6 +95,7 @@ public sealed class NatureProtectorControlDbContext : DbContext
         ConfigureSensorNodes(modelBuilder);
         ConfigureScenarioDefinitions(modelBuilder);
         ConfigureSimulationRuns(modelBuilder);
+        ConfigureRuntimeOperations(modelBuilder);
         ConfigureRuleSetVersions(modelBuilder);
         ConfigureDatasetArtifacts(modelBuilder);
         ConfigureScenarioDatasetBindings(modelBuilder);
@@ -343,6 +345,52 @@ public sealed class NatureProtectorControlDbContext : DbContext
             .WithMany(parent => parent.SimulationRuns)
             .HasForeignKey(entity => entity.ConfigurationVersionId)
             .OnDelete(DeleteBehavior.Restrict);
+    }
+
+    private static void ConfigureRuntimeOperations(ModelBuilder modelBuilder)
+    {
+        var builder = modelBuilder.Entity<RuntimeOperationRecord>();
+        builder.ToTable("runtime_orchestrator_executions", PostgresSchemaNames.Control);
+        builder.HasKey(entity => entity.OperationId);
+        builder.Property(entity => entity.OperationId).HasColumnName("execution_id");
+        builder.Property(entity => entity.RequestId).HasColumnName("request_id");
+        builder.Property(entity => entity.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(250).IsRequired();
+        builder.Property(entity => entity.Provider).HasColumnName("provider").HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.ProviderOperationName).HasColumnName("provider_operation_name").HasMaxLength(500);
+        builder.Property(entity => entity.ProviderExecutionName).HasColumnName("provider_execution_name").HasMaxLength(500);
+        builder.Property(entity => entity.SimulationRunId).HasColumnName("simulation_run_id");
+        builder.Property(entity => entity.CorrelationId).HasColumnName("log_correlation").HasMaxLength(250).IsRequired();
+        builder.Property(entity => entity.RequestedState).HasColumnName("requested_state").HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.ProviderState).HasColumnName("provider_state").HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.RunState).HasColumnName("run_state").HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.ProcessingState).HasColumnName("processing_state").HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.State).HasColumnName("state").HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.TerminalOutcome).HasColumnName("terminal_outcome").HasMaxLength(50);
+        builder.Property(entity => entity.IsOperational).HasColumnName("is_operational");
+        builder.Property(entity => entity.AcceptedAt).HasColumnName("accepted_at");
+        builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(entity => entity.DeadlineAt).HasColumnName("deadline_at");
+        builder.Property(entity => entity.StartedAt).HasColumnName("started_at");
+        builder.Property(entity => entity.ProducerCompletedAt).HasColumnName("producer_completed_at");
+        builder.Property(entity => entity.SystemCompletedAt).HasColumnName("system_completed_at");
+        builder.Property(entity => entity.FinishedAt).HasColumnName("finished_at");
+        builder.Property(entity => entity.FailureCode).HasColumnName("failure_code").HasMaxLength(150);
+        builder.Property(entity => entity.FailureMessage).HasColumnName("failure_message").HasMaxLength(4000);
+        builder.Property(entity => entity.EvidenceId).HasColumnName("evidence_id").HasMaxLength(250);
+        builder.Property(entity => entity.EvidenceLocation).HasColumnName("evidence_location").HasMaxLength(1000);
+        builder.Property(entity => entity.LaunchLeaseToken).HasColumnName("launch_lease_token");
+        builder.Property(entity => entity.LaunchLeaseUntil).HasColumnName("launch_lease_until");
+        builder.HasIndex(entity => entity.RequestId).IsUnique();
+        builder.HasIndex(entity => entity.IdempotencyKey).IsUnique();
+        builder.HasIndex(entity => entity.CorrelationId).IsUnique();
+        builder.HasIndex(entity => entity.SimulationRunId).IsUnique();
+        builder.HasIndex(entity => entity.IsOperational)
+            .HasFilter("is_operational = TRUE AND terminal_outcome IS NULL")
+            .IsUnique();
+        builder.HasOne(entity => entity.SimulationRun)
+            .WithOne(entity => entity.RuntimeOperation)
+            .HasForeignKey<RuntimeOperationRecord>(entity => entity.SimulationRunId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 
     private static void ConfigureDatasetArtifacts(ModelBuilder modelBuilder)

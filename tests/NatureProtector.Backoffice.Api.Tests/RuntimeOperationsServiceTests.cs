@@ -360,6 +360,156 @@ public sealed class RuntimeOperationsServiceTests
         Assert.Equal(2, await dbContext.ScenarioDefinitions.CountAsync());
     }
 
+    [Fact]
+    public async Task RuntimeOperation_CompletedProducer_WaitsForRunScopedPipelineSettlement()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        var operation = await SeedOperationAsync(scope, deadline: DateTimeOffset.UtcNow.AddMinutes(5));
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.GetRuntimeOperationAsync(operation.OperationId, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("PipelineSettling", result.State);
+        Assert.Equal("Completed", result.RunState);
+        Assert.False(result.Accounting.Settled);
+    }
+
+    [Fact]
+    public async Task RuntimeOperation_SettledAccounting_CompletesSystemForSameRunOnly()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        var operation = await SeedOperationAsync(scope, deadline: DateTimeOffset.UtcNow.AddMinutes(5));
+        await AddRunInboxEventsAsync(scope, 5);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.GetRuntimeOperationAsync(operation.OperationId, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("SystemCompleted", result.TerminalOutcome);
+        Assert.True(result.Accounting.Settled);
+        Assert.Equal(5, result.Accounting.AcceptedObservations);
+    }
+
+    [Fact]
+    public async Task RuntimeOperation_CorrelationMiss_DoesNotFallbackToLatestRun()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        var operation = await SeedOperationAsync(
+            scope,
+            deadline: DateTimeOffset.UtcNow.AddSeconds(-1),
+            simulationRunId: null,
+            correlationId: "missing-correlation");
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.GetRuntimeOperationByRequestAsync(operation.RequestId, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Null(result.SimulationRunId);
+        Assert.Equal("Orphaned", result.TerminalOutcome);
+    }
+
+    [Fact]
+    public async Task RuntimeOperation_TerminalState_CannotRegressDuringReconciliation()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        var operation = await SeedOperationAsync(scope, DateTimeOffset.UtcNow.AddMinutes(5), terminalOutcome: "Failed");
+        await AddRunInboxEventsAsync(scope, 5);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.GetRuntimeOperationAsync(operation.OperationId, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("Failed", result.State);
+        Assert.Equal("Failed", result.TerminalOutcome);
+    }
+
+    [Fact]
+    public async Task ResetRuntimeState_ActiveOperation_IsRejected()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        await SeedOperationAsync(scope, DateTimeOffset.UtcNow.AddMinutes(5));
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.ResetRuntimeStateAsync(
+            new RuntimeResetRequest("runtime-only", "RESET_RUNTIME_STATE", DryRun: false),
+            CancellationToken.None);
+
+        Assert.Equal("Rejected", result.Status);
+        Assert.Contains("operation", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task<RuntimeOperationRecord> SeedOperationAsync(
+        SqliteControlDbContextScope scope,
+        DateTimeOffset deadline,
+        Guid? simulationRunId = null,
+        string correlationId = "corr-tests",
+        string? terminalOutcome = null)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var operation = new RuntimeOperationRecord
+        {
+            OperationId = Guid.NewGuid(),
+            RequestId = Guid.NewGuid(),
+            IdempotencyKey = Guid.NewGuid().ToString("D"),
+            CorrelationId = correlationId,
+            SimulationRunId = simulationRunId ?? (correlationId == "corr-tests"
+                ? Guid.Parse("70000000-0000-0000-0000-000000000001")
+                : null),
+            RequestedState = "Requested",
+            ProviderState = "LaunchAccepted",
+            RunState = "RunObserved",
+            ProcessingState = "Pending",
+            State = terminalOutcome ?? "RunObserved",
+            TerminalOutcome = terminalOutcome,
+            IsOperational = terminalOutcome is null,
+            AcceptedAt = now.AddMinutes(-10),
+            UpdatedAt = now.AddMinutes(-5),
+            DeadlineAt = deadline,
+            FinishedAt = terminalOutcome is null ? null : now.AddMinutes(-4)
+        };
+        await scope.SeedAsync(dbContext =>
+        {
+            dbContext.RuntimeOperations.Add(operation);
+            return Task.CompletedTask;
+        });
+        return operation;
+    }
+
+    private static async Task AddRunInboxEventsAsync(SqliteControlDbContextScope scope, int count)
+    {
+        var runId = Guid.Parse("70000000-0000-0000-0000-000000000001");
+        var areaId = Guid.Parse("20000000-0000-0000-0000-000000000001");
+        await scope.SeedAsync(dbContext =>
+        {
+            for (var index = 0; index < count; index++)
+            {
+                dbContext.InboxEvents.Add(new InboxEventRecord
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = Guid.NewGuid(),
+                    SchemaVersion = "1.0",
+                    CorrelationId = $"run-event-{index}",
+                    Producer = "tests",
+                    EventType = "SensorReadingProduced",
+                    AreaId = areaId,
+                    EventTime = DateTimeOffset.UtcNow,
+                    ReceivedAt = DateTimeOffset.UtcNow,
+                    PayloadJson = $$"""{"SimulationRunId":"{{runId}}"}""",
+                    EnvelopeJson = "{}",
+                    Status = InboxEventStatus.Processed,
+                    AttemptCount = 1
+                });
+            }
+            return Task.CompletedTask;
+        });
+    }
+
     private static RuntimeRunStartRequest ValidRunRequest()
         => new(
             "proenca-a-nova",

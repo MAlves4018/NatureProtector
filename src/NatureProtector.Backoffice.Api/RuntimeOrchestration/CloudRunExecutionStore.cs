@@ -60,18 +60,24 @@ internal sealed class PostgresCloudRunExecutionStore(
             insert.Transaction = transaction;
             insert.CommandText = """
                 INSERT INTO control.runtime_orchestrator_executions (
-                    execution_id, idempotency_key, provider, state, accepted_at, updated_at,
+                    execution_id, request_id, idempotency_key, provider, state,
+                    requested_state, provider_state, run_state, processing_state, is_operational, deadline_at,
+                    accepted_at, updated_at,
                     log_correlation, evidence_id, evidence_location, launch_lease_token, launch_lease_until)
-                VALUES (@execution_id, @idempotency_key, @provider, @state, @accepted_at, @updated_at,
+                VALUES (@execution_id, @request_id, @idempotency_key, @provider, @state,
+                    'Requested', 'Launching', 'Pending', 'Pending', TRUE, @deadline_at,
+                    @accepted_at, @updated_at,
                     @log_correlation, @evidence_id, @evidence_location, @lease_token, @lease_until)
                 ON CONFLICT (idempotency_key) DO NOTHING;
                 """;
             Add(insert, "execution_id", executionId.Value);
+            Add(insert, "request_id", request.RequestId);
             Add(insert, "idempotency_key", request.IdempotencyKey);
             Add(insert, "provider", Provider);
             Add(insert, "state", RuntimeExecutionState.Starting.ToString());
             Add(insert, "accepted_at", now);
             Add(insert, "updated_at", now);
+            Add(insert, "deadline_at", now.Add(request.Timeout));
             Add(insert, "log_correlation", request.Simulation.OrchestratorCorrelationId);
             Add(insert, "evidence_id", request.Evidence?.EvidenceId);
             Add(insert, "evidence_location", request.Evidence?.Location);
@@ -124,6 +130,7 @@ internal sealed class PostgresCloudRunExecutionStore(
         var updated = await context.Database.ExecuteSqlInterpolatedAsync($"""
             UPDATE control.runtime_orchestrator_executions
             SET provider_operation_name = {operationName}, state = {RuntimeExecutionState.Running.ToString()},
+                provider_state = 'LaunchAccepted',
                 started_at = COALESCE(started_at, {DateTimeOffset.UtcNow}), updated_at = {DateTimeOffset.UtcNow},
                 launch_lease_token = NULL, launch_lease_until = NULL
             WHERE execution_id = {executionId.Value} AND launch_lease_token = {leaseToken};
@@ -149,6 +156,9 @@ internal sealed class PostgresCloudRunExecutionStore(
             UPDATE control.runtime_orchestrator_executions SET
                 provider_execution_name = @provider_execution_name,
                 state = @state,
+                provider_state = @provider_state,
+                terminal_outcome = @terminal_outcome,
+                is_operational = @is_operational,
                 updated_at = @updated_at,
                 started_at = @started_at,
                 finished_at = @finished_at,
@@ -160,6 +170,9 @@ internal sealed class PostgresCloudRunExecutionStore(
             """;
         Add(command, "provider_execution_name", record.ProviderExecutionName);
         Add(command, "state", record.State.ToString());
+        Add(command, "provider_state", record.State.ToString());
+        Add(command, "terminal_outcome", IsTerminal(record.State) ? record.State.ToString() : null);
+        Add(command, "is_operational", !IsTerminal(record.State));
         Add(command, "updated_at", record.UpdatedAtUtc);
         Add(command, "started_at", record.StartedAtUtc);
         Add(command, "finished_at", record.FinishedAtUtc);

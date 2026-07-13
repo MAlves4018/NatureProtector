@@ -24,6 +24,7 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         var requestedAtUtc = DateTimeOffset.UtcNow;
         var requestId = Guid.NewGuid();
         var orchestratorCorrelationId = Guid.NewGuid().ToString("D");
+        Guid? operationId = null;
         var warnings = new List<string>();
         var requestedDegradationProfiles = NormalizeDegradationProfiles(
             request.DegradationProfiles,
@@ -102,6 +103,15 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         }
 
         var logDirectory = PrepareApiRunLogDirectory(requestedAtUtc, request.RunLabel ?? request.ScenarioCode);
+        var operation = await ReserveRuntimeOperationAsync(
+            requestId, orchestratorCorrelationId, request,
+            request.CollectEvidence ? logDirectory : null,
+            cancellationToken);
+        if (operation is null)
+        {
+            return RuntimeRunResponse("Rejected", "Another operational runtime launch or settlement is active.", null, null);
+        }
+        operationId = operation.OperationId;
         var markerPath = Path.Combine(logDirectory, "request.json");
         await File.WriteAllTextAsync(
             markerPath,
@@ -145,13 +155,20 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         var process = Process.Start(startInfo);
         if (process is null)
         {
+            await UpdateRuntimeOperationAsync(operation.OperationId, "Failed", "Failed", "NotObserved", "NotStarted",
+                null, "Failed", "process_start_failed", "Simulator.Host process could not be started.", cancellationToken);
             return RuntimeRunResponse("FailedToStart", "Simulator.Host process could not be started.", null, logDirectory);
         }
 
         if (process.HasExited && process.ExitCode != 0)
         {
+            await UpdateRuntimeOperationAsync(operation.OperationId, "Failed", "Failed", "NotObserved", "NotStarted",
+                null, "Failed", "producer_exit_nonzero", $"Simulator.Host exited with code {process.ExitCode}.", cancellationToken);
             return RuntimeRunResponse("Failed", $"Simulator.Host exited with code {process.ExitCode} before a run was observed.", null, logDirectory);
         }
+
+        await UpdateRuntimeOperationAsync(operation.OperationId, "LaunchAccepted", "LaunchAccepted", "Pending", "Pending",
+            null, null, null, null, cancellationToken);
 
         Task<string>? stdoutTask = request.CollectEvidence ? process.StandardOutput.ReadToEndAsync(cancellationToken) : null;
         Task<string>? stderrTask = request.CollectEvidence ? process.StandardError.ReadToEndAsync(cancellationToken) : null;
@@ -187,11 +204,22 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             cancellationToken);
 
         var completedWithoutRun = request.WaitForCompletion && process.HasExited && run is null;
+        if (completedWithoutRun)
+        {
+            await UpdateRuntimeOperationAsync(operation.OperationId, "Failed", "ProducerCompleted", "NotObserved", "NotStarted",
+                null, "Failed", "producer_exit_without_run", "Simulator.Host exited without persisting the correlated SimulationRun.", cancellationToken);
+        }
+        else if (run is not null)
+        {
+            await UpdateRuntimeOperationAsync(operation.OperationId, "RunObserved", "LaunchAccepted", run.Status, "Pending",
+                run.Id, null, null, null, cancellationToken);
+            _ = await GetRuntimeOperationAsync(operation.OperationId, cancellationToken);
+        }
         var response = RuntimeRunResponse(
-            completedWithoutRun ? "Failed" : run is null ? "Started" : run.Status,
+            completedWithoutRun ? "Failed" : run is null ? "LaunchAccepted" : run.Status,
             completedWithoutRun
                 ? "Simulator.Host exited without persisting the correlated SimulationRun."
-                : run is null ? "Simulator.Host was started; the run has not appeared in control.simulation_runs yet." : "Simulator.Host was started and the run was observed.",
+                : run is null ? "The launch was accepted; poll the persisted operation identity for run observation and terminal outcome." : "Simulator.Host was started and the run was observed.",
             ToRuntimeRun(run, warnings),
             logDirectory);
 
@@ -232,7 +260,8 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
                 run,
                 warnings.ToArray(),
                 directory,
-                request.CollectEvidence ? directory : null);
+                request.CollectEvidence ? directory : null,
+                operationId);
     }
 
     public async Task<ControlledValidationP3RunResponse> StartControlledValidationP3Async(
@@ -524,6 +553,18 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         if (activeRuns > 0)
         {
             return new RuntimeResetResponse(DateTimeOffset.UtcNow, request.DryRun, "Rejected", $"Reset is blocked while {activeRuns} active run(s) exist.", before, before);
+        }
+
+        var activeOperations = await dbContext.RuntimeOperations.AsNoTracking()
+            .CountAsync(entity => entity.TerminalOutcome == null, cancellationToken);
+        var activePipeline = await dbContext.InboxEvents.AsNoTracking()
+            .CountAsync(entity => entity.Status == InboxEventStatus.Pending ||
+                entity.Status == InboxEventStatus.Processing || entity.Status == InboxEventStatus.RetryPending,
+                cancellationToken);
+        if (activeOperations > 0 || activePipeline > 0)
+        {
+            return new RuntimeResetResponse(DateTimeOffset.UtcNow, request.DryRun, "Rejected",
+                $"Reset requires quiescence; active operations={activeOperations}, pending/processing/retry inbox={activePipeline}.", before, before);
         }
 
         if (request.DryRun)

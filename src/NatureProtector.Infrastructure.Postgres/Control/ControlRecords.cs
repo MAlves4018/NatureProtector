@@ -166,6 +166,41 @@ public sealed class SimulationRunRecord
     public AreaRecord? Area { get; set; }
     public ScenarioDefinitionRecord? Scenario { get; set; }
     public ConfigurationVersionRecord? ConfigurationVersion { get; set; }
+    public RuntimeOperationRecord? RuntimeOperation { get; set; }
+}
+
+public sealed class RuntimeOperationRecord
+{
+    public Guid OperationId { get; set; }
+    public Guid RequestId { get; set; }
+    public string IdempotencyKey { get; set; } = string.Empty;
+    public string Provider { get; set; } = "local-process";
+    public string? ProviderOperationName { get; set; }
+    public string? ProviderExecutionName { get; set; }
+    public Guid? SimulationRunId { get; set; }
+    public string CorrelationId { get; set; } = string.Empty;
+    public string RequestedState { get; set; } = "Requested";
+    public string ProviderState { get; set; } = "Requested";
+    public string RunState { get; set; } = "Pending";
+    public string ProcessingState { get; set; } = "Pending";
+    public string State { get; set; } = "Requested";
+    public string? TerminalOutcome { get; set; }
+    public bool IsOperational { get; set; } = true;
+    public DateTimeOffset AcceptedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset DeadlineAt { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? ProducerCompletedAt { get; set; }
+    public DateTimeOffset? SystemCompletedAt { get; set; }
+    public DateTimeOffset? FinishedAt { get; set; }
+    public string? FailureCode { get; set; }
+    public string? FailureMessage { get; set; }
+    public string? EvidenceId { get; set; }
+    public string? EvidenceLocation { get; set; }
+    public Guid? LaunchLeaseToken { get; set; }
+    public DateTimeOffset? LaunchLeaseUntil { get; set; }
+
+    public SimulationRunRecord? SimulationRun { get; set; }
 }
 
 public sealed class RuleSetVersionRecord
