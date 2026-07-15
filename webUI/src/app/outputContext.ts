@@ -65,26 +65,28 @@ export function buildUiRiskReadModel(input: UiRiskReadInput, locale: UiLocale): 
     return emptyModel('no-data', locale);
   }
 
+  const hasRunScopedScore = summary.scoreComponents != null;
+  const hasAreaCurrentFallback =
+    summary.areaOperationalState?.aggregateRiskScore != null ||
+    summary.areaOperationalState?.aggregateRiskLevel != null;
   const limitations = uniqueValues([
     ...summary.limitations.map((item) => item.message),
     ...splitMaybe(summary.scoreComponents?.limitations),
     ...splitMaybe(summary.indexComparison?.limitations),
+    ...(!hasRunScopedScore && hasAreaCurrentFallback
+      ? ['Run scope and provenance are unavailable for the area-current risk projection; the score is hidden.']
+      : []),
   ]);
   const warnings = summary.warnings ?? [];
   const blocked = containsAny(
     [summary.scoreComponents?.calculationStatus, summary.areaOperationalState?.operationalStatusReason],
     ['blocked'],
   );
-  const score = blocked
-    ? null
-    : (summary.scoreComponents?.npScore ?? summary.areaOperationalState?.aggregateRiskScore ?? null);
+  const score = blocked ? null : (summary.scoreComponents?.npScore ?? null);
   const scoreDisplay = score === null ? null : formatUiNumber(score, locale, 3);
   const classDisplay = blocked
     ? null
-    : (summary.scoreComponents?.npRiskClassLabel ??
-      summary.scoreComponents?.npRiskClass ??
-      summary.areaOperationalState?.aggregateRiskLevel ??
-      null);
+    : (summary.scoreComponents?.npRiskClassLabel ?? summary.scoreComponents?.npRiskClass ?? null);
   const timestamp =
     summary.scoreComponents?.latestAssessmentTimestamp ??
     summary.areaOperationalState?.lastAssessmentTimestamp ??
@@ -119,7 +121,9 @@ export function buildUiRiskReadModel(input: UiRiskReadInput, locale: UiLocale): 
   return {
     state,
     area: summary.areaCode ?? summary.areaOperationalState?.areaCode ?? unknown(locale),
-    run: summary.latestRun?.scenarioCode ?? summary.currentRun?.scenarioCode ?? notAvailable(locale),
+    run: hasRunScopedScore
+      ? (summary.latestRun?.scenarioCode ?? summary.currentRun?.scenarioCode ?? notAvailable(locale))
+      : notAvailable(locale),
     scoreDisplay,
     classDisplay,
     timestampDisplay: formatUiDate(timestamp, locale),

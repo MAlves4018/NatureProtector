@@ -131,6 +131,7 @@ Set-Location $repoRoot
 
 $prereqScript = Join-Path $repoRoot "scripts\setup\Test-LocalPrerequisites.ps1"
 $installScript = Join-Path $repoRoot "scripts\setup\Install-LocalPrerequisites.ps1"
+$prepareScript = Join-Path $repoRoot "scripts\setup\Initialize-LocalWorkspace.ps1"
 $upScript = Join-Path $repoRoot "infra\scripts\up.ps1"
 $baselineScript = Join-Path $repoRoot "scripts\setup\Test-LocalBaseline.ps1"
 $runtimeScript = Join-Path $repoRoot "scripts\dev\start-local-runtime.ps1"
@@ -157,11 +158,12 @@ if ($prereqExitCode -ne 0) {
 
 $dotEnvPath = Join-Path $repoRoot ".env"
 if (-not (Test-Path -LiteralPath $dotEnvPath)) {
-    throw ".env is missing. Create it manually from .env.example, review local values, then rerun this setup script. This script will not create or edit .env."
+    throw ".env is missing. Run '.\scripts\np.ps1 init-local -Force', review the generated local values, then rerun setup. This setup script will not create or edit .env."
 }
 
 Assert-InfluxTokenReady $dotEnvPath
 
+Invoke-RequiredScript "Preparing local dependency graph" $prepareScript
 Invoke-RequiredScript "Starting local infrastructure" $upScript
 Invoke-RequiredScript "Validating infrastructure baseline" $baselineScript @("-InfrastructureOnly")
 

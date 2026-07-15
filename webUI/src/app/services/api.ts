@@ -18,6 +18,7 @@ import {
   RabbitMqMetricsResponse,
   RuntimeResetRequest,
   RuntimeResetResponse,
+  RuntimeOperationResponse,
   RuntimeRunAuditResponse,
   RuntimeRunSummaryResponse,
   RuntimeRunStartRequest,
@@ -246,6 +247,20 @@ export const api = {
 
   startRuntimeRun: (request: RuntimeRunStartRequest) => {
     return httpClient.post<RuntimeRunStartResponse>('/control/runtime/runs', request, api.getRequestOptions());
+  },
+
+  getRuntimeOperation: (operationId: string) => {
+    return httpClient.get<RuntimeOperationResponse>(
+      `/control/runtime/operations/${encodeURIComponent(operationId)}`,
+      api.getRequestOptions(),
+    );
+  },
+
+  getRuntimeOperationByRequest: (requestId: string) => {
+    return httpClient.get<RuntimeOperationResponse>(
+      `/control/runtime/operations/by-request/${encodeURIComponent(requestId)}`,
+      api.getRequestOptions(),
+    );
   },
 
   resetRuntimeState: (request: RuntimeResetRequest) => {

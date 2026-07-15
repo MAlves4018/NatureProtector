@@ -18,14 +18,17 @@ public sealed class ControlledValidationRunnerTests
     {
         var publisher = new RecordingControlledValidationMessagePublisher();
         var lifetime = new RecordingApplicationLifetime();
+        var processExitCode = new RecordingSimulatorProcessExitCode();
         var runner = new ControlledValidationRunner(
             NullLogger<ControlledValidationRunner>.Instance,
             CreateOrchestrator("Evidence", publisher),
+            processExitCode,
             lifetime);
 
         await InvokeExecuteAsync(runner);
 
         Assert.True(lifetime.StopApplicationCalled);
+        Assert.False(processExitCode.FailureMarked);
         Assert.Equal(6, publisher.Messages.Count);
     }
 
@@ -34,14 +37,17 @@ public sealed class ControlledValidationRunnerTests
     {
         var publisher = new RecordingControlledValidationMessagePublisher();
         var lifetime = new RecordingApplicationLifetime();
+        var processExitCode = new RecordingSimulatorProcessExitCode();
         var runner = new ControlledValidationRunner(
             NullLogger<ControlledValidationRunner>.Instance,
             CreateOrchestrator("Production", publisher),
+            processExitCode,
             lifetime);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeExecuteAsync(runner));
 
         Assert.True(lifetime.StopApplicationCalled);
+        Assert.True(processExitCode.FailureMarked);
         Assert.Empty(publisher.Messages);
     }
 
@@ -167,6 +173,16 @@ public sealed class ControlledValidationRunnerTests
         public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
 
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
+
+    private sealed class RecordingSimulatorProcessExitCode : ISimulatorProcessExitCode
+    {
+        public bool FailureMarked { get; private set; }
+
+        public void MarkFailure()
+        {
+            FailureMarked = true;
+        }
     }
 
     private sealed class RecordingApplicationLifetime : IHostApplicationLifetime

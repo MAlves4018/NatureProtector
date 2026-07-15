@@ -9,6 +9,7 @@ import {
   persistSimulationForm,
   toggleDegradationProfile,
 } from './SimulationContext';
+import { executionStatusState } from '../truthfulPresentation';
 
 const CANONICAL_DEGRADATION_PROFILES = [
   'none',
@@ -25,6 +26,18 @@ const CANONICAL_DEGRADATION_PROFILES = [
 ] as const;
 
 describe('simulation context degradation profiles', () => {
+  it.each([
+    ['LaunchAccepted', 'partial'],
+    ['RunObserved', 'partial'],
+    ['PipelineSettling', 'partial'],
+    ['SystemCompleted', 'ready'],
+    ['Failed', 'blocked'],
+    ['TimedOut', 'blocked'],
+    ['Orphaned', 'blocked'],
+  ])('presents persisted operation state %s truthfully', (state, expected) => {
+    expect(executionStatusState(state)).toBe(expected);
+  });
+
   it('exposes the backend canonical degradation profiles to the UI', () => {
     expect(DEGRADATION_PROFILE_OPTIONS).toEqual(CANONICAL_DEGRADATION_PROFILES);
     expect(DEGRADATION_PROFILE_OPTIONS).not.toEqual(

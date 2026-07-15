@@ -77,6 +77,25 @@ public sealed class ControlledValidationOrchestratorTests
         Assert.False(Directory.Exists(publisher.EvidenceOutputRoot));
     }
 
+    [Fact]
+    public async Task PublishP0Async_PublisherFailure_MarksRegisteredRunFailed()
+    {
+        var runStore = new RecordingSimulationRunStore();
+        var publisher = new RecordingControlledValidationMessagePublisher(
+            publishException: new InvalidOperationException("simulated controlled validation publish failure"));
+        var orchestrator = CreateOrchestrator("Evidence", publisher, runStore: runStore);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            orchestrator.PublishP0Async(CancellationToken.None));
+
+        Assert.Equal(
+            [SimulationRunStatus.Ready, SimulationRunStatus.Running, SimulationRunStatus.Failed],
+            runStore.Records.Select(record => record.Status).ToArray());
+        Assert.Null(runStore.Records[0].EndedAt);
+        Assert.Null(runStore.Records[1].EndedAt);
+        Assert.NotNull(runStore.Records[2].EndedAt);
+    }
+
     private static ControlledValidationOrchestrator CreateOrchestrator(
         string environmentName,
         RecordingControlledValidationMessagePublisher publisher,
@@ -117,7 +136,8 @@ public sealed class ControlledValidationOrchestratorTests
     }
 
     private sealed class RecordingControlledValidationMessagePublisher(
-        Func<bool>? isRunRegistered = null) : IControlledValidationMessagePublisher
+        Func<bool>? isRunRegistered = null,
+        Exception? publishException = null) : IControlledValidationMessagePublisher
     {
         public string EvidenceOutputRoot { get; } = Path.Combine(
             Path.GetTempPath(),
@@ -134,6 +154,12 @@ public sealed class ControlledValidationOrchestratorTests
         {
             FirstPublishObservedRegisteredRun = FirstPublishObservedRegisteredRun ||
                 (isRunRegistered?.Invoke() ?? false);
+
+            if (publishException is not null)
+            {
+                throw publishException;
+            }
+
             Messages.Add(message);
             return Task.CompletedTask;
         }
@@ -155,7 +181,7 @@ public sealed class ControlledValidationOrchestratorTests
                 throw new InvalidOperationException("controlled validation simulation_run could not be guaranteed.");
             }
 
-            Records.Add(new RecordedSimulationRun(run.Id, run.Status, context));
+            Records.Add(new RecordedSimulationRun(run.Id, run.Status, run.EndedAt, context));
             return Task.CompletedTask;
         }
     }
@@ -163,6 +189,7 @@ public sealed class ControlledValidationOrchestratorTests
     private sealed record RecordedSimulationRun(
         Guid RunId,
         SimulationRunStatus Status,
+        DateTimeOffset? EndedAt,
         SimulationContext Context);
 
     private sealed class TestSimulationContextSource : ISimulationContextSource

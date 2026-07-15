@@ -14,12 +14,14 @@ internal static class RabbitMqPublishGuarantees
         IModel channel,
         string exchangeName,
         string routingKey,
+        string primaryQueueName,
         IBasicProperties properties,
         ReadOnlyMemory<byte> body,
         TimeSpan confirmTimeout,
         string messageDescription)
     {
         BasicReturnEventArgs? returned = null;
+        Exception? confirmFailure = null;
 
         void OnBasicReturn(object? _, BasicReturnEventArgs args)
         {
@@ -41,6 +43,10 @@ internal static class RabbitMqPublishGuarantees
                 body: body);
             channel.WaitForConfirmsOrDie(confirmTimeout);
         }
+        catch (Exception ex)
+        {
+            confirmFailure = ex;
+        }
         finally
         {
             channel.BasicReturn -= OnBasicReturn;
@@ -48,10 +54,31 @@ internal static class RabbitMqPublishGuarantees
 
         if (returned is not null)
         {
-            throw new InvalidOperationException(
+            throw new RabbitMqUnroutableMessageException(
                 $"RabbitMQ returned unroutable {messageDescription}. " +
                 $"ReplyCode={returned.ReplyCode} ReplyText='{returned.ReplyText}' " +
-                $"Exchange='{returned.Exchange}' RoutingKey='{returned.RoutingKey}'.");
+                $"Exchange='{returned.Exchange}' RoutingKey='{returned.RoutingKey}'. " +
+                $"The message was not routed to any queue, including primary queue '{primaryQueueName}'.",
+                properties.MessageId,
+                exchangeName,
+                routingKey,
+                primaryQueueName,
+                returned.ReplyCode,
+                returned.ReplyText);
+        }
+
+        if (confirmFailure is not null)
+        {
+            throw new RabbitMqPublishOutcomeUnknownException(
+                $"RabbitMQ did not positively confirm {messageDescription}. " +
+                $"Exchange='{exchangeName}' RoutingKey='{routingKey}' PrimaryQueue='{primaryQueueName}'. " +
+                "Delivery is ambiguous: one or more queues may already have accepted the message. " +
+                "A retry must preserve the same MessageId/EventId so the consumer inbox can deduplicate it.",
+                properties.MessageId,
+                exchangeName,
+                routingKey,
+                primaryQueueName,
+                confirmFailure);
         }
     }
 

@@ -255,10 +255,12 @@ if (Test-Path -LiteralPath $dotEnvPath) {
     }
 }
 else {
-    Add-Result "WARN" ".env" "missing; create it manually from .env.example. Local setup scripts will not create or edit .env." $false
+    Add-Result "WARN" ".env" "missing; run '.\scripts\np.ps1 init-local -Force' before prepare-local, up or start" $false
 }
 
 $frontendPackage = Join-Path $repoRoot "webUI\package.json"
+$frontendLock = Join-Path $repoRoot "webUI\package-lock.json"
+$frontendVitePackage = Join-Path $repoRoot "webUI\node_modules\vite\package.json"
 if (Test-Path -LiteralPath $frontendPackage) {
     try {
         $package = Get-Content -Raw -LiteralPath $frontendPackage | ConvertFrom-Json
@@ -274,25 +276,47 @@ if (Test-Path -LiteralPath $frontendPackage) {
     }
 }
 else {
-    Add-Result "WARN" "Frontend package.json" "webUI/package.json not found" $false
+    Add-Result "FAIL" "Frontend package.json" "webUI/package.json not found" $true
+}
+
+if (Test-Path -LiteralPath $frontendLock -PathType Leaf) {
+    Add-Result "OK" "Frontend lockfile" "webUI/package-lock.json found; deterministic npm ci is available" $true
+}
+else {
+    Add-Result "FAIL" "Frontend lockfile" "webUI/package-lock.json is required by the canonical prepare-local step" $true
+}
+
+if (Test-Path -LiteralPath $frontendVitePackage -PathType Leaf) {
+    Add-Result "OK" "Frontend dependencies" "webUI dependency tree is installed" $false
+}
+else {
+    Add-Result "WARN" "Frontend dependencies" "not installed for this checkout; run '.\scripts\np.ps1 prepare-local' before start" $false
 }
 
 $effectiveValues = if ($envValues.Count -gt 0) { $envValues } else { $exampleValues }
-$rabbitAmqpPort = [int](Get-NpConfigValue $effectiveValues "RABBITMQ_AMQP_PORT" "5672")
-$rabbitManagementPort = [int](Get-NpConfigValue $effectiveValues "RABBITMQ_MANAGEMENT_PORT" "15672")
-$postgresPort = [int](Get-NpConfigValue $effectiveValues "POSTGRES_PORT" "5433")
-$influxPort = [int](Get-NpConfigValue $effectiveValues "INFLUXDB_PORT" "8181")
-$grafanaPort = [int](Get-NpConfigValue $effectiveValues "GRAFANA_PORT" "3000")
-$apiPort = [int](Get-NpConfigValue $effectiveValues "BACKOFFICE_API_PORT" "5254")
-$webPort = [int](Get-NpConfigValue $effectiveValues "WEBUI_PORT" "5173")
+$rabbitAmqpPort = [int](Get-NpConfigValue $effectiveValues "RABBITMQ_AMQP_PORT" "5672" -EnvironmentFirst)
+$rabbitManagementPort = [int](Get-NpConfigValue $effectiveValues "RABBITMQ_MANAGEMENT_PORT" "15672" -EnvironmentFirst)
+$postgresHost = Get-NpConfigValue $effectiveValues "POSTGRES_HOST" "localhost" -EnvironmentFirst
+$postgresPort = [int](Get-NpConfigValue $effectiveValues "POSTGRES_PORT" "5433" -EnvironmentFirst)
+$influxPort = [int](Get-NpConfigValue $effectiveValues "INFLUXDB_PORT" "8181" -EnvironmentFirst)
+$grafanaPort = [int](Get-NpConfigValue $effectiveValues "GRAFANA_PORT" "3000" -EnvironmentFirst)
+$apiPort = [int](Get-NpConfigValue $effectiveValues "BACKOFFICE_API_PORT" "5254" -EnvironmentFirst)
+$preventionPort = [int](Get-NpConfigValue $effectiveValues "PREVENTION_HOST_PORT" "5260" -EnvironmentFirst)
+$webPort = [int](Get-NpConfigValue $effectiveValues "WEBUI_PORT" "5173" -EnvironmentFirst)
 
 $dockerLines = @(Get-DockerPortOwners)
 Test-BaselinePort "RabbitMQ AMQP" $rabbitAmqpPort @("np-rabbitmq") $dockerLines
 Test-BaselinePort "RabbitMQ management" $rabbitManagementPort @("np-rabbitmq") $dockerLines
-Test-BaselinePort "PostgreSQL" $postgresPort @("np-postgres") $dockerLines
+if ($postgresHost -in @("localhost", "127.0.0.1", "::1")) {
+    Test-BaselinePort "PostgreSQL" $postgresPort @("np-postgres") $dockerLines
+}
+else {
+    Add-Result "OK" "PostgreSQL target" "$postgresHost`:$postgresPort is non-local; local port ownership check skipped" $false
+}
 Test-BaselinePort "InfluxDB" $influxPort @("np-influxdb") $dockerLines
 Test-BaselinePort "Grafana" $grafanaPort @("np-grafana") $dockerLines
 Test-BaselinePort "Backoffice API" $apiPort @() $dockerLines
+Test-BaselinePort "Prevention Host" $preventionPort @() $dockerLines
 Test-BaselinePort "webUI" $webPort @() $dockerLines
 
 Test-Tool "Strawberry Perl / Perl" "perl" @("--version") $false

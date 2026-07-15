@@ -196,7 +196,7 @@ verify:
             --namespace="${namespace}" \
             --timeout=5m
 
-          kubectl wait --for=condition=Ready policy/natureprotector-quorum-policy \
+          kubectl wait --for=condition=Ready policy/natureprotector-primary-work-queue-policy \
             --namespace="${namespace}" \
             --timeout=5m
 

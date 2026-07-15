@@ -95,11 +95,6 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
             return unavailable;
         }
 
-        if (!_environment.IsDevelopment())
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Runtime run orchestration is only available in Development." });
-        }
-
         var result = await ControlPlane.StartRuntimeRunAsync(request, cancellationToken);
         return result.Status == "Rejected" ? BadRequest(result) : Ok(result);
     }
@@ -115,6 +110,36 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
         var runs = await ControlPlane.ListSimulationRunsAsync(areaCode, null, null, 0, 1, cancellationToken);
         var run = runs.FirstOrDefault();
         return run is null ? NotFound(new { message = "No simulation run found." }) : Ok(run);
+    }
+
+    [HttpGet("operations/{operationId:guid}")]
+    [ProducesResponseType(typeof(RuntimeOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = OperationCapabilities.RunRead)]
+    public async Task<ActionResult> GetOperation(Guid operationId, CancellationToken cancellationToken = default)
+    {
+        var operation = await ControlPlane.GetRuntimeOperationAsync(operationId, cancellationToken);
+        return operation is null ? NotFound(new { message = $"Runtime operation '{operationId}' was not found." }) : Ok(operation);
+    }
+
+    [HttpGet("operations/current")]
+    [ProducesResponseType(typeof(RuntimeOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = OperationCapabilities.RunRead)]
+    public async Task<ActionResult> GetCurrentOperation(CancellationToken cancellationToken = default)
+    {
+        var operation = await ControlPlane.GetCurrentRuntimeOperationAsync(cancellationToken);
+        return operation is null ? NotFound(new { message = "No runtime operation exists." }) : Ok(operation);
+    }
+
+    [HttpGet("operations/by-request/{requestId:guid}")]
+    [ProducesResponseType(typeof(RuntimeOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = OperationCapabilities.RunRead)]
+    public async Task<ActionResult> GetOperationByRequest(Guid requestId, CancellationToken cancellationToken = default)
+    {
+        var operation = await ControlPlane.GetRuntimeOperationByRequestAsync(requestId, cancellationToken);
+        return operation is null ? NotFound(new { message = $"Runtime request '{requestId}' was not found." }) : Ok(operation);
     }
 
     [HttpGet("runs/{runId:guid}")]

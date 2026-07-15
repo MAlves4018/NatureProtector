@@ -1,0 +1,232 @@
+{
+  "uid": "np-external-data",
+  "title": "NatureProtector — External Data",
+  "tags": [
+    "natureprotector",
+    "provisioned"
+  ],
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": true,
+  "refresh": "10s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Latest IPMA observations",
+      "type": "table",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "natureprotector-infinity-json"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "natureprotector-infinity-json"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/api/v3/query_sql",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "db",
+                "value": "np_telemetry"
+              },
+              {
+                "key": "format",
+                "value": "json"
+              },
+              {
+                "key": "q",
+                "value": "SELECT time, station_id, metric, value, unit, station_name, observed_at FROM external_observation WHERE provider = 'IPMA' AND time >= now() - INTERVAL '24 hours' ORDER BY time DESC LIMIT 1000"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Provider freshness",
+      "type": "table",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "natureprotector-infinity-json"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "natureprotector-infinity-json"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/api/v3/query_sql",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "db",
+                "value": "np_telemetry"
+              },
+              {
+                "key": "format",
+                "value": "json"
+              },
+              {
+                "key": "q",
+                "value": "SELECT station_id, metric, MAX(time) AS latest_observation FROM external_observation WHERE provider = 'IPMA' GROUP BY station_id, metric ORDER BY latest_observation DESC"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "External observations by metric",
+      "type": "table",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "natureprotector-infinity-json"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "natureprotector-infinity-json"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/api/v3/query_sql",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "db",
+                "value": "np_telemetry"
+              },
+              {
+                "key": "format",
+                "value": "json"
+              },
+              {
+                "key": "q",
+                "value": "SELECT metric, COUNT(*) AS observations FROM external_observation WHERE provider = 'IPMA' AND time >= now() - INTERVAL '24 hours' GROUP BY metric"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "External-data coverage",
+      "type": "table",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "natureprotector-infinity-json"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "natureprotector-infinity-json"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/api/v3/query_sql",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "db",
+                "value": "np_telemetry"
+              },
+              {
+                "key": "format",
+                "value": "json"
+              },
+              {
+                "key": "q",
+                "value": "SELECT metric, COUNT(DISTINCT station_id) AS stations, COUNT(*) AS points FROM external_observation WHERE provider = 'IPMA' AND time >= now() - INTERVAL '24 hours' GROUP BY metric"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

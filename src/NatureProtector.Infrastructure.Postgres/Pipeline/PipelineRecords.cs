@@ -29,6 +29,7 @@ public sealed class InboxEventRecord
     public string Producer { get; set; } = string.Empty;
     public string EventType { get; set; } = string.Empty;
     public Guid AreaId { get; set; }
+    public Guid? SimulationRunId { get; set; }
     public DateTimeOffset EventTime { get; set; }
     public DateTimeOffset ReceivedAt { get; set; }
     public DateTimeOffset? IngestTime { get; set; }

@@ -1,52 +1,30 @@
 import { useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download, ShieldAlert } from 'lucide-react';
 import { api } from '../services/api';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
-import { useQaSuites, useEvidenceItems } from '../state/useUiSurfaces';
+import { useEvidenceItems } from '../state/useUiSurfaces';
 import type { UiEvidenceItem } from '../technicalSurfaces';
 
 export function QualityEvidencePage() {
   const { copy } = useUiLocale();
-  const qaSuites = useQaSuites();
   const evidenceItems = useEvidenceItems();
-  const latest = qaSuites[0] ?? null;
   const historical = evidenceItems.filter((item) => item.environment !== 'Current UI/API session');
   const runtimeEvidence = evidenceItems.filter((item) => item.environment === 'Current UI/API session');
 
   return (
     <section className="ui-page">
       <PageHeader title={copy('qa.title')} subtitle={copy('qa.subtitle')} helpTopic="qa" />
-      {latest && (
-        <section className="ui-card">
-          <div className="ui-section-heading">
-            <h3>Latest test execution</h3>
-            <StatusBadge label={latest.status} state="partial" />
-          </div>
-          <p>{latest.suiteName}</p>
-          <div className="ui-fact-list">
-            <span>
-              <strong>{copy('technical.testDefinition')}</strong>
-              {latest.testDefinition}
-            </span>
-            <span>
-              <strong>{copy('technical.testExecution')}</strong>
-              {latest.testExecution}
-            </span>
-            <span>
-              <strong>{copy('technical.environment')}</strong>
-              {latest.environment}
-            </span>
-            <span>
-              <strong>{copy('technical.coverage')}</strong>
-              {latest.coverage}
-            </span>
-          </div>
-        </section>
-      )}
-      <EvidenceSection title="Runtime evidence" items={runtimeEvidence} />
-      <EvidenceSection title="Historical evidence" items={historical} />
+      <div className="ui-notice ui-warning" role="status">
+        <ShieldAlert size={16} />
+        <span>
+          Only items loaded from the current runtime evidence API are current observations. Repository history is an
+          unverified historical claim and is not revalidated by this page.
+        </span>
+      </div>
+      <EvidenceSection title="Runtime evidence — current API session" items={runtimeEvidence} />
+      <EvidenceSection title="Historical repository claims — not revalidated" items={historical} />
     </section>
   );
 }
@@ -123,7 +101,7 @@ function triggerBrowserDownload(blob: Blob, filename: string) {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  queueMicrotask(() => URL.revokeObjectURL(url));
 }
 
 function defaultEvidenceFilename(item: UiEvidenceItem) {

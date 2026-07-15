@@ -52,10 +52,14 @@ public sealed class PreventionRuntimeStateTests
 
         Assert.Contains("WebApplication.CreateBuilder(args)", program);
         Assert.Contains("AddSingleton<PreventionRuntimeState>()", program);
-        Assert.Contains("AddCheck<PreventionReadinessHealthCheck>(\"prevention-ready\")", program);
+        Assert.Contains("AddCheck<PreventionReadinessHealthCheck>(", program);
+        Assert.Contains("\"prevention-ready\"", program);
+        Assert.Contains("tags: [\"ready\"]", program);
         Assert.Contains("MapHealthChecks(\"/health/live\"", program);
         Assert.Contains("Predicate = _ => false", program);
-        Assert.Contains("MapHealthChecks(\"/health/ready\")", program);
+        Assert.Contains("MapHealthChecks(", program);
+        Assert.Contains("\"/health/ready\"", program);
+        Assert.Contains("Tags.Contains(\"ready\")", program);
         Assert.Contains("Microsoft.AspNetCore.App", project);
     }
 

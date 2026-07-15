@@ -74,6 +74,7 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: new NoOpSimulationRunStore(),
             readingPublisher: publisher,
+            processExitCode: new NoOpSimulatorProcessExitCode(),
             applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
@@ -127,6 +128,7 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: new NoOpSimulationRunStore(),
             readingPublisher: publisher,
+            processExitCode: new NoOpSimulatorProcessExitCode(),
             applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
@@ -136,6 +138,68 @@ public sealed class SimulationRunnerTests
         Assert.Equal(
             new[] { SimulationDegradationProfiles.MissingReadings, SimulationDegradationProfiles.Noise },
             context.RunOverrides!.Resolved.DegradationProfiles);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_DuplicateProfile_PublishesDuplicateDeliveryWithSameEventId()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 1;
+        options.DegradationProfile = SimulationDegradationProfiles.Duplicate;
+        options.Sensors =
+        [
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Duplicate-01"),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Duplicate-02")
+        ];
+        var publisher = new CollectingReadingPublisher();
+        var runner = CreateRunner(options, publisher);
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        var duplicateEventId = publisher.Published
+            .GroupBy(envelope => envelope.EventId)
+            .Single(group => group.Count() == 2)
+            .Key;
+        Assert.Contains(publisher.Published, envelope => envelope.EventId == duplicateEventId);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_OutOfOrderProfile_PublishesCycleBatchInReverseOrder()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 1;
+        options.DegradationProfile = SimulationDegradationProfiles.OutOfOrder;
+        options.Sensors =
+        [
+            SimulatorOptionsMother.CreateSensorDefinition(name: "OutOfOrder-01"),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "OutOfOrder-02"),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "OutOfOrder-03")
+        ];
+        var publisher = new CollectingReadingPublisher();
+        var runner = CreateRunner(options, publisher);
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        Assert.Equal(
+            options.Sensors.AsEnumerable().Reverse().Select(sensor => sensor.Id!.Value).ToArray(),
+            publisher.Published.Select(envelope => envelope.Payload.SensorId).ToArray());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_RetryTransientProfile_MarksFirstEnvelopeForBuiltInRetryFault()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 1;
+        options.DegradationProfile = SimulationDegradationProfiles.RetryTransient;
+        var publisher = new CollectingReadingPublisher();
+        var runner = CreateRunner(options, publisher);
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        Assert.StartsWith(
+            "cv:multi-replica-runtime:P3_RETRY_TRANSIENT_THEN_SUCCESS:",
+            publisher.Published.First().CorrelationId,
+            StringComparison.Ordinal);
     }
 
 
@@ -155,6 +219,7 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: new NoOpSimulationRunStore(),
             readingPublisher: new CollectingReadingPublisher(),
+            processExitCode: new NoOpSimulatorProcessExitCode(),
             applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
@@ -268,7 +333,8 @@ public sealed class SimulationRunnerTests
         options.NumberOfCycles = 1;
         var runStore = new RecordingSimulationRunStore();
         var publisher = new ThrowingReadingPublisher();
-        var runner = CreateRunner(options, publisher, runStore);
+        var processExitCode = new RecordingSimulatorProcessExitCode();
+        var runner = CreateRunner(options, publisher, runStore, processExitCode);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None));
@@ -283,6 +349,7 @@ public sealed class SimulationRunnerTests
             },
             runStore.Upserts.Select(x => x.Status));
         Assert.NotNull(runStore.Upserts[2].EndedAt);
+        Assert.True(processExitCode.FailureMarked);
     }
 
     [Fact]
@@ -300,6 +367,7 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: runStore,
             readingPublisher: new CollectingReadingPublisher(),
+            processExitCode: new NoOpSimulatorProcessExitCode(),
             applicationLifetime: new NoOpApplicationLifetime());
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
@@ -315,6 +383,7 @@ public sealed class SimulationRunnerTests
         options.IntervalSeconds = 1;
 
         var applicationLifetime = new RecordingApplicationLifetime();
+        var processExitCode = new RecordingSimulatorProcessExitCode();
 
         var runner = new SimulationRunner(
             logger: NullLogger<SimulationRunner>.Instance,
@@ -324,17 +393,20 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: new NoOpSimulationRunStore(),
             readingPublisher: new CollectingReadingPublisher(),
+            processExitCode: processExitCode,
             applicationLifetime: applicationLifetime);
 
         await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
 
         Assert.True(applicationLifetime.StopApplicationCalled);
+        Assert.False(processExitCode.FailureMarked);
     }
 
     private static SimulationRunner CreateRunner(
         NatureProtector.Simulator.Host.Configuration.SimulatorOptions options,
         IReadingPublisher publisher,
-        ISimulationRunStore? simulationRunStore = null)
+        ISimulationRunStore? simulationRunStore = null,
+        ISimulatorProcessExitCode? processExitCode = null)
     {
         return new SimulationRunner(
             logger: NullLogger<SimulationRunner>.Instance,
@@ -344,6 +416,7 @@ public sealed class SimulationRunnerTests
             readingGenerationService: new ReadingGenerationService(),
             simulationRunStore: simulationRunStore ?? new NoOpSimulationRunStore(),
             readingPublisher: publisher,
+            processExitCode: processExitCode ?? new NoOpSimulatorProcessExitCode(),
             applicationLifetime: new NoOpApplicationLifetime());
     }
 
@@ -493,6 +566,23 @@ public sealed class SimulationRunnerTests
         }
     }
     
+    private sealed class NoOpSimulatorProcessExitCode : ISimulatorProcessExitCode
+    {
+        public void MarkFailure()
+        {
+        }
+    }
+
+    private sealed class RecordingSimulatorProcessExitCode : ISimulatorProcessExitCode
+    {
+        public bool FailureMarked { get; private set; }
+
+        public void MarkFailure()
+        {
+            FailureMarked = true;
+        }
+    }
+
     private sealed class NoOpApplicationLifetime : IHostApplicationLifetime
     {
         public CancellationToken ApplicationStarted => CancellationToken.None;

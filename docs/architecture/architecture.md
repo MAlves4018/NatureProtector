@@ -790,7 +790,7 @@ Pela baseline atual do repositório, a runtime local usa por omissão esta super
 | --- | --- | --- |
 | `RabbitMQ` | `5672` | transporte de eventos |
 | `RabbitMQ Management` | `15672` | observação e administração local do broker |
-| `PostgreSQL` | `5432` | plano de controlo e estado operacional persistido |
+| `PostgreSQL` | `5433` | plano de controlo e estado operacional persistido (porta host local; o contentor usa 5432) |
 | `InfluxDB` | `8181` | escrita e consulta de séries temporais |
 | `Grafana` | `3000` | visualização e dashboards |
 

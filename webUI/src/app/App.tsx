@@ -8,7 +8,7 @@ import { Breadcrumbs } from './components/Breadcrumbs';
 import { Skeleton } from './components/Skeleton';
 import type { UiNavTarget } from './capabilities';
 import { trapDialogTab } from './components/dialogFocus';
-import { defaultPageFor } from './navigation/pageRegistry';
+import { defaultPageFor, findUiPageDefinition } from './navigation/pageRegistry';
 import { useUiLocale, useUiCapabilities } from './state';
 import './theme/ui.css';
 import { UiProvider } from './state/Provider';
@@ -33,12 +33,6 @@ const AboutPage = lazy(() => import('./pages/AboutPage').then((module) => ({ def
 const PipelinePage = lazy(() => import('./pages/PipelinePage').then((module) => ({ default: module.PipelinePage })));
 const QualityEvidencePage = lazy(() =>
   import('./pages/QualityEvidencePage').then((module) => ({ default: module.QualityEvidencePage })),
-);
-const QaTestSuitePage = lazy(() =>
-  import('./pages/QaTestSuitePage').then((module) => ({ default: module.QaTestSuitePage })),
-);
-const DatabaseQueriesPage = lazy(() =>
-  import('./pages/DatabaseQueriesPage').then((module) => ({ default: module.DatabaseQueriesPage })),
 );
 const DeploymentHealthPage = lazy(() =>
   import('./pages/DeploymentHealthPage').then((module) => ({ default: module.DeploymentHealthPage })),
@@ -103,28 +97,28 @@ function UiRouter({
           element: <UiShell isDark={isDark} setIsDark={setIsDark} />,
           children: [
             { index: true, element: <UiDefaultRedirect /> },
-            { path: 'demo', element: <PublicOverviewPage /> },
-            { path: 'about', element: <AboutPage /> },
-            { path: 'context', element: <DataContextPage /> },
-            { path: 'dashboard', element: <DashboardsPage /> },
-            { path: 'mission', element: <MissionControlPage /> },
-            { path: 'risk', element: <RiskPage /> },
-            { path: 'runs', element: <RunsPage /> },
-            { path: 'simulation', element: <SimulationPage /> },
-            { path: 'scenario-compare', element: <ScenarioComparisonPage /> },
-            { path: 'pipeline', element: <PipelinePage /> },
-            { path: 'quality', element: <QualityRunsPage /> },
-            { path: 'qa', element: <QualityEvidencePage /> },
-            { path: 'qa-tests', element: <QaTestSuitePage /> },
-            { path: 'evidence', element: <EvidenceExplorerPage /> },
-            { path: 'deployments', element: <DeploymentsPage /> },
-            { path: 'deployment-health', element: <DeploymentHealthPage /> },
-            { path: 'cloud', element: <CloudResourcesPage /> },
-            { path: 'db-queries', element: <DatabaseQueriesPage /> },
-            { path: 'approvals', element: <ApprovalsPage /> },
-            { path: 'users', element: <UserRoleAdministrationPage /> },
-            { path: 'admin', element: <AdminPage /> },
-            { path: 'p3', element: <ExperimentalPage /> },
+            { path: 'demo', element: protect('demo', <PublicOverviewPage />) },
+            { path: 'about', element: protect('about', <AboutPage />) },
+            { path: 'context', element: protect('context', <DataContextPage />) },
+            { path: 'dashboard', element: protect('dashboard', <DashboardsPage />) },
+            { path: 'mission', element: protect('mission', <MissionControlPage />) },
+            { path: 'risk', element: protect('risk', <RiskPage />) },
+            { path: 'runs', element: protect('runs', <RunsPage />) },
+            { path: 'simulation', element: protect('simulation', <SimulationPage />) },
+            { path: 'scenario-compare', element: protect('scenario-compare', <ScenarioComparisonPage />) },
+            { path: 'pipeline', element: protect('pipeline', <PipelinePage />) },
+            { path: 'quality', element: protect('quality', <QualityRunsPage />) },
+            { path: 'qa', element: protect('qa', <QualityEvidencePage />) },
+            { path: 'qa-tests', element: <UiRetiredOperationalSurface name="Browser QA execution" /> },
+            { path: 'evidence', element: protect('evidence', <EvidenceExplorerPage />) },
+            { path: 'deployments', element: protect('deployments', <DeploymentsPage />) },
+            { path: 'deployment-health', element: protect('deployment-health', <DeploymentHealthPage />) },
+            { path: 'cloud', element: protect('cloud', <CloudResourcesPage />) },
+            { path: 'db-queries', element: <UiRetiredOperationalSurface name="Browser database query console" /> },
+            { path: 'approvals', element: protect('approvals', <ApprovalsPage />) },
+            { path: 'users', element: protect('users', <UserRoleAdministrationPage />) },
+            { path: 'admin', element: protect('admin', <AdminPage />) },
+            { path: 'p3', element: protect('p3', <ExperimentalPage />) },
             { path: '*', element: <UiDefaultRedirect /> },
           ],
         },
@@ -136,8 +130,16 @@ function UiRouter({
 }
 
 function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {
-  const { pages, capabilities, setActivePage, user, isPublic, capabilityAuthority, capabilitiesLoading } =
-    useUiCapabilities();
+  const {
+    pages,
+    capabilities,
+    setActivePage,
+    user,
+    isPublic,
+    capabilityAuthority,
+    capabilitiesLoading,
+    capabilitiesError,
+  } = useUiCapabilities();
   const { copy, locale, setLocale } = useUiLocale();
   const [helpTopic, setHelpTopic] = useState<string | null>(null);
   const helpCloseRef = useRef<HTMLButtonElement | null>(null);
@@ -275,6 +277,12 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
             )}
           </div>
         </header>
+        {capabilitiesError && (
+          <div className="ui-notice ui-warning" role="status">
+            Capability authority unavailable. Authenticated write and protected capabilities are disabled until the
+            backend profile is confirmed.
+          </div>
+        )}
         <UiNavigation pages={pages} activePage={activePage} copy={copy} onSelect={handleNavigate} />
         <AlertBanner />
         <Breadcrumbs items={breadcrumbItems} onNavigate={handleNavigate} />
@@ -310,7 +318,42 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
 
 function getRoutePage(pathname: string): UiNavTarget | undefined {
   const segments = pathname.split('/').filter(Boolean);
-  return (segments[0] === 'ui-v2' ? segments[1] : segments[0]) as UiNavTarget | undefined;
+  const candidate = segments[0] === 'ui-v2' ? segments[1] : segments[0];
+  return candidate && findUiPageDefinition(candidate) ? (candidate as UiNavTarget) : undefined;
+}
+
+function protect(page: UiNavTarget, element: React.ReactNode) {
+  return <UiCapabilityRoute page={page}>{element}</UiCapabilityRoute>;
+}
+
+function UiCapabilityRoute({ page, children }: { page: UiNavTarget; children: React.ReactNode }) {
+  const { capabilities, capabilitiesLoading, capabilityAuthority } = useUiCapabilities();
+  const definition = findUiPageDefinition(page);
+
+  if (capabilitiesLoading) return <UiRouteLoading />;
+
+  const authorized = Boolean(definition?.requiredCapabilities.every((capability) => capabilities.has(capability)));
+  if (!authorized) {
+    return (
+      <section className="ui-page" role="alert">
+        <h2>Acesso negado</h2>
+        <p>Esta rota requer capabilities confirmadas pelo backend.</p>
+        <p className="ui-notice">Authority: {capabilityAuthority}</p>
+      </section>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+function UiRetiredOperationalSurface({ name }: { name: string }) {
+  return (
+    <section className="ui-page" role="alert">
+      <h2>Superfície operacional indisponível</h2>
+      <p>{name} was removed from delivery because it had no authoritative backend execution path.</p>
+      <p className="ui-notice ui-warning">No result, timing, row count or pass/fail state is generated here.</p>
+    </section>
+  );
 }
 
 function UiDefaultRedirect() {

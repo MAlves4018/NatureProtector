@@ -128,6 +128,7 @@ export function buildUiRunContext(
     summary?: RuntimeSummaryResponse | null;
     audit?: RuntimeRunAuditResponse | null;
     timings?: RuntimeRunTimingSummaryResponse | null;
+    loading?: boolean;
     error?: Error | null;
   },
   locale: UiLocale,
@@ -143,13 +144,45 @@ export function buildUiRunContext(
     };
   }
 
-  const run = input.audit?.run ?? input.selectedRun ?? input.summary?.currentRun ?? input.summary?.latestRun ?? null;
-  if (!run) {
+  const requestedRunId = normalizeRunId(input.requestedRunId);
+  const selectedRunId = normalizeRunId(input.selectedRun?.id);
+  const auditRunId = normalizeRunId(input.audit?.run.id);
+  const timingRunId = normalizeRunId(input.timings?.simulationRunId);
+  const canonicalRunId = requestedRunId ?? selectedRunId ?? auditRunId ?? timingRunId;
+  const scopeMismatches = findRunScopeMismatches(canonicalRunId, [
+    ['selectedRun', selectedRunId],
+    ['audit.run', auditRunId],
+    ['audit.dataScope.requestedRunId', normalizeRunId(input.audit?.dataScope?.requestedRunId)],
+    ['audit.dataScope.resolvedRunId', normalizeRunId(input.audit?.dataScope?.resolvedRunId)],
+    ['audit.dataScope.dataRunId', normalizeRunId(input.audit?.dataScope?.dataRunId)],
+    ['timings.simulationRunId', timingRunId],
+    ['timings.dataScope.requestedRunId', normalizeRunId(input.timings?.dataScope?.requestedRunId)],
+    ['timings.dataScope.resolvedRunId', normalizeRunId(input.timings?.dataScope?.resolvedRunId)],
+    ['timings.dataScope.dataRunId', normalizeRunId(input.timings?.dataScope?.dataRunId)],
+  ]);
+
+  if (scopeMismatches.length > 0) {
+    const message = `Run DataScope mismatch: expected ${canonicalRunId ?? 'one run'}, received ${scopeMismatches.join(', ')}`;
     return {
-      requestedRunId: input.requestedRunId ?? null,
+      requestedRunId,
       resolvedRunId: null,
       run: null,
-      state: input.requestedRunId ? 'not-found' : 'not-selected',
+      state: 'error',
+      fields: [{ label: 'Error', value: message }],
+      limitations: [message],
+    };
+  }
+
+  const runCandidates = [input.audit?.run, input.selectedRun, input.summary?.currentRun, input.summary?.latestRun];
+  const run = canonicalRunId
+    ? (runCandidates.find((candidate) => normalizeRunId(candidate?.id) === canonicalRunId) ?? null)
+    : (runCandidates.find((candidate) => candidate != null) ?? null);
+  if (!run) {
+    return {
+      requestedRunId,
+      resolvedRunId: null,
+      run: null,
+      state: input.loading ? 'pending' : requestedRunId ? 'not-found' : 'not-selected',
       fields: [],
       limitations: [translate(locale, 'value.noData')],
     };
@@ -157,10 +190,10 @@ export function buildUiRunContext(
 
   const overrides = getRunOverrides(run);
   return {
-    requestedRunId: input.requestedRunId ?? null,
+    requestedRunId,
     resolvedRunId: run.id,
     run,
-    state: mapRunState(run.status),
+    state: input.loading ? 'pending' : mapRunState(run.status),
     fields: [
       { label: coreLabel(locale, 'runId'), value: run.id },
       { label: coreLabel(locale, 'status'), value: run.status },
@@ -193,6 +226,20 @@ export function buildUiRunContext(
     ],
     limitations: (input.audit?.limitations ?? []).map((item) => item.message),
   };
+}
+
+function normalizeRunId(value: string | null | undefined) {
+  return value?.trim() || null;
+}
+
+function findRunScopeMismatches(
+  expectedRunId: string | null,
+  identities: Array<[source: string, runId: string | null]>,
+) {
+  if (!expectedRunId) return [];
+  return identities
+    .filter((entry): entry is [string, string] => entry[1] != null && entry[1] !== expectedRunId)
+    .map(([source, runId]) => `${source}=${runId}`);
 }
 
 export function buildUiScenarioContext(

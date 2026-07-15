@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "status": "IMPLEMENTED_NOT_PROVED_PHASE3G",
+  "authority": {
+    "decisions": [
+      "docs/decisions/ADR-RMQ-01-bounded-auxiliary-queue-and-topology-ownership.md",
+      "docs/decisions/ADR-HEALTH-01-conditional-readiness-and-rabbitmq-management-tls.md"
+    ],
+    "contracts": [
+      "docs/contracts/rabbitmq-runtime-topology-and-delivery-contract.md",
+      "docs/contracts/runtime-health-readiness-contract.md"
+    ]
+  },
+  "rabbitmq": {
+    "exchange": {
+      "name": "np.events",
+      "type": "topic",
+      "durable": true
+    },
+    "routing_key": "simulation.reading.produced",
+    "queues": [
+      {
+        "name": "np.ingestion.readings",
+        "role": "PrimaryWorkQueue",
+        "enabled_by_default": true,
+        "required_consumer": true,
+        "blocks_pipeline": true,
+        "participates_in_prevention_scaling": true,
+        "retention": {
+          "required": true,
+          "overflow_allowed": [
+            "reject-publish"
+          ],
+          "values_are_environment_owned": true
+        }
+      },
+      {
+        "name": "np.observability.raw",
+        "role": "AuxiliaryDiagnosticQueue",
+        "enabled_by_default": false,
+        "required_consumer": false,
+        "blocks_pipeline": false,
+        "participates_in_prevention_scaling": false,
+        "retention": {
+          "required_when_enabled": true,
+          "message_ttl_milliseconds_must_be_positive": true,
+          "length_or_bytes_limit_must_be_positive": true,
+          "overflow_required": "drop-head",
+          "reject_publish_forbidden": true,
+          "values_are_environment_owned": true
+        }
+      }
+    ],
+    "declaration_owner_during_remediation": "runtime-applications-through-shared-options-and-helper",
+    "durable_binding_migration_required": true,
+    "publisher_confirm_claim": "broker-confirmed-not-end-to-end-and-not-per-destination-atomic",
+    "implementation_status": "IMPLEMENTED_NOT_PROVED_PHASE3G",
+    "policy_ownership": {
+      "primary_policy": {
+        "name": "natureprotector-primary-work-queue",
+        "pattern": "^np\\.ingestion\\.readings$",
+        "overflow": "reject-publish",
+        "max_length_bytes": 1073741824,
+        "delivery_limit": 8,
+        "declarative_owner": "RabbitMQ Messaging Topology Operator"
+      },
+      "legacy_broad_policy": {
+        "name": "natureprotector-quorum",
+        "must_be_retired": true,
+        "reason": "matches auxiliary queues and can make raw backlog nack the primary publisher"
+      },
+      "raw_migration_policy": {
+        "name": "natureprotector-raw-migration-protection",
+        "pattern": "^np\\.observability\\.raw$",
+        "overflow": "drop-head",
+        "message_ttl_milliseconds": "REQUIRED_OPERATOR_INPUT",
+        "max_length_bytes": "REQUIRED_OPERATOR_INPUT",
+        "priority": 90,
+        "automatic_delete": false
+      }
+    },
+    "migration_tooling": {
+      "broker_script": "scripts/operations/Invoke-RabbitMqRawQueueMigration.ps1",
+      "cloud_inventory_script": "scripts/cloud/Get-G81RabbitMqRawQueueMigrationInventory.ps1",
+      "default_mode": "read-only",
+      "mutations_require_apply_and_exact_confirmation": true,
+      "automatic_purge": false,
+      "automatic_queue_delete": false,
+      "rollback_restores_binding_only_when_raw_policy_is_safe": true
+    },
+    "delivery_semantics": {
+      "unroutable_exception": "RabbitMqUnroutableMessageException",
+      "unroutable_certainty": "NotDeliveredToAnyQueue",
+      "ambiguous_exception": "RabbitMqPublishOutcomeUnknownException",
+      "ambiguous_certainty": "UnknownPossiblePartialDelivery",
+      "ambiguous_publish_may_have_reached_primary": true,
+      "retry_must_preserve_event_id": true,
+      "automatic_publisher_retry_enabled": false,
+      "simulator_failure_exit_code_must_be_nonzero": true,
+      "consumer_idempotency_proof": "same EventId produces one inbox event, one processing attempt, and one durable projection effect set",
+      "exactly_once_claim": false
+    },
+    "phase3g_evidence": {
+      "document": "docs/operations/rabbitmq-partial-delivery-and-idempotency-evidence.md",
+      "unit_tests": [
+        "RabbitMqPublishGuaranteesTests",
+        "SimulationRunnerTests"
+      ],
+      "docker_tests": [
+        "PartialNack_PrimaryProcessesOnce_AndSameEventIdRetryIsIdempotent",
+        "PublishedSimulator_PartialNack_ExitsNonZero_MarksRunFailed_WhilePrimaryProcessesOnce"
+      ],
+      "status": "IMPLEMENTED_NOT_PROVED_PHASE3G"
+    }
+  },
+  "health": {
+    "backoffice": {
+      "liveness": [
+        "process-http"
+      ],
+      "readiness": [
+        {
+          "dependency": "postgresql-control-plane",
+          "condition": "BackofficeApi:ControlPlaneEnabled=true"
+        }
+      ],
+      "non_blocking_observability": [
+        "rabbitmq-management",
+        "grafana",
+        "influxdb"
+      ]
+    },
+    "prevention": {
+      "liveness": [
+        "process-http"
+      ],
+      "readiness": [
+        {
+          "dependency": "rabbitmq-consumer",
+          "condition": "always"
+        },
+        {
+          "dependency": "postgresql-pipeline",
+          "condition": "PreventionHost:PipelinePersistenceEnabled=true"
+        }
+      ]
+    },
+    "runtime_transition_tests_required": true
+  },
+  "rabbitmq_management": {
+    "supported_schemes": [
+      "http",
+      "https"
+    ],
+    "https_private_ca_supported": true,
+    "hostname_validation_required": true,
+    "silent_http_fallback_forbidden": true,
+    "dedicated_http_client_required": true,
+    "least_privilege_monitoring_credentials_required": true,
+    "implementation_status": "IMPLEMENTED_NOT_PROVED_PHASE3E",
+    "handler_lifetime_minutes": 2,
+    "insecure_http_requires_explicit_opt_in": true,
+    "automatic_redirects_allowed": false
+  }
+}

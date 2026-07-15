@@ -10,8 +10,8 @@
         34,
         94
       ],
-      "sha256": "8613ff3dad78393eb3579238035870ef1942028aeab7566dc117213af0ceb870",
-      "line_count": 61
+      "sha256": "dabf97a3cfb000ce6504950b6e005b876ed9ac840098d3394656339b156c5e4d",
+      "line_count": 73
     },
     {
       "id": "availability",
@@ -80,8 +80,18 @@
         1612,
         3360
       ],
-      "sha256": "c3e568e1b3c004df4918c22e986e2397f5e0dde911e83bac2d6f8c9b46a9b530",
-      "line_count": 1749
+      "sha256": "ab721097b358f358ac2cdbf18d73e999e3ade280aa389f762a2ffd532eac175b",
+      "line_count": 1748
+    },
+    {
+      "id": "runtime-lifecycle",
+      "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.RuntimeLifecycle.cs",
+      "original_lines": [
+        1,
+        436
+      ],
+      "sha256": "834ff2ef0f853c43b4f6ebd7088111db6a409f0f03a0965ccad07747757b0b9e",
+      "line_count": 423
     },
     {
       "id": "runtime-operations-api",
@@ -90,8 +100,8 @@
         1092,
         1611
       ],
-      "sha256": "062b9cf30a8a5f00dcbd4a05ddfcc92af91b83c7801727aefc0c14081a7d0f29",
-      "line_count": 520
+      "sha256": "3e17bc4822a8c05e25ff15d3d12dbea7f51ca385a62744b355394ed8d0a7a7c5",
+      "line_count": 797
     },
     {
       "id": "runtime-operations-evidence",
@@ -100,8 +110,8 @@
         3361,
         3725
       ],
-      "sha256": "0e30b64d64523de0ac13a9fd06b65bf674202de6cf14362c9e51ad4209b99c6c",
-      "line_count": 365
+      "sha256": "492df3b0720d204a6c4d4213bec5fdd4419ecc778669cd8067ded0b82505a215",
+      "line_count": 383
     },
     {
       "id": "shared-mapping-and-normalization",
@@ -110,8 +120,8 @@
         4503,
         4961
       ],
-      "sha256": "2e75934996bc20b6e225a402a5d990fa491b4c1b18a86f5de3a7c83066a8aa0a",
-      "line_count": 459
+      "sha256": "fa2a97b3fb7c6301b08ee00a879155f60ab5187d58dc8032be90838c526fe10f",
+      "line_count": 525
     }
   ],
   "limits": {

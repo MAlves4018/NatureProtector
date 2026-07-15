@@ -73,6 +73,14 @@ Quando `PipelinePersistenceEnabled = true`, o host usa o PostgreSQL como inbox d
 Quando `PipelinePersistenceEnabled = false`, o host continua a arrancar com inbox, persistência operacional e projeções em memória.
 `ConsumerPrefetchCount` limita quantas mensagens podem ficar em voo no canal RabbitMQ antes de materialização mínima no inbox. O valor por defeito fica baixo para priorizar estabilidade e tornar o backlog observável.
 
+## Health e readiness
+
+- `/health/live` prova apenas que o processo da Prevention está vivo e que o servidor HTTP continua a responder.
+- `/health/ready` exige o consumer RabbitMQ ativo.
+- `/health/ready` também exige PostgreSQL quando `PipelinePersistenceEnabled = true`.
+- Quando `PipelinePersistenceEnabled = false`, a readiness não cria uma dependência artificial de PostgreSQL porque inbox, persistência operacional e projeções usam as implementações em memória.
+- Uma indisponibilidade temporária de RabbitMQ ou PostgreSQL deve retirar o host de readiness sem o transformar numa falha de liveness; depois da recuperação das dependências, a readiness deve regressar automaticamente a `200`.
+
 ## Observabilidade operacional mínima
 
 O host passa a emitir timings curtos e estruturados para o caminho do evento aceite, sem alterar a semântica do fluxo:
@@ -115,7 +123,8 @@ O perfil local suportado por defeito do repositório usa `PipelinePersistenceEna
 - agregação operacional baseada no último assessment por sensor;
 - projeção operacional simples por área;
 - projeção operacional simples por célula;
-- alerta ativo simples por área.
+- alerta ativo simples por área;
+- liveness process-only e readiness dependente do consumer RabbitMQ e, no modo persistente, de PostgreSQL.
 
 ## O que ainda não fecha
 

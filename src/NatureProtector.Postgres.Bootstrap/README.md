@@ -62,4 +62,4 @@ Nesta fase, o bootstrap semeia:
 
 - não fecha ainda `pipeline.event_inbox`;
 - não fecha ainda `projection.area_operational_state` nem `projection.alert_state`;
-- depende de uma instância PostgreSQL disponível em `localhost:5432` ou noutro endpoint compatível via `.env`.
+- depende do endpoint resolvido por `POSTGRES_HOST`/`POSTGRES_PORT`, com precedência de variáveis de ambiente sobre o `.env`; na baseline local, o default documentado é `localhost:5433`.

@@ -1,0 +1,160 @@
+{
+  "uid": "np-risk-temporal",
+  "title": "NatureProtector — Risk & Temporal",
+  "tags": [
+    "natureprotector",
+    "provisioned"
+  ],
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": true,
+  "refresh": "10s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Area cycle snapshots",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "natureprotector-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "natureprotector-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT \"SnapshotTimestamp\" AS \"time\", \"SimulationRunId\" AS simulation_run_id, \"CycleIndex\" AS cycle_index, \"ExpectedCount\" AS expected_count, \"ObservedCount\" AS observed_count, \"MissingCount\" AS missing_count, \"BlockedCount\" AS blocked_count, \"AggregateRiskScore\" AS aggregate_risk_score, \"AggregateRiskLevel\" AS aggregate_risk_level, \"AlertOutcome\" AS alert_outcome FROM projection.area_cycle_snapshot ORDER BY \"SnapshotTimestamp\" DESC LIMIT 500"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Cycle settlement coverage",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "natureprotector-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "natureprotector-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT \"UpdatedAt\" AS \"time\", \"SimulationRunId\" AS simulation_run_id, \"CycleIndex\" AS cycle_index, \"Status\" AS status, \"IsOperational\" AS is_operational, \"FinalizationReason\" AS finalization_reason FROM projection.cycle_settlement ORDER BY \"UpdatedAt\" DESC LIMIT 500"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Risk assessment trajectory",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "natureprotector-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "natureprotector-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT \"CreatedAt\" AS \"time\", \"SimulationRunId\" AS simulation_run_id, \"AreaId\" AS area_id, \"SensorId\" AS sensor_id, \"RiskScore\" AS risk_score, \"RiskLevel\" AS risk_level FROM projection.risk_assessment_log ORDER BY \"CreatedAt\" DESC LIMIT 500"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Missing and blocked counts",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "natureprotector-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "natureprotector-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT \"SnapshotTimestamp\" AS \"time\", \"SimulationRunId\" AS simulation_run_id, \"CycleIndex\" AS cycle_index, \"MissingCount\" AS missing_count, \"BlockedCount\" AS blocked_count FROM projection.area_cycle_snapshot ORDER BY \"SnapshotTimestamp\" DESC LIMIT 500"
+        }
+      ]
+    }
+  ]
+}

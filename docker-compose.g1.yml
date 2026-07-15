@@ -74,6 +74,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is required for backoffice-api}
       RabbitMq__HostName: rabbitmq
       RabbitMq__Port: 5672
+      RabbitMq__ManagementScheme: http
+      RabbitMq__ManagementPort: 15672
+      RabbitMq__ManagementAllowInsecureHttp: "true"
+      RabbitMq__ManagementTimeoutSeconds: 5
       RabbitMq__UserName: ${RABBITMQ_DEFAULT_USER}
       RabbitMq__Password: ${RABBITMQ_DEFAULT_PASS}
       RabbitMq__ObservabilityRawEnabled: "false"
@@ -151,6 +155,25 @@ services:
     tmpfs:
       - /tmp
     restart: "no"
+
+  operational-timeseries:
+    build:
+      context: .
+      dockerfile: infra/ipma/Dockerfile
+    container_name: np-operational-timeseries
+    profiles: ["observability-live"]
+    command: ["python", "/app/scripts/observability/collect-operational-timeseries.py", "--url", "http://backoffice-api:8080/api/control/runtime/operations/current", "--interval-seconds", "15", "--write-influx"]
+    environment:
+      INFLUXDB_URL: http://influxdb:8181
+      INFLUXDB_DATABASE: ${INFLUXDB_DATABASE:-np_telemetry}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN}
+      NATUREPROTECTOR_RUNTIME_BEARER_TOKEN: ${NATUREPROTECTOR_RUNTIME_BEARER_TOKEN:-}
+    depends_on:
+      backoffice-api:
+        condition: service_started
+      influxdb:
+        condition: service_healthy
+    restart: unless-stopped
 
   frontend:
     environment:

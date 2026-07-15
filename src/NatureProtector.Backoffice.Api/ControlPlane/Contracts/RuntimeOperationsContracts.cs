@@ -1,5 +1,19 @@
 namespace NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 
+public static class RuntimeTerminationReason
+{
+    public const string CompletedNormally = nameof(CompletedNormally);
+    public const string UserCancelled = nameof(UserCancelled);
+    public const string ConfiguredTimeout = nameof(ConfiguredTimeout);
+    public const string RequestCancelled = nameof(RequestCancelled);
+    public const string HostShutdown = nameof(HostShutdown);
+    public const string ProcessExitedNonZero = nameof(ProcessExitedNonZero);
+    public const string ProviderFailure = nameof(ProviderFailure);
+    public const string HealthFailure = nameof(HealthFailure);
+    public const string OrphanReconciled = nameof(OrphanReconciled);
+    public const string Unknown = nameof(Unknown);
+}
+
 public sealed record RuntimeDiagnosticCatalogResponse(
     IReadOnlyList<RuntimeDiagnosticDefinitionResponse> Diagnostics);
 
@@ -101,12 +115,55 @@ public sealed record RuntimeRunStartResponse(
     RuntimeRunSummaryResponse? Run,
     IReadOnlyList<string> Warnings,
     string? LogDirectory,
-    string? EvidenceDirectory);
+    string? EvidenceDirectory,
+    Guid? OperationId = null);
+
+public sealed record RuntimeOperationResponse(
+    Guid OperationId,
+    Guid RequestId,
+    string CorrelationId,
+    Guid? SimulationRunId,
+    string RequestedState,
+    string ProviderState,
+    string RunState,
+    string ProcessingState,
+    string State,
+    string? TerminalOutcome,
+    DateTimeOffset AcceptedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? ProducerCompletedAt,
+    DateTimeOffset? SystemCompletedAt,
+    DateTimeOffset? FinishedAt,
+    string? FailureCode,
+    string? FailureDetail,
+    string? EvidenceId,
+    string? EvidenceLocation,
+    RuntimeOperationAccountingResponse Accounting);
+
+public sealed record RuntimeOperationAccountingResponse(
+    int ExpectedObservations,
+    int AcceptedObservations,
+    int PendingInbox,
+    int ProcessingInbox,
+    int RetryPendingInbox,
+    int ProcessedInbox,
+    int QuarantinedInbox,
+    bool Settled);
 
 public sealed record RuntimeResetRequest(
     string Scope,
     string Confirm,
-    bool DryRun);
+    bool DryRun,
+    bool RequireExternalStores = true,
+    bool ReconcileTerminalOrphans = true);
+
+public sealed record RuntimeResetStoreResponse(
+    string Store,
+    string Status,
+    long? Before,
+    long? After,
+    string Message);
 
 public sealed record RuntimeResetResponse(
     DateTimeOffset GeneratedAtUtc,
@@ -114,7 +171,10 @@ public sealed record RuntimeResetResponse(
     string Status,
     string Message,
     IReadOnlyList<RuntimeTableCountResponse> Before,
-    IReadOnlyList<RuntimeTableCountResponse> After);
+    IReadOnlyList<RuntimeTableCountResponse> After,
+    Guid? ResetId = null,
+    IReadOnlyList<RuntimeResetStoreResponse>? Stores = null,
+    int ReconciledOrphans = 0);
 
 public sealed record ControlledValidationP3AvailabilityResponse(
     string Phase,

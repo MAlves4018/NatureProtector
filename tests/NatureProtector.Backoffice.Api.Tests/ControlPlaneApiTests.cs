@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Shared.Messaging;
 
 namespace NatureProtector.Backoffice.Api.Tests;
 
@@ -569,8 +570,16 @@ public sealed class ControlPlaneApiTests
         var measured = queues.Single(queue => queue.GetProperty("queueName").GetString() == "np.ingestion.readings");
         var unavailable = queues.Single(queue => queue.GetProperty("queueName").GetString() == "np.observability.raw");
 
+        Assert.Equal(RabbitMqQueueRoles.PrimaryWorkQueue, measured.GetProperty("queueRole").GetString());
+        Assert.True(measured.GetProperty("enabled").GetBoolean());
+        Assert.True(measured.GetProperty("consumerRequired").GetBoolean());
+        Assert.True(measured.GetProperty("blocksRuntimeHealth").GetBoolean());
         Assert.Equal(0, measured.GetProperty("messagesReady").GetInt32());
         Assert.Equal(RuntimeMetricCollectionStatus.Measured, measured.GetProperty("collectionStatus").GetString());
+        Assert.Equal(RabbitMqQueueRoles.AuxiliaryDiagnosticQueue, unavailable.GetProperty("queueRole").GetString());
+        Assert.True(unavailable.GetProperty("enabled").GetBoolean());
+        Assert.False(unavailable.GetProperty("consumerRequired").GetBoolean());
+        Assert.False(unavailable.GetProperty("blocksRuntimeHealth").GetBoolean());
         Assert.Equal(JsonValueKind.Null, unavailable.GetProperty("messagesReady").ValueKind);
         Assert.Equal(RuntimeMetricCollectionStatus.Unavailable, unavailable.GetProperty("collectionStatus").GetString());
     }
@@ -710,8 +719,8 @@ public sealed class ControlPlaneApiTests
                 "test",
                 RuntimeMetricCollectionStatus.Unavailable,
                 [
-                    new RabbitMqQueueMetricResponse("np.ingestion.readings", 0, 0, 0, 1, observedAt, "test", RuntimeMetricCollectionStatus.Measured, null),
-                    new RabbitMqQueueMetricResponse("np.observability.raw", null, null, null, null, observedAt, "test", RuntimeMetricCollectionStatus.Unavailable, "management unavailable")
+                    new RabbitMqQueueMetricResponse("np.ingestion.readings", RabbitMqQueueRoles.PrimaryWorkQueue, true, true, true, 0, 0, 0, 1, observedAt, "test", RuntimeMetricCollectionStatus.Measured, null),
+                    new RabbitMqQueueMetricResponse("np.observability.raw", RabbitMqQueueRoles.AuxiliaryDiagnosticQueue, true, false, false, null, null, null, null, observedAt, "test", RuntimeMetricCollectionStatus.Unavailable, "management unavailable")
                 ],
                 []);
     }

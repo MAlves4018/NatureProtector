@@ -2,22 +2,27 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using NatureProtector.Backoffice.Api.Bootstrap;
 using NatureProtector.Backoffice.Api.Configuration;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
+using NatureProtector.Backoffice.Api.Health;
 using NatureProtector.Backoffice.Api.OpenApi;
 using NatureProtector.Backoffice.Api.Operations.Authorization;
 using NatureProtector.Backoffice.Api.Operations.Configuration;
 using NatureProtector.Backoffice.Api.Operations.Services;
+using NatureProtector.Backoffice.Api.RuntimeOrchestration;
 using NatureProtector.Backoffice.Api.UserPlane.Services;
 using NatureProtector.Infrastructure.Postgres.DependencyInjection;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Users;
+using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Observability;
 
 /*
@@ -41,8 +46,9 @@ builder.Services.AddNatureProtectorOpenTelemetry(
     enableAspNetCoreInstrumentation: true);
 
 builder.Services.AddControllers();
-builder.Services.AddHealthChecks();
+var healthChecks = builder.Services.AddHealthChecks();
 builder.Services.AddHttpClient();
+builder.Services.AddNatureProtectorRuntimeOrchestration(builder.Configuration, builder.Environment);
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer<BackofficeOpenApiSecurityDocumentTransformer>();
@@ -102,14 +108,32 @@ builder.Services.AddSingleton<ICloudEnvironmentCatalogService, CloudEnvironmentC
 
 if (backofficeOptions.ControlPlaneEnabled)
 {
+    // RabbitMQ Management is an observability surface, not a readiness
+    // dependency. It nevertheless requires a dedicated, validated HTTP client
+    // so cloud HTTPS/private-CA configuration is not silently downgraded.
+    builder.Services.AddRabbitMqManagementHttpClient(builder.Configuration);
+
     // Quando o control plane está ativo, a API expõe dados reais persistidos em
-    // PostgreSQL.
+    // PostgreSQL e só fica ready quando essa dependência obrigatória responde.
     builder.Services.AddNatureProtectorControlPlanePostgres(builder.Environment.ContentRootPath);
+    builder.Services.AddSingleton<IRuntimeDataResetCoordinator, RuntimeDataResetCoordinator>();
+    builder.Services.AddOptions<RuntimeOperationReconciliationOptions>()
+        .Bind(builder.Configuration.GetSection(RuntimeOperationReconciliationOptions.SectionName));
+    builder.Services.AddHostedService<RuntimeOperationReconciliationWorker>();
+    healthChecks.AddCheck<ControlPlaneDatabaseHealthCheck>(
+        "control-plane-postgres",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready"],
+        timeout: TimeSpan.FromSeconds(5));
     builder.Services.AddScoped<IControlPlaneService>(services =>
         new PostgresControlPlaneService(
             services.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<NatureProtector.Infrastructure.Postgres.Persistence.NatureProtectorControlDbContext>>(),
             builder.Environment.ContentRootPath,
-            enableRuntimeProcessLaunch: backofficeOptions.LocalRuntimeProcessLaunchEnabled));
+            enableRuntimeProcessLaunch: backofficeOptions.LocalRuntimeProcessLaunchEnabled,
+            runtimeRunOrchestrator: services.GetRequiredService<IRuntimeRunOrchestrator>(),
+            runtimeEvidenceSink: services.GetRequiredService<IRuntimeEvidenceSink>(),
+            runtimeDataResetCoordinator: services.GetRequiredService<IRuntimeDataResetCoordinator>(),
+            environmentName: builder.Environment.EnvironmentName));
     builder.Services.AddScoped<IRuntimeObservabilityService, RuntimeObservabilityService>();
     builder.Services.AddSingleton<IPasswordHasher<UserRecord>, PasswordHasher<UserRecord>>();
     builder.Services.AddScoped<IUserRolePlaneService, PostgresUserRolePlaneService>();
@@ -123,7 +147,10 @@ else
             "The control-plane API is disabled. Set BackofficeApi:ControlPlaneEnabled=true to enable PostgreSQL-backed endpoints."));
     builder.Services.AddSingleton<IRuntimeObservabilityService>(
         _ => new UnavailableRuntimeObservabilityService(
-            "Runtime observability is disabled because the control plane is not enabled."));
+            "Runtime observability is disabled because the control plane is not enabled.",
+            builder.Configuration
+                .GetSection(RabbitMqOptions.SectionName)
+                .Get<RabbitMqOptions>()));
     builder.Services.AddSingleton<IUserRolePlaneService>(
         _ => new UnavailableUserRolePlaneService(
             "The user plane API is disabled because the control plane is not enabled."));
@@ -189,8 +216,16 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHealthChecks("/health");
-app.MapHealthChecks("/health/live");
-app.MapHealthChecks("/health/ready");
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    // Liveness representa apenas o processo HTTP; dependências externas não
+    // devem provocar reinícios contínuos do container.
+    Predicate = _ => false
+});
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("ready")
+});
 app.MapControllers();
 
 app.Run();

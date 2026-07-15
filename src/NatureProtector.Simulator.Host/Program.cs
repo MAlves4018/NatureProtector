@@ -55,6 +55,7 @@ builder.Services.AddSingleton<PostgresSimulationContextSource>();
 builder.Services.AddSingleton<NoOpSimulationRunStore>();
 builder.Services.AddSingleton<PostgresSimulationRunStore>();
 builder.Services.AddSingleton<ReadingGenerationService>();
+builder.Services.AddSingleton<ISimulatorProcessExitCode, EnvironmentSimulatorProcessExitCode>();
 builder.Services.AddSingleton<ISimulationContextSource>(
     services =>
     {

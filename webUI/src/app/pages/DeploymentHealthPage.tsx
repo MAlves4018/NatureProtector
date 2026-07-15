@@ -1,13 +1,14 @@
 import { CheckCircle2, AlertTriangle, XCircle, Activity } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { useUiObservability } from '../state/ObservabilityContext';
-import { useEffect } from 'react';
+import { globalOperationalStatus } from '../truthfulPresentation';
 
 const STATUS_ICONS: Record<string, typeof CheckCircle2> = {
   Healthy: CheckCircle2,
   Degraded: AlertTriangle,
   Unhealthy: XCircle,
   Unknown: Activity,
+  AuthRequired: Activity,
   NotApplicable: Activity,
   NotInstrumented: Activity,
 };
@@ -17,6 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
   Degraded: '#a16207',
   Unhealthy: '#b91c1c',
   Unknown: 'var(--ui-muted)',
+  AuthRequired: 'var(--ui-muted)',
   NotApplicable: 'var(--ui-muted)',
   NotInstrumented: 'var(--ui-muted)',
 };
@@ -26,15 +28,17 @@ const STATUS_LABELS: Record<string, string> = {
   Degraded: 'Degraded',
   Unhealthy: 'Unhealthy',
   Unknown: 'Unknown',
+  AuthRequired: 'Authentication required',
   NotApplicable: 'Not applicable',
   NotInstrumented: 'Not instrumented',
 };
 
-function globalStatus(components: { status: string }[]): 'Healthy' | 'Degraded' | 'Unhealthy' {
-  if (components.some((c) => c.status === 'Unhealthy')) return 'Unhealthy';
-  if (components.some((c) => c.status === 'Degraded')) return 'Degraded';
-  return 'Healthy';
-}
+const GLOBAL_LABELS = {
+  Healthy: 'All observed systems healthy',
+  Degraded: 'Observed deployment degraded',
+  Unhealthy: 'Observed deployment unhealthy',
+  Unknown: 'Overall health not established',
+} as const;
 
 function formatAge(seconds: number | null): string {
   if (seconds === null || seconds === undefined) return '\u2014';
@@ -52,12 +56,8 @@ export function DeploymentHealthPage() {
   const { operationalHealth, observabilityError } = useUiObservability();
 
   const components = operationalHealth?.components ?? [];
-  const status = globalStatus(components);
+  const status = globalOperationalStatus(components);
   const GlobalIcon = STATUS_ICONS[status] ?? Activity;
-
-  useEffect(() => {
-    console.log('Operational Health:', operationalHealth);
-  }, [operationalHealth]);
 
   return (
     <section className="ui-page">
@@ -71,12 +71,17 @@ export function DeploymentHealthPage() {
         <div className="ui-section-heading">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <GlobalIcon size={20} style={{ color: STATUS_COLORS[status] }} />
-            {status === 'Healthy' ? 'All systems operational' : status === 'Degraded' ? 'Degraded' : 'Unhealthy'}
+            {GLOBAL_LABELS[status]}
           </h3>
           <span className="ui-badge">
             {components.filter((c) => c.status === 'Healthy').length}/{components.length} healthy
           </span>
         </div>
+        {status === 'Unknown' && (
+          <p className="ui-notice ui-warning">
+            Overall health requires a non-empty set in which every observed component is explicitly Healthy.
+          </p>
+        )}
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
           {Object.keys(STATUS_LABELS).map((key) => {
             const count = components.filter((c) => c.status === key).length;

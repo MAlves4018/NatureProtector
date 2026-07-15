@@ -32,7 +32,7 @@ public sealed class PostgresRiskAssessmentRepository(
     /// <summary>
     /// Persiste uma avaliação de risco associada a uma leitura de origem.
     /// </summary>
-    public async Task AddAsync(
+    public async Task<RiskAssessment> AddAsync(
         Guid areaId,
         Guid sensorId,
         Guid sourceEventId,
@@ -46,13 +46,12 @@ public sealed class PostgresRiskAssessmentRepository(
 
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var exists = await dbContext.RiskAssessmentLogs
-            .AsNoTracking()
-            .AnyAsync(entity => entity.SourceEventId == sourceEventId, cancellationToken);
-
-        if (exists)
+        var existing = await dbContext.RiskAssessmentLogs
+            .SingleOrDefaultAsync(entity => entity.SourceEventId == sourceEventId, cancellationToken);
+        if (existing is not null)
         {
-            return;
+            EnsureReplayIdentityMatches(existing, areaId, sensorId, simulationRunId, sourceEventId);
+            return ToDomainAssessment(existing);
         }
 
         var sensorNode = await dbContext.SensorNodes
@@ -95,11 +94,11 @@ public sealed class PostgresRiskAssessmentRepository(
         }
         catch (DbUpdateException ex) when (ExpectedUniqueViolationDetector.IsExpected(ex, NatureProtectorUniqueConstraints.RiskAssessmentSourceEventId))
         {
-            logger.LogDebug(
-                "Risk assessment duplicate treated as idempotent after concurrent insert | SourceEventId={SourceEventId} | SensorId={SensorId}",
-                sourceEventId,
-                sensorId);
-            return;
+            await using var lookupContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var winner = await lookupContext.RiskAssessmentLogs.AsNoTracking()
+                .SingleAsync(entity => entity.SourceEventId == sourceEventId, cancellationToken);
+            EnsureReplayIdentityMatches(winner, areaId, sensorId, simulationRunId, sourceEventId);
+            return ToDomainAssessment(winner);
         }
 
         stopwatch.Stop();
@@ -114,6 +113,20 @@ public sealed class PostgresRiskAssessmentRepository(
             sourceEventId,
             sensorId,
             assessment.RiskLevel);
+        return assessment;
+    }
+
+    private static void EnsureReplayIdentityMatches(
+        RiskAssessmentLogRecord persisted,
+        Guid areaId,
+        Guid sensorId,
+        Guid? simulationRunId,
+        Guid sourceEventId)
+    {
+        if (persisted.AreaId == areaId && persisted.SensorId == sensorId && persisted.SimulationRunId == simulationRunId)
+            return;
+        throw new InvalidOperationException(
+            $"SourceEventId '{sourceEventId}' is already associated with a different area, sensor or run.");
     }
 
     /// <summary>

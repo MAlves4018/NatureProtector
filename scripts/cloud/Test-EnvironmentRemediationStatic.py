@@ -96,6 +96,12 @@ gke_prevention = (
 gke_rabbitmq = (
     ROOT / "infra/gcp/kubernetes/g8-1/base/rabbitmq.yaml"
 ).read_text(encoding="utf-8")
+gke_rabbitmq_topology = (
+    ROOT / "infra/gcp/kubernetes/g8-1/base/rabbitmq-topology.yaml"
+).read_text(encoding="utf-8")
+api_service_manifest = (
+    ROOT / "infra/gcp/cloud-deploy/g8-1/api/service.yaml"
+).read_text(encoding="utf-8")
 gke_prevention_scaling = (
     ROOT / "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml"
 ).read_text(encoding="utf-8")
@@ -739,8 +745,22 @@ check(
     and "stringData" not in prevention_skaffold_text
     and "kubectl wait --for=condition=Ready user/natureprotector-app" in prevention_skaffold_text
     and "kubectl wait --for=condition=Ready permission/natureprotector-app" in prevention_skaffold_text
-    and "kubectl wait --for=condition=Ready policy/natureprotector-quorum-policy" in prevention_skaffold_text,
+    and "kubectl wait --for=condition=Ready policy/natureprotector-primary-work-queue-policy" in prevention_skaffold_text,
     "gke-cloud-deploy-verify-must-reconcile-rabbitmq-topology-secret-uri",
+)
+check(
+    "name: natureprotector-primary-work-queue-policy" in gke_rabbitmq_topology
+    and "name: natureprotector-primary-work-queue" in gke_rabbitmq_topology
+    and "pattern: '^np\\.ingestion\\.readings$'" in gke_rabbitmq_topology
+    and "pattern: '^np\\.'" not in gke_rabbitmq_topology
+    and "overflow: reject-publish" in gke_rabbitmq_topology,
+    "gke-rabbitmq-primary-policy-must-not-match-auxiliary-queues",
+)
+check(
+    'RabbitMq__ObservabilityRawEnabled, value: "false"' in gke_prevention
+    and 'RabbitMq__ObservabilityRawEnabled, value: "false"' in api_service_manifest
+    and "RabbitMq__ObservabilityRawEnabled=false" in deploy_runtime_jobs,
+    "cloud-runtime-declarers-must-explicitly-disable-raw-queue",
 )
 check(
     "amqps://natureprotector-rabbitmq.natureprotector-staging.svc.cluster.local:5671/" in gke_prevention_scaling

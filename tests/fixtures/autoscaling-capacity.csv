@@ -1,0 +1,10 @@
+experiment,publisher_rate,replicas,processed_rate,p95_ms,backlog_end,correctness_pass
+S1,5,1,8,110,0,true
+S1,8,1,9,125,0,true
+S2,40,3,32,220,5,true
+S3,38,4,39,160,2,true
+S4,2,1,8,105,0,true
+S5,12,2,14,180,4,true
+S6,25,2,23,240,6,true
+S7,15,3,17,200,1,true
+S8,20,3,22,190,0,true

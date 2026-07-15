@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { AreaRisk, GrafanaStrip } from '../mainComponents/GrafanaStrip';
 import { AreaMap } from '../mainComponents/AreaMap';
@@ -15,34 +15,51 @@ export function DashBoards({ isDark, areaCode: areaCodeProp }: { isDark: boolean
   const [geoJSON, setGeoJSON] = useState<any>(null);
   const [cells, setCells] = useState<AreaCellResponse[]>([]);
   const [sensorNodes, setSensorNodes] = useState<SensorNodeResponse[]>([]);
+  const requestGenerationRef = useRef(0);
 
   useEffect(() => {
-    if (areaCode) {
-      api.getAreaGeoJSON(areaCode).then((response) => {
+    const generation = ++requestGenerationRef.current;
+    setAreaId('');
+    setGeoJSON(null);
+    setCells([]);
+    setSensorNodes([]);
+    if (!areaCode) return;
+
+    const isCurrent = () => requestGenerationRef.current === generation;
+    api
+      .getAreaGeoJSON(areaCode)
+      .then((response) => {
+        if (!isCurrent()) return;
         if (!response.id) {
           console.error('Failed to fetch id for area:', areaCode);
           return;
         }
-        setAreaId(response.id);
-        setGeoJSON(JSON.parse(response.geometryGeoJson || '{}'));
+        try {
+          setAreaId(response.id);
+          setGeoJSON(JSON.parse(response.geometryGeoJson || '{}'));
+        } catch (error) {
+          console.error('Failed to parse geometry for area:', areaCode, error);
+        }
+      })
+      .catch((error) => {
+        if (isCurrent()) console.error('Failed to fetch geometry for area:', areaCode, error);
       });
-      api
-        .getAreaCells(areaCode)
-        .then((response) => {
-          setCells(response);
-        })
-        .catch((error) => {
-          console.error('Failed to fetch cells for area:', areaCode, error);
-        });
-      api
-        .getAreaSensorNodes(areaCode)
-        .then((response) => {
-          setSensorNodes(response);
-        })
-        .catch((error) => {
-          console.error('Failed to fetch sensor nodes for area:', areaCode, error);
-        });
-    }
+    api
+      .getAreaCells(areaCode)
+      .then((response) => {
+        if (isCurrent()) setCells(response);
+      })
+      .catch((error) => {
+        if (isCurrent()) console.error('Failed to fetch cells for area:', areaCode, error);
+      });
+    api
+      .getAreaSensorNodes(areaCode)
+      .then((response) => {
+        if (isCurrent()) setSensorNodes(response);
+      })
+      .catch((error) => {
+        if (isCurrent()) console.error('Failed to fetch sensor nodes for area:', areaCode, error);
+      });
   }, [areaCode]);
 
   return (

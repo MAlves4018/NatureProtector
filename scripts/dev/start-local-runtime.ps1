@@ -4,9 +4,9 @@ param(
     [switch]$SkipDocker,
     [switch]$SkipBootstrap,
     [switch]$ForceRestart,
-    [int]$ApiPort = 5254,
-    [int]$PreventionPort = 5260,
-    [int]$WebPort = 5173,
+    [int]$ApiPort = 0,
+    [int]$PreventionPort = 0,
+    [int]$WebPort = 0,
     [bool]$RunSimulator = $true,
     [string]$ScenarioCode = "scenario_b",
     [int]$SensorCount = 2,
@@ -300,17 +300,27 @@ $evidenceRoot = Join-Path $repositoryRoot 'docs\evidence\dev-runtime'
 $runRoot = Join-Path $evidenceRoot $timestamp
 New-Item -ItemType Directory -Path $runRoot -Force | Out-Null
 
-$postgresHost = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_HOST' -DefaultValue 'localhost'
-$postgresPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_PORT' -DefaultValue '5432')
-$postgresDb = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_DB' -DefaultValue 'natureprotector'
-$postgresUser = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_USER' -DefaultValue 'np'
-$postgresPassword = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_PASSWORD' -DefaultValue 'np_dev_pass'
-$rabbitPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_AMQP_PORT' -DefaultValue '5672')
-$rabbitUser = Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_DEFAULT_USER' -DefaultValue 'np'
-$rabbitPassword = Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_DEFAULT_PASS' -DefaultValue 'np_dev_pass'
-$influxPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'INFLUXDB_PORT' -DefaultValue '8181')
-$bootstrapAdminUsername = Get-NpConfigValue -Values $dotEnv -Name 'NP_BOOTSTRAP_ADMIN_USERNAME' -DefaultValue 'admin'
-$bootstrapAdminPassword = Get-NpConfigValue -Values $dotEnv -Name 'NP_BOOTSTRAP_ADMIN_PASSWORD' -DefaultValue 'admin123'
+$postgresHost = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_HOST' -DefaultValue 'localhost' -EnvironmentFirst
+$postgresPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_PORT' -DefaultValue '5433' -EnvironmentFirst)
+$postgresDb = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_DB' -DefaultValue 'natureprotector' -EnvironmentFirst
+$postgresUser = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_USER' -DefaultValue 'np' -EnvironmentFirst
+$postgresPassword = Get-NpConfigValue -Values $dotEnv -Name 'POSTGRES_PASSWORD' -DefaultValue 'np_dev_pass' -EnvironmentFirst
+$rabbitPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_AMQP_PORT' -DefaultValue '5672' -EnvironmentFirst)
+$rabbitUser = Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_DEFAULT_USER' -DefaultValue 'np' -EnvironmentFirst
+$rabbitPassword = Get-NpConfigValue -Values $dotEnv -Name 'RABBITMQ_DEFAULT_PASS' -DefaultValue 'np_dev_pass' -EnvironmentFirst
+$influxPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'INFLUXDB_PORT' -DefaultValue '8181' -EnvironmentFirst)
+$bootstrapAdminUsername = Get-NpConfigValue -Values $dotEnv -Name 'NP_BOOTSTRAP_ADMIN_USERNAME' -DefaultValue 'admin' -EnvironmentFirst
+$bootstrapAdminPassword = Get-NpConfigValue -Values $dotEnv -Name 'NP_BOOTSTRAP_ADMIN_PASSWORD' -DefaultValue 'admin123' -EnvironmentFirst
+
+if ($ApiPort -le 0) {
+    $ApiPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'BACKOFFICE_API_PORT' -DefaultValue '5254' -EnvironmentFirst)
+}
+if ($PreventionPort -le 0) {
+    $PreventionPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'PREVENTION_HOST_PORT' -DefaultValue '5260' -EnvironmentFirst)
+}
+if ($WebPort -le 0) {
+    $WebPort = [int](Get-NpConfigValue -Values $dotEnv -Name 'WEBUI_PORT' -DefaultValue '5173' -EnvironmentFirst)
+}
 
 if ($ForceRestart) {
     Stop-NatureProtectorLocalProcesses -RepositoryRoot $repositoryRoot
@@ -362,7 +372,7 @@ $commonEnvironment = @{
     RabbitMq__UserName                                                 = $rabbitUser
     RabbitMq__Password                                                 = $rabbitPassword
     InfluxDb__Url                                                      = "http://localhost:$influxPort"
-    InfluxDb__Token                                                    = (Get-NpConfigValue -Values $dotEnv -Name 'INFLUXDB_TOKEN' -DefaultValue '')
+    InfluxDb__Token                                                    = (Get-NpConfigValue -Values $dotEnv -Name 'INFLUXDB_TOKEN' -DefaultValue '' -EnvironmentFirst)
     VITE_API_PROXY_TARGET                                              = $apiUrl
     ControlledValidation__ProcessingFaults__Enabled                    = 'true'
     ControlledValidation__ProcessingFaults__EnableBuiltInP3Cases       = 'true'
@@ -379,8 +389,9 @@ $preventionEnvironment['ASPNETCORE_URLS'] = $preventionUrl
 
 $webUiRoot = Join-Path $repositoryRoot 'webUI'
 $webUiNodeModules = Join-Path $webUiRoot 'node_modules'
-if (-not (Test-Path $webUiNodeModules)) {
-    throw "webUI dependencies were not found at $webUiNodeModules. Run 'cd .\webUI; npm ci; cd ..' before starting the local runtime."
+$webUiVitePackage = Join-Path $webUiNodeModules 'vite/package.json'
+if (-not (Test-Path -LiteralPath $webUiVitePackage -PathType Leaf)) {
+    throw "webUI dependencies are not ready for this checkout. Run '.\scripts\np.ps1 prepare-local' before starting the local runtime. Expected: $webUiVitePackage"
 }
 
 $apiProject = Join-Path $repositoryRoot 'src\NatureProtector.Backoffice.Api\NatureProtector.Backoffice.Api.csproj'
@@ -426,11 +437,11 @@ $processes += Start-LoggedPowerShell `
 try {
     Write-Host 'Waiting for Backoffice API readiness...'
     Wait-TcpPort -HostName '127.0.0.1' -Port $ApiPort -TimeoutSeconds 60 -Name 'Backoffice API'
-    Wait-HttpReady -Url "$apiUrl/api/control/areas" -TimeoutSeconds 60 -Name 'Backoffice API'
+    Wait-HttpReady -Url "$apiUrl/health/ready" -TimeoutSeconds 60 -Name 'Backoffice API readiness'
 
-    Write-Host 'Waiting for Prevention Host liveness...'
+    Write-Host 'Waiting for Prevention Host readiness...'
     Wait-TcpPort -HostName '127.0.0.1' -Port $PreventionPort -TimeoutSeconds 60 -Name 'Prevention Host'
-    Wait-HttpReady -Url "$preventionUrl/health/live" -TimeoutSeconds 60 -Name 'Prevention Host'
+    Wait-HttpReady -Url "$preventionUrl/health/ready" -TimeoutSeconds 60 -Name 'Prevention Host readiness'
 
     Write-Host 'Waiting for webUI readiness...'
     Wait-TcpPort -HostName '127.0.0.1' -Port $WebPort -TimeoutSeconds 60 -Name 'webUI'

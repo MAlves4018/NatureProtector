@@ -1,0 +1,178 @@
+{
+  "uid": "np-pipeline-rabbitmq",
+  "title": "NatureProtector — Pipeline & RabbitMQ",
+  "tags": [
+    "natureprotector",
+    "provisioned"
+  ],
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": true,
+  "refresh": "10s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Queue metrics",
+      "type": "table",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "natureprotector-infinity-json"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "natureprotector-infinity-json"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/api/v3/query_sql",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "db",
+                "value": "np_telemetry"
+              },
+              {
+                "key": "format",
+                "value": "json"
+              },
+              {
+                "key": "q",
+                "value": "SELECT time, queue, messages_ready, messages_unacknowledged, publish_rate, deliver_rate, consumer_count FROM rabbitmq_queue WHERE time >= now() - INTERVAL '6 hours' ORDER BY time DESC"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Inbox outcomes",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "natureprotector-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "natureprotector-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT \"ReceivedAt\" AS \"time\", \"Status\" AS status, COUNT(*) AS events FROM pipeline.event_inbox WHERE \"ReceivedAt\" >= NOW() - INTERVAL '6 hours' GROUP BY 1,2 ORDER BY 1 DESC"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Processing latency",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "natureprotector-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "natureprotector-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT \"StartedAt\" AS \"time\", \"Stage\" AS stage, \"Outcome\" AS outcome, EXTRACT(EPOCH FROM (\"FinishedAt\"-\"StartedAt\"))*1000 AS duration_ms FROM pipeline.processing_attempts WHERE \"FinishedAt\" IS NOT NULL ORDER BY \"StartedAt\" DESC LIMIT 500"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Retries and quarantine",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "natureprotector-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "natureprotector-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT \"Status\" AS status, COUNT(*) AS events FROM pipeline.event_inbox WHERE \"Status\" IN (3,5,6) GROUP BY \"Status\""
+        }
+      ]
+    }
+  ]
+}

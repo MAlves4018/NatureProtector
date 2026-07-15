@@ -1,0 +1,35 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 1200579,
+      "properties": {
+        "idEstacao": 1200579,
+        "localEstacao": "Lisboa / Gago Coutinho"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -9.128,
+          38.766
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1210702,
+      "properties": {
+        "idEstacao": 1210702,
+        "localEstacao": "Sintra"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -9.33,
+          38.8
+        ]
+      }
+    }
+  ]
+}

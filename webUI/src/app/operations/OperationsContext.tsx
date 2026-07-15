@@ -57,11 +57,6 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
         api.listOperations(undefined, 100),
         canReadCloud ? api.listCloudEnvironments() : Promise.resolve([]),
       ]);
-      console.log('Fetched operations data:', {
-        catalog: catalogResult,
-        operations: operationsResult,
-        environments: environmentResult,
-      });
       setCatalog(catalogResult);
       setOperations(operationsResult);
       setEnvironments(environmentResult);

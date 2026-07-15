@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Options;
 using NatureProtector.Core.Scenarios;
+using NatureProtector.Shared.Contracts.Readings;
+using NatureProtector.Shared.Messaging;
 using NatureProtector.Shared.Observability;
 using NatureProtector.Simulator.Host.Configuration;
 using NatureProtector.Simulator.Host.Publishing;
@@ -36,6 +38,7 @@ public sealed class SimulationRunner(
     ReadingGenerationService readingGenerationService,
     ISimulationRunStore simulationRunStore,
     IReadingPublisher readingPublisher,
+    ISimulatorProcessExitCode processExitCode,
     IHostApplicationLifetime applicationLifetime) : BackgroundService
 {
     private readonly SimulatorOptions _options = simulatorOptions.Value;
@@ -146,6 +149,9 @@ public sealed class SimulationRunner(
                 var publishableEnvelopes = publishableObservations
                     .Select(readingGenerationService.CreateEnvelope)
                     .ToArray();
+                publishableEnvelopes = ApplyTransportDegradation(
+                    context,
+                    publishableEnvelopes);
                 var publishStopwatch = Stopwatch.StartNew();
                 SimulatorHostTelemetry.PublishBatchSize.Record(publishableEnvelopes.Length);
 
@@ -206,8 +212,19 @@ public sealed class SimulationRunner(
             logger.LogInformation(
                 "Simulation runner cancellation requested. Execution is stopping gracefully.");
         }
-        catch
+        catch (Exception exception)
         {
+            processExitCode.MarkFailure();
+
+            logger.LogError(
+                exception,
+                "Simulation run failed | SimulationRunId={SimulationRunId} | " +
+                "FailureType={FailureType} | PossiblePartialDelivery={PossiblePartialDelivery}",
+                run.Id,
+                exception.GetType().FullName,
+                exception is RabbitMqPublishException publishException &&
+                publishException.PossiblePartialDelivery);
+
             if (run.Status is SimulationRunStatus.Running)
             {
                 run.Fail(DateTimeOffset.UtcNow);
@@ -243,6 +260,38 @@ public sealed class SimulationRunner(
                 : observation)
             .Where(observation => !observation.IsMissing)
             .ToArray();
+    }
+
+    private static EventEnvelope<SensorReadingProducedPayload>[] ApplyTransportDegradation(
+        SimulationContext context,
+        EventEnvelope<SensorReadingProducedPayload>[] envelopes)
+    {
+        var profiles = SimulationDegradationProfiles.GetResolvedProfiles(context);
+        if (SimulationDegradationProfiles.IsNoneOrEmpty(profiles))
+        {
+            return envelopes;
+        }
+
+        var result = SimulationDegradationProfiles.Contains(profiles, SimulationDegradationProfiles.OutOfOrder)
+            ? envelopes.Reverse().ToList()
+            : envelopes.ToList();
+
+        if (SimulationDegradationProfiles.Contains(profiles, SimulationDegradationProfiles.Duplicate) &&
+            envelopes.Length > 0)
+        {
+            result.Add(envelopes[0]);
+        }
+
+        if (SimulationDegradationProfiles.Contains(profiles, SimulationDegradationProfiles.RetryTransient) &&
+            result.Count > 0)
+        {
+            result[0] = result[0] with
+            {
+                CorrelationId = "cv:multi-replica-runtime:P3_RETRY_TRANSIENT_THEN_SUCCESS:001"
+            };
+        }
+
+        return result.ToArray();
     }
 
     private static bool ShouldOmitReading(Guid sensorId, int cycleIndex)

@@ -1,6 +1,6 @@
 services:
   influxdb-init:
-    image: alpine:latest
+    image: alpine:3.20.3
     container_name: np-influxdb-init
     command:
       - sh
@@ -58,20 +58,48 @@ services:
     depends_on:
       influxdb-init:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget -qO- http://localhost:8181/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  ipma-ingestor:
+    build:
+      context: .
+      dockerfile: infra/ipma/Dockerfile
+    container_name: np-ipma-ingestor
+    profiles: ["external-data"]
+    environment:
+      INFLUXDB_URL: http://influxdb:8181
+      INFLUXDB_DATABASE: ${INFLUXDB_DATABASE:-np_telemetry}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN}
+    volumes:
+      - ipma_state:/data
+    depends_on:
+      influxdb:
+        condition: service_healthy
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana-enterprise:13.0.1-ubuntu
+    build:
+      context: .
+      dockerfile: infra/grafana/Dockerfile
+      args:
+        INFINITY_PLUGIN_VERSION: 3.6.0
     container_name: np-grafana
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
-      GF_INSTALL_PLUGINS: yesoreyeram-infinity-datasource
-      GF_SECURITY_ALLOW_EMBEDDING: true
-      GF_PANELS_DISABLE_SANITIZE_HTML: true
-      GF_AUTH_ANONYMOUS_ENABLED: true
+      GF_SECURITY_ALLOW_EMBEDDING: "false"
+      GF_PANELS_DISABLE_SANITIZE_HTML: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
       INFLUXDB_TOKEN: ${INFLUXDB_TOKEN}
       INFLUXDB_URL: http://influxdb:8181
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "${GRAFANA_PORT}:3000"
     volumes:
@@ -86,3 +114,4 @@ volumes:
   influxdb_data:
   influxdb_config:
   grafana_data:
+  ipma_state:

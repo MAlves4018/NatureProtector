@@ -32,7 +32,14 @@ Já inclui autenticação JWT e autorização por roles nos endpoints atuais. A 
 - `GET /health/live`
 - `GET /health/ready`
 
-Estes endpoints usam ASP.NET health checks simples para probes tecnicos locais. Nao substituem o health operacional detalhado em `GET /api/control/runtime/observability/health`.
+Estes endpoints usam ASP.NET health checks e não substituem o health operacional detalhado em `GET /api/control/runtime/observability/health`.
+
+Semântica atual:
+
+- `/health/live` prova apenas que o processo HTTP está vivo; não consulta dependências externas;
+- `/health/ready` exige PostgreSQL quando `BackofficeApi:ControlPlaneEnabled=true`;
+- `/health` agrega os checks registados e, com o control plane ativo, também devolve indisponibilidade quando PostgreSQL não responde;
+- quando `BackofficeApi:ControlPlaneEnabled=false`, não existe dependência PostgreSQL obrigatória e os três endpoints podem responder `200`.
 
 ### Configuração
 
@@ -92,6 +99,19 @@ Quando `BackofficeApi:ControlPlaneEnabled = true`, a API:
 - quando existe password de bootstrap (`NP_BOOTSTRAP_ADMIN_PASSWORD`, ou `admin123` em Development), garante que o role fixo `Admin` existe antes de atribuir esse role ao utilizador local de desenvolvimento.
 
 Quando `BackofficeApi:ControlPlaneEnabled = false`, a API continua a arrancar, mas devolve indisponibilidade controlada para estes endpoints.
+
+### RabbitMQ Management
+
+A observabilidade RabbitMQ usa um `HttpClient` dedicado e opções tipadas:
+
+- `RabbitMq:ManagementScheme` (`http` ou `https`);
+- `RabbitMq:ManagementHost`, com fallback controlado para `RabbitMq:HostName`;
+- `RabbitMq:ManagementPort`;
+- `RabbitMq:ManagementUserName` e `ManagementPassword`, com fallback temporário para as credenciais AMQP;
+- `RabbitMq:ManagementCertificateAuthorityPath`;
+- `RabbitMq:ManagementTimeoutSeconds`.
+
+Em HTTPS, a CA privada configurada é carregada sem desativar validação de hostname ou cadeia. HTTP exige `RabbitMq:ManagementAllowInsecureHttp=true` e destina-se apenas a desenvolvimento/Compose isolado. Redirects automáticos estão desativados para impedir downgrade silencioso. Falha da Management API degrada apenas as métricas de observabilidade e não altera `/health/ready`.
 
 ## O que este módulo já fecha
 

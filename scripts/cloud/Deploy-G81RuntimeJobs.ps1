@@ -107,7 +107,7 @@ Invoke-Gcloud -Arguments @(
 ) -OutputPath (Join-Path $EvidenceDirectory "bootstrap-job.json")
 
 $simulatorJob = "natureprotector-simulator"
-$simulatorEnvironment = "$commonDb,POSTGRES_USER=np_app,DOTNET_ENVIRONMENT=Production,Simulator__ControlPlaneEnabled=true,RabbitMq__HostName=$RabbitMqHost,RabbitMq__Port=5671,RabbitMq__TlsEnabled=true,RabbitMq__TlsServerName=$RabbitMqTlsServerName,RabbitMq__TlsCertificateAuthorityPath=/var/run/secrets/rabbitmq/ca.crt,OTEL_EXPORTER_OTLP_ENDPOINT=$OtelEndpoint,OTEL_EXPORTER_OTLP_PROTOCOL=grpc"
+$simulatorEnvironment = "$commonDb,POSTGRES_USER=np_app,DOTNET_ENVIRONMENT=Production,Simulator__ControlPlaneEnabled=true,RabbitMq__HostName=$RabbitMqHost,RabbitMq__Port=5671,RabbitMq__TlsEnabled=true,RabbitMq__ObservabilityRawEnabled=false,RabbitMq__TlsServerName=$RabbitMqTlsServerName,RabbitMq__TlsCertificateAuthorityPath=/var/run/secrets/rabbitmq/ca.crt,OTEL_EXPORTER_OTLP_ENDPOINT=$OtelEndpoint,OTEL_EXPORTER_OTLP_PROTOCOL=grpc"
 Invoke-Gcloud -Arguments @(
     "run", "jobs", "deploy", $simulatorJob,
     "--project=$ProjectId", "--region=$Region",

@@ -1,13 +1,27 @@
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
+using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Messaging;
 
 namespace NatureProtector.Backoffice.Api.ControlPlane.Services;
 
-public sealed class UnavailableRuntimeObservabilityService(string availabilityMessage) : IRuntimeObservabilityService
+public sealed class UnavailableRuntimeObservabilityService : IRuntimeObservabilityService
 {
+    private const string RabbitMqSource = "RabbitMQ Management API";
+    private readonly IReadOnlyList<RabbitMqQueueDefinition> _queueDefinitions;
+
+    public UnavailableRuntimeObservabilityService(
+        string availabilityMessage,
+        RabbitMqOptions? rabbitMqOptions = null)
+    {
+        AvailabilityMessage = availabilityMessage;
+        _queueDefinitions = (rabbitMqOptions ?? new RabbitMqOptions())
+            .GetQueueDefinitions()
+            .ToArray();
+    }
+
     public bool IsAvailable => false;
 
-    public string AvailabilityMessage { get; } = availabilityMessage;
+    public string AvailabilityMessage { get; }
 
     public Task<RuntimeOperationalHealthResponse> GetOperationalHealthAsync(CancellationToken cancellationToken)
     {
@@ -57,24 +71,30 @@ public sealed class UnavailableRuntimeObservabilityService(string availabilityMe
 
     private RabbitMqMetricsResponse BuildUnavailableRabbitMq(DateTimeOffset observedAt)
     {
-        var queues = NatureProtectorRabbitMqTopology.Bindings
-            .Select(binding => binding.QueueName)
-            .Distinct(StringComparer.Ordinal)
-            .Select(queue => new RabbitMqQueueMetricResponse(
-                queue,
+        var queues = _queueDefinitions
+            .Select(definition => new RabbitMqQueueMetricResponse(
+                definition.QueueName,
+                definition.QueueRole,
+                definition.Enabled,
+                definition.ConsumerRequired,
+                definition.BlocksRuntimeHealth,
                 null,
                 null,
                 null,
                 null,
                 observedAt,
-                "RabbitMQ Management HTTP API",
-                RuntimeMetricCollectionStatus.Unavailable,
-                AvailabilityMessage))
+                RabbitMqSource,
+                definition.Enabled
+                    ? RuntimeMetricCollectionStatus.Unavailable
+                    : RuntimeMetricCollectionStatus.NotApplicable,
+                definition.Enabled
+                    ? AvailabilityMessage
+                    : "Queue is disabled by configuration."))
             .ToArray();
 
         return new RabbitMqMetricsResponse(
             observedAt,
-            "RabbitMQ Management HTTP API",
+            RabbitMqSource,
             RuntimeMetricCollectionStatus.Unavailable,
             queues,
             [new RuntimeLimitationResponse("rabbitmq_metrics_unavailable", AvailabilityMessage)]);

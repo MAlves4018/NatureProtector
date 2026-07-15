@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NatureProtector.Backoffice.Api.RuntimeOrchestration;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using System.Reflection;
@@ -51,13 +52,21 @@ public sealed class PostgresControlPlaneServiceContractTests
         var constructor = Assert.Single(typeof(PostgresControlPlaneService).GetConstructors());
         var parameters = constructor.GetParameters();
 
-        Assert.Equal(3, parameters.Length);
+        Assert.Equal(7, parameters.Length);
         Assert.Equal(typeof(IDbContextFactory<NatureProtectorControlDbContext>), parameters[0].ParameterType);
         Assert.Equal(typeof(string), parameters[1].ParameterType);
         Assert.Equal(typeof(bool), parameters[2].ParameterType);
+        Assert.Equal(typeof(IRuntimeRunOrchestrator), parameters[3].ParameterType);
+        Assert.Equal(typeof(IRuntimeEvidenceSink), parameters[4].ParameterType);
+        Assert.Equal(typeof(IRuntimeDataResetCoordinator), parameters[5].ParameterType);
+        Assert.Equal(typeof(string), parameters[6].ParameterType);
         Assert.False(parameters[0].HasDefaultValue);
         Assert.Null(parameters[1].DefaultValue);
         Assert.Equal(false, parameters[2].DefaultValue);
+        Assert.Null(parameters[3].DefaultValue);
+        Assert.Null(parameters[4].DefaultValue);
+        Assert.Null(parameters[5].DefaultValue);
+        Assert.Equal("Development", parameters[6].DefaultValue);
     }
 
     private static string Describe(MethodInfo method)

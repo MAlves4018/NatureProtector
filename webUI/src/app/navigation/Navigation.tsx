@@ -16,7 +16,6 @@ import {
   BadgeCheck,
   Users,
   FileSearch,
-  Search,
   GitCompareArrows,
 } from 'lucide-react';
 import type { UiMessageKey } from '../i18n';
@@ -129,8 +128,6 @@ function navIcon(target: UiNavTarget) {
       return <Activity size={16} />;
     case 'cloud':
       return <CloudCog size={16} />;
-    case 'db-queries':
-      return <Search size={16} />;
     case 'approvals':
       return <BadgeCheck size={16} />;
     case 'users':

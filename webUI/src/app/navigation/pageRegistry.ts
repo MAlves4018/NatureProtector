@@ -13,8 +13,6 @@ export interface UiPageDefinition {
     | 'nav.runs'
     | 'nav.quality'
     | 'nav.qa'
-    | 'nav.qa-tests'
-    | 'nav.db-queries'
     | 'nav.evidence'
     | 'nav.deployment-health'
     | 'nav.deployments'
@@ -134,15 +132,6 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     helpTopic: 'qa',
   },
   {
-    id: 'qa-tests',
-    labelKey: 'nav.qa-tests',
-    requiredCapabilities: ['quality.read', 'quality.execute.static'],
-    audience: 'qa',
-    order: 67,
-    group: 'technical',
-    helpTopic: 'qa',
-  },
-  {
     id: 'evidence',
     labelKey: 'nav.evidence',
     requiredCapabilities: ['evidence.read'],
@@ -175,15 +164,6 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     requiredCapabilities: ['cloud.read'],
     audience: 'operations',
     order: 80,
-    group: 'release',
-    helpTopic: 'pipeline',
-  },
-  {
-    id: 'db-queries',
-    labelKey: 'nav.db-queries',
-    requiredCapabilities: ['db.query'],
-    audience: 'operations',
-    order: 82,
     group: 'release',
     helpTopic: 'pipeline',
   },
@@ -239,4 +219,8 @@ export function defaultPageFor(capabilities: Set<UiCapability>): UiNavTarget {
     return 'risk';
   }
   return 'demo';
+}
+
+export function findUiPageDefinition(page: string) {
+  return UI_PAGE_REGISTRY.find((definition) => definition.id === page);
 }
