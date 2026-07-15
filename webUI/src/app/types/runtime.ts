@@ -526,3 +526,15 @@ export interface AlertStateResponse {
   resolvedAt: string | null;
   alertState: string | null;
 }
+
+export interface ROQueryRequest {
+  type: string;
+  table: string;
+  query: string;
+}
+
+export interface ROQueryResponse {
+  columns: string[];
+  rows: Record<string, string | null>[];
+  limitations: string[];
+}

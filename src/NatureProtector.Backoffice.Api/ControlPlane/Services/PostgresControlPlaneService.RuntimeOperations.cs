@@ -9,6 +9,9 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Linq.Dynamic.Core;
+using System.Reflection;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace NatureProtector.Backoffice.Api.ControlPlane.Services;
 
@@ -537,6 +540,106 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         return new RuntimeResetResponse(DateTimeOffset.UtcNow, false, "Completed", "Runtime state was reset. Control plane tables were not cleared.", before, after);
     }
 
+
+    public async Task<IEnumerable<string?>> GetDBTablesList(
+        CancellationToken cancellationToken
+    )
+    {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return dbContext.Model.GetEntityTypes().Select(t => t.GetTableName()).Where(name => name != null).ToList();
+    }
+
+    public async Task<ROQueryResponse> QueryDBAsync(
+        ROQueryRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        
+        await using var connection = dbContext.Database.GetDbConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = request.Query;
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        var columns = Enumerable.Range(0, reader.FieldCount)
+            .Select(i => reader.GetName(i))
+            .ToList();
+
+        var rows = new List<Dictionary<string, string?>>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var row = new Dictionary<string, string?>();
+            foreach (var col in columns)
+            {
+                var ordinal = reader.GetOrdinal(col);
+                row[col] = reader.IsDBNull(ordinal) ? null : reader[ordinal]?.ToString();
+            }
+            rows.Add(row);
+        }
+        /*
+        var chosenEntityType = dbContext.Model.GetEntityTypes().FirstOrDefault(t => t.GetTableName() == request.Table);
+        var chosenTable = chosenEntityType?.ClrType;
+
+
+        if (chosenTable == null || chosenEntityType == null)
+        {
+            return new ROQueryResponse(
+                new List<string>(),
+                new List<Dictionary<string, string?>>(),
+                new List<string> { $"Table '{request.Table}' was not found in the database." }
+            );
+        }
+
+        IQueryable query = Set(dbContext, chosenTable);
+
+        if (request.Offset.HasValue && request.Offset.Value > 0)
+        {
+            query = DynamicQueryableExtensions.Skip(query, request.Offset.Value);
+        }
+
+        if (request.Limit.HasValue && request.Limit.Value > 0)
+        {
+            query = DynamicQueryableExtensions.Take(query, request.Limit.Value);
+        }
+
+        var dynamicList = await query.ToDynamicListAsync(cancellationToken);
+
+        var columns = new List<string>();
+        var rows = new List<Dictionary<string, string?>>();
+        var limitations = new List<string>();
+
+        if (dynamicList.Count > 0)
+        {
+            object firstRow = (object)dynamicList[0];
+
+            var columnProperties = chosenEntityType.GetProperties()
+                .Where(p => !p.IsShadowProperty())
+                .ToList();
+
+            columns.AddRange(columnProperties.Select(p => p.Name));
+
+            foreach (object item in dynamicList)
+            {
+                var rowDict = new Dictionary<string, string?>();
+                foreach (var col in columns)
+                {
+                    var value = item.GetType().GetProperty(col)?.GetValue(item, null);
+                    rowDict[col] = value?.ToString();
+                }
+                rows.Add(rowDict);
+            }
+        }
+
+        if (request.Limit.HasValue) limitations.Add($"Max results limited to {request.Limit.Value}");
+        if (request.Offset.HasValue) limitations.Add($"Skipped the first {request.Offset.Value} rows");
+        return new ROQueryResponse(columns, rows, limitations);
+        */
+
+        return new ROQueryResponse(columns, rows, []);
+    }
     // </phase5-slice>
 
     // <phase5-slice id="runtime-operations-evidence">
@@ -907,4 +1010,10 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
 
     // </phase5-slice>
 
+    private static IQueryable Set(DbContext context, Type entityType)
+    {
+        var method = typeof(DbContext).GetMethod("Set", Type.EmptyTypes)
+            ?? throw new InvalidOperationException("Set method not found.");
+        return (IQueryable)method.MakeGenericMethod(entityType).Invoke(context, null);
+    }
 }

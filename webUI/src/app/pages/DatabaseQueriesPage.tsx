@@ -1,53 +1,13 @@
 import { useState, useCallback } from 'react';
-import { Play, Terminal, Database } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
+import { api } from '../services/api';
+import { ROQueryResponse, ROQueryRequest } from '../types';
 
-type DbEngine = 'pgsql' | 'influx';
-
-interface QueryResult {
-  columns: string[];
-  rows: Record<string, string>[];
-  rowCount: number;
-  durationMs: number;
-}
-
-function simulateQuery(engine: DbEngine, query: string): Promise<QueryResult> {
-  const delay = 300 + Math.random() * 700;
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const upper = query.trim().toUpperCase();
-      if (
-        !upper.startsWith('SELECT') &&
-        !upper.startsWith('SHOW') &&
-        !upper.startsWith('DESCRIBE') &&
-        !upper.startsWith('EXPLAIN')
-      ) {
-        reject(new Error('Apenas queries de leitura sao permitidas (SELECT, SHOW, DESCRIBE, EXPLAIN).'));
-        return;
-      }
-      resolve({
-        columns: ['result'],
-        rows: [
-          {
-            result: `[${engine === 'pgsql' ? 'PostgreSQL' : 'InfluxDB'}] Query executada: ${query.substring(0, 60)}...`,
-          },
-        ],
-        rowCount: 1,
-        durationMs: Math.round(delay),
-      });
-    }, delay);
-  });
-}
-
-const ENGINE_LABELS: Record<DbEngine, string> = {
-  pgsql: 'PostgreSQL',
-  influx: 'InfluxDB',
-};
 
 export function DatabaseQueriesPage() {
-  const [activeEngine, setActiveEngine] = useState<DbEngine>('pgsql');
   const [query, setQuery] = useState('');
-  const [result, setResult] = useState<QueryResult | null>(null);
+  const [result, setResult] = useState<ROQueryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [executing, setExecuting] = useState(false);
 
@@ -57,14 +17,33 @@ export function DatabaseQueriesPage() {
     setError(null);
     setResult(null);
     try {
-      const res = await simulateQuery(activeEngine, query);
+      const upper = query.trim().toUpperCase();
+      console.log('Executing query:', upper);
+      if (
+        !upper.startsWith('SELECT') &&
+        !upper.startsWith('SHOW') &&
+        !upper.startsWith('DESCRIBE') &&
+        !upper.startsWith('EXPLAIN') || (
+        upper.includes('UPDATE') ||
+        upper.includes('INSERT') ||
+        upper.includes('DELETE') ||
+        upper.includes('DROP'))
+      ) {
+        throw new Error('Apenas queries de leitura sao permitidas (SELECT, SHOW, DESCRIBE, EXPLAIN).');
+      }
+      const queryRequest : ROQueryRequest = {
+        type: query.trim().split(' ')[0].toUpperCase(),
+        table: query.trim().split('FROM')[1]?.trim() ?? '',
+        query: query.trim(),
+      }
+      const res = await api.postgresQuery(queryRequest);
       setResult(res);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro desconhecido');
     } finally {
       setExecuting(false);
     }
-  }, [query, activeEngine]);
+  }, [query]);
 
   return (
     <section className="ui-page">
@@ -88,35 +67,14 @@ export function DatabaseQueriesPage() {
         DROP) sao bloqueadas.
       </div>
 
-      <div className="ui-tabs">
-        {(Object.keys(ENGINE_LABELS) as DbEngine[]).map((engine) => (
-          <button
-            key={engine}
-            type="button"
-            className={`ui-tab${activeEngine === engine ? ' ui-tab-active' : ''}`}
-            onClick={() => {
-              setActiveEngine(engine);
-              setResult(null);
-              setError(null);
-            }}
-          >
-            {engine === 'pgsql' ? <Database size={16} /> : <Terminal size={16} />}
-            {ENGINE_LABELS[engine]}
-          </button>
-        ))}
-      </div>
-
       <div className="ui-card" style={{ marginTop: 0 }}>
-        <label className="ui-label" htmlFor="query-input">
-          Query {ENGINE_LABELS[activeEngine]}
-        </label>
         <textarea
           id="query-input"
           className="ui-query-editor"
           rows={6}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={`Digite sua query ${ENGINE_LABELS[activeEngine]}`}
+          placeholder="Digite sua query"
           disabled={executing}
           spellCheck={false}
         />
@@ -144,7 +102,7 @@ export function DatabaseQueriesPage() {
           <div className="ui-section-heading">
             <h3>Resultados</h3>
             <span className="ui-badge">
-              {result.rowCount} linha{result.rowCount !== 1 ? 's' : ''} em {(result.durationMs / 1000).toFixed(2)}s
+              
             </span>
           </div>
           <div className="ui-query-results">

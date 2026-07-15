@@ -176,9 +176,10 @@ app.UseExceptionHandler(errorApp =>
             Title = isPostgresUnavailable
                 ? "Control plane database unavailable"
                 : "Backoffice API error",
-            Detail = isPostgresUnavailable
+            Detail = feature?.Error?.Message
+                ?? (isPostgresUnavailable
                 ? "Backoffice API could not reach PostgreSQL. Check POSTGRES_HOST, POSTGRES_PORT and the local runtime launcher configuration."
-                : "An unexpected Backoffice API error occurred."
+                : "An unexpected Backoffice API error occurred.")
         };
 
         await context.Response.WriteAsJsonAsync(problem);

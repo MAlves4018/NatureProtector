@@ -136,9 +136,9 @@ function UiRouter({
 }
 
 function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {
-  const { pages, capabilities, setActivePage, user, isPublic, capabilityAuthority, capabilitiesLoading } =
+  const { pages, capabilities, setActivePage } =
     useUiCapabilities();
-  const { copy, locale, setLocale } = useUiLocale();
+  const { copy } = useUiLocale();
   const [helpTopic, setHelpTopic] = useState<string | null>(null);
   const helpCloseRef = useRef<HTMLButtonElement | null>(null);
   const helpReturnFocusRef = useRef<HTMLElement | null>(null);
@@ -232,49 +232,6 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
         >
           {copy('nav.skip')}
         </a>
-        <header className="ui-hero">
-          <div>
-            <p className="ui-kicker">
-              {copy('app.prototype')} / {copy('app.readOnly')}
-            </p>
-            <h1 className="ui-title">{copy('app.name')}</h1>
-            <p className="ui-lead">
-              {isPublic
-                ? 'Entrada pública orientada ao produto: propósito, limites e estado dos dados sem superfícies internas.'
-                : `Perfil ativo: ${user?.roles.join(', ') || 'sem funções'}. Autorização: ${
-                    capabilitiesLoading ? 'a validar no backend' : capabilityAuthority
-                  }.`}
-            </p>
-          </div>
-          <div className="ui-hero-actions">
-            <div className="ui-language">
-              <button
-                type="button"
-                className={locale === 'pt-PT' ? 'ui-button' : 'ui-secondary'}
-                onClick={() => setLocale('pt-PT')}
-              >
-                {copy('language.pt')}
-              </button>
-              <button
-                type="button"
-                className={locale === 'en' ? 'ui-button' : 'ui-secondary'}
-                onClick={() => setLocale('en')}
-              >
-                {copy('language.en')}
-              </button>
-            </div>
-            <span className="ui-badge">
-              {isDark ? <Moon size={14} /> : <Sun size={14} />}
-              {isDark ? 'Dark' : 'Light'}
-            </span>
-            {isPublic && (
-              <button type="button" className="ui-button" onClick={() => navigate('/login')}>
-                <LogIn size={16} />
-                {copy('nav.login')}
-              </button>
-            )}
-          </div>
-        </header>
         <UiNavigation pages={pages} activePage={activePage} copy={copy} onSelect={handleNavigate} />
         <AlertBanner />
         <Breadcrumbs items={breadcrumbItems} onNavigate={handleNavigate} />

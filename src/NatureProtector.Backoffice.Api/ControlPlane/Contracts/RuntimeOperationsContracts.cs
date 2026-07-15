@@ -148,3 +148,17 @@ public sealed record ControlledValidationP3RunResponse(
     bool AuditRequired,
     RuntimeRunSummaryResponse? Run,
     IReadOnlyList<string> Notes);
+
+
+public sealed record ROQueryRequest(
+    string Type,
+    string Table,
+    string Query,
+    int? Limit = null,
+    int? Offset = null);
+
+public sealed record ROQueryResponse(
+    IReadOnlyList<string> Columns,
+    IReadOnlyList<IReadOnlyDictionary<string, string?>> Rows,
+    IReadOnlyList<string> Limitations
+    );

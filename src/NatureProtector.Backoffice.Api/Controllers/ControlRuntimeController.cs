@@ -171,4 +171,26 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
         var result = await ControlPlane.ResetRuntimeStateAsync(request, cancellationToken);
         return result.Status == "Rejected" ? BadRequest(result) : Ok(result);
     }
+
+    [HttpGet("getTables")]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IEnumerable<string?>>> GetTables(
+        CancellationToken cancellationToken = default) =>
+        Ok(await ControlPlane.GetDBTablesList(cancellationToken));
+
+    [HttpPost("query")]    
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ROQueryResponse>> QueryDB(
+        [FromBody] ROQueryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var unavailable = EnsureControlPlaneAvailable();
+        if (unavailable is not null)
+        {
+            return unavailable;
+        }
+
+        var result = await ControlPlane.QueryDBAsync(request, cancellationToken);
+        return Ok(result);
+    }
 }

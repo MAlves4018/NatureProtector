@@ -36,6 +36,8 @@ import {
   AdminUserResponse,
   AdminRoleResponse,
   AlertStateResponse,
+  ROQueryRequest,
+  ROQueryResponse,
 } from '../types';
 
 export const api = {
@@ -272,6 +274,14 @@ export const api = {
       `/control/areas/${encodeURIComponent(areaCode)}/alerts/active`,
       api.getRequestOptions(),
     );
+  },
+
+  getTablesPostgres: () => {
+    return httpClient.get<string[]>('/control/runtime/getTables', api.getRequestOptions());
+  },
+
+  postgresQuery: (query: ROQueryRequest) => {
+    return httpClient.post<ROQueryResponse>('/control/runtime/query', query, api.getRequestOptions());
   },
 
   withAuthToken(token: string) {
