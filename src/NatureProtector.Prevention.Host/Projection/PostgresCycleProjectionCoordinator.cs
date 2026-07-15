@@ -9,8 +9,10 @@ using NatureProtector.Shared.Contracts.Readings;
 namespace NatureProtector.Prevention.Host.Projection;
 
 public sealed class PostgresCycleProjectionCoordinator(
-    IDbContextFactory<NatureProtectorControlDbContext> dbContextFactory) : ICycleProjectionCoordinator
+    IDbContextFactory<NatureProtectorControlDbContext> dbContextFactory,
+    ILogger<PostgresCycleProjectionCoordinator> logger) : ICycleProjectionCoordinator
 {
+    private const long CycleProjectionAdvisoryLockKey = 5638591602766115926L;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     public async Task<IReadOnlyList<FinalizedCycleProjection>> FinalizeCompletedRunsAsync(
@@ -20,6 +22,8 @@ public sealed class PostgresCycleProjectionCoordinator(
         try
         {
             await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+            await AcquireCycleProjectionLockAsync(dbContext, cancellationToken);
             var open = await dbContext.CycleSettlements
                 .Where(entity => entity.FinalizedAt == null)
                 .OrderBy(entity => entity.SimulationRunId)
@@ -44,6 +48,7 @@ public sealed class PostgresCycleProjectionCoordinator(
                 }
             }
             await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return finalizations;
         }
         finally
@@ -69,6 +74,8 @@ public sealed class PostgresCycleProjectionCoordinator(
         try
         {
             await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+            await AcquireCycleProjectionLockAsync(dbContext, cancellationToken);
             var run = await dbContext.SimulationRuns.AsNoTracking()
                 .SingleAsync(entity => entity.Id == simulationRunId && entity.AreaId == areaId, cancellationToken);
             var existingSettlement = await dbContext.CycleSettlements.AsNoTracking().SingleOrDefaultAsync(
@@ -159,6 +166,7 @@ public sealed class PostgresCycleProjectionCoordinator(
                 finalizations.Add(FinalizeCycle(dbContext, candidate, candidateSensors, observations, timedOut, now));
             }
             await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return finalizations;
         }
         finally
@@ -276,6 +284,24 @@ public sealed class PostgresCycleProjectionCoordinator(
         if (scores.Count == 0) return 0;
         var rank = Math.Clamp((int)Math.Ceiling(scores.Count * 0.8) - 1, 0, scores.Count - 1);
         return (0.7 * scores[rank]) + (0.3 * scores[^1]);
+    }
+
+    private async Task AcquireCycleProjectionLockAsync(
+        NatureProtectorControlDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(dbContext.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({CycleProjectionAdvisoryLockKey});",
+            cancellationToken);
+        logger.LogInformation(
+            "Cycle projection advisory lock acquired | LockKey={LockKey} | ProcessId={ProcessId}",
+            CycleProjectionAdvisoryLockKey,
+            Environment.ProcessId);
     }
 
     private static HashSet<string> ReadSelectedSensorNames(string? metadataJson)

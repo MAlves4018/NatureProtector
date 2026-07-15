@@ -121,6 +121,7 @@ builder.Services.AddSingleton<ReadingRiskPipeline>();
 builder.Services.AddSingleton<ReadingEventProcessingService>();
 
 builder.Services.AddHostedService<PreventionWorker>();
+builder.Services.AddHostedService<InboxRetryWorker>();
 
 var app = builder.Build();
 app.MapHealthChecks("/health/live", new HealthCheckOptions

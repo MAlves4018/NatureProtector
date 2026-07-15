@@ -13,6 +13,7 @@ public static class SimulationDegradationProfiles
     public const string LagDelay = "lag/delay";
     public const string Duplicate = "duplicate";
     public const string OutOfOrder = "out-of-order";
+    public const string RetryTransient = "retry-transient";
 
     private static readonly char[] Separators = [',', ';', '|', '+'];
 
@@ -125,6 +126,8 @@ public static class SimulationDegradationProfiles
             "duplicate-events" => Duplicate,
             "out-of-order-events" => OutOfOrder,
             "outoforder" => OutOfOrder,
+            "redelivery-retry" => RetryTransient,
+            "transient-retry" => RetryTransient,
             _ => normalized
         };
     }

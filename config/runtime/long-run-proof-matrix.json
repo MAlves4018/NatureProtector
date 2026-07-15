@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "LR-030-EVIDENCE",
+      "numberOfCycles": 4,
+      "intervalSeconds": 10,
+      "collectEvidence": true,
+      "waitForCompletion": false,
+      "timeoutSeconds": 60,
+      "expectedMinimumWallSeconds": 27
+    },
+    {
+      "id": "LR-090-EVIDENCE",
+      "numberOfCycles": 4,
+      "intervalSeconds": 30,
+      "collectEvidence": true,
+      "waitForCompletion": false,
+      "timeoutSeconds": 60,
+      "expectedMinimumWallSeconds": 84
+    },
+    {
+      "id": "LR-180-NO-EVIDENCE",
+      "numberOfCycles": 4,
+      "intervalSeconds": 60,
+      "collectEvidence": false,
+      "waitForCompletion": false,
+      "timeoutSeconds": 60,
+      "expectedMinimumWallSeconds": 170
+    },
+    {
+      "id": "LR-300-EVIDENCE",
+      "numberOfCycles": 6,
+      "intervalSeconds": 60,
+      "collectEvidence": true,
+      "waitForCompletion": false,
+      "timeoutSeconds": 60,
+      "expectedMinimumWallSeconds": 285
+    }
+  ]
+}

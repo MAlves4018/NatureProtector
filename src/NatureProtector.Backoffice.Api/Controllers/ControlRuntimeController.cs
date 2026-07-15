@@ -95,11 +95,6 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
             return unavailable;
         }
 
-        if (!_environment.IsDevelopment())
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Runtime run orchestration is only available in Development." });
-        }
-
         var result = await ControlPlane.StartRuntimeRunAsync(request, cancellationToken);
         return result.Status == "Rejected" ? BadRequest(result) : Ok(result);
     }
@@ -125,6 +120,16 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
     {
         var operation = await ControlPlane.GetRuntimeOperationAsync(operationId, cancellationToken);
         return operation is null ? NotFound(new { message = $"Runtime operation '{operationId}' was not found." }) : Ok(operation);
+    }
+
+    [HttpGet("operations/current")]
+    [ProducesResponseType(typeof(RuntimeOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = OperationCapabilities.RunRead)]
+    public async Task<ActionResult> GetCurrentOperation(CancellationToken cancellationToken = default)
+    {
+        var operation = await ControlPlane.GetCurrentRuntimeOperationAsync(cancellationToken);
+        return operation is null ? NotFound(new { message = "No runtime operation exists." }) : Ok(operation);
     }
 
     [HttpGet("operations/by-request/{requestId:guid}")]

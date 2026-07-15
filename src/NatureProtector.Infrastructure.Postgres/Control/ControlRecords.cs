@@ -162,6 +162,7 @@ public sealed class SimulationRunRecord
     public int? ExecutionSeed { get; set; }
     public SimulationRunStatus Status { get; set; }
     public string? MetadataJson { get; set; }
+    public string? OrchestratorCorrelationId { get; set; }
 
     public AreaRecord? Area { get; set; }
     public ScenarioDefinitionRecord? Scenario { get; set; }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
+using NatureProtector.Backoffice.Api.RuntimeOrchestration;
 using NatureProtector.Core.Scenarios;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Pipeline;
@@ -25,6 +26,7 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         var requestId = Guid.NewGuid();
         var orchestratorCorrelationId = Guid.NewGuid().ToString("D");
         Guid? operationId = null;
+        RuntimeEvidenceReference? evidence = null;
         var warnings = new List<string>();
         var requestedDegradationProfiles = NormalizeDegradationProfiles(
             request.DegradationProfiles,
@@ -36,12 +38,12 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
 
         if (string.IsNullOrWhiteSpace(request.AreaCode) || string.IsNullOrWhiteSpace(request.ScenarioCode))
         {
-            return RuntimeRunResponse("Rejected", "areaCode and scenarioCode are required.", null, null);
+            return RuntimeRunResponse("Rejected", "areaCode and scenarioCode are required.", null);
         }
 
         if (request.SensorCount is <= 0 || request.NumberOfCycles is <= 0 || request.IntervalSeconds is <= 0)
         {
-            return RuntimeRunResponse("Rejected", "sensorCount, numberOfCycles and intervalSeconds must be positive when provided.", null, null);
+            return RuntimeRunResponse("Rejected", "sensorCount, numberOfCycles and intervalSeconds must be positive when provided.", null);
         }
 
         var area = await dbContext.Areas
@@ -49,7 +51,7 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             .SingleOrDefaultAsync(entity => entity.Code == request.AreaCode, cancellationToken);
         if (area is null)
         {
-            return RuntimeRunResponse("Rejected", $"Area '{request.AreaCode}' was not found.", null, null);
+            return RuntimeRunResponse("Rejected", $"Area '{request.AreaCode}' was not found.", null);
         }
 
         var scenarioExists = await dbContext.ScenarioDefinitions
@@ -57,19 +59,15 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             .AnyAsync(entity => entity.AreaId == area.Id && entity.Code == request.ScenarioCode, cancellationToken);
         if (!scenarioExists)
         {
-            return RuntimeRunResponse("Rejected", $"Scenario '{request.ScenarioCode}' was not found for area '{request.AreaCode}'.", null, null);
+            return RuntimeRunResponse("Rejected", $"Scenario '{request.ScenarioCode}' was not found for area '{request.AreaCode}'.", null);
         }
 
-        // Operational runtime is globally single-run; caller flags cannot bypass admission.
-        // Admission check is deliberately unconditional.
+        var activeRunCount = await dbContext.SimulationRuns
+            .AsNoTracking()
+            .CountAsync(entity => entity.EndedAt == null, cancellationToken);
+        if (activeRunCount > 0)
         {
-            var activeRunCount = await dbContext.SimulationRuns
-                .AsNoTracking()
-                .CountAsync(entity => entity.EndedAt == null, cancellationToken);
-            if (activeRunCount > 0)
-            {
-                return RuntimeRunResponse("Rejected", $"Parallel runs are blocked by default. Found {activeRunCount} active run(s).", null, null);
-            }
+            return RuntimeRunResponse("Rejected", $"Parallel runs are blocked by default. Found {activeRunCount} active run(s).", null);
         }
 
         if (request.SensorCount.HasValue)
@@ -79,7 +77,7 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
                 .CountAsync(entity => entity.AreaId == area.Id && entity.IsActive, cancellationToken);
             if (request.SensorCount.Value > activeSensorCount)
             {
-                return RuntimeRunResponse("Rejected", $"sensorCount {request.SensorCount.Value} exceeds {activeSensorCount} active sensor(s) for area '{request.AreaCode}'.", null, null);
+                return RuntimeRunResponse("Rejected", $"sensorCount {request.SensorCount.Value} exceeds {activeSensorCount} active sensor(s) for area '{request.AreaCode}'.", null);
             }
         }
 
@@ -90,110 +88,117 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             warnings.Add("No calibrated scientific degradation is inferred by the API; use a non-none degradationProfile only when simulator support is explicit.");
         }
 
-        if (!_enableRuntimeProcessLaunch)
+        if (!_runtimeRunOrchestrator.IsAvailable)
         {
-            warnings.Add("Runtime process launch is disabled for this service instance; request was validated only.");
-            return RuntimeRunResponse("Validated", "Run request is valid; process launch is disabled in this context.", null, null);
+            warnings.Add(_runtimeRunOrchestrator.AvailabilityMessage);
+            return RuntimeRunResponse(
+                "Validated",
+                "Run request is valid; the configured runtime orchestration provider is unavailable.",
+                null);
         }
 
         if (request.WaitForCompletion && request.NumberOfCycles.HasValue && request.IntervalSeconds.HasValue &&
             request.TimeoutSeconds < request.NumberOfCycles.Value * request.IntervalSeconds.Value)
         {
-            return RuntimeRunResponse("Rejected", "timeoutSeconds is shorter than the predicted simulation duration.", null, null);
+            return RuntimeRunResponse("Rejected", "timeoutSeconds is shorter than the predicted simulation duration.", null);
         }
 
-        var logDirectory = PrepareApiRunLogDirectory(requestedAtUtc, request.RunLabel ?? request.ScenarioCode);
+        if (request.CollectEvidence)
+        {
+            if (_runtimeEvidenceSink.IsAvailable)
+            {
+                evidence = await _runtimeEvidenceSink.CreateAsync(
+                    "runtime-runs",
+                    requestedAtUtc,
+                    request.RunLabel ?? request.ScenarioCode,
+                    cancellationToken);
+            }
+            else
+            {
+                warnings.Add($"Evidence collection was requested, but {_runtimeEvidenceSink.AvailabilityMessage}");
+            }
+        }
+
         var operation = await ReserveRuntimeOperationAsync(
-            requestId, orchestratorCorrelationId, request,
-            request.CollectEvidence ? logDirectory : null,
+            requestId,
+            orchestratorCorrelationId,
+            request,
+            _runtimeRunOrchestrator.Provider,
+            evidence,
             cancellationToken);
         if (operation is null)
         {
-            return RuntimeRunResponse("Rejected", "Another operational runtime launch or settlement is active.", null, null);
+            return RuntimeRunResponse("Rejected", "Another operational runtime launch or settlement is active.", null);
         }
+
         operationId = operation.OperationId;
-        var markerPath = Path.Combine(logDirectory, "request.json");
-        await File.WriteAllTextAsync(
-            markerPath,
-            JsonSerializer.Serialize(request with { }, new JsonSerializerOptions { WriteIndented = true }),
-            cancellationToken);
-        if (request.CollectEvidence)
+        if (evidence is not null)
         {
-            await WriteRuntimeSummaryEvidenceAsync(logDirectory, "runtime-summary-before.json", request.AreaCode, cancellationToken);
+            await _runtimeEvidenceSink.WriteJsonAsync(evidence, "request.json", request, cancellationToken);
+            await WriteRuntimeSummaryEvidenceAsync(evidence.Location, "runtime-summary-before.json", request.AreaCode, cancellationToken);
         }
 
-        var startInfo = new ProcessStartInfo
+        var launchRequest = new RuntimeLaunchRequest(
+            new RuntimeExecutionId(operation.OperationId),
+            requestId,
+            operation.IdempotencyKey,
+            _environmentName,
+            RuntimeLaunchProfile.Simulation,
+            new RuntimeSimulationParameters(
+                request.AreaCode,
+                request.ScenarioCode,
+                request.SensorCount,
+                request.NumberOfCycles,
+                request.IntervalSeconds,
+                request.Seed,
+                requestedDegradationProfile,
+                requestedDegradationProfiles,
+                orchestratorCorrelationId),
+            null,
+            request.CollectEvidence,
+            request.WaitForCompletion,
+            TimeSpan.FromSeconds(Math.Clamp(request.TimeoutSeconds, 5, MaximumRuntimeDeadlineSeconds)),
+            evidence);
+
+        RuntimeLaunchReceipt receipt;
+        try
         {
-            FileName = "dotnet",
-            WorkingDirectory = _repositoryRoot,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = request.CollectEvidence,
-            RedirectStandardError = request.CollectEvidence
-        };
-        startInfo.ArgumentList.Add("run");
-        startInfo.ArgumentList.Add("--no-restore");
-        startInfo.ArgumentList.Add("--configfile");
-        startInfo.ArgumentList.Add("NuGet.Config");
-        startInfo.ArgumentList.Add("--project");
-        startInfo.ArgumentList.Add("src/NatureProtector.Simulator.Host");
-        startInfo.Environment["DOTNET_ENVIRONMENT"] = "Development";
-        startInfo.Environment["Simulator__ControlPlaneEnabled"] = "true";
-        startInfo.Environment["Simulator__ControlPlaneAreaCode"] = request.AreaCode;
-        startInfo.Environment["Simulator__ControlPlaneScenarioCode"] = request.ScenarioCode;
-        startInfo.Environment["Simulator__RunOverrides__OrchestratorCorrelationId"] = orchestratorCorrelationId;
-        SetProcessEnvironmentIfDefined(startInfo, "Simulator__RunOverrides__SensorCount", request.SensorCount);
-        SetProcessEnvironmentIfDefined(startInfo, "Simulator__RunOverrides__NumberOfCycles", request.NumberOfCycles);
-        SetProcessEnvironmentIfDefined(startInfo, "Simulator__RunOverrides__IntervalSeconds", request.IntervalSeconds);
-        SetProcessEnvironmentIfDefined(startInfo, "Simulator__RunOverrides__Seed", request.Seed);
-        SetProcessEnvironmentIfDefined(startInfo, "Simulator__RunOverrides__DegradationProfile", requestedDegradationProfile);
-        for (var index = 0; index < requestedDegradationProfiles.Count; index++)
-        {
-            startInfo.Environment[$"Simulator__RunOverrides__DegradationProfiles__{index}"] = requestedDegradationProfiles[index];
+            receipt = await _runtimeRunOrchestrator.StartAsync(launchRequest, cancellationToken);
         }
-
-        var process = Process.Start(startInfo);
-        if (process is null)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            await UpdateRuntimeOperationAsync(operation.OperationId, "Failed", "Failed", "NotObserved", "NotStarted",
-                null, "Failed", "process_start_failed", "Simulator.Host process could not be started.", cancellationToken);
-            return RuntimeRunResponse("FailedToStart", "Simulator.Host process could not be started.", null, logDirectory);
+            await UpdateRuntimeProviderStateAsync(
+                operation.OperationId,
+                RuntimeExecutionState.Running,
+                providerReference: null,
+                failureCode: RuntimeTerminationReason.RequestCancelled,
+                failureMessage: "The HTTP request was cancelled after the runtime operation was reserved; provider observation continues.",
+                CancellationToken.None);
+            StartRuntimeExecutionObservation(operation.OperationId, request, requestedAtUtc, evidence, response: null);
+            throw;
         }
-
-        if (process.HasExited && process.ExitCode != 0)
+        catch (Exception exception)
         {
-            await UpdateRuntimeOperationAsync(operation.OperationId, "Failed", "Failed", "NotObserved", "NotStarted",
-                null, "Failed", "producer_exit_nonzero", $"Simulator.Host exited with code {process.ExitCode}.", cancellationToken);
-            return RuntimeRunResponse("Failed", $"Simulator.Host exited with code {process.ExitCode} before a run was observed.", null, logDirectory);
-        }
-
-        await UpdateRuntimeOperationAsync(operation.OperationId, "LaunchAccepted", "LaunchAccepted", "Pending", "Pending",
-            null, null, null, null, cancellationToken);
-
-        Task<string>? stdoutTask = request.CollectEvidence ? process.StandardOutput.ReadToEndAsync(cancellationToken) : null;
-        Task<string>? stderrTask = request.CollectEvidence ? process.StandardError.ReadToEndAsync(cancellationToken) : null;
-
-        if (request.WaitForCompletion)
-        {
-            var timeout = TimeSpan.FromSeconds(Math.Clamp(request.TimeoutSeconds, 5, 3600));
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(timeout);
-            try
+            await UpdateRuntimeProviderStateAsync(
+                operation.OperationId,
+                RuntimeExecutionState.Failed,
+                providerReference: null,
+                failureCode: "provider_launch_exception",
+                failureMessage: exception.Message,
+                CancellationToken.None);
+            var failed = RuntimeRunResponse(
+                "Failed",
+                "The configured runtime orchestration provider failed before launch acceptance.",
+                null);
+            if (evidence is not null)
             {
-                await process.WaitForExitAsync(timeoutCts.Token);
+                await _runtimeEvidenceSink.WriteJsonAsync(evidence, "response.json", failed, CancellationToken.None);
+                await _runtimeEvidenceSink.WriteTextAsync(evidence, "orchestrator-error.txt", exception.ToString(), CancellationToken.None);
             }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                await TryTerminateProcessTreeAsync(
-                    process,
-                    timeout,
-                    warning =>
-                    {
-                        warnings.Add(warning);
-                        return Task.CompletedTask;
-                    });
-            }
+            return failed;
         }
+
+        await ApplyRuntimeLaunchReceiptAsync(operation.OperationId, receipt, CancellationToken.None);
 
         var run = await FindRuntimeRunByCorrelationAsync(
             dbContext,
@@ -202,47 +207,66 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             requestedAtUtc.AddSeconds(-5),
             orchestratorCorrelationId,
             cancellationToken);
-
-        var completedWithoutRun = request.WaitForCompletion && process.HasExited && run is null;
-        if (completedWithoutRun)
+        if (run is not null)
         {
-            await UpdateRuntimeOperationAsync(operation.OperationId, "Failed", "ProducerCompleted", "NotObserved", "NotStarted",
-                null, "Failed", "producer_exit_without_run", "Simulator.Host exited without persisting the correlated SimulationRun.", cancellationToken);
-        }
-        else if (run is not null)
-        {
-            await UpdateRuntimeOperationAsync(operation.OperationId, "RunObserved", "LaunchAccepted", run.Status, "Pending",
-                run.Id, null, null, null, cancellationToken);
-            _ = await GetRuntimeOperationAsync(operation.OperationId, cancellationToken);
-        }
-        var response = RuntimeRunResponse(
-            completedWithoutRun ? "Failed" : run is null ? "LaunchAccepted" : run.Status,
-            completedWithoutRun
-                ? "Simulator.Host exited without persisting the correlated SimulationRun."
-                : run is null ? "The launch was accepted; poll the persisted operation identity for run observation and terminal outcome." : "Simulator.Host was started and the run was observed.",
-            ToRuntimeRun(run, warnings),
-            logDirectory);
-
-        if (request.CollectEvidence)
-        {
-            await WriteJsonEvidenceAsync(logDirectory, "response.json", response, cancellationToken);
-            _ = Task.Run(() => CompleteRunEvidenceBundleAsync(
-                logDirectory,
-                request,
-                response,
-                process,
-                stdoutTask,
-                stderrTask,
-                CancellationToken.None), CancellationToken.None);
+            await UpdateRuntimeOperationAsync(
+                operation.OperationId,
+                "RunObserved",
+                receipt.State.ToString(),
+                run.Status,
+                "Pending",
+                run.Id,
+                null,
+                null,
+                null,
+                cancellationToken);
         }
 
+        var responseStatus = run is not null
+            ? run.Status
+            : receipt.State switch
+            {
+                RuntimeExecutionState.Rejected => "Rejected",
+                RuntimeExecutionState.Failed => "Failed",
+                RuntimeExecutionState.TimedOut => "TimedOut",
+                RuntimeExecutionState.Cancelled => "Cancelled",
+                RuntimeExecutionState.Succeeded => "ProducerCompleted",
+                RuntimeExecutionState.Unknown => "LaunchAccepted",
+                _ => "LaunchAccepted"
+            };
+        var responseMessage = receipt.State switch
+        {
+            RuntimeExecutionState.Rejected => receipt.Message ?? "The configured runtime orchestration provider rejected the request.",
+            RuntimeExecutionState.Failed => receipt.Message ?? "The configured runtime orchestration provider failed to launch the run.",
+            RuntimeExecutionState.TimedOut => receipt.Message ?? "The configured runtime orchestration provider timed out.",
+            RuntimeExecutionState.Cancelled => receipt.Message ?? "The runtime execution was cancelled by the provider.",
+            RuntimeExecutionState.Succeeded when run is null => "The producer completed; poll the persisted operation while the correlated run and pipeline settlement are reconciled.",
+            _ when run is null => "The launch was accepted by the configured provider; poll the persisted operation identity for run observation and terminal outcome.",
+            _ => "The provider accepted the launch and the correlated run was observed."
+        };
+
+        if (receipt.ReusedExistingExecution)
+        {
+            warnings.Add("The runtime provider reused the existing execution for this idempotency key.");
+        }
+        if (!string.IsNullOrWhiteSpace(receipt.RejectionCode))
+        {
+            warnings.Add($"Provider code: {receipt.RejectionCode}.");
+        }
+
+        var response = RuntimeRunResponse(responseStatus, responseMessage, ToRuntimeRun(run, warnings));
+        if (evidence is not null)
+        {
+            await _runtimeEvidenceSink.WriteJsonAsync(evidence, "response.json", response, CancellationToken.None);
+        }
+
+        StartRuntimeExecutionObservation(operation.OperationId, request, requestedAtUtc, evidence, response);
         return response;
 
         RuntimeRunStartResponse RuntimeRunResponse(
             string status,
             string message,
-            RuntimeRunSummaryResponse? run,
-            string? directory)
+            RuntimeRunSummaryResponse? run)
             => new(
                 requestId,
                 orchestratorCorrelationId,
@@ -259,8 +283,8 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
                     requestedDegradationProfiles),
                 run,
                 warnings.ToArray(),
-                directory,
-                request.CollectEvidence ? directory : null,
+                evidence?.Location,
+                evidence?.Location,
                 operationId);
     }
 
@@ -439,28 +463,42 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
                 null);
         }
 
-        Task<string>? stdoutTask = request.CollectEvidence ? process.StandardOutput.ReadToEndAsync(cancellationToken) : null;
-        Task<string>? stderrTask = request.CollectEvidence ? process.StandardError.ReadToEndAsync(cancellationToken) : null;
+        Task<string>? stdoutTask = request.CollectEvidence ? process.StandardOutput.ReadToEndAsync(CancellationToken.None) : null;
+        Task<string>? stderrTask = request.CollectEvidence ? process.StandardError.ReadToEndAsync(CancellationToken.None) : null;
 
         if (request.WaitForCompletion)
         {
             var timeout = TimeSpan.FromSeconds(Math.Clamp(request.TimeoutSeconds, 5, 3600));
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(timeout);
             try
             {
-                await process.WaitForExitAsync(timeoutCts.Token);
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                await TryTerminateProcessTreeAsync(
+                _ = await WaitForRuntimeProcessAsync(
                     process,
                     timeout,
+                    terminateOnTimeout: true,
                     warning =>
                     {
                         notes.Add(warning);
                         return Task.CompletedTask;
-                    });
+                    },
+                    cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                if (request.CollectEvidence)
+                {
+                    _ = Task.Run(() => CompleteControlledValidationP3EvidenceBundleAsync(
+                        evidencePath,
+                        process,
+                        stdoutTask,
+                        stderrTask,
+                        CancellationToken.None), CancellationToken.None);
+                }
+                else
+                {
+                    StartDetachedProcessDisposal(process);
+                }
+
+                throw;
             }
         }
 
@@ -495,13 +533,17 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
 
         if (request.CollectEvidence)
         {
-            await WriteJsonEvidenceAsync(evidencePath, "backoffice-response.json", response, cancellationToken);
+            await WriteJsonEvidenceAsync(evidencePath, "backoffice-response.json", response, CancellationToken.None);
             _ = Task.Run(() => CompleteControlledValidationP3EvidenceBundleAsync(
                 evidencePath,
                 process,
                 stdoutTask,
                 stderrTask,
                 CancellationToken.None), CancellationToken.None);
+        }
+        else
+        {
+            StartDetachedProcessDisposal(process);
         }
 
         return response;
@@ -534,17 +576,27 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         RuntimeResetRequest request,
         CancellationToken cancellationToken)
     {
+        var resetId = Guid.NewGuid();
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var before = await BuildRuntimeTableCountsAsync(dbContext, cancellationToken);
+        await using var maintenanceLock = await RuntimeMaintenanceLock.AcquireAsync(dbContext, cancellationToken);
 
+        var before = await BuildRuntimeTableCountsAsync(dbContext, cancellationToken);
         if (!string.Equals(request.Scope, "runtime-only", StringComparison.Ordinal))
         {
-            return new RuntimeResetResponse(DateTimeOffset.UtcNow, request.DryRun, "Rejected", "scope must be 'runtime-only'.", before, before);
+            return ResetResponse("Rejected", "scope must be 'runtime-only'.", before, before, [], 0);
         }
 
         if (!request.DryRun && !string.Equals(request.Confirm, "RESET_RUNTIME_STATE", StringComparison.Ordinal))
         {
-            return new RuntimeResetResponse(DateTimeOffset.UtcNow, false, "Rejected", "Reset requires exact confirmation text RESET_RUNTIME_STATE.", before, before);
+            return ResetResponse("Rejected", "Reset requires exact confirmation text RESET_RUNTIME_STATE.", before, before, [], 0);
+        }
+
+        var reconciledOrphans = request.ReconcileTerminalOrphans
+            ? await ReconcileTerminalRuntimeOrphansAsync(dbContext, cancellationToken)
+            : 0;
+        if (reconciledOrphans > 0)
+        {
+            before = await BuildRuntimeTableCountsAsync(dbContext, cancellationToken);
         }
 
         var activeRuns = await dbContext.SimulationRuns
@@ -552,7 +604,13 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             .CountAsync(entity => entity.EndedAt == null, cancellationToken);
         if (activeRuns > 0)
         {
-            return new RuntimeResetResponse(DateTimeOffset.UtcNow, request.DryRun, "Rejected", $"Reset is blocked while {activeRuns} active run(s) exist.", before, before);
+            return ResetResponse(
+                "Rejected",
+                $"Reset is blocked while {activeRuns} active run(s) exist after orphan reconciliation.",
+                before,
+                before,
+                [],
+                reconciledOrphans);
         }
 
         var activeOperations = await dbContext.RuntimeOperations.AsNoTracking()
@@ -563,34 +621,198 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
                 cancellationToken);
         if (activeOperations > 0 || activePipeline > 0)
         {
-            return new RuntimeResetResponse(DateTimeOffset.UtcNow, request.DryRun, "Rejected",
-                $"Reset requires quiescence; active operations={activeOperations}, pending/processing/retry inbox={activePipeline}.", before, before);
+            return ResetResponse(
+                "Rejected",
+                $"Reset requires quiescence; active operations={activeOperations}, pending/processing/retry inbox={activePipeline}.",
+                before,
+                before,
+                [],
+                reconciledOrphans);
+        }
+
+        IReadOnlyList<RuntimeResetStoreResponse> storeInspection;
+        if (request.RequireExternalStores)
+        {
+            storeInspection = await _runtimeDataResetCoordinator.InspectAsync(cancellationToken);
+            var unavailable = storeInspection
+                .Where(store => !string.Equals(store.Status, "Ready", StringComparison.Ordinal))
+                .ToArray();
+            if (unavailable.Length > 0)
+            {
+                return ResetResponse(
+                    "Rejected",
+                    "Systemic reset requires quiescent and configured RabbitMQ and InfluxDB stores.",
+                    before,
+                    before,
+                    storeInspection,
+                    reconciledOrphans);
+            }
+        }
+        else
+        {
+            storeInspection =
+            [
+                new RuntimeResetStoreResponse(
+                    "ExternalStores",
+                    "NotRequested",
+                    null,
+                    null,
+                    "Caller explicitly requested a PostgreSQL-only reset; this is not evidence of a clean system reset.")
+            ];
         }
 
         if (request.DryRun)
         {
-            return new RuntimeResetResponse(DateTimeOffset.UtcNow, true, "DryRun", "No data was changed.", before, before);
+            return ResetResponse(
+                "DryRun",
+                "No data was changed. The response records whether external stores are ready for a systemic reset.",
+                before,
+                before,
+                storeInspection,
+                reconciledOrphans);
         }
 
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        IReadOnlyList<RuntimeResetStoreResponse> storeResults = storeInspection;
+        if (request.RequireExternalStores)
+        {
+            storeResults = await _runtimeDataResetCoordinator.ResetAsync(resetId, cancellationToken);
+            if (storeResults.Any(store => !string.Equals(store.Status, "Cleared", StringComparison.Ordinal)))
+            {
+                return ResetResponse(
+                    "Failed",
+                    "External-store cleanup did not complete, so PostgreSQL runtime state was preserved.",
+                    before,
+                    before,
+                    storeResults,
+                    reconciledOrphans);
+            }
+        }
 
-        dbContext.ProcessingAttempts.RemoveRange(await dbContext.ProcessingAttempts.ToListAsync(cancellationToken));
-        dbContext.RejectedEvents.RemoveRange(await dbContext.RejectedEvents.ToListAsync(cancellationToken));
-        dbContext.QuarantinedEvents.RemoveRange(await dbContext.QuarantinedEvents.ToListAsync(cancellationToken));
-        dbContext.InboxEvents.RemoveRange(await dbContext.InboxEvents.ToListAsync(cancellationToken));
-        dbContext.AcceptedReadingLogs.RemoveRange(await dbContext.AcceptedReadingLogs.ToListAsync(cancellationToken));
-        dbContext.RiskAssessmentLogs.RemoveRange(await dbContext.RiskAssessmentLogs.ToListAsync(cancellationToken));
-        dbContext.AlertStates.RemoveRange(await dbContext.AlertStates.ToListAsync(cancellationToken));
-        dbContext.AreaOperationalStates.RemoveRange(await dbContext.AreaOperationalStates.ToListAsync(cancellationToken));
-        dbContext.CellOperationalStates.RemoveRange(await dbContext.CellOperationalStates.ToListAsync(cancellationToken));
-        dbContext.AreaRiskSnapshotLogs.RemoveRange(await dbContext.AreaRiskSnapshotLogs.ToListAsync(cancellationToken));
-        dbContext.SimulationRuns.RemoveRange(await dbContext.SimulationRuns.ToListAsync(cancellationToken));
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        try
+        {
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+            await DeleteRuntimeRowsAsync(dbContext, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            var partialAfter = await BuildRuntimeTableCountsAsync(dbContext, CancellationToken.None);
+            return ResetResponse(
+                "PartialFailure",
+                $"External stores may already be cleared, but PostgreSQL reset failed with {exception.GetType().Name}.",
+                before,
+                partialAfter,
+                storeResults,
+                reconciledOrphans);
+        }
 
         var after = await BuildRuntimeTableCountsAsync(dbContext, cancellationToken);
-        return new RuntimeResetResponse(DateTimeOffset.UtcNow, false, "Completed", "Runtime state was reset. Control plane tables were not cleared.", before, after);
+        var remainingRuntimeRows = after.Sum(item => item.Count);
+        var status = remainingRuntimeRows == 0 ? "Completed" : "PartialFailure";
+        var message = remainingRuntimeRows == 0
+            ? request.RequireExternalStores
+                ? "Runtime state was cleared from PostgreSQL, RabbitMQ and InfluxDB; static configuration and user data were preserved."
+                : "PostgreSQL runtime state was cleared, but external stores were not requested and system-wide cleanliness was not proved."
+            : $"Reset completed with {remainingRuntimeRows} unexpected runtime row(s) still present.";
+        return ResetResponse(status, message, before, after, storeResults, reconciledOrphans);
+
+        RuntimeResetResponse ResetResponse(
+            string status,
+            string message,
+            IReadOnlyList<RuntimeTableCountResponse> beforeCounts,
+            IReadOnlyList<RuntimeTableCountResponse> afterCounts,
+            IReadOnlyList<RuntimeResetStoreResponse> stores,
+            int reconciled)
+            => new(
+                DateTimeOffset.UtcNow,
+                request.DryRun,
+                status,
+                message,
+                beforeCounts,
+                afterCounts,
+                resetId,
+                stores,
+                reconciled);
+    }
+
+    private static async Task<int> ReconcileTerminalRuntimeOrphansAsync(
+        NatureProtectorControlDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var pendingOperations = await dbContext.RuntimeOperations
+            .Where(entity => entity.TerminalOutcome == null)
+            .ToListAsync(cancellationToken);
+        var expiredOperations = pendingOperations
+            .Where(entity => entity.DeadlineAt <= now)
+            .ToList();
+        foreach (var operation in expiredOperations)
+        {
+            await ReconcileRuntimeOperationAsync(dbContext, operation, cancellationToken);
+        }
+
+        var activeRuns = await dbContext.SimulationRuns
+            .Where(run => run.EndedAt == null)
+            .ToListAsync(cancellationToken);
+        if (activeRuns.Count == 0)
+        {
+            return 0;
+        }
+
+        var runIds = activeRuns.Select(run => run.Id).ToArray();
+        var terminalOperations = await dbContext.RuntimeOperations
+            .AsNoTracking()
+            .Where(operation => operation.SimulationRunId != null &&
+                runIds.Contains(operation.SimulationRunId.Value) &&
+                operation.TerminalOutcome != null)
+            .ToDictionaryAsync(operation => operation.SimulationRunId!.Value, cancellationToken);
+
+        var reconciled = 0;
+        foreach (var run in activeRuns)
+        {
+            if (!terminalOperations.TryGetValue(run.Id, out var operation))
+            {
+                continue;
+            }
+
+            run.EndedAt = operation.FinishedAt ?? now;
+            run.Status = string.Equals(operation.TerminalOutcome, "Cancelled", StringComparison.OrdinalIgnoreCase)
+                ? SimulationRunStatus.Cancelled
+                : SimulationRunStatus.Failed;
+            reconciled++;
+        }
+
+        if (reconciled > 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return reconciled;
+    }
+
+    private static async Task DeleteRuntimeRowsAsync(
+        NatureProtectorControlDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        // Delete dependants before principals. ExecuteDelete keeps memory usage bounded even
+        // after soak tests or incidents that created a large runtime history.
+        await dbContext.ProcessingAttempts.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.RejectedEvents.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.QuarantinedEvents.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.AlertStates.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.CellCycleSnapshots.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.AreaCycleSnapshots.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.CycleObservations.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.CycleSettlements.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.DailyCellStates.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.AreaOperationalStates.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.CellOperationalStates.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.AreaRiskSnapshotLogs.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.RiskAssessmentLogs.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.AcceptedReadingLogs.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.InboxEvents.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.RuntimeOperations.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.SimulationRuns.ExecuteDeleteAsync(cancellationToken);
     }
 
     // </phase5-slice>
@@ -681,86 +903,104 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         }
     }
 
-    private async Task CompleteRunEvidenceBundleAsync(
-        string logDirectory,
+    private static void StartDetachedProcessDisposal(Process process)
+        => _ = Task.Run(async () =>
+        {
+            try
+            {
+                await WaitForRuntimeProcessAsync(
+                    process,
+                    timeout: null,
+                    terminateOnTimeout: false,
+                    _ => Task.CompletedTask,
+                    CancellationToken.None);
+            }
+            catch
+            {
+                // Process ownership must still be released even when observation fails.
+            }
+            finally
+            {
+                process.Dispose();
+            }
+        }, CancellationToken.None);
+
+    private void StartRuntimeExecutionObservation(
+        Guid operationId,
         RuntimeRunStartRequest request,
-        RuntimeRunStartResponse response,
-        Process process,
-        Task<string>? stdoutTask,
-        Task<string>? stderrTask,
-        CancellationToken cancellationToken)
+        DateTimeOffset requestedAtUtc,
+        RuntimeEvidenceReference? evidence,
+        RuntimeRunStartResponse? response)
+        => _ = Task.Run(
+            () => ObserveRuntimeExecutionAsync(
+                operationId,
+                request,
+                requestedAtUtc,
+                evidence,
+                response),
+            CancellationToken.None);
+
+    private async Task ObserveRuntimeExecutionAsync(
+        Guid operationId,
+        RuntimeRunStartRequest request,
+        DateTimeOffset requestedAtUtc,
+        RuntimeEvidenceReference? evidence,
+        RuntimeRunStartResponse? response)
     {
         try
         {
-            var timeout = TimeSpan.FromSeconds(Math.Clamp(request.TimeoutSeconds, 5, 3600));
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(timeout);
-
-            try
+            var executionId = new RuntimeExecutionId(operationId);
+            var deadline = requestedAtUtc.Add(CalculateRuntimeOperationDeadline(request));
+            while (DateTimeOffset.UtcNow < deadline)
             {
-                await process.WaitForExitAsync(timeoutCts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                var evidenceWarnings = new List<string>();
-                await TryTerminateProcessTreeAsync(
-                    process,
-                    timeout,
-                    warning =>
-                    {
-                        evidenceWarnings.Add(warning);
-                        return Task.CompletedTask;
-                    });
-
-                if (evidenceWarnings.Count > 0)
+                var snapshot = await _runtimeRunOrchestrator.GetAsync(executionId, CancellationToken.None);
+                if (snapshot is not null)
                 {
-                    await WriteTextEvidenceAsync(
-                        logDirectory,
-                        "evidence-warning.txt",
-                        string.Join(Environment.NewLine, evidenceWarnings));
+                    await ApplyRuntimeExecutionSnapshotAsync(operationId, snapshot, CancellationToken.None);
                 }
+
+                var operation = await GetRuntimeOperationAsync(operationId, CancellationToken.None);
+                if (operation?.TerminalOutcome is not null)
+                {
+                    break;
+                }
+
+                if (snapshot?.State is RuntimeExecutionState.Rejected
+                    or RuntimeExecutionState.Failed
+                    or RuntimeExecutionState.TimedOut
+                    or RuntimeExecutionState.Cancelled)
+                {
+                    break;
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
             }
 
-            if (stdoutTask is not null)
+            _ = await GetRuntimeOperationAsync(operationId, CancellationToken.None);
+
+            if (evidence is null)
             {
-                await WriteTextEvidenceAsync(logDirectory, "simulator-host.stdout.log", await stdoutTask);
+                return;
             }
 
-            if (stderrTask is not null)
+            await EnsureRuntimeEvidenceAsync(operationId, CancellationToken.None);
+
+            if (response is not null)
             {
-                await WriteTextEvidenceAsync(logDirectory, "simulator-host.stderr.log", await stderrTask);
+                await WriteRunEvidenceSummaryAsync(evidence.Location, request, response, CancellationToken.None);
+                await WritePostRunReportAsync(evidence.Location, request, response, CancellationToken.None);
             }
-
-            await WriteRuntimeSummaryEvidenceAsync(logDirectory, "runtime-summary-after.json", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "runtime-table-counts", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-runs", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-run-expected-vs-observed", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-run-events-by-cycle", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-run-risk-by-metric", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-run-np-vs-fwi-kbdi", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-run-components", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-run-quality-by-profile", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-run-degradation-effects", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-run-cell-context", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-run-fwi-input-completeness", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-run-kbdi-input-completeness", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "latest-run-coverage-freshness", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "area-operational-state", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "cell-operational-states", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "active-alerts", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "recent-alert-transitions", request.AreaCode, cancellationToken);
-            await WriteDiagnosticEvidenceAsync(logDirectory, "compare-latest-b-vs-c", request.AreaCode, cancellationToken);
-
-            await WriteRunEvidenceSummaryAsync(logDirectory, request, response, cancellationToken);
-            await WritePostRunReportAsync(logDirectory, request, response, cancellationToken);
         }
         catch (Exception exception)
         {
-            await WriteTextEvidenceAsync(logDirectory, "evidence-error.txt", exception.ToString());
-        }
-        finally
-        {
-            process.Dispose();
+            if (evidence is not null)
+            {
+                await _runtimeEvidenceSink.WriteTextAsync(
+                    evidence,
+                    "evidence-error.txt",
+                    exception.ToString(),
+                    CancellationToken.None);
+            }
         }
     }
 

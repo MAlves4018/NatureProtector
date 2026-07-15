@@ -66,7 +66,10 @@ public interface IControlPlaneService
         RuntimeRunStartRequest request,
         CancellationToken cancellationToken);
     Task<RuntimeOperationResponse?> GetRuntimeOperationAsync(Guid operationId, CancellationToken cancellationToken);
+    Task<RuntimeOperationResponse?> GetCurrentRuntimeOperationAsync(CancellationToken cancellationToken);
     Task<RuntimeOperationResponse?> GetRuntimeOperationByRequestAsync(Guid requestId, CancellationToken cancellationToken);
+    Task<RuntimeOperationResponse?> ReconcileRuntimeOperationWithProviderAsync(Guid operationId, CancellationToken cancellationToken);
+    Task EnsureRuntimeEvidenceAsync(Guid operationId, CancellationToken cancellationToken);
     Task<ControlledValidationP3RunResponse> StartControlledValidationP3Async(
         ControlledValidationP3RunRequest request,
         string environmentName,

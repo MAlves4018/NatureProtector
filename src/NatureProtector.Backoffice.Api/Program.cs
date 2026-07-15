@@ -116,6 +116,10 @@ if (backofficeOptions.ControlPlaneEnabled)
     // Quando o control plane está ativo, a API expõe dados reais persistidos em
     // PostgreSQL e só fica ready quando essa dependência obrigatória responde.
     builder.Services.AddNatureProtectorControlPlanePostgres(builder.Environment.ContentRootPath);
+    builder.Services.AddSingleton<IRuntimeDataResetCoordinator, RuntimeDataResetCoordinator>();
+    builder.Services.AddOptions<RuntimeOperationReconciliationOptions>()
+        .Bind(builder.Configuration.GetSection(RuntimeOperationReconciliationOptions.SectionName));
+    builder.Services.AddHostedService<RuntimeOperationReconciliationWorker>();
     healthChecks.AddCheck<ControlPlaneDatabaseHealthCheck>(
         "control-plane-postgres",
         failureStatus: HealthStatus.Unhealthy,
@@ -125,7 +129,11 @@ if (backofficeOptions.ControlPlaneEnabled)
         new PostgresControlPlaneService(
             services.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<NatureProtector.Infrastructure.Postgres.Persistence.NatureProtectorControlDbContext>>(),
             builder.Environment.ContentRootPath,
-            enableRuntimeProcessLaunch: backofficeOptions.LocalRuntimeProcessLaunchEnabled));
+            enableRuntimeProcessLaunch: backofficeOptions.LocalRuntimeProcessLaunchEnabled,
+            runtimeRunOrchestrator: services.GetRequiredService<IRuntimeRunOrchestrator>(),
+            runtimeEvidenceSink: services.GetRequiredService<IRuntimeEvidenceSink>(),
+            runtimeDataResetCoordinator: services.GetRequiredService<IRuntimeDataResetCoordinator>(),
+            environmentName: builder.Environment.EnvironmentName));
     builder.Services.AddScoped<IRuntimeObservabilityService, RuntimeObservabilityService>();
     builder.Services.AddSingleton<IPasswordHasher<UserRecord>, PasswordHasher<UserRecord>>();
     builder.Services.AddScoped<IUserRolePlaneService, PostgresUserRolePlaneService>();

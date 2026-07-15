@@ -93,6 +93,7 @@ public sealed class PostgresReadingEventInbox(
             Producer = envelope.Producer,
             EventType = envelope.EventType,
             AreaId = envelope.AreaId,
+            SimulationRunId = envelope.Payload.SimulationRunId,
             EventTime = envelope.EventTime,
             ReceivedAt = now,
             IngestTime = envelope.IngestTime,

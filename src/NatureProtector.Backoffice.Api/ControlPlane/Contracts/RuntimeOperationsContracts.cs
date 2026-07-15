@@ -1,5 +1,19 @@
 namespace NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 
+public static class RuntimeTerminationReason
+{
+    public const string CompletedNormally = nameof(CompletedNormally);
+    public const string UserCancelled = nameof(UserCancelled);
+    public const string ConfiguredTimeout = nameof(ConfiguredTimeout);
+    public const string RequestCancelled = nameof(RequestCancelled);
+    public const string HostShutdown = nameof(HostShutdown);
+    public const string ProcessExitedNonZero = nameof(ProcessExitedNonZero);
+    public const string ProviderFailure = nameof(ProviderFailure);
+    public const string HealthFailure = nameof(HealthFailure);
+    public const string OrphanReconciled = nameof(OrphanReconciled);
+    public const string Unknown = nameof(Unknown);
+}
+
 public sealed record RuntimeDiagnosticCatalogResponse(
     IReadOnlyList<RuntimeDiagnosticDefinitionResponse> Diagnostics);
 
@@ -140,7 +154,16 @@ public sealed record RuntimeOperationAccountingResponse(
 public sealed record RuntimeResetRequest(
     string Scope,
     string Confirm,
-    bool DryRun);
+    bool DryRun,
+    bool RequireExternalStores = true,
+    bool ReconcileTerminalOrphans = true);
+
+public sealed record RuntimeResetStoreResponse(
+    string Store,
+    string Status,
+    long? Before,
+    long? After,
+    string Message);
 
 public sealed record RuntimeResetResponse(
     DateTimeOffset GeneratedAtUtc,
@@ -148,7 +171,10 @@ public sealed record RuntimeResetResponse(
     string Status,
     string Message,
     IReadOnlyList<RuntimeTableCountResponse> Before,
-    IReadOnlyList<RuntimeTableCountResponse> After);
+    IReadOnlyList<RuntimeTableCountResponse> After,
+    Guid? ResetId = null,
+    IReadOnlyList<RuntimeResetStoreResponse>? Stores = null,
+    int ReconciledOrphans = 0);
 
 public sealed record ControlledValidationP3AvailabilityResponse(
     string Phase,

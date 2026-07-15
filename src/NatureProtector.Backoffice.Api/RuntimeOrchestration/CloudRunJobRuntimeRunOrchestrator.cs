@@ -10,6 +10,8 @@ internal sealed class CloudRunJobRuntimeRunOrchestrator(
 {
     private readonly RuntimeOrchestrationOptions _options = options.Value;
 
+    public string Provider => "cloud-run-job";
+
     public bool IsAvailable => true;
     public string AvailabilityMessage =>
         $"Cloud Run Job runtime orchestration is enabled for '{_options.CloudRunSimulatorJobName}' in '{_options.CloudRunRegion}'.";

@@ -32,6 +32,7 @@ public sealed class PostgresReadingEventInboxTests
         await using var dbContext = scope.CreateDbContext();
         var inboxEvent = Assert.Single(dbContext.InboxEvents);
         Assert.Equal(envelope.EventId, inboxEvent.EventId);
+        Assert.Equal(envelope.Payload.SimulationRunId, inboxEvent.SimulationRunId);
         Assert.Equal(InboxEventStatus.Processing, inboxEvent.Status);
         Assert.Equal(1, inboxEvent.AttemptCount);
 

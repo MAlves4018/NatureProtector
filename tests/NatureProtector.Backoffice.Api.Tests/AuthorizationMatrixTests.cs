@@ -38,6 +38,7 @@ public sealed class AuthorizationMatrixTests
         Capability("GET", "/api/control/runtime/diagnostics", "/api/control/runtime/diagnostics", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
         Capability("POST", "/api/control/runtime/diagnostics/{diagnosticId}", "/api/control/runtime/diagnostics/runtime-table-counts", OperationCapabilities.SimulationExecute, AccessPolicy.Authenticated),
         Capability("POST", "/api/control/runtime/runs", "/api/control/runtime/runs", OperationCapabilities.SimulationExecute, AccessPolicy.Authenticated),
+        Capability("GET", "/api/control/runtime/operations/current", "/api/control/runtime/operations/current", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
         Capability("GET", "/api/control/runtime/operations/{operationId:guid}", "/api/control/runtime/operations/92000000-0000-0000-0000-000000000001", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
         Capability("GET", "/api/control/runtime/operations/by-request/{requestId:guid}", "/api/control/runtime/operations/by-request/92000000-0000-0000-0000-000000000001", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
         Capability("GET", "/api/control/runtime/runs/latest", "/api/control/runtime/runs/latest", OperationCapabilities.RunRead, AccessPolicy.Authenticated),

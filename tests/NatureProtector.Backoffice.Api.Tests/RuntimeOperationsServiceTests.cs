@@ -303,7 +303,7 @@ public sealed class RuntimeOperationsServiceTests
         var service = new PostgresControlPlaneService(scope.Factory);
 
         var result = await service.ResetRuntimeStateAsync(
-            new RuntimeResetRequest("runtime-only", "", DryRun: true),
+            new RuntimeResetRequest("runtime-only", "", DryRun: true, RequireExternalStores: false),
             CancellationToken.None);
 
         Assert.Equal("DryRun", result.Status);
@@ -332,7 +332,7 @@ public sealed class RuntimeOperationsServiceTests
         var service = new PostgresControlPlaneService(scope.Factory);
 
         var result = await service.ResetRuntimeStateAsync(
-            new RuntimeResetRequest("runtime-only", "RESET_RUNTIME_STATE", DryRun: false),
+            new RuntimeResetRequest("runtime-only", "RESET_RUNTIME_STATE", DryRun: false, RequireExternalStores: false),
             CancellationToken.None);
 
         Assert.Equal("Rejected", result.Status);
@@ -347,7 +347,7 @@ public sealed class RuntimeOperationsServiceTests
         var service = new PostgresControlPlaneService(scope.Factory);
 
         var result = await service.ResetRuntimeStateAsync(
-            new RuntimeResetRequest("runtime-only", "RESET_RUNTIME_STATE", DryRun: false),
+            new RuntimeResetRequest("runtime-only", "RESET_RUNTIME_STATE", DryRun: false, RequireExternalStores: false),
             CancellationToken.None);
 
         Assert.Equal("Completed", result.Status);
@@ -437,7 +437,7 @@ public sealed class RuntimeOperationsServiceTests
         var service = new PostgresControlPlaneService(scope.Factory);
 
         var result = await service.ResetRuntimeStateAsync(
-            new RuntimeResetRequest("runtime-only", "RESET_RUNTIME_STATE", DryRun: false),
+            new RuntimeResetRequest("runtime-only", "RESET_RUNTIME_STATE", DryRun: false, RequireExternalStores: false),
             CancellationToken.None);
 
         Assert.Equal("Rejected", result.Status);
@@ -498,6 +498,7 @@ public sealed class RuntimeOperationsServiceTests
                     Producer = "tests",
                     EventType = "SensorReadingProduced",
                     AreaId = areaId,
+                    SimulationRunId = runId,
                     EventTime = DateTimeOffset.UtcNow,
                     ReceivedAt = DateTimeOffset.UtcNow,
                     PayloadJson = $$"""{"SimulationRunId":"{{runId}}"}""",

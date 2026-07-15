@@ -31,7 +31,7 @@ public sealed class PostgresCycleProjectionCoordinatorTests
     {
         await using var scope = new SqliteControlDbContextScope();
         var seed = await SeedAsync(scope);
-        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory);
+        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory, NullLogger<PostgresCycleProjectionCoordinator>.Instance);
 
         await RecordAsync(coordinator, seed, seed.SensorIds[0], 0, MetricOrigin.Observed, 0.7);
         await RecordAsync(coordinator, seed, seed.SensorIds[1], 0, MetricOrigin.Reference, 0.8);
@@ -49,7 +49,7 @@ public sealed class PostgresCycleProjectionCoordinatorTests
     {
         await using var scope = new SqliteControlDbContextScope();
         var seed = await SeedAsync(scope);
-        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory);
+        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory, NullLogger<PostgresCycleProjectionCoordinator>.Instance);
 
         await RecordAsync(coordinator, seed, seed.SensorIds[0], 0, MetricOrigin.Observed, 0.7);
         await RecordAsync(coordinator, seed, seed.SensorIds[0], 1, MetricOrigin.Observed, 0.6);
@@ -68,7 +68,7 @@ public sealed class PostgresCycleProjectionCoordinatorTests
     {
         await using var scope = new SqliteControlDbContextScope();
         var seed = await SeedAsync(scope);
-        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory);
+        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory, NullLogger<PostgresCycleProjectionCoordinator>.Instance);
         await RecordAsync(coordinator, seed, seed.SensorIds[0], 0, MetricOrigin.Observed, 0.7);
         await coordinator.RecordAsync(seed.RunId, 0, seed.AreaId, seed.SensorIds[1], Guid.NewGuid(),
             DateTimeOffset.UtcNow, MetricOrigin.Blocked, CycleObservationOutcome.Blocked,
@@ -94,7 +94,7 @@ public sealed class PostgresCycleProjectionCoordinatorTests
     {
         await using var scope = new SqliteControlDbContextScope();
         var seed = await SeedAsync(scope);
-        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory);
+        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory, NullLogger<PostgresCycleProjectionCoordinator>.Instance);
         await RecordAsync(coordinator, seed, seed.SensorIds[0], 0, MetricOrigin.Observed, 0.7);
         await scope.SeedAsync(async dbContext =>
         {
@@ -115,7 +115,7 @@ public sealed class PostgresCycleProjectionCoordinatorTests
     {
         await using var scope = new SqliteControlDbContextScope();
         var seed = await SeedAsync(scope, includeSecondRun: true);
-        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory);
+        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory, NullLogger<PostgresCycleProjectionCoordinator>.Instance);
         await RecordAsync(coordinator, seed, seed.SensorIds[0], 0, MetricOrigin.Observed, 0.5);
         await RecordAsync(coordinator, seed with { RunId = seed.SecondRunId!.Value }, seed.SensorIds[0], 0, MetricOrigin.Observed, 0.9);
 
@@ -136,7 +136,7 @@ public sealed class PostgresCycleProjectionCoordinatorTests
     {
         await using var scope = new SqliteControlDbContextScope();
         var seed = await SeedAsync(scope);
-        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory);
+        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory, NullLogger<PostgresCycleProjectionCoordinator>.Instance);
         var readings = new[] { (seed.SensorIds[0], 0.4), (seed.SensorIds[1], 0.8) };
         foreach (var reading in reverse ? readings.Reverse() : readings)
             await RecordAsync(coordinator, seed, reading.Item1, 0, MetricOrigin.Observed, reading.Item2);

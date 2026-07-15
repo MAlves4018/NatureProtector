@@ -339,6 +339,8 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.Property(entity => entity.IntervalSeconds).IsRequired();
         builder.Property(entity => entity.NumberOfCycles).IsRequired();
         builder.Property(entity => entity.MetadataJson);
+        builder.Property(entity => entity.OrchestratorCorrelationId).HasColumnName("orchestrator_correlation_id").HasMaxLength(250);
+        builder.HasIndex(entity => entity.OrchestratorCorrelationId).IsUnique();
         builder.HasIndex(entity => new { entity.AreaId, entity.CreatedAt });
         builder.HasIndex(entity => new { entity.ScenarioId, entity.CreatedAt });
         builder.HasOne(entity => entity.Area)
@@ -453,6 +455,7 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.Property(entity => entity.LastErrorCode).HasMaxLength(100);
         builder.Property(entity => entity.LastErrorMessage).HasMaxLength(2000);
         builder.HasIndex(entity => entity.EventId).IsUnique();
+        builder.HasIndex(entity => new { entity.SimulationRunId, entity.Status });
         builder.HasIndex(entity => new { entity.Status, entity.ReceivedAt });
         builder.HasIndex(entity => new { entity.Status, entity.NextAttemptNotBefore });
     }

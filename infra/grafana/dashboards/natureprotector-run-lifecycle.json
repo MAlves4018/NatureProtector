@@ -1,0 +1,160 @@
+{
+  "uid": "np-run-lifecycle",
+  "title": "NatureProtector — Run & Lifecycle",
+  "tags": [
+    "natureprotector",
+    "provisioned"
+  ],
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": true,
+  "refresh": "10s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Recent operations",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "natureprotector-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "natureprotector-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT accepted_at AS \"time\", execution_id AS operation_id, simulation_run_id, state, provider_state, run_state, processing_state, terminal_outcome FROM control.runtime_orchestrator_executions ORDER BY accepted_at DESC LIMIT 50"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Requested vs observed duration",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "natureprotector-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "natureprotector-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT started_at AS \"time\", simulation_run_id, EXTRACT(EPOCH FROM (COALESCE(system_completed_at, NOW()) - started_at)) AS observed_seconds, terminal_outcome FROM control.runtime_orchestrator_executions WHERE started_at IS NOT NULL ORDER BY started_at DESC LIMIT 50"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Run accounting",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "natureprotector-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "natureprotector-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT \"CreatedAt\" AS \"time\", \"Id\" AS simulation_run_id, \"NumberOfCycles\" AS number_of_cycles, \"IntervalSeconds\" AS interval_seconds, \"Status\" AS status, \"EndedAt\" AS ended_at FROM control.simulation_runs ORDER BY \"CreatedAt\" DESC LIMIT 50"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Termination outcomes",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "natureprotector-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "natureprotector-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(terminal_outcome, state) AS outcome, COUNT(*) AS operations FROM control.runtime_orchestrator_executions GROUP BY 1 ORDER BY 2 DESC"
+        }
+      ]
+    }
+  ]
+}

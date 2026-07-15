@@ -140,6 +140,68 @@ public sealed class SimulationRunnerTests
             context.RunOverrides!.Resolved.DegradationProfiles);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_DuplicateProfile_PublishesDuplicateDeliveryWithSameEventId()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 1;
+        options.DegradationProfile = SimulationDegradationProfiles.Duplicate;
+        options.Sensors =
+        [
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Duplicate-01"),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "Duplicate-02")
+        ];
+        var publisher = new CollectingReadingPublisher();
+        var runner = CreateRunner(options, publisher);
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        var duplicateEventId = publisher.Published
+            .GroupBy(envelope => envelope.EventId)
+            .Single(group => group.Count() == 2)
+            .Key;
+        Assert.Contains(publisher.Published, envelope => envelope.EventId == duplicateEventId);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_OutOfOrderProfile_PublishesCycleBatchInReverseOrder()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 1;
+        options.DegradationProfile = SimulationDegradationProfiles.OutOfOrder;
+        options.Sensors =
+        [
+            SimulatorOptionsMother.CreateSensorDefinition(name: "OutOfOrder-01"),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "OutOfOrder-02"),
+            SimulatorOptionsMother.CreateSensorDefinition(name: "OutOfOrder-03")
+        ];
+        var publisher = new CollectingReadingPublisher();
+        var runner = CreateRunner(options, publisher);
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        Assert.Equal(
+            options.Sensors.AsEnumerable().Reverse().Select(sensor => sensor.Id!.Value).ToArray(),
+            publisher.Published.Select(envelope => envelope.Payload.SensorId).ToArray());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_RetryTransientProfile_MarksFirstEnvelopeForBuiltInRetryFault()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 1;
+        options.DegradationProfile = SimulationDegradationProfiles.RetryTransient;
+        var publisher = new CollectingReadingPublisher();
+        var runner = CreateRunner(options, publisher);
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        Assert.StartsWith(
+            "cv:multi-replica-runtime:P3_RETRY_TRANSIENT_THEN_SUCCESS:",
+            publisher.Published.First().CorrelationId,
+            StringComparison.Ordinal);
+    }
+
 
     [Fact]
     public async Task ExecuteAsync_RunStartLogIncludesEffectiveScenarioAndDegradationContext()

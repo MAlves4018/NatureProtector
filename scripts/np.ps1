@@ -460,6 +460,7 @@ try {
                 @{ name="frontend-decomposition"; cmd="python"; args=@("tools/frontend-audit/validate.py", "--repo", ".") },
                 @{ name="workflow-authority"; cmd="python"; args=@("tools/workflow-audit/validate.py", "--repo", ".") },
                 @{ name="repository-final-cleanup"; cmd="python"; args=@("tools/final-audit/validate.py", "--repo", ".") },
+                @{ name="python-test-authority"; cmd="python"; args=@("tools/testing/run_python_tests.py", "--repo", ".") },
                 @{ name="evidence-tooling-tests"; cmd="python"; args=@("-m", "unittest", "discover", "-s", "tests/evidence", "-p", "test_*.py", "-v") },
                 @{ name="powershell-tooling-runtime"; cmd="pwsh"; args=@("-NoProfile", "-File", "scripts/tests/test-common-tooling.ps1") },
                 @{ name="g81-static"; cmd="python"; args=@("scripts/cloud/Test-G81Static.py") },

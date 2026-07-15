@@ -8,6 +8,8 @@ public sealed class DisabledRuntimeRunOrchestrator : IRuntimeRunOrchestrator
     {
     }
 
+    public string Provider => "disabled";
+
     public bool IsAvailable => false;
 
     public string AvailabilityMessage =>
@@ -19,7 +21,7 @@ public sealed class DisabledRuntimeRunOrchestrator : IRuntimeRunOrchestrator
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(new RuntimeLaunchReceipt(
-            new RuntimeExecutionId(Guid.Empty),
+            request.ExecutionId,
             RuntimeExecutionState.Rejected,
             DateTimeOffset.UtcNow,
             null,

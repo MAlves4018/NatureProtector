@@ -690,6 +690,11 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<int>("NumberOfCycles")
                         .HasColumnType("integer");
 
+                    b.Property<string>("OrchestratorCorrelationId")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("orchestrator_correlation_id");
+
                     b.Property<string>("ScenarioCode")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -712,6 +717,9 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ConfigurationVersionId");
+
+                    b.HasIndex("OrchestratorCorrelationId")
+                        .IsUnique();
 
                     b.HasIndex("AreaId", "CreatedAt");
 
@@ -792,6 +800,9 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<Guid?>("SimulationRunId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -799,6 +810,8 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.HasIndex("EventId")
                         .IsUnique();
+
+                    b.HasIndex("SimulationRunId", "Status");
 
                     b.HasIndex("Status", "NextAttemptNotBefore");
 
