@@ -1,60 +1,301 @@
+import { Activity, BarChart3, Clock3, Database, FileCheck2, GitCompareArrows, Search, ShieldAlert } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ExportActions } from '../components/ExportActions';
 import { PageHeader } from '../components/PageHeader';
+import { RunProgressCockpit } from '../components/RunProgressCockpit';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
 import { useUiActivity } from '../state/ActivityContext';
+import { runPresentationState } from '../truthfulPresentation';
+import { formatDurationMs, rowsToCsv, timingFacts } from '../utils/operationalMetrics';
 
 export function RunsPage() {
   const { copy } = useUiLocale();
+  const navigate = useNavigate();
   const { runs, runsLoading, selectedRunId, setSelectedRunId, runContext, runAudit, runTimings } = useUiActivity();
+  const [tab, setTab] = useState<'summary' | 'lifecycle' | 'accounting' | 'quality' | 'evidence'>('summary');
+  const presentation = runPresentationState({
+    status: runContext.run?.status ?? runContext.state,
+    expected: runAudit?.expectedEvents ?? null,
+    accepted: runAudit?.acceptedReadings ?? null,
+    missing: runAudit?.missingEvents ?? null,
+  });
 
   return (
     <section className="ui-page">
-      <PageHeader title={copy('run.title')} subtitle={copy('run.subtitle')} helpTopic="runState" />
-      <label className="ui-field">
-        <span>{copy('run.selectLabel')}</span>
-        <select
-          className="ui-select"
-          value={selectedRunId}
-          onChange={(event) => setSelectedRunId(event.target.value)}
-          disabled={runsLoading}
-        >
-          <option value="">{runsLoading ? copy('state.loading') : copy('run.none')}</option>
-          {runs.map((run) => (
-            <option key={run.id} value={run.id}>
-              {run.status} / {run.scenarioCode} / {run.id}
-            </option>
+      <PageHeader
+        title="Run workspace"
+        subtitle="Lifecycle, accounting, pipeline, qualidade e evidence no contexto da mesma SimulationRunId."
+        helpTopic="runState"
+      />
+      <section className="ui-run-selector">
+        <label className="ui-field">
+          <span>{copy('run.selectLabel')}</span>
+          <select
+            className="ui-select"
+            value={selectedRunId}
+            onChange={(event) => setSelectedRunId(event.target.value)}
+            disabled={runsLoading}
+          >
+            <option value="">{runsLoading ? copy('state.loading') : copy('run.none')}</option>
+            {runs.map((run) => (
+              <option key={run.id} value={run.id}>
+                {run.status} · {run.scenarioCode} · {run.id}
+              </option>
+            ))}
+          </select>
+        </label>
+        <StatusBadge label={presentation.label} state={presentation.state} />
+      </section>
+      {runContext.resolvedRunId ? (
+        <>
+          <section className="ui-run-identity">
+            <div>
+              <span className="ui-eyebrow">SimulationRunId</span>
+              <strong>{runContext.resolvedRunId}</strong>
+            </div>
+            <div>
+              <span className="ui-eyebrow">Cenário</span>
+              <strong>{runContext.run?.scenarioName ?? 'Indisponível'}</strong>
+            </div>
+            <div>
+              <span className="ui-eyebrow">Área</span>
+              <strong>{runContext.run?.areaCode ?? 'Indisponível'}</strong>
+            </div>
+          </section>
+          <RunProgressCockpit operation={null} audit={runAudit} timings={runTimings} />
+          <div className="ui-button-row ui-run-actions">
+            <button type="button" className="ui-secondary" onClick={() => navigate('/scenario-compare')}>
+              <GitCompareArrows size={15} /> Comparar cenários
+            </button>
+            <button type="button" className="ui-secondary" onClick={() => navigate('/queries')}>
+              <Search size={15} /> Consultas preparadas
+            </button>
+            <button type="button" className="ui-secondary" onClick={() => navigate('/evidence')}>
+              <FileCheck2 size={15} /> Abrir evidence
+            </button>
+          </div>
+          <nav className="ui-tabs" aria-label="Detalhes da run">
+            <RunTab icon={<Activity />} label="Resumo" active={tab === 'summary'} onClick={() => setTab('summary')} />
+            <RunTab
+              icon={<Clock3 />}
+              label="Lifecycle"
+              active={tab === 'lifecycle'}
+              onClick={() => setTab('lifecycle')}
+            />
+            <RunTab
+              icon={<Database />}
+              label="Accounting"
+              active={tab === 'accounting'}
+              onClick={() => setTab('accounting')}
+            />
+            <RunTab
+              icon={<ShieldAlert />}
+              label="Qualidade"
+              active={tab === 'quality'}
+              onClick={() => setTab('quality')}
+            />
+            <RunTab
+              icon={<FileCheck2 />}
+              label="Evidence"
+              active={tab === 'evidence'}
+              onClick={() => setTab('evidence')}
+            />
+          </nav>
+          {tab === 'summary' && (
+            <section className="ui-card">
+              <div className="ui-section-heading">
+                <h3>Resumo da execução</h3>
+                <StatusBadge label={presentation.label} state={presentation.state} />
+              </div>
+              <div className="ui-detail-grid">
+                {runContext.fields.map((field) => (
+                  <div key={field.label} className="ui-detail-row">
+                    <span className="ui-label">{field.label}</span>
+                    <span className="ui-value">{field.value}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          {tab === 'lifecycle' && <Lifecycle timings={runTimings} />}
+          {tab === 'accounting' && <Accounting audit={runAudit} />}
+          {tab === 'quality' && <Quality audit={runAudit} />}
+          {tab === 'evidence' && (
+            <section className="ui-card">
+              <div className="ui-section-heading">
+                <h3>Pacote exportável da run</h3>
+                <ExportActions
+                  filename={`run-${runContext.resolvedRunId}.json`}
+                  content={JSON.stringify({ run: runContext.run, audit: runAudit, timings: runTimings }, null, 2)}
+                  contentType="application/json;charset=utf-8"
+                />
+              </div>
+              <div className="ui-grid">
+                <EvidenceBox
+                  title="Audit runtime"
+                  value={runAudit ? 'Recolhida para esta run' : copy('value.noEvidence')}
+                />
+                <EvidenceBox
+                  title="Timing"
+                  value={
+                    runTimings?.runDurationMs == null
+                      ? copy('value.noEvidence')
+                      : formatDurationMs(runTimings.runDurationMs)
+                  }
+                />
+                <EvidenceBox
+                  title="DataScope"
+                  value={runAudit?.dataScope?.dataRunId ?? runTimings?.dataScope?.dataRunId ?? 'Não instrumentado'}
+                />
+              </div>
+            </section>
+          )}
+        </>
+      ) : (
+        <section className="ui-empty-state">
+          <BarChart3 size={28} />
+          <h3>Selecione uma run</h3>
+          <p>O workspace mantém todos os indicadores associados à mesma SimulationRunId.</p>
+        </section>
+      )}
+    </section>
+  );
+}
+
+function RunTab({
+  icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={active ? 'ui-tab ui-tab-active' : 'ui-tab'}
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function Lifecycle({ timings }: { timings: ReturnType<typeof useUiActivity>['runTimings'] }) {
+  const events = [
+    ['Run iniciada', timings?.startedAt],
+    ['Primeiro evento recebido', timings?.firstInboxReceivedAt],
+    ['Primeiro processamento', timings?.firstProcessingAttemptStartedAt],
+    ['Primeiro risco', timings?.firstRiskAssessmentCreatedAt],
+    ['Último processamento', timings?.lastProcessingAttemptFinishedAt],
+    ['Run terminada', timings?.endedAt],
+  ];
+  return (
+    <div className="ui-two-column">
+      <section className="ui-card">
+        <h3>Lifecycle observado</h3>
+        <ol className="ui-lifecycle">
+          {events.map(([label, timestamp]) => (
+            <li key={label} data-observed={Boolean(timestamp)}>
+              <span />
+              <div>
+                <strong>{label}</strong>
+                <small>{timestamp ? new Date(timestamp).toLocaleString() : 'Não observado'}</small>
+              </div>
+            </li>
           ))}
-        </select>
-      </label>
+        </ol>
+      </section>
       <section className="ui-card">
         <div className="ui-section-heading">
-          <h3>{copy('run.latest')}</h3>
-          <StatusBadge label={runContext.state} state={runContext.state === 'completed' ? 'ready' : 'partial'} />
+          <h3>Durações defensáveis</h3>
+          {timings && (
+            <ExportActions
+              filename={`timings-${timings.simulationRunId}.csv`}
+              content={rowsToCsv(timingFacts(timings))}
+            />
+          )}
         </div>
         <div className="ui-detail-grid">
-          {runContext.fields.map((field) => (
-            <div key={field.label} className="ui-detail-row">
-              <span className="ui-label">{field.label}</span>
-              <span className="ui-value">{field.value}</span>
+          {timingFacts(timings).map((fact) => (
+            <div key={fact.label} className="ui-detail-row">
+              <span>{fact.label}</span>
+              <strong>{fact.value}</strong>
             </div>
           ))}
         </div>
+        {timings?.stages && timings.stages.length > 0 && (
+          <details className="ui-details">
+            <summary>Duração por fase</summary>
+            <div className="ui-table-wrap">
+              <table className="ui-table">
+                <thead>
+                  <tr>
+                    <th>Fase</th>
+                    <th>Resultado</th>
+                    <th>Contagem</th>
+                    <th>Média</th>
+                    <th>Máximo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {timings.stages.map((stage) => (
+                    <tr key={`${stage.stage}-${stage.outcome}-${stage.errorCode ?? 'none'}`}>
+                      <td>{stage.stage}</td>
+                      <td>{stage.outcome}</td>
+                      <td>{stage.count}</td>
+                      <td>{formatDurationMs(stage.avgDurationMs)}</td>
+                      <td>{formatDurationMs(stage.maxDurationMs)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        )}
       </section>
-      <div className="ui-grid">
-        <EvidenceBox
-          title={copy('run.audit')}
-          value={
-            runAudit
-              ? `${runAudit.acceptedReadings} accepted / ${runAudit.rejected} rejected / ${runAudit.quarantined} quarantined`
-              : copy('value.noEvidence')
-          }
-        />
-        <EvidenceBox
-          title={copy('run.timings')}
-          value={
-            runTimings?.runDurationMs == null ? copy('value.noEvidence') : `${Math.round(runTimings.runDurationMs)}ms`
-          }
-        />
+    </div>
+  );
+}
+
+function Accounting({ audit }: { audit: ReturnType<typeof useUiActivity>['runAudit'] }) {
+  const expected = audit?.expectedEvents;
+  const accepted = audit?.acceptedReadings;
+  return (
+    <section className="ui-card">
+      <h3>Accounting isolado por run</h3>
+      <div className="ui-metric-grid">
+        <EvidenceBox title="Expected" value={expected == null ? 'Sem dados' : String(expected)} />
+        <EvidenceBox title="Accepted" value={accepted == null ? 'Sem dados' : String(accepted)} />
+        <EvidenceBox title="Missing" value={audit?.missingEvents == null ? 'Sem dados' : String(audit.missingEvents)} />
+        <EvidenceBox title="Processed" value={audit ? String(audit.riskAssessments) : 'Sem dados'} />
+      </div>
+      {expected != null && accepted != null && accepted < expected && (
+        <p className="ui-notice ui-warning">
+          Accepted é inferior a expected. Isto pode ser válido num perfil missing; processed deve ser comparado com
+          accepted.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function Quality({ audit }: { audit: ReturnType<typeof useUiActivity>['runAudit'] }) {
+  return (
+    <section className="ui-card">
+      <h3>Qualidade e perdas</h3>
+      <div className="ui-metric-grid">
+        <EvidenceBox title="Rejected" value={audit ? String(audit.rejected) : 'Sem dados'} />
+        <EvidenceBox title="Quarantined" value={audit ? String(audit.quarantined) : 'Sem dados'} />
+        <EvidenceBox title="Retries" value={audit ? String(audit.retryAttempts) : 'Sem dados'} />
+        <EvidenceBox title="Risk assessments" value={audit ? String(audit.riskAssessments) : 'Sem dados'} />
       </div>
     </section>
   );

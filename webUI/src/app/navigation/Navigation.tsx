@@ -17,6 +17,7 @@ import {
   Users,
   FileSearch,
   GitCompareArrows,
+  ChevronRight,
 } from 'lucide-react';
 import type { UiMessageKey } from '../i18n';
 import type { Copy } from '../types';
@@ -40,8 +41,16 @@ export function UiNavigation({
   const activeGroupPages = pages.filter((page) => page.group === activeGroup);
 
   return (
-    <nav className="ui-nav" aria-label="Navigation">
-      <div className="ui-nav-groups">
+    <nav className="ui-nav" aria-label="Navegação principal">
+      <div className="ui-nav-brand">
+        <span className="ui-nav-brand-mark">NP</span>
+        <span>
+          <strong>NatureProtector</strong>
+          <small>Cockpit operacional</small>
+        </span>
+      </div>
+      <fieldset className="ui-nav-groups">
+        <legend className="ui-visually-hidden">Áreas de trabalho</legend>
         {groups.map((group) => (
           <button
             key={group}
@@ -57,11 +66,15 @@ export function UiNavigation({
           >
             {groupIcon(group)}
             <span>{copy(`group.${group}` as UiMessageKey)}</span>
+            <ChevronRight className="ui-nav-chevron" size={14} aria-hidden="true" />
           </button>
         ))}
-      </div>
-      {activeGroupPages.length > 1 && (
-        <div className="ui-nav-sub">
+      </fieldset>
+      <div className="ui-nav-divider" />
+      <div className="ui-nav-section-label">{copy(`group.${activeGroup}` as UiMessageKey)}</div>
+      {activeGroupPages.length > 0 && (
+        <fieldset className="ui-nav-sub">
+          <legend className="ui-visually-hidden">Destinos</legend>
           {activeGroupPages.map((page) => (
             <button
               key={page.id}
@@ -74,8 +87,12 @@ export function UiNavigation({
               <span>{copy(page.labelKey)}</span>
             </button>
           ))}
-        </div>
+        </fieldset>
       )}
+      <div className="ui-nav-footer">
+        <span className="ui-status-dot" aria-hidden="true" />
+        Contratos backend ativos
+      </div>
     </nav>
   );
 }
@@ -106,6 +123,7 @@ function navIcon(target: UiNavTarget) {
     case 'demo':
       return <Home size={16} />;
     case 'dashboard':
+    case 'overview':
       return <LayoutDashboard size={16} />;
     case 'mission':
       return <Gauge size={16} />;
@@ -116,6 +134,7 @@ function navIcon(target: UiNavTarget) {
     case 'runs':
       return <ClipboardList size={16} />;
     case 'pipeline':
+    case 'queries':
       return <Database size={16} />;
     case 'quality':
     case 'qa':

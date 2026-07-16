@@ -648,13 +648,12 @@ export function buildUiAdminActions(user: Pick<User, 'roles'> | null | undefined
       capability: 'admin.execute',
       action: 'Runtime reset',
       riskLevel: 'High',
-      authorizationState:
-        'Backend endpoint exists for Sim/Admin in Development; executable reset is not exposed by this UI surface',
-      confirmationRequired: 'RESET confirm token and dry-run support in backend contract',
+      authorizationState: canRuntimeWrite ? 'Backend allows Sim/Admin in Development' : 'Backend denies this profile',
+      confirmationRequired: 'Exact RESET_RUNTIME_STATE token; dry-run is selected by default',
       auditAvailable: 'Before/after table counts in reset response',
-      availability: 'blocked',
+      availability: canRuntimeWrite ? 'partial' : 'blocked',
       limitations: [
-        'Preserving M04 smoke state is required; reset can be destructive and is not exposed as available administration.',
+        'The backend can still reject unsafe resets before deletion when active work or unavailable stores are detected.',
       ],
     },
     {

@@ -27,6 +27,12 @@ describe('capabilities', () => {
     expect(getUiCapabilities({ roles: ['Pipeline'] }).has('simulation.execute')).toBe(false);
   });
 
+  it('exposes prepared queries only where the backend diagnostic execution capability exists', () => {
+    expect(getUiPages(getUiCapabilities({ roles: ['Sim'] })).some((page) => page.id === 'queries')).toBe(true);
+    expect(getUiPages(getUiCapabilities({ roles: ['QA'] })).some((page) => page.id === 'queries')).toBe(true);
+    expect(getUiPages(getUiCapabilities({ roles: ['Pipeline'] })).some((page) => page.id === 'queries')).toBe(false);
+  });
+
   it('restricts unknown roles to the public demo/help surface', () => {
     const capabilities = getUiCapabilities({ roles: ['Reviewer'] });
 
@@ -63,6 +69,7 @@ describe('capabilities', () => {
       'dashboard',
       'about',
       'context',
+      'overview',
       'mission',
       'risk',
       'runs',

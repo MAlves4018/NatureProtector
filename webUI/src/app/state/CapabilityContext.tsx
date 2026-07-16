@@ -50,6 +50,8 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
   }, [publicCapabilities, serverCapabilities, user]);
   const pages = useMemo(() => getUiPages(capabilities), [capabilities]);
   const isPublic = !user;
+  const capabilityProfilePending =
+    capabilitiesLoading || Boolean(user && serverCapabilities === null && !capabilitiesError);
 
   const canReadArea = hasUiCapability(capabilities, 'area.read');
   const canReadRisk = hasUiCapability(capabilities, 'risk.read');
@@ -135,7 +137,7 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
       user,
       capabilities,
       capabilityAuthority,
-      capabilitiesLoading,
+      capabilitiesLoading: capabilityProfilePending,
       capabilitiesError,
       pages,
       activePage,
@@ -148,7 +150,7 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
       user,
       capabilities,
       capabilityAuthority,
-      capabilitiesLoading,
+      capabilityProfilePending,
       capabilitiesError,
       pages,
       activePage,

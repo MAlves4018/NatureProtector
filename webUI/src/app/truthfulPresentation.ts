@@ -67,6 +67,30 @@ export function operationStatusMeaning(input: {
   return 'Recorded control-plane state; inspect limitations and provider evidence before making operational claims.';
 }
 
+export function runPresentationState(input: {
+  status: string;
+  expected: number | null;
+  accepted: number | null;
+  missing: number | null;
+  settled?: boolean | null;
+}) {
+  const status = normalizeStatus(input.status);
+  if ((status === 'systemcompleted' || status === 'completed') && input.settled === false) {
+    return { label: 'A consolidar', state: 'partial' as const };
+  }
+  if (
+    (status === 'systemcompleted' || status === 'completed' || status === 'succeeded') &&
+    input.missing != null &&
+    input.missing > 0
+  ) {
+    return { label: 'Concluída com perda prevista', state: 'partial' as const };
+  }
+  if (status === 'systemcompleted' || status === 'completed' || status === 'succeeded') {
+    return { label: 'Concluída', state: 'ready' as const };
+  }
+  return { label: input.status || 'Desconhecido', state: executionStatusState(input.status) };
+}
+
 function normalizeStatus(value: string) {
   return value
     .trim()

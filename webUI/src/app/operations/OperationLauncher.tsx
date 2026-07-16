@@ -3,7 +3,13 @@ import { ClipboardCheck, ShieldAlert } from 'lucide-react';
 import type { OperationDefinitionResponse, StartOperationRequest } from '../types/operations';
 import { useOperations } from './OperationsContext';
 
-export function OperationLauncher({ definition }: { definition: OperationDefinitionResponse }) {
+export function OperationLauncher({
+  definition,
+  showTruthWarning = true,
+}: {
+  definition: OperationDefinitionResponse;
+  showTruthWarning?: boolean;
+}) {
   const { start } = useOperations();
   const initialInputs = useMemo(
     () => Object.fromEntries(definition.inputs.map((input) => [input.name, input.defaultValue ?? ''])),
@@ -53,13 +59,15 @@ export function OperationLauncher({ definition }: { definition: OperationDefinit
         </span>
       </div>
       <p>{definition.description}</p>
-      <div className="ui-notice ui-warning">
-        <ShieldAlert size={16} />
-        <span>
-          This control registers a closed operation request. Catalog availability does not prove dispatcher readiness,
-          provider execution or terminal success. A Queued result means dispatch/request tracking only.
-        </span>
-      </div>
+      {showTruthWarning && (
+        <div className="ui-notice ui-warning">
+          <ShieldAlert size={16} />
+          <span>
+            Este controlo regista um pedido fechado. Catálogo, dispatcher, provider e resultado terminal são estados
+            distintos; Queued não significa sucesso.
+          </span>
+        </div>
+      )}
       <div className="ui-fact-list">
         <span>
           <strong>Capability</strong>
@@ -119,7 +127,11 @@ export function OperationLauncher({ definition }: { definition: OperationDefinit
       {!enabled && (
         <div className="ui-notice ui-warning">
           <ShieldAlert size={16} />
-          <span>{definition.availability}</span>
+          <span>
+            {definition.authorized
+              ? (definition.limitation ?? `Operação indisponível: ${definition.availability}.`)
+              : `Bloqueada: falta a capability ${definition.requiredCapability}. Um perfil autorizado tem de iniciar o pedido.`}
+          </span>
         </div>
       )}
       <button

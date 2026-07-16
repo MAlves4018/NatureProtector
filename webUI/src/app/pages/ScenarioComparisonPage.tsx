@@ -2,10 +2,12 @@ import { useState, useCallback, useMemo } from 'react';
 import { GitCompareArrows } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, LabelList } from 'recharts';
 import { PageHeader } from '../components/PageHeader';
+import { ExportActions } from '../components/ExportActions';
 import { useUiLocale } from '../state/LocaleContext';
 import { useUiArea } from '../state/AreaContext';
 import { api } from '../services/api';
 import type { RuntimeDiagnosticResultResponse } from '../types';
+import { diagnosticResultToCsv } from '../utils/operationalMetrics';
 
 const B_COLOR = '#255f85';
 const C_COLOR = '#176b4d';
@@ -191,6 +193,10 @@ export function ScenarioComparisonPage() {
           <section className="ui-card">
             <div className="ui-section-heading">
               <h3>{result.title}</h3>
+              <ExportActions
+                filename={`comparacao-${resolvedAreaCode ?? 'area'}.csv`}
+                content={diagnosticResultToCsv(result)}
+              />
             </div>
             <p>{result.description}</p>
           </section>

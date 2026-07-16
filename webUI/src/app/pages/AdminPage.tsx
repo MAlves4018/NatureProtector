@@ -7,6 +7,7 @@ import { useAdminActions } from '../state/useUiSurfaces';
 import type { UiAdminAction } from '../technicalSurfaces';
 import { api } from '../services/api';
 import { RuntimeResetRequest } from '../types';
+import type { RuntimeResetResponse } from '../types';
 
 export function AdminPage() {
   const { copy } = useUiLocale();
@@ -17,24 +18,27 @@ export function AdminPage() {
   const [confirmText, setConfirmText] = useState('');
   const [dryRun, setDryRun] = useState(true);
   const [executing, setExecuting] = useState(false);
-  const [resetResult, setResetResult] = useState<string | null>(null);
+  const [resetResult, setResetResult] = useState<RuntimeResetResponse | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   const handleReset = async () => {
     if (confirmText !== 'RESET_RUNTIME_STATE') return;
     setExecuting(true);
     setResetResult(null);
-    await api.resetRuntimeState({
-      scope: 'runtime-only',
-      confirm: confirmText,
-      dryRun: dryRun,
-    } as RuntimeResetRequest);
-    setResetResult(
-      dryRun
-        ? 'Dry-run: runtime reset simulado. Nenhum dado foi alterado.'
-        : 'Runtime reset executado. Os dados de simulação foram removidos. A execução M04 smoke foi preservada.',
-    );
-    setExecuting(false);
-    setConfirmText('');
+    setResetError(null);
+    try {
+      const result = await api.resetRuntimeState({
+        scope: 'runtime-only',
+        confirm: confirmText,
+        dryRun: dryRun,
+      } as RuntimeResetRequest);
+      setResetResult(result);
+      setConfirmText('');
+    } catch (value) {
+      setResetError(value instanceof Error ? value.message : 'O reset não foi aceite pelo backend.');
+    } finally {
+      setExecuting(false);
+    }
   };
 
   return (
@@ -81,8 +85,8 @@ export function AdminPage() {
             </h3>
           </div>
           <p style={{ marginBottom: 12 }}>
-            Esta ação remove dados de simulação do runtime. A execução M04 smoke será preservada. Recomenda-se executar
-            primeiro em modo dry-run para verificar o impacto.
+            Esta ação pede ao backend um reset do estado runtime. O backend valida atividade, inbox, filas e stores
+            antes da fase destrutiva. Um reset bloqueado é uma proteção operacional, não uma falha do sistema.
           </p>
           <label className="ui-checkbox" style={{ marginBottom: 12 }}>
             <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
@@ -112,21 +116,35 @@ export function AdminPage() {
               {executing ? 'A executar...' : dryRun ? 'Executar dry-run' : 'Executar reset'}
             </button>
           </div>
+          {resetError && <p className="ui-notice ui-error">{resetError}</p>}
           {resetResult && (
-            <p
-              style={{
-                marginTop: 12,
-                padding: 10,
-                background: 'var(--ui-surface-muted)',
-                borderRadius: 6,
-                fontWeight: 600,
-              }}
-            >
-              {resetResult}
-            </p>
+            <section className="ui-reset-result" aria-live="polite">
+              <div className="ui-section-heading">
+                <h4>{resetResult.dryRun ? 'Pré-visualização do reset' : 'Resultado do reset'}</h4>
+                <StatusBadge
+                  label={resetResult.status}
+                  state={resetResult.status.toLowerCase().includes('blocked') ? 'partial' : 'ready'}
+                />
+              </div>
+              <p>{resetResult.message}</p>
+              <div className="ui-review-summary">
+                <span>
+                  <small>Antes</small>
+                  <strong>{sumCounts(resetResult.before)}</strong>
+                </span>
+                <span>
+                  <small>Depois</small>
+                  <strong>{sumCounts(resetResult.after)}</strong>
+                </span>
+              </div>
+            </section>
           )}
         </section>
       )}
     </section>
   );
+}
+
+function sumCounts(rows: RuntimeResetResponse['before']) {
+  return String(rows.reduce((total, row) => total + row.count, 0));
 }

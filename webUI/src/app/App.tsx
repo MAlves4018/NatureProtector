@@ -1,4 +1,4 @@
-import { LogIn, Moon, Sun } from 'lucide-react';
+import { CircleHelp, LogIn, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import { UiNavigation } from './navigation/Navigation';
@@ -18,6 +18,7 @@ import { LogInOut } from './components/views/LogInOut';
 const PublicOverviewPage = lazy(() =>
   import('./pages/PublicOverviewPage').then((module) => ({ default: module.PublicOverviewPage })),
 );
+const OverviewPage = lazy(() => import('./pages/OverviewPage').then((module) => ({ default: module.OverviewPage })));
 const DataContextPage = lazy(() =>
   import('./pages/DataContextPage').then((module) => ({ default: module.DataContextPage })),
 );
@@ -28,6 +29,9 @@ const SimulationPage = lazy(() =>
 );
 const ScenarioComparisonPage = lazy(() =>
   import('./pages/ScenarioComparisonPage').then((module) => ({ default: module.ScenarioComparisonPage })),
+);
+const DatabaseQueriesPage = lazy(() =>
+  import('./pages/DatabaseQueriesPage').then((module) => ({ default: module.DatabaseQueriesPage })),
 );
 const AboutPage = lazy(() => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const PipelinePage = lazy(() => import('./pages/PipelinePage').then((module) => ({ default: module.PipelinePage })));
@@ -101,11 +105,13 @@ function UiRouter({
             { path: 'about', element: protect('about', <AboutPage />) },
             { path: 'context', element: protect('context', <DataContextPage />) },
             { path: 'dashboard', element: protect('dashboard', <DashboardsPage />) },
+            { path: 'overview', element: protect('overview', <OverviewPage />) },
             { path: 'mission', element: protect('mission', <MissionControlPage />) },
             { path: 'risk', element: protect('risk', <RiskPage />) },
             { path: 'runs', element: protect('runs', <RunsPage />) },
             { path: 'simulation', element: protect('simulation', <SimulationPage />) },
             { path: 'scenario-compare', element: protect('scenario-compare', <ScenarioComparisonPage />) },
+            { path: 'queries', element: protect('queries', <DatabaseQueriesPage />) },
             { path: 'pipeline', element: protect('pipeline', <PipelinePage />) },
             { path: 'quality', element: protect('quality', <QualityRunsPage />) },
             { path: 'qa', element: protect('qa', <QualityEvidencePage />) },
@@ -114,7 +120,7 @@ function UiRouter({
             { path: 'deployments', element: protect('deployments', <DeploymentsPage />) },
             { path: 'deployment-health', element: protect('deployment-health', <DeploymentHealthPage />) },
             { path: 'cloud', element: protect('cloud', <CloudResourcesPage />) },
-            { path: 'db-queries', element: <UiRetiredOperationalSurface name="Browser database query console" /> },
+            { path: 'db-queries', element: <Navigate to="/queries" replace /> },
             { path: 'approvals', element: protect('approvals', <ApprovalsPage />) },
             { path: 'users', element: protect('users', <UserRoleAdministrationPage />) },
             { path: 'admin', element: protect('admin', <AdminPage />) },
@@ -142,6 +148,8 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
   } = useUiCapabilities();
   const { copy, locale, setLocale } = useUiLocale();
   const [helpTopic, setHelpTopic] = useState<string | null>(null);
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const [navigationCompact, setNavigationCompact] = useState(false);
   const helpCloseRef = useRef<HTMLButtonElement | null>(null);
   const helpReturnFocusRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
@@ -222,7 +230,6 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
 
   return (
     <>
-      <NavBar isDark={isDark} setIsDark={setIsDark} />
       <div className="ui-shell" data-theme={isDark ? 'dark' : 'light'}>
         <a
           className="ui-skip"
@@ -234,65 +241,104 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
         >
           {copy('nav.skip')}
         </a>
-        <header className="ui-hero">
-          <div>
-            <p className="ui-kicker">
-              {copy('app.prototype')} / {copy('app.readOnly')}
-            </p>
-            <h1 className="ui-title">{copy('app.name')}</h1>
-            <p className="ui-lead">
-              {isPublic
-                ? 'Entrada pública orientada ao produto: propósito, limites e estado dos dados sem superfícies internas.'
-                : `Perfil ativo: ${user?.roles.join(', ') || 'sem funções'}. Autorização: ${
-                    capabilitiesLoading ? 'a validar no backend' : capabilityAuthority
-                  }.`}
-            </p>
-          </div>
-          <div className="ui-hero-actions">
-            <div className="ui-language">
-              <button
-                type="button"
-                className={locale === 'pt-PT' ? 'ui-button' : 'ui-secondary'}
-                onClick={() => setLocale('pt-PT')}
-              >
-                {copy('language.pt')}
-              </button>
-              <button
-                type="button"
-                className={locale === 'en' ? 'ui-button' : 'ui-secondary'}
-                onClick={() => setLocale('en')}
-              >
-                {copy('language.en')}
-              </button>
-            </div>
-            <span className="ui-badge">
-              {isDark ? <Moon size={14} /> : <Sun size={14} />}
-              {isDark ? 'Dark' : 'Light'}
-            </span>
-            {isPublic && (
-              <button type="button" className="ui-button" onClick={() => navigate('/login')}>
-                <LogIn size={16} />
-                {copy('nav.login')}
-              </button>
-            )}
-          </div>
-        </header>
-        {capabilitiesError && (
-          <div className="ui-notice ui-warning" role="status">
-            Capability authority unavailable. Authenticated write and protected capabilities are disabled until the
-            backend profile is confirmed.
-          </div>
+        <aside
+          className={`ui-sidebar ${navigationOpen ? 'ui-sidebar-open' : ''} ${
+            navigationCompact ? 'ui-sidebar-compact' : ''
+          }`}
+        >
+          <UiNavigation pages={pages} activePage={activePage} copy={copy} onSelect={handleNavigate} />
+          <button
+            type="button"
+            className="ui-sidebar-collapse"
+            onClick={() => setNavigationCompact((value) => !value)}
+            aria-label={navigationCompact ? 'Expandir navegação' : 'Recolher navegação'}
+          >
+            {navigationCompact ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            <span>Recolher</span>
+          </button>
+        </aside>
+        {navigationOpen && (
+          <button
+            type="button"
+            className="ui-sidebar-scrim"
+            aria-label="Fechar navegação"
+            onClick={() => setNavigationOpen(false)}
+          />
         )}
-        <UiNavigation pages={pages} activePage={activePage} copy={copy} onSelect={handleNavigate} />
-        <AlertBanner />
-        <Breadcrumbs items={breadcrumbItems} onNavigate={handleNavigate} />
-        <main id={mainId} className="ui-content" tabIndex={-1}>
-          <ErrorBoundary key={activePage}>
-            <Suspense fallback={<UiRouteLoading />}>
-              <Outlet />
-            </Suspense>
-          </ErrorBoundary>
-        </main>
+        <div className={`ui-workspace ${navigationCompact ? 'ui-workspace-expanded' : ''}`}>
+          <NavBar isDark={isDark} setIsDark={setIsDark} />
+          <header className="ui-context-bar">
+            <button
+              type="button"
+              className="ui-top-icon ui-mobile-menu"
+              aria-label="Abrir navegação"
+              onClick={() => setNavigationOpen(true)}
+            >
+              <Menu size={18} />
+            </button>
+            <div>
+              <p className="ui-kicker">{activePageDef ? copy(activePageDef.labelKey) : copy('app.name')}</p>
+              <p className="ui-context-copy">
+                {isPublic
+                  ? 'Leitura pública do protótipo e do estado dos dados.'
+                  : `Perfil ${user?.roles.join(', ') || 'sem funções'} · ${
+                      capabilitiesLoading ? 'capabilities a validar' : capabilityAuthority
+                    }`}
+              </p>
+            </div>
+            <div className="ui-context-actions">
+              <div className="ui-language">
+                <button
+                  type="button"
+                  className={locale === 'pt-PT' ? 'ui-segment-active' : 'ui-segment'}
+                  onClick={() => setLocale('pt-PT')}
+                >
+                  PT
+                </button>
+                <button
+                  type="button"
+                  className={locale === 'en' ? 'ui-segment-active' : 'ui-segment'}
+                  onClick={() => setLocale('en')}
+                >
+                  EN
+                </button>
+              </div>
+              <button
+                type="button"
+                className="ui-top-icon"
+                onClick={() => {
+                  helpReturnFocusRef.current =
+                    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                  setHelpTopic(activePageDef?.helpTopic ?? 'overview');
+                }}
+                aria-label="Ajuda contextual"
+              >
+                <CircleHelp size={17} />
+              </button>
+              {isPublic && (
+                <button type="button" className="ui-button" onClick={() => navigate('/login')}>
+                  <LogIn size={16} />
+                  {copy('nav.login')}
+                </button>
+              )}
+            </div>
+          </header>
+          {capabilitiesError && (
+            <div className="ui-notice ui-warning" role="status">
+              Capability authority unavailable. Authenticated write and protected capabilities are disabled until the
+              backend profile is confirmed.
+            </div>
+          )}
+          <AlertBanner />
+          <Breadcrumbs items={breadcrumbItems} onNavigate={handleNavigate} />
+          <main id={mainId} className="ui-content" tabIndex={-1}>
+            <ErrorBoundary key={activePage}>
+              <Suspense fallback={<UiRouteLoading />}>
+                <Outlet />
+              </Suspense>
+            </ErrorBoundary>
+          </main>
+        </div>
         {helpTopic && (
           <div className="ui-help-overlay">
             <section
@@ -357,7 +403,10 @@ function UiRetiredOperationalSurface({ name }: { name: string }) {
 }
 
 function UiDefaultRedirect() {
-  const { pages, capabilities } = useUiCapabilities();
+  const { pages, capabilities, capabilitiesLoading } = useUiCapabilities();
+  if (capabilitiesLoading) {
+    return <UiRouteLoading />;
+  }
   const fallbackPage = defaultPageFor(capabilities);
   const targetPage = pages.some((page) => page.id === fallbackPage) ? fallbackPage : 'demo';
 

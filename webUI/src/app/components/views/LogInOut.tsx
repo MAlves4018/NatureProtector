@@ -31,7 +31,7 @@ export function LogInOut({ isDark, message, onAuthChange, mode = 'page' }: LogIn
       const _resp = await login(usernameOrEmail, password);
       setPassword('');
       onAuthChange?.(true);
-      nav(-1);
+      nav('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in.');
       onAuthChange?.(false);
@@ -47,7 +47,7 @@ export function LogInOut({ isDark, message, onAuthChange, mode = 'page' }: LogIn
       await api.logout();
       logout();
       onAuthChange?.(false);
-      nav(-1);
+      nav('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign out.');
     } finally {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Flex, Text } from '@chakra-ui/react';
-import { Sun, Moon } from 'lucide-react';
+import { Bell, Moon, Search, Sun } from 'lucide-react';
 import { getColors } from '../../utils/utils';
 import { useToken } from '../../context/TokenContext';
 import { UserModal } from '../components/UserModal';
@@ -29,8 +29,8 @@ export function NavBar({
       as="nav"
       align="center"
       gap={3}
-      px={6}
-      py="10px"
+      px={{ base: 4, md: 6 }}
+      py="9px"
       bg={c.navBg}
       borderBottom="1px solid"
       borderColor={c.navBorder}
@@ -38,17 +38,24 @@ export function NavBar({
       flexShrink={0}
       transition="background 0.2s"
     >
-      <img
-        src={npLogoUrl}
-        width="36"
-        height="36"
-        alt="Nature Protector"
-        style={{ display: 'block', objectFit: 'contain' }}
-      />
-      <Text fontWeight="semibold" fontSize="lg" color={c.textPrimary} letterSpacing="wide">
-        Nature Protector
-      </Text>
+      <Box display={{ base: 'block', lg: 'none' }}>
+        <img
+          src={npLogoUrl}
+          width="34"
+          height="34"
+          alt="Nature Protector"
+          style={{ display: 'block', objectFit: 'contain' }}
+        />
+      </Box>
+      <Box className="ui-command-search" aria-hidden="true">
+        <Search size={15} />
+        <span>Pesquisar runs, operações e evidence</span>
+        <kbd>Ctrl K</kbd>
+      </Box>
       <Box flex={1} />
+      <Box className="ui-top-icon" as="button" aria-label="Notificações">
+        <Bell size={16} />
+      </Box>
       <Box
         as="button"
         onClick={() => setIsUserModalOpen(true)}
@@ -57,7 +64,7 @@ export function NavBar({
         gap="8px"
         px={3}
         py="6px"
-        borderRadius="full"
+        borderRadius="10px"
         bg={c.sectionBg}
         border="1px solid"
         borderColor={c.navBorder}
@@ -90,7 +97,7 @@ export function NavBar({
         gap="6px"
         px={3}
         py="6px"
-        borderRadius="full"
+        borderRadius="10px"
         bg={c.toggleBg}
         border="1px solid"
         borderColor={c.navBorder}

@@ -5,6 +5,7 @@ export interface UiPageDefinition {
   id: UiNavTarget;
   labelKey:
     | 'nav.demo'
+    | 'nav.overview'
     | 'nav.dashboard'
     | 'nav.mission'
     | 'nav.risk'
@@ -15,6 +16,7 @@ export interface UiPageDefinition {
     | 'nav.qa'
     | 'nav.evidence'
     | 'nav.deployment-health'
+    | 'nav.queries'
     | 'nav.deployments'
     | 'nav.cloud'
     | 'nav.approvals'
@@ -48,6 +50,15 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     audience: 'public',
     order: 15,
     group: 'public',
+    helpTopic: 'overview',
+  },
+  {
+    id: 'overview',
+    labelKey: 'nav.overview',
+    requiredCapabilities: ['quality.read'],
+    audience: 'common',
+    order: 22,
+    group: 'operate',
     helpTopic: 'overview',
   },
   {
@@ -112,6 +123,15 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     order: 55,
     group: 'simulate',
     helpTopic: 'runState',
+  },
+  {
+    id: 'queries',
+    labelKey: 'nav.queries',
+    requiredCapabilities: ['simulation.execute'],
+    audience: 'sim',
+    order: 57,
+    group: 'simulate',
+    helpTopic: 'pipeline',
   },
   {
     id: 'pipeline',
@@ -213,7 +233,7 @@ export function getUiPages(capabilities: Set<UiCapability>) {
 
 export function defaultPageFor(capabilities: Set<UiCapability>): UiNavTarget {
   if (capabilities.has('quality.read')) {
-    return 'mission';
+    return 'overview';
   }
   if (capabilities.has('risk.read')) {
     return 'risk';

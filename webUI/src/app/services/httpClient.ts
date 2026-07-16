@@ -55,7 +55,7 @@ class HttpClient {
               title: 'Request Failed',
               message: response.statusText || 'Unknown error',
             };
-      throw HttpError.fromResponseBody(errorBody);
+      throw HttpError.fromResponseBody(errorBody, parseRetryAfter(response.headers.get('Retry-After')));
     }
 
     if (!hasBody || response.status === 204) {
@@ -108,7 +108,7 @@ class HttpClient {
               title: 'Request Failed',
               message: response.statusText || 'Unknown error',
             };
-      throw HttpError.fromResponseBody(errorBody);
+      throw HttpError.fromResponseBody(errorBody, parseRetryAfter(response.headers.get('Retry-After')));
     }
 
     return {
@@ -157,4 +157,12 @@ function parseContentDispositionFilename(value: string | null) {
 
   const plainMatch = value.match(/filename="?([^";]+)"?/i);
   return plainMatch?.[1] ?? null;
+}
+
+function parseRetryAfter(value: string | null) {
+  if (!value) return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds);
+  const retryAt = Date.parse(value);
+  return Number.isNaN(retryAt) ? null : Math.max(0, Math.ceil((retryAt - Date.now()) / 1000));
 }
