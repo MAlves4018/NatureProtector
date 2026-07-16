@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PlayCircle, RotateCw } from 'lucide-react';
+import { ExternalLink, PlayCircle, RotateCw } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiCapabilities } from '../state/CapabilityContext';
@@ -7,7 +7,7 @@ import { useUiQaTests } from '../state/QaTestContext';
 
 export function QaTestSuitePage() {
   const { canExecuteFullQa } = useUiCapabilities();
-  const { qaSuites, runningSuiteIds, executions, runAll, runSuites, clearExecutions } = useUiQaTests();
+  const { qaSuites, runningSuiteIds, executions, pushResults, pushResultsLoading, runAll, runSuites, clearExecutions } = useUiQaTests();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(qaSuites.map((s) => s.suiteId)));
 
@@ -184,6 +184,63 @@ export function QaTestSuitePage() {
                     ))}
                   </div>
                 </details>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="ui-card">
+        <div className="ui-section-heading">
+          <h3>Resultados do Push CI</h3>
+          {pushResultsLoading && <StatusBadge label="A carregar..." state="partial" />}
+        </div>
+        <p className="ui-label" style={{ marginBottom: 8 }}>
+          Resultados da última execução do workflow <em>engineering-foundations.yml</em> despoletada por push no branch master.
+        </p>
+        {pushResults.length === 0 ? (
+          <p className="ui-notice">
+            {pushResultsLoading ? 'A carregar resultados dos pushes...' : 'Nenhum resultado de push CI disponível. Os resultados aparecem após um push que complete o workflow.'}
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {pushResults.slice(0, 5).map((run) => (
+              <article key={run.id} className="ui-operation-card" style={{ display: 'grid', gap: 8 }}>
+                <div className="ui-section-heading">
+                  <h4>Push CI — {new Date(run.updatedAt).toLocaleString()}</h4>
+                  <StatusBadge
+                    label={run.status}
+                    state={run.status === 'Succeeded' ? 'ready' : run.status === 'Failed' ? 'partial' : 'partial'}
+                  />
+                </div>
+                <div className="ui-fact-list" style={{ margin: 0 }}>
+                  <span>
+                    <strong>Branch</strong> {run.ref}
+                  </span>
+                  <span>
+                    <strong>Workflow</strong> {run.workflow ?? 'engineering-foundations.yml'}
+                  </span>
+                  <span>
+                    <strong>Estado</strong> {run.status}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {run.providerReference?.startsWith('http') && (
+                    <a
+                      href={run.providerReference}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ui-secondary"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 13 }}
+                    >
+                      <ExternalLink size={14} />
+                      Abrir no GitHub
+                    </a>
+                  )}
+                  {run.evidenceLevel && (
+                    <span className="ui-badge">{run.evidenceLevel}</span>
+                  )}
+                </div>
               </article>
             ))}
           </div>

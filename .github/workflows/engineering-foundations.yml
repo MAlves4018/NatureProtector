@@ -247,3 +247,51 @@ jobs:
           retention-days: 14
           path: |
             webUI/test-results/vitest-junit.xml
+
+  report:
+    name: Report push results to operations API
+    if: github.event_name == 'push' && always()
+    needs: [backend, backend-docker-integration, frontend, frontend-node22]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Generate deterministic operation ID
+        id: op-id
+        shell: bash
+        run: |
+          OP_ID=$(python3 -c "import uuid; print(uuid.uuid5(uuid.NAMESPACE_DNS, 'push-ci-${{ github.sha }}'))")
+          echo "operation-id=$OP_ID" >> $GITHUB_OUTPUT
+
+      - name: Determine consolidated status
+        id: status
+        shell: bash
+        run: |
+          STATUS="Succeeded"
+          if [ "${{ needs.backend.result }}" = "failure" ] || \
+             [ "${{ needs.backend-docker-integration.result }}" = "failure" ] || \
+             [ "${{ needs.frontend.result }}" = "failure" ] || \
+             [ "${{ needs.frontend-node22.result }}" = "failure" ]; then
+            STATUS="Failed"
+          fi
+          if [ "${{ needs.backend.result }}" = "cancelled" ] || \
+             [ "${{ needs.backend-docker-integration.result }}" = "cancelled" ] || \
+             [ "${{ needs.frontend.result }}" = "cancelled" ] || \
+             [ "${{ needs.frontend-node22.result }}" = "cancelled" ]; then
+            STATUS="Cancelled"
+          fi
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+      - name: Report to operations API
+        shell: bash
+        env:
+          NP_OPERATIONS_CALLBACK_URL: ${{ vars.OPERATIONS_CALLBACK_URL }}
+          NP_OPERATIONS_CALLBACK_SECRET: ${{ secrets.OPERATIONS_CALLBACK_SECRET }}
+        run: |
+          python3 scripts/operations/report-operation-callback.py \
+            --operation-id "${{ steps.op-id.outputs.operation-id }}" \
+            --status "${{ steps.status.outputs.status }}" \
+            --provider-reference "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --detail "Push CI on ${{ github.ref_name }} @ ${{ github.sha }}"

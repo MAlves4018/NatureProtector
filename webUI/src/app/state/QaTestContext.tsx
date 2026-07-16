@@ -16,6 +16,8 @@ interface UiQaTestContextValue {
   suitesLoading: boolean;
   runningSuiteIds: Set<string>;
   executions: QaTestExecution[];
+  pushResults: EngineeringOperationResponse[];
+  pushResultsLoading: boolean;
   runAll: () => Promise<void>;
   runSuites: (suiteIds: string[]) => Promise<void>;
   clearExecutions: () => void;
@@ -99,6 +101,8 @@ export function UiQaTestProvider({ children }: { children: ReactNode }) {
   const [suitesLoading, setSuitesLoading] = useState(true);
   const [runningSuiteIds, setRunningSuiteIds] = useState<Set<string>>(new Set());
   const [executions, setExecutions] = useState<QaTestExecution[]>([]);
+  const [pushResults, setPushResults] = useState<EngineeringOperationResponse[]>([]);
+  const [pushResultsLoading, setPushResultsLoading] = useState(true);
 
   const pendingRef = useRef<{ suiteIds: string[]; startedAt: string } | null>(null);
   const batchDefsRef = useRef<UiQaSuite[]>([]);
@@ -117,6 +121,26 @@ export function UiQaTestProvider({ children }: { children: ReactNode }) {
       .catch(() => {})
       .finally(() => {
         if (!cancelled) setSuitesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPushResultsLoading(true);
+    api
+      .listQualityRuns(100)
+      .then((runs) => {
+        console.log('Fetched push results', runs);
+        if (cancelled) return;
+        setPushResults(runs.filter((r) => r.operationId === 'push-ci'));
+      })
+      .catch(() => {console.log('Failed to fetch push results')})
+      .finally(() => {
+        if (!cancelled) setPushResultsLoading(false);
+        console.log('pushResults', pushResults);
       });
     return () => {
       cancelled = true;
@@ -216,8 +240,8 @@ export function UiQaTestProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ qaSuites, suitesLoading, runningSuiteIds, executions, runAll, runSuites, clearExecutions }),
-    [qaSuites, suitesLoading, runningSuiteIds, executions, runAll, runSuites, clearExecutions],
+    () => ({ qaSuites, suitesLoading, runningSuiteIds, executions, pushResults, pushResultsLoading, runAll, runSuites, clearExecutions }),
+    [qaSuites, suitesLoading, runningSuiteIds, executions, pushResults, pushResultsLoading, runAll, runSuites, clearExecutions],
   );
 
   return <UiQaTestContext.Provider value={value}>{children}</UiQaTestContext.Provider>;

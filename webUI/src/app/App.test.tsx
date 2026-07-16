@@ -296,6 +296,14 @@ function createFetchMock(options: { failSummary?: boolean; roles?: string[] } = 
       return jsonResponse([]);
     }
 
+    if (path === '/api/control/quality/runs') {
+      return jsonResponse([]);
+    }
+
+    if (path === '/api/control/quality/suites') {
+      return jsonResponse([]);
+    }
+
     if (path === '/api/control/areas') {
       return jsonResponse([areaFixture]);
     }
