@@ -26,10 +26,10 @@ const TOAST_ICONS: Record<ToastSeverity, typeof Info> = {
 };
 
 const TOAST_COLORS: Record<ToastSeverity, string> = {
-  success: '#166534',
-  error: '#b91c1c',
-  warning: '#a16207',
-  info: '#255f85',
+  success: 'var(--ui-success)',
+  error: 'var(--ui-error)',
+  warning: 'var(--ui-warning)',
+  info: 'var(--ui-accent)',
 };
 
 export function UiToastProvider({ children }: { children: ReactNode }) {

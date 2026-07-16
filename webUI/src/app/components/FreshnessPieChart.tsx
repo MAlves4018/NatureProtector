@@ -6,9 +6,9 @@ interface FreshnessPieChartProps {
   data: RuntimeFreshnessSummaryResponse | null | undefined;
 }
 
-const FRESH_COLOR = '#166534';
-const STALE_COLOR = '#a16207';
-const EXPIRED_COLOR = '#b91c1c';
+const FRESH_COLOR = 'var(--ui-success)';
+const STALE_COLOR = 'var(--ui-warning)';
+const EXPIRED_COLOR = 'var(--ui-error)';
 
 export function FreshnessPieChart({ data }: FreshnessPieChartProps) {
   const { copy } = useUiLocale();

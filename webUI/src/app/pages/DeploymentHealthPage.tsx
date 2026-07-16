@@ -13,9 +13,9 @@ const STATUS_ICONS: Record<string, typeof CheckCircle2> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  Healthy: '#166534',
-  Degraded: '#a16207',
-  Unhealthy: '#b91c1c',
+  Healthy: 'var(--ui-success)',
+  Degraded: 'var(--ui-warning)',
+  Unhealthy: 'var(--ui-error)',
   Unknown: 'var(--ui-muted)',
   NotApplicable: 'var(--ui-muted)',
   NotInstrumented: 'var(--ui-muted)',

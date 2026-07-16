@@ -1,9 +1,11 @@
 import { Shield, Trees, Target, Flame } from 'lucide-react';
 import { AreaSelector } from '../components/AreaSelector';
 import { DataStatusSummary } from '../components/DataStatusSummary';
+import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 import { useUiLocale } from '../state/LocaleContext';
 import { useUiCapabilities } from '../state/CapabilityContext';
+import { useUiArea } from '../state/AreaContext';
 
 const TEAM_MEMBERS = [
   { name: 'Miguel Alves', email: '' },
@@ -13,6 +15,7 @@ const TEAM_MEMBERS = [
 export function PublicOverviewPage() {
   const { copy } = useUiLocale();
   const { setActivePage } = useUiCapabilities();
+  const { resolvedAreaCode } = useUiArea();
 
   return (
     <section className="ui-page ui-public-page">
@@ -82,7 +85,7 @@ export function PublicOverviewPage() {
       </section>
 
       <AreaSelector />
-      <DataStatusSummary />
+      {resolvedAreaCode ? <DataStatusSummary /> : <EmptyState title={copy('area.selectPrompt')} />}
     </section>
   );
 }

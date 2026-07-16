@@ -5,9 +5,9 @@ interface ComparisonBarChartProps {
   comparison: OperationComparisonResponse | null;
 }
 
-const LEFT_COLOR = '#255f85';
-const RIGHT_COLOR = '#176b4d';
-const SHARED_COLOR = '#53625b';
+const LEFT_COLOR = 'var(--ui-accent)';
+const RIGHT_COLOR = 'var(--ui-primary)';
+const SHARED_COLOR = 'var(--ui-muted)';
 
 export function ComparisonBarChart({ comparison }: ComparisonBarChartProps) {
   if (!comparison) {

@@ -1,14 +1,17 @@
 import { PlayCircle } from 'lucide-react';
 import { AreaSelector } from '../components/AreaSelector';
+import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
+import { useUiArea } from '../state/AreaContext';
 import { useUiSimulation } from '../state/SimulationContext';
 import { useUiActivity } from '../state/ActivityContext';
 import { useNavigate } from 'react-router-dom';
 
 export function SimulationPage() {
   const { copy } = useUiLocale();
+  const { resolvedAreaCode } = useUiArea();
   const { scenarios, selectedScenarioCode, setSelectedScenarioCode } = useUiActivity();
   const {
     simulationForm,
@@ -38,6 +41,7 @@ export function SimulationPage() {
         helpTopic="degradationProfile"
       />
       <AreaSelector compact />
+      {resolvedAreaCode ? (
       <div className="ui-two-column">
         <form
           className="ui-card ui-form"
@@ -161,6 +165,9 @@ export function SimulationPage() {
           </div>
         </section>
       </div>
+      ) : (
+        <EmptyState title={copy('area.selectPrompt')} />
+      )}
     </section>
   );
 }

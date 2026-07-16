@@ -101,16 +101,13 @@ public static class OperationRoleCatalog
                 OperationCapabilities.ApprovalReview, OperationCapabilities.DataContextRead,
                 OperationCapabilities.HelpRead
             ],
-            ["Admin"] =
-            [
-                OperationCapabilities.DemoRead, OperationCapabilities.AreaRead, OperationCapabilities.RiskRead,
-                OperationCapabilities.PipelineRead, OperationCapabilities.RunRead, OperationCapabilities.ScenarioRead,
-                OperationCapabilities.SimulationRead, OperationCapabilities.SimulationExecute, OperationCapabilities.QualityRead,
-                OperationCapabilities.EvidenceRead, OperationCapabilities.EvidenceDownload,
-                OperationCapabilities.EvidenceCompare, OperationCapabilities.DeploymentRead,
-                OperationCapabilities.CloudRead, OperationCapabilities.UsersManage, OperationCapabilities.RolesManage,
-                OperationCapabilities.AdminRead, OperationCapabilities.AdminExecute, OperationCapabilities.P3Read,
-                OperationCapabilities.DataContextRead, OperationCapabilities.HelpRead
+            ["Admin"] = [
+                OperationCapabilities.DemoRead, OperationCapabilities.AreaRead, OperationCapabilities.RiskRead, OperationCapabilities.PipelineRead, OperationCapabilities.RunRead, OperationCapabilities.ScenarioRead, OperationCapabilities.SimulationRead,
+                OperationCapabilities.SimulationExecute, OperationCapabilities.QualityRead, OperationCapabilities.QualityExecuteStatic, OperationCapabilities.QualityExecuteFull, OperationCapabilities.EvidenceRead,
+                OperationCapabilities.EvidenceDownload, OperationCapabilities.EvidenceExecuteCampaign, OperationCapabilities.EvidenceCompare, OperationCapabilities.DeploymentRead, OperationCapabilities.DeploymentPlan,
+                OperationCapabilities.DeploymentDeployStaging, OperationCapabilities.DeploymentDeployProduction, OperationCapabilities.DeploymentRollback, OperationCapabilities.CloudRead,
+                OperationCapabilities.CloudOperateStaging, OperationCapabilities.CloudOperateProduction, OperationCapabilities.CloudDestroy, OperationCapabilities.ApprovalReview, OperationCapabilities.UsersManage,
+                OperationCapabilities.RolesManage, OperationCapabilities.AdminRead, OperationCapabilities.AdminExecute, OperationCapabilities.P3Read, OperationCapabilities.DataContextRead, OperationCapabilities.HelpRead
             ]
         };
 

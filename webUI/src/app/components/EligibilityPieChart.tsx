@@ -6,10 +6,10 @@ interface EligibilityPieChartProps {
   data: RuntimeStatusCountResponse[] | null | undefined;
 }
 
-const GREEN = '#166534';
-const AMBER = '#a16207';
-const RED = '#b91c1c';
-const EMPTY_COLOR = '#d7e1da';
+const GREEN = 'var(--ui-success)';
+const AMBER = 'var(--ui-warning)';
+const RED = 'var(--ui-error)';
+const EMPTY_COLOR = 'var(--ui-border)';
 
 function statusColor(status: string) {
   const text = status?.toLowerCase() ?? '';

@@ -142,13 +142,13 @@ export function QaTestSuitePage() {
                   </span>
                   <span>
                     <strong>Total passed</strong>
-                    <span style={{ color: '#166534', fontWeight: 900 }}>
+                    <span style={{ color: 'var(--ui-success)', fontWeight: 900 }}>
                       {exec.suites.reduce((s, su) => s + (su.passed ?? 0), 0)}
                     </span>
                   </span>
                   <span>
                     <strong>Total failed</strong>
-                    <span style={{ color: '#b91c1c', fontWeight: 900 }}>
+                    <span style={{ color: 'var(--ui-error)', fontWeight: 900 }}>
                       {exec.suites.reduce((s, su) => s + (su.failed ?? 0), 0)}
                     </span>
                   </span>
@@ -166,12 +166,12 @@ export function QaTestSuitePage() {
                       >
                         <span style={{ fontWeight: 700 }}>{suite.suiteName}</span>
                         <span style={{ display: 'flex', gap: 8 }}>
-                          <span style={{ color: '#166534', fontWeight: 900 }}>P {suite.passed ?? '-'}</span>
+                          <span style={{ color: 'var(--ui-success)', fontWeight: 900 }}>P {suite.passed ?? '-'}</span>
                           {(suite.failed ?? 0) > 0 && (
-                            <span style={{ color: '#b91c1c', fontWeight: 900 }}>F {suite.failed}</span>
+                            <span style={{ color: 'var(--ui-error)', fontWeight: 900 }}>F {suite.failed}</span>
                           )}
                           {(suite.skipped ?? 0) > 0 && (
-                            <span style={{ color: '#a16207', fontWeight: 900 }}>S {suite.skipped}</span>
+                            <span style={{ color: 'var(--ui-warning)', fontWeight: 900 }}>S {suite.skipped}</span>
                           )}
                         </span>
                         <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>

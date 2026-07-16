@@ -269,6 +269,19 @@ export const api = {
     );
   },
 
+  listQualitySuites: () => {
+    return httpClient.get<OperationDefinitionResponse[]>('/control/quality/suites', api.getRequestOptions());
+  },
+
+  listQualityRuns: (take = 50) => {
+    const params = new URLSearchParams({ take: String(take) });
+    return httpClient.get<EngineeringOperationResponse[]>(`/control/quality/runs?${params}`, api.getRequestOptions());
+  },
+
+  startQualityRun: (request: StartOperationRequest) => {
+    return httpClient.post<EngineeringOperationResponse>('/control/quality/runs', request, api.getRequestOptions());
+  },
+
   getAlerts: (areaCode: string) => {
     return httpClient.get<AlertStateResponse[]>(
       `/control/areas/${encodeURIComponent(areaCode)}/alerts/active`,

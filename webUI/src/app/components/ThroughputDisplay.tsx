@@ -18,24 +18,24 @@ export function ThroughputDisplay({ audit, timings }: Props) {
     const acceptedRate = audit.expectedEvents
       ? `${((audit.acceptedReadings / audit.expectedEvents) * 100).toFixed(1)}%`
       : `${audit.acceptedReadings}`;
-    metrics.push({ label: 'Taxa de aceitacao', value: acceptedRate, color: '#166534' });
+    metrics.push({ label: 'Taxa de aceitacao', value: acceptedRate, color: 'var(--ui-success)' });
 
     metrics.push({
       label: 'Rejeitados',
       value: String(audit.rejected),
-      color: audit.rejected > 0 ? '#b91c1c' : '#166534',
+      color: audit.rejected > 0 ? 'var(--ui-error)' : 'var(--ui-success)',
     });
     metrics.push({
       label: 'Quarentena',
       value: String(audit.quarantined),
-      color: audit.quarantined > 0 ? '#a16207' : '#166534',
+      color: audit.quarantined > 0 ? 'var(--ui-warning)' : 'var(--ui-success)',
     });
     metrics.push({
       label: 'Retries',
       value: String(audit.retryAttempts),
-      color: audit.retryAttempts > 0 ? '#a16207' : '#166534',
+      color: audit.retryAttempts > 0 ? 'var(--ui-warning)' : 'var(--ui-success)',
     });
-    metrics.push({ label: 'Risk assessments', value: String(audit.riskAssessments), color: '#166534' });
+    metrics.push({ label: 'Risk assessments', value: String(audit.riskAssessments), color: 'var(--ui-success)' });
   }
 
   if (timings?.timeline) {
@@ -44,7 +44,7 @@ export function ThroughputDisplay({ audit, timings }: Props) {
     metrics.push({
       label: 'Pipeline stages',
       value: `${completed}/${total}`,
-      color: completed === total ? '#166534' : '#a16207',
+      color: completed === total ? 'var(--ui-success)' : 'var(--ui-warning)',
     });
   }
 
@@ -53,13 +53,13 @@ export function ThroughputDisplay({ audit, timings }: Props) {
       timings.attempts.attemptCount > 0
         ? `${((timings.attempts.successfulAttempts / timings.attempts.attemptCount) * 100).toFixed(1)}%`
         : 'N/A';
-    metrics.push({ label: 'Sucesso attempts', value: successRate, color: '#166534' });
+    metrics.push({ label: 'Sucesso attempts', value: successRate, color: 'var(--ui-success)' });
 
     if (timings.attempts.avgDurationMs !== null) {
       metrics.push({
         label: 'Duracao media',
         value: `${(timings.attempts.avgDurationMs / 1000).toFixed(2)}s`,
-        color: '#255f85',
+        color: 'var(--ui-accent)',
       });
     }
   }
@@ -68,7 +68,7 @@ export function ThroughputDisplay({ audit, timings }: Props) {
     metrics.push({
       label: 'Eventos esperados',
       value: String(audit.expectedEvents),
-      color: '#255f85',
+      color: 'var(--ui-accent)',
     });
   }
 

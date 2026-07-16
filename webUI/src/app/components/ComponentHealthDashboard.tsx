@@ -16,11 +16,11 @@ const STATUS_ORDER: Record<string, number> = {
 function statusColor(status: string): string {
   switch (status) {
     case 'Healthy':
-      return '#166534';
+      return 'var(--ui-success)';
     case 'Degraded':
-      return '#a16207';
+      return 'var(--ui-warning)';
     case 'Unhealthy':
-      return '#b91c1c';
+      return 'var(--ui-error)';
     default:
       return 'var(--ui-muted)';
   }
