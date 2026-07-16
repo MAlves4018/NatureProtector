@@ -81,7 +81,7 @@ def main() -> int:
     if status in {"PASS", "PASS_PARTIAL_REPORT_PACKAGE"} and (
         not selected
         or any(
-            row.get("status") not in {"PASS", "PASS_COMPLETE_REPORT_PACKAGE", "PASS_PARTIAL_REPORT_PACKAGE"}
+            row.get("status") not in {"PASS", "PASS_COMPLETE_REPORT_PACKAGE", "PASS_PARTIAL_REPORT_PACKAGE", "PASS_EXPLORATORY_VALIDATION", "PASS_GAP_CLOSURE_READY", "PASS_EVIDENCE_COMPLETE", "PLAN_READY_EVIDENCE_INCOMPLETE", "PASS_WITH_LIMITATIONS"}
             for row in selected
         )
     ):

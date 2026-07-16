@@ -1,0 +1,15 @@
+digraph G {
+ graph [rankdir=LR, bgcolor="transparent", pad="0.25", nodesep="0.35", ranksep="0.55", fontname="Arial"];
+ node [shape=box, style="rounded,filled", fillcolor="white", color="#59636e", fontname="Arial", fontsize=11];
+ edge [color="#59636e", arrowsize=0.7];
+ common [label="Condições controladas comuns\nseed, duração, células e configuração"];
+ a [label="Cenário A\ncondições normais"];
+ b [label="Cenário B\nperigo elevado"];
+ c [label="Cenário C\nmesmo perigo + degradação"];
+ metrics [label="Métricas comparáveis\nBaseRisk, NP_score, confiança, integridade,\nlatência, cobertura, bloqueios e alertas"];
+ contrast1 [label="A ↔ B\ncapacidade de diferenciação"];
+ contrast2 [label="B ↔ C\nrobustez e transparência da degradação"];
+ common -> a; common -> b; common -> c;
+ a -> metrics; b -> metrics; c -> metrics;
+ metrics -> contrast1; metrics -> contrast2;
+}

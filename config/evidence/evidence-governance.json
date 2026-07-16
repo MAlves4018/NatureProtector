@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "1.2",
+  "phaseId": "phase10",
+  "title": "Evidence governance, traceability and comparative reporting",
+  "phaseDirectories": {
+    "phase1": "01-inventory",
+    "phase2": "02-tests",
+    "phase3": "03-database",
+    "phase4": "04-runtime",
+    "phase5": "05-performance",
+    "phase6": "06-reliability",
+    "phase7": "07-report-integration",
+    "phase8": "08-campaign",
+    "phase9": "09-np-score-validation",
+    "phase11": "11-evidence-gap-closure"
+  },
+  "summaryCandidates": {
+    "phase1": [
+      "inventory-summary.json"
+    ],
+    "phase2": [
+      "phase2-summary.json",
+      "test-quality-summary.json"
+    ],
+    "phase3": [
+      "phase3-summary.json"
+    ],
+    "phase4": [
+      "phase4-summary.json",
+      "runtime-summary.json"
+    ],
+    "phase5": [
+      "phase5-summary.json",
+      "performance-summary.json"
+    ],
+    "phase6": [
+      "phase6-summary.json",
+      "reliability-summary.json"
+    ],
+    "phase7": [
+      "phase7-summary.json"
+    ],
+    "phase8": [
+      "campaign-summary.json"
+    ],
+    "phase9": [
+      "phase9-summary.json"
+    ],
+    "phase11": [
+      "phase11-summary.json"
+    ]
+  },
+  "scoring": {
+    "weights": {
+      "integrity": 0.25,
+      "completeness": 0.25,
+      "traceability": 0.2,
+      "reproducibility": 0.15,
+      "presentation": 0.15
+    },
+    "readyThreshold": 90,
+    "shareWithCaveatsThreshold": 70,
+    "minimumReportAreaCoverageForReady": 90,
+    "minimumReportAreaCoverageForCaveats": 50,
+    "interpretation": "overallScore is governance quality; evidenceCoveragePercent is the primary completeness measure."
+  },
+  "presentation": {
+    "minimumReportFigures": 5,
+    "minimumReportTables": 5,
+    "preferredFigureFormats": [
+      "svg",
+      "png"
+    ],
+    "bodyFigureLimit": 10,
+    "requireAdjacentInterpretation": true,
+    "requireVisibleScopeAndPeriod": true
+  },
+  "claimRules": {
+    "allowedEvidenceClasses": [
+      "CURRENT_EXECUTION",
+      "CURRENT_STATIC_VERIFICATION",
+      "CURRENT_ANALYTICAL_EVIDENCE",
+      "HISTORICAL_EXECUTION",
+      "IMPLEMENTED_NOT_EXECUTED",
+      "BLOCKED_OR_PENDING",
+      "NO_SOURCE_EVIDENCE"
+    ],
+    "requireSourceFile": true,
+    "requireIntegrityCoverage": true,
+    "requireAllowedAndProhibitedWording": true
+  },
+  "manualCapture": {
+    "requiredMetadata": [
+      "captureId",
+      "title",
+      "purpose",
+      "chapterTarget",
+      "baselineId",
+      "runId",
+      "capturedAtUtc",
+      "sourcePage",
+      "sha256"
+    ],
+    "recommendedMetadata": [
+      "scenario",
+      "simulationRunId",
+      "cycleStart",
+      "cycleEnd",
+      "filters",
+      "redactions",
+      "interpretation",
+      "limitations"
+    ]
+  }
+}

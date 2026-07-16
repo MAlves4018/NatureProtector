@@ -17,7 +17,7 @@ bash scripts/evidence/collect-report-integration-evidence.sh \
 ```powershell
 & .\scripts\evidence\collect-report-integration-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe"
+  -PythonExecutable "python"
 ```
 
 ## Outputs

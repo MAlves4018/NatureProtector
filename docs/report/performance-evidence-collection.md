@@ -15,7 +15,7 @@ PowerShell:
 ```powershell
 & .\scripts\evidence\collect-performance-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe"
+  -PythonExecutable "python"
 ```
 
 Git Bash:
@@ -35,7 +35,7 @@ Use B1 for the first reportable local comparison. B0 uses BenchmarkDotNet `Job.D
 ```powershell
 & .\scripts\evidence\collect-performance-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+  -PythonExecutable "python" `
   -RunMicrobenchmarks `
   -BenchmarkProfile B1 `
   -RequireMicrobenchmarks
@@ -50,7 +50,7 @@ Start the API and, optionally, the frontend. Then execute a calibration before B
 ```powershell
 & .\scripts\evidence\collect-performance-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+  -PythonExecutable "python" `
   -RunHttp `
   -HttpProfile Calibration `
   -IncludeWeb `
@@ -62,7 +62,7 @@ For the report baseline:
 ```powershell
 & .\scripts\evidence\collect-performance-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+  -PythonExecutable "python" `
   -RunHttp `
   -HttpProfile B1 `
   -IncludeWeb `
@@ -72,7 +72,7 @@ For the report baseline:
 The portable runner is also directly callable:
 
 ```powershell
-& "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+& "python" `
   .\scripts\performance\run-http-workload.py `
   --profile B1 `
   --include-web
@@ -107,7 +107,7 @@ Ingest the completed directory into the Phase 5 package:
 ```powershell
 & .\scripts\evidence\collect-performance-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+  -PythonExecutable "python" `
   -SystemRunDirectory "<B1 output directory>" `
   -RequireSystem
 ```

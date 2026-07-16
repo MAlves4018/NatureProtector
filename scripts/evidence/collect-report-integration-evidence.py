@@ -18,10 +18,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-SCRIPT_VERSION = "1.1.0"
+SCRIPT_VERSION = "1.3.0"
 ALLOWED_EVIDENCE_CLASSES = {
     "CURRENT_EXECUTION",
     "CURRENT_STATIC_VERIFICATION",
+    "CURRENT_ANALYTICAL_EVIDENCE",
     "HISTORICAL_EXECUTION",
     "IMPLEMENTED_NOT_EXECUTED",
     "BLOCKED_OR_PENDING",
@@ -315,10 +316,10 @@ def historical_rows(path: Path | None) -> list[dict[str, Any]]:
         if not run_id:
             continue
         try:
-            expected = _required_non_negative_int(row, "expectedEvents", "expected_events")
-            inbox = _required_non_negative_int(row, "inboxEvents", "inbox_events")
-            assessments = _required_non_negative_int(row, "riskAssessments", "risk_assessments")
-            missing = _required_non_negative_int(row, "missingEvents", "missing_events")
+            expected = _required_non_negative_int(row, "expectedEvents", "expected_events", "expected")
+            inbox = _required_non_negative_int(row, "inboxEvents", "inbox_events", "inbox")
+            assessments = _required_non_negative_int(row, "riskAssessments", "risk_assessments", "assessments")
+            missing = _required_non_negative_int(row, "missingEvents", "missing_events", "missing")
             rejected = _required_non_negative_int(row, "rejected", "rejectedEvents", "rejected_events")
             quarantined = _required_non_negative_int(row, "quarantined", "quarantinedEvents", "quarantined_events")
             rate_raw = (
@@ -377,6 +378,8 @@ def main() -> int:
             "phase4": "04-runtime",
             "phase5": "05-performance",
             "phase6": "06-reliability",
+            "phase9": "09-np-score-validation",
+            "phase11": "11-evidence-gap-closure",
         }.items()
     }
     summary_files = {
@@ -385,6 +388,8 @@ def main() -> int:
         "phase4": "phase4-summary.json",
         "phase5": "phase5-summary.json",
         "phase6": "phase6-summary.json",
+        "phase9": "phase9-summary.json",
+        "phase11": "phase11-summary.json",
     }
     summaries: dict[str, dict[str, Any] | None] = {}
     missing_inputs: list[dict[str, str]] = []
@@ -399,8 +404,8 @@ def main() -> int:
 
     inventory = load_json(inventory_path)
     counts = inventory.get("counts", {})
-    tests, database, runtime, performance, reliability = (
-        summaries[name] for name in ("phase2", "phase3", "phase4", "phase5", "phase6")
+    tests, database, runtime, performance, reliability, np_validation = (
+        summaries[name] for name in ("phase2", "phase3", "phase4", "phase5", "phase6", "phase9")
     )
     frontend_state, backend_state = component_state(tests, "frontend"), component_state(tests, "backend")
     runtime_state, performance_state, reliability_state = (
@@ -594,6 +599,10 @@ def main() -> int:
         )
 
     historical_path = phase_dirs["phase4"] / "historical" / "historical-runs.csv" if phase_dirs["phase4"] else None
+    if not historical_path or not historical_path.is_file():
+        phase11_historical = phase_dirs["phase11"] / "admitted" / "historical-runs.csv" if phase_dirs.get("phase11") else None
+        if phase11_historical and phase11_historical.is_file():
+            historical_path = phase11_historical
     bc_rows = historical_rows(historical_path)
     if bc_rows:
         datasets["historical-bc"] = (
@@ -636,6 +645,136 @@ def main() -> int:
             "Casos de fiabilidade por fase",
             "tab:np-reliability",
         )
+
+    np_metrics: dict[str, Any] = np_validation.get("headlineMetrics", {}) if np_validation else {}
+    np_claim_ceiling: dict[str, Any] = np_validation.get("claimCeiling", {}) if np_validation else {}
+    np_validation_passed = bool(
+        np_validation
+        and np_validation.get("status") == "PASS_EXPLORATORY_VALIDATION"
+        and np_validation.get("formulaContractStatus") == "PASS"
+    )
+    if np_validation:
+        np_summary_rows = [
+            {"metric": "Dias reconstruídos", "value": np_metrics.get("dailyRows", 0), "unit": "dias"},
+            {"metric": "Dias sazonais analisados", "value": np_metrics.get("seasonalRows", 0), "unit": "dias"},
+            {"metric": "Datas de evento elegíveis", "value": np_metrics.get("eventDates", 0), "unit": "eventos"},
+            {"metric": "Dias sazonais fora da cobertura dos rótulos", "value": np_metrics.get("seasonalWeatherRowsOutsideEventCoverage", 0), "unit": "dias"},
+            {"metric": "Fim da cobertura das fontes de evento", "value": np_metrics.get("eventCoverageEndDate", ""), "unit": "data"},
+            {"metric": "ROC-AUC do NP_score", "value": np_metrics.get("npScoreRocAuc", ""), "unit": "0–1"},
+            {"metric": "Average Precision do NP_score", "value": np_metrics.get("npScoreAveragePrecision", ""), "unit": "0–1"},
+            {"metric": "Sensibilidade no limiar de aviso", "value": np_metrics.get("warningSensitivity", ""), "unit": "0–1"},
+            {"metric": "Sensibilidade no limiar de alarme", "value": np_metrics.get("alarmSensitivity", ""), "unit": "0–1"},
+            {"metric": "NP_score máximo reconstruído", "value": np_metrics.get("maximumNpScore", ""), "unit": "0–1"},
+            {"metric": "Correlação com extensão ardida", "value": np_metrics.get("extentSpearman", ""), "unit": "Spearman rho"},
+            {"metric": "Métricas runtime importadas", "value": np_metrics.get("scenarioMetricsImported", 0), "unit": "registos"},
+            {"metric": "Células territoriais", "value": np_metrics.get("territorialCells", 0), "unit": "células"},
+            {"metric": "Células com altitude por defeito", "value": np_metrics.get("territorialCellsUsingAltitudeDefault", 0), "unit": "células"},
+            {"metric": "Células com perigosidade por defeito", "value": np_metrics.get("territorialCellsUsingHazardDefault", 0), "unit": "células"},
+            {"metric": "Células com combustível por defeito", "value": np_metrics.get("territorialCellsUsingFuelDefault", 0), "unit": "células"},
+            {"metric": "Valor territorial acrescentado demonstrado", "value": np_metrics.get("territorialTemporalAddedValueDemonstrated", False), "unit": "booleano"},
+            {"metric": "ROC-AUC D-1", "value": np_metrics.get("oneDayLeadRocAuc", ""), "unit": "0–1"},
+            {"metric": "ROC-AUC D-2", "value": np_metrics.get("twoDayLeadRocAuc", ""), "unit": "0–1"},
+        ]
+        for row in np_summary_rows:
+            row["evidence_class"] = "CURRENT_ANALYTICAL_EVIDENCE"
+        datasets["np-score-validation-summary"] = (
+            np_summary_rows,
+            [("metric", "Métrica"), ("value", "Valor"), ("unit", "Unidade"), ("evidence_class", "Classe")],
+            "Validação exploratória retrospetiva do NP_score",
+            "tab:np-score-validation-summary",
+        )
+
+        model_path = phase_dirs["phase9"] / "model-comparison.csv" if phase_dirs["phase9"] else None
+        if model_path and model_path.is_file():
+            model_rows = []
+            for row in load_csv(model_path):
+                if row.get("population") != "seasonal_population":
+                    continue
+                model_rows.append(
+                    {
+                        "model": row.get("model", ""),
+                        "rows": row.get("rows", ""),
+                        "positives": row.get("positives", ""),
+                        "roc_auc": row.get("roc_auc", ""),
+                        "roc_auc_lower95": row.get("roc_auc_lower95", ""),
+                        "roc_auc_upper95": row.get("roc_auc_upper95", ""),
+                        "average_precision": row.get("average_precision", ""),
+                        "cliffs_delta": row.get("cliffs_delta", ""),
+                        "evidence_class": "CURRENT_ANALYTICAL_EVIDENCE",
+                    }
+                )
+            if model_rows:
+                datasets["np-score-model-comparison"] = (
+                    model_rows,
+                    [
+                        ("model", "Modelo"),
+                        ("rows", "Linhas"),
+                        ("positives", "Eventos"),
+                        ("roc_auc", "ROC-AUC"),
+                        ("roc_auc_lower95", "IC95 inf."),
+                        ("roc_auc_upper95", "IC95 sup."),
+                        ("average_precision", "Average Precision"),
+                        ("cliffs_delta", "Cliff delta"),
+                        ("evidence_class", "Classe"),
+                    ],
+                    "Comparação do NP_score com baselines na população sazonal",
+                    "tab:np-score-model-comparison",
+                )
+
+        threshold_path = phase_dirs["phase9"] / "threshold-analysis.csv" if phase_dirs["phase9"] else None
+        if threshold_path and threshold_path.is_file():
+            selected_thresholds = {"0.5", "0.6", "0.7", "0.8"}
+            threshold_rows = []
+            for row in load_csv(threshold_path):
+                if str(round(float(row.get("threshold", 0)), 2)).rstrip("0").rstrip(".") not in selected_thresholds:
+                    continue
+                threshold_rows.append(
+                    {
+                        "threshold": row.get("threshold", ""),
+                        "sensitivity": row.get("sensitivity", ""),
+                        "specificity": row.get("specificity", ""),
+                        "precision": row.get("precision", ""),
+                        "non_event_alert_days_per_30": row.get("non_event_alert_days_per_30", row.get("false_alert_days_per_30", "")),
+                        "evidence_class": "CURRENT_ANALYTICAL_EVIDENCE",
+                    }
+                )
+            if threshold_rows:
+                datasets["np-score-threshold-tradeoff"] = (
+                    threshold_rows,
+                    [
+                        ("threshold", "Limiar"),
+                        ("sensitivity", "Sensibilidade"),
+                        ("specificity", "Especificidade"),
+                        ("precision", "Precisão"),
+                        ("non_event_alert_days_per_30", "Dias com alerta sem evento elegível/30"),
+                        ("evidence_class", "Classe"),
+                    ],
+                    "Trade-off exploratório dos limiares do NP_score",
+                    "tab:np-score-thresholds",
+                )
+
+
+        lag_path = phase_dirs["phase9"] / "lag-analysis.csv" if phase_dirs["phase9"] else None
+        if lag_path and lag_path.is_file():
+            lag_rows = [dict(row, evidence_class="CURRENT_ANALYTICAL_EVIDENCE") for row in load_csv(lag_path)]
+            if lag_rows:
+                datasets["np-score-lag-analysis"] = (
+                    lag_rows,
+                    [("lag_days", "Antecedência (dias)"), ("interpretation", "Interpretação"), ("event_dates", "Eventos"), ("roc_auc", "ROC-AUC"), ("average_precision", "Average Precision"), ("evidence_class", "Classe")],
+                    "Associação concorrente e análise preliminar com D-1/D-2",
+                    "tab:np-score-lag-analysis",
+                )
+
+        source_path = phase_dirs["phase9"] / "event-source-stratification.csv" if phase_dirs["phase9"] else None
+        if source_path and source_path.is_file():
+            source_rows = [dict(row, evidence_class="CURRENT_ANALYTICAL_EVIDENCE") for row in load_csv(source_path)]
+            if source_rows:
+                datasets["np-score-event-source-stratification"] = (
+                    source_rows,
+                    [("event_definition", "Definição do evento"), ("positive_dates", "Datas positivas"), ("prevalence", "Prevalência"), ("roc_auc", "ROC-AUC"), ("average_precision", "Average Precision"), ("evidence_class", "Classe")],
+                    "Resultados por origem e proximidade do rótulo de evento",
+                    "tab:np-score-event-source",
+                )
 
     status_rows = [
         {
@@ -700,6 +839,16 @@ def main() -> int:
             else ("IMPLEMENTED_NOT_EXECUTED" if reliability_state["available"] else "NO_SOURCE_EVIDENCE"),
             "claim_ceiling": "Campanha atual apenas quando summary e auditoria autorizam",
         },
+        {
+            "area": "Validação exploratória do NP_score",
+            "result": np_validation.get("status", "NO_SOURCE") if np_validation else "NO_SOURCE",
+            "evidence_class": "CURRENT_ANALYTICAL_EVIDENCE" if np_validation_passed else "NO_SOURCE_EVIDENCE",
+            "claim_ceiling": (
+                "Discriminação retrospetiva e coerência; não probabilidade calibrada nem validação causal"
+                if np_validation
+                else "Sem fonte analítica da Fase 9"
+            ),
+        },
     ]
     datasets["evidence-status"] = (
         status_rows,
@@ -757,6 +906,24 @@ def main() -> int:
                 "gap": "Fornecer artefacto fonte B/C",
                 "needed": "CSV com run IDs e contagens verificáveis",
                 "report_effect": "Evita fallback ou números sem fonte",
+            }
+        )
+    if not np_validation_passed:
+        gaps.append(
+            {
+                "priority": "P0",
+                "gap": "Executar e verificar a validação exploratória do NP_score",
+                "needed": "Fase 9 com contrato da fórmula e datasets disponíveis",
+                "report_effect": "Permite apresentar discriminação, baselines, limiares e limitações sem inferência",
+            }
+        )
+    elif not np_claim_ceiling.get("runtimeScenarioComparison", False):
+        gaps.append(
+            {
+                "priority": "P1",
+                "gap": "Importar métricas runtime comparáveis dos cenários A/B/C",
+                "needed": "Outputs estruturados e verificados das Fases 4–6",
+                "report_effect": "Completa a comparação entre validação histórica e comportamento operacional",
             }
         )
     datasets["remaining-gaps"] = (
@@ -829,8 +996,23 @@ def main() -> int:
             figures_dir / "reliability-case-coverage",
         )
         generated_figures += ["reliability-case-coverage.svg", "reliability-case-coverage.png"]
+    if np_validation and phase_dirs["phase9"]:
+        phase9_figures = phase_dirs["phase9"] / "figures"
+        for name in (
+            "np-score-distribution.svg",
+            "roc-comparison.svg",
+            "precision-recall-comparison.svg",
+            "threshold-tradeoff.svg",
+            "sensitivity-stability.svg",
+        ):
+            source = phase9_figures / name
+            if source.is_file():
+                shutil.copy2(source, figures_dir / name)
+                generated_figures.append(name)
 
     source_paths = {"inventory": str(inventory_path.relative_to(repo))}
+    if phase_dirs.get("phase11"):
+        source_paths["phase11"] = str(phase_dirs["phase11"].relative_to(repo))
     for phase, directory in phase_dirs.items():
         if directory and (directory / summary_files[phase]).is_file():
             source_paths[phase] = str((directory / summary_files[phase]).relative_to(repo))
@@ -942,6 +1124,27 @@ def main() -> int:
                 "prohibited_wording": "campanha passou sem execução",
             }
         )
+    if np_validation:
+        np_auc = np_metrics.get("npScoreRocAuc")
+        np_ap = np_metrics.get("npScoreAveragePrecision")
+        events = np_metrics.get("eventDates", 0)
+        rows = np_metrics.get("seasonalRows", 0)
+        claim_text = (
+            f"A reconstrução retrospetiva do NP_score analisou {rows} dias sazonais e {events} datas de evento; "
+            f"obteve ROC-AUC {float(np_auc):.3f} e Average Precision {float(np_ap):.3f}."
+            if np_auc is not None and np_ap is not None
+            else "A Fase 9 produziu uma validação exploratória retrospetiva do NP_score."
+        )
+        claims.append(
+            {
+                "claim_id": "RPT-NPS-001",
+                "claim": claim_text,
+                "evidence_class": "CURRENT_ANALYTICAL_EVIDENCE" if np_validation_passed else "BLOCKED_OR_PENDING",
+                "source": source_paths["phase9"],
+                "allowed_wording": "validação exploratória retrospetiva, discriminação observada e comparação com baselines",
+                "prohibited_wording": "probabilidade calibrada, causalidade, eficácia operacional provada ou generalização externa",
+            }
+        )
     for claim in claims:
         if claim["evidence_class"] not in ALLOWED_EVIDENCE_CLASSES:
             raise ValueError(claim)
@@ -1013,6 +1216,24 @@ def main() -> int:
                 "caption": "Comparação das execuções históricas presentes no artefacto fonte.",
             }
         )
+    phase9_asset_specs = {
+        "np-score-distribution.svg": ("FIG-NPS-DIST", "Distribuição retrospetiva do NP_score em datas com evento e controlo."),
+        "roc-comparison.svg": ("FIG-NPS-ROC", "Curvas ROC do NP_score e dos baselines avaliados."),
+        "precision-recall-comparison.svg": ("FIG-NPS-PR", "Curvas Precision–Recall na população rara avaliada."),
+        "threshold-tradeoff.svg": ("FIG-NPS-THR", "Trade-off exploratório entre limiar, deteção e falsos alertas."),
+        "sensitivity-stability.svg": ("FIG-NPS-SENS", "Estabilidade do NP_score perante variações dos pesos candidatos."),
+    }
+    for figure_name, (asset_id, caption) in phase9_asset_specs.items():
+        if figure_name in generated_figures:
+            asset_manifest.append(
+                {
+                    "asset_id": asset_id,
+                    "file": f"figures/{figure_name}",
+                    "recommended_location": "Capítulo 6 — Validação do NP_score",
+                    "evidence_class": "CURRENT_ANALYTICAL_EVIDENCE",
+                    "caption": caption,
+                }
+            )
     write_csv(report_dir / "report-asset-manifest.csv", asset_manifest)
     write_json(report_dir / "report-asset-manifest.json", asset_manifest)
 
@@ -1042,6 +1263,15 @@ def main() -> int:
                 "action": "Ligar B/C ao artefacto histórico fonte",
                 "asset": "table-historical-bc.tex e FIG-BC",
                 "replace_or_extend": "manter classe histórica",
+            }
+        )
+    if np_validation:
+        integration_map.append(
+            {
+                "location": "Capítulo 6 — Validação e resultados",
+                "action": "Integrar a validação exploratória do NP_score, baselines, limiares e análise de sensibilidade",
+                "asset": "table-np-score-*.tex e FIG-NPS-*",
+                "replace_or_extend": "estender; manter explícito que não é probabilidade calibrada nem validação causal",
             }
         )
     integration_map.append(
@@ -1105,6 +1335,38 @@ def main() -> int:
             "",
             "Não existe artefacto fonte B/C utilizável nesta campanha, pelo que nenhuma contagem é apresentada.",
         ]
+    if np_validation:
+        paragraphs += [
+            "",
+            "## Validação exploratória do NP_score",
+            "",
+            (
+                f"A Fase 9 reconstruiu {np_metrics.get('dailyRows', 0)} dias e avaliou "
+                f"{np_metrics.get('seasonalRows', 0)} dias sazonais, incluindo "
+                f"{np_metrics.get('eventDates', 0)} datas de evento elegíveis. "
+                f"O NP_score obteve ROC-AUC {float(np_metrics.get('npScoreRocAuc', 0)):.3f} "
+                f"e Average Precision {float(np_metrics.get('npScoreAveragePrecision', 0)):.3f}."
+            ),
+            (
+                f"No limiar de aviso, a sensibilidade observada foi "
+                f"{float(np_metrics.get('warningSensitivity', 0)):.3f}; no limiar de alarme foi "
+                f"{float(np_metrics.get('alarmSensitivity', 0)):.3f}. O máximo reconstruído foi "
+                f"{float(np_metrics.get('maximumNpScore', 0)):.3f}."
+            ),
+            (
+                f"A reconstrução territorial incluiu {np_metrics.get('territorialCells', 0)} células; "
+                f"{np_metrics.get('territorialCellsUsingAltitudeDefault', 0)} usaram o valor candidato por defeito para altitude e "
+                f"{np_metrics.get('territorialCellsUsingHazardDefault', 0)} para perigosidade. Esta limitação condiciona a interpretação da componente territorial."
+            ),
+            "Estes resultados medem discriminação retrospetiva no âmbito avaliado. Não transformam o índice numa probabilidade calibrada, não demonstram causalidade e não autorizam generalização para outras regiões ou períodos.",
+        ]
+    else:
+        paragraphs += [
+            "",
+            "## Validação exploratória do NP_score",
+            "",
+            "A Fase 9 não está presente nesta campanha; não são apresentadas métricas analíticas do NP_score.",
+        ]
     paragraphs += [
         "",
         "## Limite global",
@@ -1147,12 +1409,18 @@ def main() -> int:
             "currentPerformanceMeasurements": performance_state["passed"],
             "currentReliabilityCampaign": reliability_state["passed"],
             "historicalBC": bool(bc_rows),
+            "currentNpScoreExploratoryValidation": np_validation_passed,
+            "currentNpScoreRuntimeScenarioComparison": bool(
+                np_validation_passed and np_claim_ceiling.get("runtimeScenarioComparison", False)
+            ),
         },
         "limitations": [
             "The package creates no new runtime evidence.",
             "Missing phases remain explicit and do not receive synthetic values.",
             "Historical B/C is included only when a source file contains identifiable rows.",
             "Every promoted current result is derived from its phase summary.",
+            "NP_score results are exploratory and retrospective; they are not calibrated probabilities or causal validation.",
+            "Runtime scenario comparison is promoted only when Phase 9 imports verified structured evidence from prior phases.",
         ],
     }
     write_json(output / "phase7-summary.json", summary)

@@ -1,0 +1,199 @@
+{
+  "schemaVersion": "1.0",
+  "phaseId": "phase11",
+  "title": "Evidence gap closure and completion readiness",
+  "requirements": [
+    {
+      "id": "inventory",
+      "title": "Inventário factual do repositório",
+      "sourcePhase": "phase1",
+      "phaseDirectory": "01-inventory",
+      "summaryCandidates": [
+        "inventory-summary.json"
+      ],
+      "evidenceClassWhenClosed": "CURRENT_STATIC_VERIFICATION",
+      "priority": "P0",
+      "closureCommand": "python scripts/evidence/collect-report-inventory.py --repo . --baseline-id <BASELINE> --output artifacts/report-evidence/<BASELINE>/01-inventory"
+    },
+    {
+      "id": "frontend-tests",
+      "title": "Testes, cobertura e build frontend atuais",
+      "sourcePhase": "phase2",
+      "phaseDirectory": "02-tests",
+      "summaryCandidates": [
+        "phase2-summary.json"
+      ],
+      "component": "frontend",
+      "evidenceClassWhenClosed": "CURRENT_EXECUTION",
+      "priority": "P0",
+      "requiredTools": [
+        "node",
+        "npm"
+      ],
+      "closureCommand": "python scripts/evidence/collect-test-quality-evidence.py --repo . --baseline-id <BASELINE> --run-id <RUN> --skip-backend"
+    },
+    {
+      "id": "backend-tests",
+      "title": "Testes e cobertura backend atuais",
+      "sourcePhase": "phase2",
+      "phaseDirectory": "02-tests",
+      "summaryCandidates": [
+        "phase2-summary.json"
+      ],
+      "component": "backend",
+      "evidenceClassWhenClosed": "CURRENT_EXECUTION",
+      "priority": "P0",
+      "requiredTools": [
+        "dotnet"
+      ],
+      "closureCommand": "python scripts/evidence/collect-test-quality-evidence.py --repo . --baseline-id <BASELINE> --run-id <RUN> --skip-frontend"
+    },
+    {
+      "id": "database-model",
+      "title": "Modelo e arquitetura PostgreSQL",
+      "sourcePhase": "phase3",
+      "phaseDirectory": "03-database",
+      "summaryCandidates": [
+        "phase3-summary.json"
+      ],
+      "evidenceClassWhenClosed": "CURRENT_STATIC_VERIFICATION",
+      "priority": "P0",
+      "closureCommand": "python scripts/evidence/collect-database-architecture-evidence.py --repo . --baseline-id <BASELINE> --run-id <RUN>"
+    },
+    {
+      "id": "historical-bc",
+      "title": "Comparação histórica controlada dos cenários B e C",
+      "sourcePhase": "phase11",
+      "evidenceClassWhenClosed": "HISTORICAL_EXECUTION",
+      "priority": "P1",
+      "historicalSource": "docs/evidence/progress-2026-05-22/06-compare-b-vs-c.json",
+      "scenarioManifests": {
+        "scenario_b": "docs/evidence/progress-2026-05-22/scenario-b-5cycles-6sensors-none.json",
+        "scenario_c": "docs/evidence/progress-2026-05-22/scenario-c-5cycles-6sensors-missing-readings.json"
+      },
+      "closureCommand": "python scripts/evidence/collect-evidence-gap-closure.py --repo . --baseline-id <BASELINE> --run-id <RUN> --overwrite",
+      "sqlSummaryExtracts": {
+        "scenario_b": "docs/evidence/progress-2026-05-22/04-scenario-b-summary.sql.txt",
+        "scenario_c": "docs/evidence/progress-2026-05-22/05-scenario-c-summary.sql.txt"
+      },
+      "evidenceLimitation": "Summarized SQL extracts and manifests are reconciled, but original run directories are not present."
+    },
+    {
+      "id": "integrated-runtime",
+      "title": "Execução integrada atual",
+      "sourcePhase": "phase4",
+      "phaseDirectory": "04-runtime",
+      "summaryCandidates": [
+        "phase4-summary.json",
+        "runtime-summary.json"
+      ],
+      "evidenceClassWhenClosed": "CURRENT_EXECUTION",
+      "priority": "P0",
+      "requiredTools": [
+        "dotnet",
+        "docker"
+      ],
+      "requiredServices": [
+        "api",
+        "postgres",
+        "rabbitmq",
+        "influxdb"
+      ],
+      "closureCommand": "python scripts/evidence/run-report-evidence-campaign.py --repo . --baseline-id <BASELINE> --run-id <RUN> --profile full --execute --require-live-runtime --require-database-trace"
+    },
+    {
+      "id": "performance",
+      "title": "Performance e capacidade atuais",
+      "sourcePhase": "phase5",
+      "phaseDirectory": "05-performance",
+      "summaryCandidates": [
+        "phase5-summary.json",
+        "performance-summary.json"
+      ],
+      "evidenceClassWhenClosed": "CURRENT_EXECUTION",
+      "priority": "P1",
+      "requiredTools": [
+        "dotnet",
+        "docker",
+        "pwsh"
+      ],
+      "requiredServices": [
+        "api"
+      ],
+      "closureCommand": "python scripts/evidence/run-report-evidence-campaign.py --repo . --baseline-id <BASELINE> --run-id <RUN> --profile full --execute --run-http --run-microbenchmarks --require-http --require-microbenchmarks"
+    },
+    {
+      "id": "reliability",
+      "title": "Fiabilidade e degradação atuais",
+      "sourcePhase": "phase6",
+      "phaseDirectory": "06-reliability",
+      "summaryCandidates": [
+        "phase6-summary.json",
+        "reliability-summary.json"
+      ],
+      "evidenceClassWhenClosed": "CURRENT_EXECUTION",
+      "priority": "P1",
+      "requiredTools": [
+        "dotnet",
+        "docker",
+        "pwsh"
+      ],
+      "requiredServices": [
+        "api"
+      ],
+      "closureCommand": "python scripts/evidence/run-report-evidence-campaign.py --repo . --baseline-id <BASELINE> --run-id <RUN> --profile full --execute --execute-p3 --acknowledge-non-production --require-p3"
+    },
+    {
+      "id": "np-score-validation",
+      "title": "Validação exploratória do NP_score",
+      "sourcePhase": "phase9",
+      "phaseDirectory": "09-np-score-validation",
+      "summaryCandidates": [
+        "phase9-summary.json"
+      ],
+      "evidenceClassWhenClosed": "CURRENT_ANALYTICAL_EVIDENCE",
+      "priority": "P0",
+      "requiredTools": [
+        "python"
+      ],
+      "closureCommand": "python scripts/evidence/collect-np-score-validation.py --repo . --baseline-id <BASELINE> --run-id <RUN> --overwrite"
+    }
+  ],
+  "successStatuses": [
+    "PASS",
+    "PASSED",
+    "PASS_COMPLETE_REPORT_PACKAGE",
+    "PASS_PARTIAL_REPORT_PACKAGE",
+    "PASS_EXPLORATORY_VALIDATION",
+    "PASS_WITH_LIMITATIONS",
+    "CURRENT_EXECUTION_PASS"
+  ],
+  "closureStates": {
+    "closed": [
+      "CLOSED_CURRENT",
+      "CLOSED_STATIC",
+      "CLOSED_ANALYTICAL",
+      "CLOSED_HISTORICAL"
+    ],
+    "partial": [
+      "PARTIAL"
+    ],
+    "open": [
+      "READY_TO_EXECUTE",
+      "BLOCKED_ENVIRONMENT",
+      "MISSING_SOURCE",
+      "INVALID_SOURCE"
+    ]
+  },
+  "scoring": {
+    "evidenceCoverageWeight": 0.7,
+    "closureReadinessWeight": 0.3,
+    "readyThreshold": 90,
+    "shareWithCaveatsThreshold": 65
+  },
+  "claimBoundary": {
+    "historicalBC": "The admitted B/C comparison is historical execution evidence from May 2026 and must not be presented as a current run.",
+    "closureReadiness": "A complete runbook or executable plan closes a planning gap, not the underlying evidence gap.",
+    "potentialCoverage": "Potential coverage after planned runs is a target, never an achieved result."
+  }
+}

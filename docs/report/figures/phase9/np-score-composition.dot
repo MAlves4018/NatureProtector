@@ -1,0 +1,30 @@
+digraph G {
+  graph [rankdir=LR, bgcolor="white", pad="0.25", nodesep="0.34", ranksep="0.58", fontname="Arial"];
+  node [shape=box, style="rounded,filled", fillcolor="white", color="#59636e", fontname="Arial", fontsize=10.5, margin="0.12,0.08"];
+  edge [color="#59636e", arrowsize=0.7, fontname="Arial", fontsize=9];
+  temp [label="Temperatura\n40%"];
+  hum [label="Humidade\n35%"];
+  wind [label="Vento\n25%"];
+  weather_metric [label="Métrica meteorológica"];
+  fwi [label="FWI normalizado"];
+  meteorology [label="Meteorologia\n70% métrica + 30% FWI"];
+  drought [label="Secura\nKBDI normalizado"];
+  hazard [label="Perigosidade\n50%"];
+  fuel [label="Combustível\n30%"];
+  geom [label="Geomorfologia\n20%"];
+  territory [label="Território"];
+  cell_base [label="BaseRisk por célula\n50% meteorologia\n20% secura\n30% território", penwidth=1.8];
+  quality [label="Qualidade dos dados\nConfiança × Integridade"];
+  cell_adjusted [label="Score ajustado por célula", penwidth=1.6];
+  area [label="Agregação da área\n70% percentil 80\n+ 30% máximo", penwidth=1.8];
+  score [label="NP_score da área\níndice relativo, não probabilidade", penwidth=2.2];
+  thresholds [label="Classificação operacional\nNormal / Aviso / Alarme"];
+  temp -> weather_metric; hum -> weather_metric; wind -> weather_metric;
+  weather_metric -> meteorology; fwi -> meteorology;
+  hazard -> territory; fuel -> territory; geom -> territory;
+  meteorology -> cell_base; drought -> cell_base; territory -> cell_base;
+  cell_base -> cell_adjusted; quality -> cell_adjusted [label="fatores"];
+  cell_adjusted -> area [label="todas as células"];
+  area -> score;
+  score -> thresholds;
+}

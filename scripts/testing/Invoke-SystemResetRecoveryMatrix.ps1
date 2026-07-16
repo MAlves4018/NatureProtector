@@ -415,6 +415,7 @@ function Invoke-Case {
             $operationId = [string]$run.operationId
             $op = Wait-Operation -BaseUrl $PrimaryApi.BaseUrl -Token $PrimaryToken -OperationId $operationId
             $runId = [string]$op.simulationRunId
+            Wait-RabbitQuiescent -EvidencePath $caseRoot -TimeoutSeconds 60 | Out-Null
         }
         if ($Arrange) { & $Arrange $caseRoot }
         $pgBefore = Get-PostgresCounts -EvidencePath $caseRoot -Label 'before'
@@ -595,6 +596,7 @@ try {
         $script:NewRunTerminal = [string]$op.terminalOutcome
         $run | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath (Join-Path $p 'new-run-start.json') -Encoding UTF8
         $op | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath (Join-Path $p 'new-run-operation.json') -Encoding UTF8
+        Wait-RabbitQuiescent -EvidencePath $p -TimeoutSeconds 60 | Out-Null
         Invoke-Reset -BaseUrl $PrimaryApi.BaseUrl -Token $PrimaryToken -EvidencePath $p -Label 'post-new-run-cleanup'
     } -Assert { param($reset,$pgb,$pga,$rbb,$rba,$ifb,$ifa) $script:NewRunTerminal -eq 'SystemCompleted' -and $reset.status -eq 'Completed' }
 }

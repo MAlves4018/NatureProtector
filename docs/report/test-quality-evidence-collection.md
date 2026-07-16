@@ -13,7 +13,7 @@ A partir da raiz do repositório, em PowerShell:
 ```powershell
 & .\scripts\evidence\collect-test-quality-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe"
+  -PythonExecutable "python"
 ```
 
 O wrapper executa, por omissão:
