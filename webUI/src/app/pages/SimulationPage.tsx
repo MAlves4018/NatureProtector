@@ -39,6 +39,7 @@ export function SimulationPage() {
     degradationProfiles,
   } = useUiSimulation();
   const effectiveOperation = runtimeOperation ?? runOperation;
+  const runSearch = selectedRunId ? `?runId=${encodeURIComponent(selectedRunId)}` : '';
   const steps = ['Cenário', 'Sensores', 'Duração', 'Degradações', 'Execução', 'Revisão'];
   const rateLimited = simulationError instanceof HttpError && simulationError.status === 429;
 
@@ -346,13 +347,13 @@ export function SimulationPage() {
           </div>
           {(effectiveOperation?.simulationRunId || runAudit) && (
             <div className="ui-button-row">
-              <button type="button" className="ui-secondary" onClick={() => navigate('/runs')}>
+              <button type="button" className="ui-secondary" onClick={() => navigate(`/runs${runSearch}`)}>
                 Abrir resultados
               </button>
-              <button type="button" className="ui-secondary" onClick={() => navigate('/scenario-compare')}>
+              <button type="button" className="ui-secondary" onClick={() => navigate(`/scenario-compare${runSearch}`)}>
                 Comparar cenários
               </button>
-              <button type="button" className="ui-secondary" onClick={() => navigate('/evidence')}>
+              <button type="button" className="ui-secondary" onClick={() => navigate(`/evidence${runSearch}`)}>
                 Abrir evidence
               </button>
             </div>

@@ -1,5 +1,6 @@
 import { GitCompareArrows } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ExportActions } from '../components/ExportActions';
 import { PageHeader } from '../components/PageHeader';
 import { api } from '../services/api';
@@ -28,32 +29,66 @@ interface ComparisonRow {
 }
 
 export function ScenarioComparisonPage() {
-  const { runs } = useUiActivity();
-  const [runAId, setRunAId] = useState('');
-  const [runBId, setRunBId] = useState('');
+  const { runs, selectedRunId } = useUiActivity();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [runAId, setRunAId] = useState(() => searchParams.get('runA') ?? selectedRunId);
+  const [runBId, setRunBId] = useState(() => searchParams.get('runB') ?? '');
   const [rows, setRows] = useState<ComparisonRow[]>([]);
+  const [comparedIds, setComparedIds] = useState<[string, string] | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestGeneration = useRef(0);
+
+  const updateRunId = useCallback(
+    (parameter: 'runA' | 'runB', value: string) => {
+      parameter === 'runA' ? setRunAId(value) : setRunBId(value);
+      requestGeneration.current += 1;
+      setRows([]);
+      setComparedIds(null);
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          value ? next.set(parameter, value) : next.delete(parameter);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   useEffect(() => {
     if (runs.length < 2) return;
-    setRunAId((current) => current || runs.find((run) => run.scenarioCode === 'scenario_b')?.id || runs[0].id);
-    setRunBId((current) => current || runs.find((run) => run.scenarioCode === 'scenario_c')?.id || runs[1].id);
-  }, [runs]);
+    const defaultA = selectedRunId || runs.find((run) => run.scenarioCode === 'scenario_b')?.id || runs[0].id;
+    if (!runAId) updateRunId('runA', defaultA);
+    if (!runBId) {
+      updateRunId(
+        'runB',
+        runs.find((run) => run.scenarioCode === 'scenario_c' && run.id !== defaultA)?.id ||
+          runs.find((run) => run.id !== defaultA)?.id ||
+          '',
+      );
+    }
+  }, [runs, runAId, runBId, selectedRunId, updateRunId]);
 
   const compare = async () => {
     if (!runAId || !runBId || runAId === runBId) return;
+    const requestedIds: [string, string] = [runAId, runBId];
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setError(null);
     try {
       const [a, b] = await Promise.all([loadRun(runAId), loadRun(runBId)]);
+      if (generation !== requestGeneration.current) return;
       setRows(buildComparison(a, b));
       setWarnings(comparabilityWarnings(a, b));
+      setComparedIds(requestedIds);
     } catch (value) {
+      if (generation !== requestGeneration.current) return;
       setError(value instanceof Error ? value.message : 'Não foi possível comparar as runs.');
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
   };
 
@@ -66,8 +101,8 @@ export function ScenarioComparisonPage() {
       />
       <section className="ui-card">
         <div className="ui-compare-row">
-          <RunSelect label="Run A" value={runAId} onChange={setRunAId} runs={runs} />
-          <RunSelect label="Run B" value={runBId} onChange={setRunBId} runs={runs} />
+          <RunSelect label="Run A" value={runAId} onChange={(value) => updateRunId('runA', value)} runs={runs} />
+          <RunSelect label="Run B" value={runBId} onChange={(value) => updateRunId('runB', value)} runs={runs} />
           <button
             type="button"
             className="ui-button"
@@ -96,15 +131,22 @@ export function ScenarioComparisonPage() {
             <div>
               <span className="ui-eyebrow">Persistência run-scoped</span>
               <h3>Valores A/B e diferenças</h3>
+              <p className="ui-section-note">
+                A: {comparedIds?.[0]} · B: {comparedIds?.[1]}
+              </p>
             </div>
             <div className="ui-button-row">
               <ExportActions
-                filename={`comparacao-${runAId}-${runBId}.csv`}
+                filename={`comparacao-${comparedIds?.[0]}-${comparedIds?.[1]}.csv`}
                 content={rowsToCsv(rows.map((row) => ({ ...row })))}
               />
               <ExportActions
-                filename={`comparacao-${runAId}-${runBId}.json`}
-                content={JSON.stringify({ runAId, runBId, warnings, rows }, null, 2)}
+                filename={`comparacao-${comparedIds?.[0]}-${comparedIds?.[1]}.json`}
+                content={JSON.stringify(
+                  { runAId: comparedIds?.[0], runBId: comparedIds?.[1], warnings, rows },
+                  null,
+                  2,
+                )}
                 contentType="application/json;charset=utf-8"
               />
             </div>
@@ -161,6 +203,7 @@ function RunSelect({
       <span>{label}</span>
       <select value={value} onChange={(event) => onChange(event.target.value)}>
         <option value="">Selecione</option>
+        {value && !runs.some((run) => run.id === value) && <option value={value}>{value} · histórica</option>}
         {runs.map((run) => (
           <option key={run.id} value={run.id}>
             {run.scenarioCode} · seed {run.executionSeed ?? '—'} · {run.id}
@@ -185,16 +228,30 @@ function buildComparison(a: RunBundle, b: RunBundle): ComparisonRow[] {
   const valueRows: Array<[string, string | number | null | undefined, string | number | null | undefined]> = [
     ['SimulationRunId', a.run.id, b.run.id],
     ['Cenário', a.run.scenarioCode, b.run.scenarioCode],
+    ['Área', a.run.areaCode, b.run.areaCode],
+    ['Estado', a.run.status, b.run.status],
     ['Versão da configuração', a.run.configurationVersionNumber, b.run.configurationVersionNumber],
     ['Seed', a.run.executionSeed, b.run.executionSeed],
     ['Sensores', a.run.runOverrides?.resolved?.sensorCount, b.run.runOverrides?.resolved?.sensorCount],
     ['Ciclos', a.run.numberOfCycles, b.run.numberOfCycles],
     ['Intervalo (s)', a.run.intervalSeconds, b.run.intervalSeconds],
     ['Perfis de degradação', profiles(a), profiles(b)],
+    ['Criada', a.run.createdAt, b.run.createdAt],
+    ['Iniciada', a.run.startedAt, b.run.startedAt],
+    ['Concluída', a.run.endedAt, b.run.endedAt],
     ['Expected', a.audit.expectedEvents, b.audit.expectedEvents],
     ['Accepted', a.audit.acceptedReadings, b.audit.acceptedReadings],
     ['Processed/evaluated', a.audit.riskAssessments, b.audit.riskAssessments],
+    ['Missing', a.audit.missingEvents, b.audit.missingEvents],
+    ['Rejected', a.audit.rejected, b.audit.rejected],
+    ['Pending', a.operation?.accounting.pendingInbox, b.operation?.accounting.pendingInbox],
+    ['Processing', a.operation?.accounting.processingInbox, b.operation?.accounting.processingInbox],
+    ['Retry pending', a.operation?.accounting.retryPendingInbox, b.operation?.accounting.retryPendingInbox],
+    ['Settled', a.operation?.accounting.settled ? 'Sim' : 'Não', b.operation?.accounting.settled ? 'Sim' : 'Não'],
     ['NP Score', a.audit.scoreComponents?.npScore, b.audit.scoreComponents?.npScore],
+    ['Base Risk', a.audit.scoreComponents?.baseRisk, b.audit.scoreComponents?.baseRisk],
+    ['Adjusted Risk', a.audit.scoreComponents?.adjustedScore, b.audit.scoreComponents?.adjustedScore],
+    ['Score100', a.audit.scoreComponents?.score100, b.audit.scoreComponents?.score100],
     ['FWI', a.audit.indexComparison?.fireWeatherIndex, b.audit.indexComparison?.fireWeatherIndex],
     ['KBDI', a.audit.indexComparison?.keetchByramDroughtIndex, b.audit.indexComparison?.keetchByramDroughtIndex],
     [
@@ -205,10 +262,13 @@ function buildComparison(a: RunBundle, b: RunBundle): ComparisonRow[] {
     ['Confidence', a.audit.scoreComponents?.confidenceFactor, b.audit.scoreComponents?.confidenceFactor],
     ['Integrity', a.audit.scoreComponents?.integrityFactor, b.audit.scoreComponents?.integrityFactor],
     ['Coverage (%)', coverage(a), coverage(b)],
+    ['Eligible', eligibility(a, 'eligible'), eligibility(b, 'eligible')],
+    ['Blocked', eligibility(a, 'blocked'), eligibility(b, 'blocked')],
     ['Risco', a.audit.scoreComponents?.npRiskClassLabel, b.audit.scoreComponents?.npRiskClassLabel],
     ['Duração total (ms)', a.timings.runDurationMs, b.timings.runDurationMs],
     ['Até primeira observação (ms)', a.timings.timeToFirstInboxMs, b.timings.timeToFirstInboxMs],
     ['Até settled (ms)', timeToSettled(a), timeToSettled(b)],
+    ['Gap SystemCompleted → settled (ms)', settlementGap(a), settlementGap(b)],
     [
       'Throughput (obs/s)',
       throughputPerSecond(a.audit.acceptedReadings, a.timings.runDurationMs),
@@ -260,6 +320,16 @@ function timeToSettled(bundle: RunBundle) {
   return bundle.operation?.accounting.settled
     ? elapsedMs(bundle.operation.acceptedAt, bundle.operation.finishedAt ?? bundle.operation.systemCompletedAt)
     : null;
+}
+function settlementGap(bundle: RunBundle) {
+  return bundle.operation?.accounting.settled
+    ? elapsedMs(bundle.operation.systemCompletedAt, bundle.operation.finishedAt ?? bundle.operation.systemCompletedAt)
+    : null;
+}
+function eligibility(bundle: RunBundle, status: string) {
+  return bundle.audit.eligibilitySummary
+    .filter((item) => item.status.toLowerCase().includes(status))
+    .reduce((sum, item) => sum + item.count, 0);
 }
 function display(value: string | number | null) {
   return value == null || value === ''

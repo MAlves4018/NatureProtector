@@ -3,6 +3,7 @@ import {
   buildRunProgress,
   diagnosticResultToCsv,
   elapsedMs,
+  evidenceIdentityMatchesRun,
   formatDurationMs,
   normalizeEvidenceCatalog,
 } from './operationalMetrics';
@@ -71,6 +72,12 @@ describe('operational metrics', () => {
         limitation: 'Historical only',
       }),
     ]);
+  });
+
+  it('scopes evidence by exact operation identity or a delimited run token', () => {
+    expect(evidenceIdentityMatchesRun('evidence-1', 'run:run-123; local', 'run-123')).toBe(true);
+    expect(evidenceIdentityMatchesRun('evidence-1', 'run:run-1234; local', 'run-123')).toBe(false);
+    expect(evidenceIdentityMatchesRun('evidence-1', 'global', 'run-123', 'evidence-1')).toBe(true);
   });
 
   it('exports prepared-query results with stable columns and escaped values', () => {

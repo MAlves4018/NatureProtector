@@ -238,6 +238,18 @@ describe('App', () => {
     expect(screen.queryByText(/Sem capability de execucao/i)).not.toBeInTheDocument();
   });
 
+  it('preserves the selected run identity across primary navigation', async () => {
+    window.history.replaceState(null, '', '/simulation?runId=run-001');
+    vi.stubGlobal('fetch', createFetchMock({ roles: ['Admin'] }));
+    renderAuthenticatedUi(['Admin']);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Simulações/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Execuções/i }));
+
+    await waitFor(() => expect(window.location.pathname).toBe('/runs'));
+    expect(new URLSearchParams(window.location.search).get('runId')).toBe('run-001');
+  });
+
   it('submits a runtime run from the frontend when the Admin capability profile is active', async () => {
     const fetchMock = createFetchMock({ roles: ['Admin'] });
     vi.stubGlobal('fetch', fetchMock);

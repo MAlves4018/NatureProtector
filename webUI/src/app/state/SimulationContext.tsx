@@ -196,7 +196,10 @@ export function buildSimulationRequest(
 ): RuntimeRunStartRequest {
   const seed = form.seed.trim();
   const degradationProfiles = normalizeDegradationProfiles(form.degradationProfiles);
-  const legacyDegradationProfile = degradationProfiles[0] ?? null;
+  // An empty selection is an explicit nominal override, not permission to inherit
+  // a scenario's default degradation profile.
+  const requestedDegradationProfiles = degradationProfiles.length > 0 ? degradationProfiles : ['none'];
+  const legacyDegradationProfile = requestedDegradationProfiles[0];
   const runLabel = form.runLabel.trim();
 
   return {
@@ -212,7 +215,7 @@ export function buildSimulationRequest(
     timeoutSeconds: form.timeoutSeconds,
     allowParallelRun: form.allowParallelRun,
     runLabel: runLabel || null,
-    degradationProfiles: degradationProfiles.length > 0 ? degradationProfiles : null,
+    degradationProfiles: requestedDegradationProfiles,
   };
 }
 

@@ -10,6 +10,7 @@ import type { UiNavTarget } from './capabilities';
 import { trapDialogTab } from './components/dialogFocus';
 import { defaultPageFor, findUiPageDefinition } from './navigation/pageRegistry';
 import { useUiLocale, useUiCapabilities } from './state';
+import { useUiActivity } from './state/ActivityContext';
 import './theme/ui.css';
 import { UiProvider } from './state/Provider';
 import { NavBar } from './components/views/navBar';
@@ -70,11 +71,7 @@ const UserRoleAdministrationPage = lazy(() =>
 
 export function App() {
   const [isDark, setIsDark] = useState(false);
-  return (
-    <UiProvider isDark={isDark}>
-      <UiRouter isDark={isDark} setIsDark={setIsDark} />
-    </UiProvider>
-  );
+  return <UiRouter isDark={isDark} setIsDark={setIsDark} />;
 }
 
 function UiRouter({
@@ -88,44 +85,53 @@ function UiRouter({
     () =>
       createBrowserRouter([
         {
-          path: '/login',
           element: (
-            <>
-              <NavBar isDark={isDark} setIsDark={setIsDark} />
-              <LogInOut isDark={isDark} mode="page" />
-            </>
+            <UiProvider isDark={isDark}>
+              <Outlet />
+            </UiProvider>
           ),
-        },
-        {
-          path: '/',
-          element: <UiShell isDark={isDark} setIsDark={setIsDark} />,
           children: [
-            { index: true, element: <UiDefaultRedirect /> },
-            { path: 'demo', element: protect('demo', <PublicOverviewPage />) },
-            { path: 'about', element: protect('about', <AboutPage />) },
-            { path: 'context', element: protect('context', <DataContextPage />) },
-            { path: 'dashboard', element: protect('dashboard', <DashboardsPage />) },
-            { path: 'overview', element: protect('overview', <OverviewPage />) },
-            { path: 'mission', element: protect('mission', <MissionControlPage />) },
-            { path: 'risk', element: protect('risk', <RiskPage />) },
-            { path: 'runs', element: protect('runs', <RunsPage />) },
-            { path: 'simulation', element: protect('simulation', <SimulationPage />) },
-            { path: 'scenario-compare', element: protect('scenario-compare', <ScenarioComparisonPage />) },
-            { path: 'queries', element: protect('queries', <DatabaseQueriesPage />) },
-            { path: 'pipeline', element: protect('pipeline', <PipelinePage />) },
-            { path: 'quality', element: protect('quality', <QualityRunsPage />) },
-            { path: 'qa', element: protect('qa', <QualityEvidencePage />) },
-            { path: 'qa-tests', element: <UiRetiredOperationalSurface name="Browser QA execution" /> },
-            { path: 'evidence', element: protect('evidence', <EvidenceExplorerPage />) },
-            { path: 'deployments', element: protect('deployments', <DeploymentsPage />) },
-            { path: 'deployment-health', element: protect('deployment-health', <DeploymentHealthPage />) },
-            { path: 'cloud', element: protect('cloud', <CloudResourcesPage />) },
-            { path: 'db-queries', element: <Navigate to="/queries" replace /> },
-            { path: 'approvals', element: protect('approvals', <ApprovalsPage />) },
-            { path: 'users', element: protect('users', <UserRoleAdministrationPage />) },
-            { path: 'admin', element: protect('admin', <AdminPage />) },
-            { path: 'p3', element: protect('p3', <ExperimentalPage />) },
-            { path: '*', element: <UiDefaultRedirect /> },
+            {
+              path: '/login',
+              element: (
+                <>
+                  <NavBar isDark={isDark} setIsDark={setIsDark} />
+                  <LogInOut isDark={isDark} mode="page" />
+                </>
+              ),
+            },
+            {
+              path: '/',
+              element: <UiShell isDark={isDark} setIsDark={setIsDark} />,
+              children: [
+                { index: true, element: <UiDefaultRedirect /> },
+                { path: 'demo', element: protect('demo', <PublicOverviewPage />) },
+                { path: 'about', element: protect('about', <AboutPage />) },
+                { path: 'context', element: protect('context', <DataContextPage />) },
+                { path: 'dashboard', element: protect('dashboard', <DashboardsPage />) },
+                { path: 'overview', element: protect('overview', <OverviewPage />) },
+                { path: 'mission', element: protect('mission', <MissionControlPage />) },
+                { path: 'risk', element: protect('risk', <RiskPage />) },
+                { path: 'runs', element: protect('runs', <RunsPage />) },
+                { path: 'simulation', element: protect('simulation', <SimulationPage />) },
+                { path: 'scenario-compare', element: protect('scenario-compare', <ScenarioComparisonPage />) },
+                { path: 'queries', element: protect('queries', <DatabaseQueriesPage />) },
+                { path: 'pipeline', element: protect('pipeline', <PipelinePage />) },
+                { path: 'quality', element: protect('quality', <QualityRunsPage />) },
+                { path: 'qa', element: protect('qa', <QualityEvidencePage />) },
+                { path: 'qa-tests', element: <UiRetiredOperationalSurface name="Browser QA execution" /> },
+                { path: 'evidence', element: protect('evidence', <EvidenceExplorerPage />) },
+                { path: 'deployments', element: protect('deployments', <DeploymentsPage />) },
+                { path: 'deployment-health', element: protect('deployment-health', <DeploymentHealthPage />) },
+                { path: 'cloud', element: protect('cloud', <CloudResourcesPage />) },
+                { path: 'db-queries', element: <Navigate to="/queries" replace /> },
+                { path: 'approvals', element: protect('approvals', <ApprovalsPage />) },
+                { path: 'users', element: protect('users', <UserRoleAdministrationPage />) },
+                { path: 'admin', element: protect('admin', <AdminPage />) },
+                { path: 'p3', element: protect('p3', <ExperimentalPage />) },
+                { path: '*', element: <UiDefaultRedirect /> },
+              ],
+            },
           ],
         },
       ]),
@@ -146,6 +152,7 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
     capabilitiesLoading,
     capabilitiesError,
   } = useUiCapabilities();
+  const { selectedRunId } = useUiActivity();
   const { copy, locale, setLocale } = useUiLocale();
   const [helpTopic, setHelpTopic] = useState<string | null>(null);
   const [navigationOpen, setNavigationOpen] = useState(false);
@@ -213,9 +220,10 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
   const handleNavigate = useCallback(
     (target: UiNavTarget) => {
       setActivePage(target);
-      navigate('/' + target);
+      const search = selectedRunId ? `?runId=${encodeURIComponent(selectedRunId)}` : '';
+      navigate({ pathname: '/' + target, search });
     },
-    [navigate, setActivePage],
+    [navigate, selectedRunId, setActivePage],
   );
 
   const mainId = 'ui-main';

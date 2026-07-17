@@ -45,21 +45,73 @@ test.describe('live local runtime', () => {
       await page.getByRole('checkbox', { name: 'missing-readings' }).check();
     }
     await page.getByRole('button', { name: /^6 Revisão$/i }).click();
+    await expect(page.locator('.ui-review-summary').first().getByText(scenarioCode, { exact: true })).toBeVisible();
     await page.getByRole('button', { name: /Iniciar simulação/i }).click();
     await expect(page.getByText('OperationId')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('SystemCompleted').first()).toBeVisible({ timeout: 120_000 });
+    const launchedRunIdValue = page
+      .locator('.ui-review-panel .ui-definition-list')
+      .locator('dt')
+      .filter({ hasText: /^SimulationRunId$/ })
+      .locator('xpath=following-sibling::dd[1]');
+    await expect(launchedRunIdValue).toHaveText(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      { timeout: 30_000 },
+    );
+    const launchedRunId = (await launchedRunIdValue.textContent())?.trim();
+    expect(launchedRunId).toBeTruthy();
 
     await primaryNav.getByRole('button', { name: /^Simulações$/ }).click();
     await primaryNav.getByRole('button', { name: /^Execuções$/ }).click();
     await expect(page.getByRole('heading', { name: 'Run workspace' })).toBeVisible();
-    await expect
-      .poll(() => page.getByLabel(/selecionar execução/i).inputValue(), { timeout: 20_000 })
-      .not.toBe('');
+    await expect(page.getByLabel(/selecionar execução/i)).toHaveValue(launchedRunId!, { timeout: 20_000 });
+    const selectedRunId = launchedRunId!;
+    await expect(page).toHaveURL(new RegExp(`runId=${selectedRunId}`));
+    await page.reload();
+    await expect(page.getByLabel(/selecionar execução/i)).toHaveValue(selectedRunId);
     await expect(page.getByText('Cockpit da execução')).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByRole('cell', { name: 'NP Score', exact: true })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'FWI', exact: true })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'KBDI', exact: true })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'Portuguese Proxy', exact: true })).toBeVisible();
+    const scientificSummary = page.locator('.ui-science-summary');
+    await expect(scientificSummary.getByText('NP Score', { exact: true })).toBeVisible();
+    await expect(scientificSummary.getByText('FWI', { exact: true })).toBeVisible();
+    await expect(scientificSummary.getByText('KBDI', { exact: true })).toBeVisible();
+    await expect(scientificSummary.getByText('Portuguese Proxy', { exact: true })).toBeVisible();
+    const readAccounting = () =>
+      page.evaluate(async (runId) => {
+        const headers = { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` };
+        const [auditResponse, operationResponse] = await Promise.all([
+          fetch(`/api/control/runtime/runs/${runId}/audit`, { headers }),
+          fetch(`/api/control/runtime/runs/${runId}/operation`, { headers }),
+        ]);
+        if (!auditResponse.ok || !operationResponse.ok) {
+          throw new Error(
+            `Run-scoped accounting failed: audit=${auditResponse.status} operation=${operationResponse.status}`,
+          );
+        }
+        const audit = (await auditResponse.json()) as {
+          expectedEvents: number;
+          acceptedReadings: number;
+          missingEvents: number;
+          riskAssessments: number;
+        };
+        const operation = (await operationResponse.json()) as {
+          simulationRunId: string;
+          accounting: { processedInbox: number; settled: boolean };
+        };
+        return { ...audit, ...operation.accounting, operationRunId: operation.simulationRunId };
+      }, selectedRunId);
+    await expect.poll(async () => (await readAccounting()).settled, { timeout: 30_000 }).toBe(true);
+    const accounting = await readAccounting();
+    expect(accounting.operationRunId).toBe(selectedRunId);
+    expect(accounting.settled).toBe(true);
+    expect(accounting.processedInbox).toBe(accounting.acceptedReadings);
+    expect(accounting.riskAssessments).toBe(accounting.acceptedReadings);
+    if (profile === 'missing') {
+      expect(accounting.acceptedReadings).toBeLessThan(accounting.expectedEvents);
+      expect(accounting.missingEvents).toBe(accounting.expectedEvents - accounting.acceptedReadings);
+    } else {
+      expect(accounting.acceptedReadings).toBe(accounting.expectedEvents);
+      expect(accounting.missingEvents).toBe(0);
+    }
     await capture(page, `live-${profile}-run`);
 
     await primaryNav.getByRole('button', { name: /^Análise e evidência$/ }).click();
@@ -71,6 +123,7 @@ test.describe('live local runtime', () => {
     await expect(page.getByRole('heading', { name: 'Consultas preparadas' })).toBeVisible();
     await page.getByRole('button', { name: /Executar preset/i }).click();
     await expect(page.locator('.ui-table tbody tr').first()).toBeVisible();
+    await expect(page.getByText(`Resultado associado a SimulationRunId: ${selectedRunId}`)).toBeVisible();
     await capture(page, `live-${profile}-query`);
 
     if (process.env.LIVE_SKIP_COMPARISON !== '1') {
@@ -131,7 +184,7 @@ test.describe('live local runtime', () => {
     await page.getByLabel(/intervalo/i).fill('1');
     await page.getByRole('button', { name: /^6 Revisão$/i }).click();
     await page.getByRole('button', { name: /Iniciar simulação/i }).click();
-    const operationLabel = page.getByText('OperationId', { exact: true });
+    const operationLabel = page.locator('.ui-review-panel .ui-definition-list').getByText('OperationId', { exact: true });
     await expect(operationLabel).toBeVisible({ timeout: 30_000 });
     const operationId = (await operationLabel.locator('xpath=following-sibling::dd[1]').textContent())?.trim();
     expect(operationId).toBeTruthy();
@@ -151,8 +204,11 @@ test.describe('live local runtime', () => {
               headers: { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` },
             });
             if (!response.ok) return false;
-            const operation = (await response.json()) as { accounting?: { settled?: boolean } };
-            return operation.accounting?.settled === true;
+            const operation = (await response.json()) as {
+              state?: string;
+              accounting?: { settled?: boolean };
+            };
+            return operation.state === 'SystemCompleted' && operation.accounting?.settled === true;
           }, operationId),
         { timeout: 120_000 },
       )
@@ -172,6 +228,24 @@ test.describe('live local runtime', () => {
     await page.getByLabel('Password').fill(password);
     await page.getByRole('button', { name: /^Sign in$/ }).click();
     await expect(page.getByRole('heading', { name: 'Visão geral operacional' })).toBeVisible({ timeout: 20_000 });
+    await expect
+      .poll(
+        () =>
+          page.evaluate(async () => {
+            const response = await fetch('/api/control/runtime/reset', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ scope: 'runtime-only', confirm: 'RESET_RUNTIME_STATE', dryRun: true }),
+            });
+            const result = (await response.json()) as { status?: string };
+            return result.status ?? `HTTP ${response.status}`;
+          }),
+        { timeout: 30_000 },
+      )
+      .toBe('DryRun');
     await page.goto('/admin');
     await page.getByLabel(/Dry-run/i).uncheck();
     await page.getByLabel(/Escreva RESET_RUNTIME_STATE/i).fill('RESET_RUNTIME_STATE');

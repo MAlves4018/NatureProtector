@@ -70,14 +70,23 @@ test('recovered product flows expose progress, queries, evidence and deployments
   await page.goto('/runs');
   await capture(page, testInfo.project.name, 'run-empty');
   await page.getByLabel(/selecionar execução/i).selectOption('run-ui-review-001');
+  await expect(page).toHaveURL(/runId=run-ui-review-001/);
   await expect(page.getByText('Cockpit da execução')).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel(/selecionar execução/i)).toHaveValue('run-ui-review-001');
+  await page.getByLabel('Pesquisar ID ou cenário').fill('run-ui-review-002');
+  await expect(page.getByRole('cell', { name: 'run-ui-review-002' })).toBeVisible();
+  await page.getByLabel('Pesquisar ID ou cenário').fill('');
   await capture(page, testInfo.project.name, 'run-cockpit');
 
   await page.goto('/scenario-compare');
   await page.getByLabel('Run A').selectOption('run-ui-review-001');
   await page.getByLabel('Run B').selectOption('run-ui-review-002');
+  await expect(page).toHaveURL(/runA=run-ui-review-001/);
+  await expect(page).toHaveURL(/runB=run-ui-review-002/);
   await page.getByRole('button', { name: /^Comparar$/i }).click();
   await expect(page.getByRole('cell', { name: 'Cenário' })).toBeVisible();
+  await expect(page.getByText(/A: run-ui-review-001 · B: run-ui-review-002/)).toBeVisible();
   await capture(page, testInfo.project.name, 'comparison');
 
   await page.goto('/queries');
@@ -85,6 +94,7 @@ test('recovered product flows expose progress, queries, evidence and deployments
   await page.getByRole('button', { name: /Convergência do accounting/i }).click();
   await page.getByRole('button', { name: /Executar preset/i }).click();
   await expect(page.getByRole('columnheader', { name: 'expected' })).toBeVisible();
+  await expect(page.getByText(/Resultado associado a SimulationRunId: run-ui-review-001/)).toBeVisible();
   await capture(page, testInfo.project.name, 'prepared-queries');
 
   await page.goto('/evidence');

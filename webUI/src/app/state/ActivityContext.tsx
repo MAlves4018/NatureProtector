@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { useUiArea } from './AreaContext';
 import { useUiCapabilities } from './CapabilityContext';
@@ -47,6 +48,7 @@ interface UiActivityContextValue {
 const UiActivityContext = createContext<UiActivityContextValue | null>(null);
 
 export function UiActivityProvider({ children }: { children: ReactNode }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { resolvedAreaCode, areasLoading } = useUiArea();
   const { canReadRisk, canReadRun, canReadScenario } = useUiCapabilities();
   const { locale } = useUiLocale();
@@ -62,7 +64,10 @@ export function UiActivityProvider({ children }: { children: ReactNode }) {
   const [runs, setRuns] = useState<SimulationRunResponse[]>([]);
   const [runsLoading, setRunsLoading] = useState(false);
   const [runsError, setRunsError] = useState<Error | null>(null);
-  const [selectedRunId, setSelectedRunId] = useState(() => sessionStorage.getItem(RUN_STORAGE_KEY) ?? '');
+  const urlRunId = searchParams.get('runId')?.trim() ?? '';
+  const [selectedRunId, setSelectedRunIdState] = useState(
+    () => urlRunId || sessionStorage.getItem(RUN_STORAGE_KEY) || '',
+  );
 
   const [runtimeRun, setRuntimeRun] = useState<RuntimeRunSummaryResponse | null>(null);
   const [runAudit, setRunAudit] = useState<RuntimeRunAuditResponse | null>(null);
@@ -72,6 +77,59 @@ export function UiActivityProvider({ children }: { children: ReactNode }) {
   const [runDetailsError, setRunDetailsError] = useState<Error | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const previousAreaCodeRef = useRef<string | null | undefined>(resolvedAreaCode);
+  const pendingUrlSelectionRef = useRef<string | null>(null);
+  const preferredRunIdRef = useRef(summary?.currentRun?.id ?? summary?.latestRun?.id ?? '');
+  preferredRunIdRef.current = summary?.currentRun?.id ?? summary?.latestRun?.id ?? '';
+
+  const updateRunSelection = useCallback(
+    (runId: string) => {
+      const normalized = runId.trim();
+      pendingUrlSelectionRef.current = normalized;
+      setSelectedRunIdState(normalized);
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          normalized ? next.set('runId', normalized) : next.delete('runId');
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  useEffect(() => {
+    if (pendingUrlSelectionRef.current !== null) {
+      const pendingRunId = pendingUrlSelectionRef.current;
+      if (urlRunId === pendingRunId) {
+        pendingUrlSelectionRef.current = null;
+      } else {
+        setSearchParams(
+          (current) => {
+            const next = new URLSearchParams(current);
+            pendingRunId ? next.set('runId', pendingRunId) : next.delete('runId');
+            return next;
+          },
+          { replace: true },
+        );
+      }
+      return;
+    }
+    if (urlRunId && urlRunId !== selectedRunId) {
+      setSelectedRunIdState(urlRunId);
+      return;
+    }
+    if (!urlRunId && selectedRunId) {
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.set('runId', selectedRunId);
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [urlRunId, selectedRunId, setSearchParams]);
 
   const scenarioContext = useMemo(
     () => buildUiScenarioContext(selectedScenarioCode, scenarios, locale, scenarioError),
@@ -112,14 +170,14 @@ export function UiActivityProvider({ children }: { children: ReactNode }) {
     if (previousAreaCode === undefined || previousAreaCode === resolvedAreaCode) return;
 
     setSelectedScenarioCode('');
-    setSelectedRunId('');
+    updateRunSelection('');
     setRuntimeRun(null);
     setRunAudit(null);
     setRunTimings(null);
     setRunOperation(null);
     setRunDetailsError(null);
     setRunDetailsLoading(false);
-  }, [resolvedAreaCode]);
+  }, [resolvedAreaCode, updateRunSelection]);
 
   useEffect(() => {
     if (selectedScenarioCode) {
@@ -150,7 +208,7 @@ export function UiActivityProvider({ children }: { children: ReactNode }) {
 
     Promise.allSettled([
       canReadScenario ? api.getAreaScenarios(resolvedAreaCode) : Promise.resolve([]),
-      canReadRun ? api.listSimulationRuns(resolvedAreaCode, null, 20) : Promise.resolve([]),
+      canReadRun ? api.listSimulationRuns(resolvedAreaCode, null, 100) : Promise.resolve([]),
     ])
       .then(([scenariosResult, runsResult]) => {
         if (cancelled) return;
@@ -162,22 +220,18 @@ export function UiActivityProvider({ children }: { children: ReactNode }) {
               : (scenariosResult.value[0]?.code ?? ''),
           );
         } else {
-          setScenarios([]);
-          setSelectedScenarioCode('');
           setScenarioError(asError(scenariosResult.reason, 'Failed to load scenarios'));
         }
         if (runsResult.status === 'fulfilled') {
           setRuns(runsResult.value);
-          setSelectedRunId((current) => {
-            if (runsResult.value.some((run) => run.id === current)) return current;
-            const preferredId = summary?.currentRun?.id ?? summary?.latestRun?.id;
+          setSelectedRunIdState((current) => {
+            if (current) return current;
+            const preferredId = preferredRunIdRef.current;
             return runsResult.value.some((run) => run.id === preferredId)
               ? (preferredId ?? '')
               : (runsResult.value[0]?.id ?? '');
           });
         } else {
-          setRuns([]);
-          setSelectedRunId('');
           setRunsError(asError(runsResult.reason, 'Failed to load runs'));
         }
       })
@@ -191,15 +245,7 @@ export function UiActivityProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [
-    resolvedAreaCode,
-    canReadRisk,
-    canReadRun,
-    canReadScenario,
-    areasLoading,
-    summary?.currentRun?.id,
-    summary?.latestRun?.id,
-  ]);
+  }, [resolvedAreaCode, canReadRisk, canReadRun, canReadScenario, areasLoading]);
 
   useEffect(() => {
     void refreshVersion;
@@ -261,8 +307,27 @@ export function UiActivityProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!selectedRunId || scopedOperation?.accounting.settled !== false) return;
-    const timer = window.setInterval(() => setRefreshVersion((current) => current + 1), 3000);
-    return () => window.clearInterval(timer);
+    let cancelled = false;
+    let requestInFlight = false;
+    const refreshOperation = async () => {
+      if (requestInFlight) return;
+      requestInFlight = true;
+      try {
+        const operation = await api.getRuntimeOperationByRun(selectedRunId);
+        if (cancelled) return;
+        setRunOperation(operation);
+        if (operation.accounting.settled) setRefreshVersion((current) => current + 1);
+      } catch {
+        // Keep the last truthful operation state; the next interval can recover.
+      } finally {
+        requestInFlight = false;
+      }
+    };
+    const timer = window.setInterval(() => void refreshOperation(), 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [selectedRunId, scopedOperation?.accounting.settled]);
 
   const value = useMemo(
@@ -277,7 +342,7 @@ export function UiActivityProvider({ children }: { children: ReactNode }) {
       runsLoading,
       runsError,
       selectedRunId,
-      setSelectedRunId,
+      setSelectedRunId: updateRunSelection,
       selectedRun,
       runAudit: scopedAudit,
       runTimings: scopedTimings,
@@ -297,6 +362,7 @@ export function UiActivityProvider({ children }: { children: ReactNode }) {
       runsLoading,
       runsError,
       selectedRunId,
+      updateRunSelection,
       selectedRun,
       scopedAudit,
       scopedTimings,

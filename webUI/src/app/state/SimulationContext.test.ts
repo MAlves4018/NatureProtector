@@ -56,8 +56,8 @@ describe('simulation context degradation profiles', () => {
       degradationProfiles: [],
     });
 
-    expect(request.degradationProfile).toBeNull();
-    expect(request.degradationProfiles).toBeNull();
+    expect(request.degradationProfile).toBe('none');
+    expect(request.degradationProfiles).toEqual(['none']);
   });
 
   it('keeps legacy and plural degradation payload fields aligned for degraded runs', () => {

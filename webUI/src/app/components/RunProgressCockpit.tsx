@@ -1,4 +1,5 @@
 import { Activity, Clock3, Copy, Database, FileWarning, RotateCw } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import type { RuntimeOperationResponse, RuntimeRunAuditResponse, RuntimeRunTimingSummaryResponse } from '../types';
 import { executionStatusState } from '../truthfulPresentation';
 import { buildRunProgress, formatDurationMs, timingFacts } from '../utils/operationalMetrics';
@@ -26,6 +27,11 @@ export function RunProgressCockpit({
   const currentWork = operation
     ? operation.accounting.pendingInbox + operation.accounting.processingInbox + operation.accounting.retryPendingInbox
     : null;
+  const activeStart = timings?.startedAt ?? operation?.startedAt ?? operation?.acceptedAt ?? null;
+  const active = Boolean(activeStart && operation && !operation.accounting.settled);
+  const now = useLiveClock(active);
+  const liveDuration = activeStart && active ? Math.max(0, now - new Date(activeStart).getTime()) : null;
+  const displayedDuration = timings?.runDurationMs ?? liveDuration;
 
   return (
     <section className="ui-card ui-progress-cockpit">
@@ -71,7 +77,11 @@ export function RunProgressCockpit({
           label="Aceites / avaliados"
           value={`${metric(progress.accepted)} / ${metric(progress.assessed)}`}
         />
-        <Metric icon={<Clock3 />} label="Duração" value={formatDurationMs(timings?.runDurationMs)} />
+        <Metric
+          icon={<Clock3 />}
+          label={active ? 'Duração live' : 'Duração'}
+          value={formatDurationMs(displayedDuration)}
+        />
         <Metric icon={<FileWarning />} label="Trabalho pendente" value={metric(currentWork ?? progress.pending)} />
         <Metric icon={<Activity />} label="Processado" value={percent(progress.completedPercent)} />
         <Metric icon={<Activity />} label="Aceite" value={percent(progress.acceptedPercent)} />
@@ -131,4 +141,15 @@ function Detail({ label, value }: { label: string; value: number }) {
       <strong>{value}</strong>
     </div>
   );
+}
+
+function useLiveClock(active: boolean) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [active]);
+  return now;
 }

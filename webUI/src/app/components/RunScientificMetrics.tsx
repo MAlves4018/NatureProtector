@@ -138,37 +138,51 @@ export function RunScientificMetrics({ audit }: { audit: RuntimeRunAuditResponse
         </div>
         <span className="ui-section-note">SimulationRunId: {audit?.run.id ?? 'não selecionada'}</span>
       </div>
-      <div className="ui-table-wrap">
-        <table className="ui-table">
-          <thead>
-            <tr>
-              <th>Métrica</th>
-              <th>Valor</th>
-              <th>Escala</th>
-              <th>Timestamp</th>
-              <th>Origem e interpretação</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((metric) => (
-              <tr key={metric.label}>
-                <td>
-                  <strong>{metric.label}</strong>
-                </td>
-                <td>{formatValue(metric.value, metric.label)}</td>
-                <td>{metric.unit}</td>
-                <td>
-                  {metric.timestamp ? new Date(metric.timestamp).toLocaleString('pt-PT') : 'Indisponível para esta run'}
-                </td>
-                <td>
-                  {metric.source}
-                  <small className="ui-table-note">{metric.note || 'Sem nota adicional.'}</small>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="ui-science-summary">
+        {rows.slice(0, 8).map((metric) => (
+          <article key={metric.label}>
+            <span>{metric.label}</span>
+            <strong>{formatValue(metric.value, metric.label)}</strong>
+            <small>{metric.unit}</small>
+          </article>
+        ))}
       </div>
+      <details className="ui-details ui-science-details">
+        <summary>Ver proveniência, timestamps e todas as métricas</summary>
+        <div className="ui-table-wrap">
+          <table className="ui-table">
+            <thead>
+              <tr>
+                <th>Métrica</th>
+                <th>Valor</th>
+                <th>Escala</th>
+                <th>Timestamp</th>
+                <th>Origem e interpretação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((metric) => (
+                <tr key={metric.label}>
+                  <td>
+                    <strong>{metric.label}</strong>
+                  </td>
+                  <td>{formatValue(metric.value, metric.label)}</td>
+                  <td>{metric.unit}</td>
+                  <td>
+                    {metric.timestamp
+                      ? new Date(metric.timestamp).toLocaleString('pt-PT')
+                      : 'Indisponível para esta run'}
+                  </td>
+                  <td>
+                    {metric.source}
+                    <small className="ui-table-note">{metric.note || 'Sem nota adicional.'}</small>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
       {(score?.limitations || indices?.limitations) && (
         <p className="ui-notice ui-warning">
           Limitações declaradas: {[score?.limitations, indices?.limitations].filter(Boolean).join('; ')}

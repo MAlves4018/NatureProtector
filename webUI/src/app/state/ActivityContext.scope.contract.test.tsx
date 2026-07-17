@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { createUiRuntimeSummaryFixture } from '../fixtures';
 import type {
   RuntimeRunAuditResponse,
@@ -140,27 +141,35 @@ function deferred<T>() {
 
 function Probe() {
   const value = useUiActivity();
+  const location = useLocation();
+  const navigate = useNavigate();
   return (
     <>
       <output data-testid="scenario">{value.selectedScenarioCode}</output>
       <output data-testid="run-id">{value.selectedRunId}</output>
       <output data-testid="selected-run">{value.selectedRun?.id ?? ''}</output>
       <output data-testid="loading">{String(value.runDetailsLoading)}</output>
+      <output data-testid="search">{location.search}</output>
       <button type="button" onClick={() => value.setSelectedRunId('run-A')}>
         run A
       </button>
       <button type="button" onClick={() => value.setSelectedRunId('run-B')}>
         run B
       </button>
+      <button type="button" onClick={() => navigate('/queries')}>
+        queries
+      </button>
     </>
   );
 }
 
-function renderProvider() {
+function renderProvider(initialEntry = '/runs') {
   return render(
-    <UiActivityProvider>
-      <Probe />
-    </UiActivityProvider>,
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <UiActivityProvider>
+        <Probe />
+      </UiActivityProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -190,9 +199,11 @@ describe('R1M-002 ActivityContext scope contract', () => {
 
     harness.area.resolvedAreaCode = 'area-b';
     view.rerender(
-      <UiActivityProvider>
-        <Probe />
-      </UiActivityProvider>,
+      <MemoryRouter>
+        <UiActivityProvider>
+          <Probe />
+        </UiActivityProvider>
+      </MemoryRouter>,
     );
 
     await waitFor(() => expect(screen.getByTestId('run-id')).toHaveTextContent('run-B'));
@@ -206,9 +217,11 @@ describe('R1M-002 ActivityContext scope contract', () => {
 
     harness.area.resolvedAreaCode = 'area-b';
     view.rerender(
-      <UiActivityProvider>
-        <Probe />
-      </UiActivityProvider>,
+      <MemoryRouter>
+        <UiActivityProvider>
+          <Probe />
+        </UiActivityProvider>
+      </MemoryRouter>,
     );
     await waitFor(() => expect(screen.getByTestId('scenario')).toHaveTextContent('scenario-area-b'));
   });
@@ -246,5 +259,33 @@ describe('R1M-002 ActivityContext scope contract', () => {
       await lateA.promise;
     });
     expect(screen.getByTestId('selected-run')).toHaveTextContent('run-B');
+  });
+
+  it('uses the URL runId even when the run is outside the recent list', async () => {
+    harness.listSimulationRuns.mockResolvedValue([run('run-A', 'area-a')] as SimulationRunResponse[]);
+    harness.getRuntimeRun.mockImplementation(async (id: string) => run(id, 'area-a'));
+    harness.getRuntimeRunAudit.mockImplementation(async (id: string) => audit(run(id, 'area-a')));
+    harness.getRuntimeRunTimings.mockImplementation(async (id: string) => timings(run(id, 'area-a')));
+
+    renderProvider('/runs?runId=run-historical');
+
+    await waitFor(() => expect(screen.getByTestId('selected-run')).toHaveTextContent('run-historical'));
+    expect(screen.getByTestId('run-id')).toHaveTextContent('run-historical');
+    expect(screen.getByTestId('search')).toHaveTextContent('runId=run-historical');
+  });
+
+  it('writes an explicit selection to the URL', async () => {
+    renderProvider();
+    fireEvent.click(screen.getByRole('button', { name: 'run A' }));
+
+    await waitFor(() => expect(screen.getByTestId('search')).toHaveTextContent('runId=run-A'));
+  });
+
+  it('preserves the canonical runId during internal route navigation', async () => {
+    renderProvider();
+    fireEvent.click(screen.getByRole('button', { name: 'run A' }));
+    fireEvent.click(screen.getByRole('button', { name: 'queries' }));
+
+    await waitFor(() => expect(screen.getByTestId('search')).toHaveTextContent('runId=run-A'));
   });
 });

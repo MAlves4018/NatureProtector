@@ -1,12 +1,17 @@
 import { Database, Play, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExportActions } from '../components/ExportActions';
 import { PageHeader } from '../components/PageHeader';
 import { api } from '../services/api';
 import { useUiActivity } from '../state/ActivityContext';
 import { useUiArea } from '../state/AreaContext';
 import type { RuntimeDiagnosticResultResponse } from '../types';
-import { diagnosticResultToCsv, elapsedMs, throughputPerSecond } from '../utils/operationalMetrics';
+import {
+  diagnosticResultToCsv,
+  elapsedMs,
+  evidenceIdentityMatchesRun,
+  throughputPerSecond,
+} from '../utils/operationalMetrics';
 
 interface PreparedQuery {
   id: string;
@@ -118,8 +123,11 @@ export function DatabaseQueriesPage() {
   const [selectedId, setSelectedId] = useState(PREPARED_QUERIES[0].id);
   const [search, setSearch] = useState('');
   const [result, setResult] = useState<RuntimeDiagnosticResultResponse | null>(null);
+  const [resultRunId, setResultRunId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestGeneration = useRef(0);
+  const previousRunId = useRef(selectedRunId);
   const selected = PREPARED_QUERIES.find((item) => item.id === selectedId) ?? PREPARED_QUERIES[0];
   const visibleQueries = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -128,17 +136,32 @@ export function DatabaseQueriesPage() {
     );
   }, [search]);
 
+  useEffect(() => {
+    if (previousRunId.current === selectedRunId) return;
+    previousRunId.current = selectedRunId;
+    requestGeneration.current += 1;
+    setResult(null);
+    setResultRunId(null);
+    setError(null);
+  }, [selectedRunId]);
+
   const execute = async () => {
     if (!selectedRunId) return;
+    const requestedRunId = selectedRunId;
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setError(null);
     setResult(null);
     try {
-      setResult(await executePreparedQuery(selected, selectedRunId));
+      const response = await executePreparedQuery(selected, requestedRunId);
+      if (generation !== requestGeneration.current) return;
+      setResult(response);
+      setResultRunId(requestedRunId);
     } catch (value) {
+      if (generation !== requestGeneration.current) return;
       setError(value instanceof Error ? value.message : 'A consulta preparada falhou.');
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
   };
 
@@ -169,8 +192,11 @@ export function DatabaseQueriesPage() {
                 type="button"
                 className={selectedId === item.id ? 'ui-query-item ui-query-item-active' : 'ui-query-item'}
                 onClick={() => {
+                  requestGeneration.current += 1;
                   setSelectedId(item.id);
                   setResult(null);
+                  setResultRunId(null);
+                  setLoading(false);
                 }}
               >
                 <span>{item.group}</span>
@@ -218,17 +244,17 @@ export function DatabaseQueriesPage() {
               <h3>Resultado</h3>
               {result && (
                 <div className="ui-button-row">
-                  <ExportActions filename={`${result.id}.csv`} content={diagnosticResultToCsv(result)} />
+                  <ExportActions filename={`${result.id}-${resultRunId}.csv`} content={diagnosticResultToCsv(result)} />
                   <ExportActions
-                    filename={`${result.id}.json`}
-                    content={JSON.stringify(result, null, 2)}
+                    filename={`${result.id}-${resultRunId}.json`}
+                    content={JSON.stringify({ simulationRunId: resultRunId, ...result }, null, 2)}
                     contentType="application/json;charset=utf-8"
                   />
                 </div>
               )}
             </div>
             {!result && !error && <p className="ui-notice">Execute o preset para ler os endpoints live.</p>}
-            {result && <QueryResult result={result} />}
+            {result && <QueryResult result={result} runId={resultRunId} />}
           </section>
         </div>
       </section>
@@ -250,10 +276,8 @@ async function executePreparedQuery(
   ]);
   const score = audit.scoreComponents;
   const indices = audit.indexComparison;
-  const scopedEvidence = evidence.items.filter(
-    (item) =>
-      `${item.evidenceId} ${item.scope}`.toLowerCase().includes(runId.toLowerCase()) ||
-      item.evidenceId === operation?.evidenceId,
+  const scopedEvidence = evidence.items.filter((item) =>
+    evidenceIdentityMatchesRun(item.evidenceId, item.scope, runId, operation?.evidenceId),
   );
   const coverage = audit.expectedEvents ? (audit.acceptedReadings / audit.expectedEvents) * 100 : null;
   const limitations: string[] = [];
@@ -394,9 +418,10 @@ async function executePreparedQuery(
   return makeResult(definition, rows, limitations);
 }
 
-function QueryResult({ result }: { result: RuntimeDiagnosticResultResponse }) {
+function QueryResult({ result, runId }: { result: RuntimeDiagnosticResultResponse; runId: string | null }) {
   return (
     <>
+      <p className="ui-section-note">Resultado associado a SimulationRunId: {runId}</p>
       <div className="ui-table-wrap">
         <table className="ui-table">
           <thead>

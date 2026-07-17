@@ -127,6 +127,23 @@ export function throughputPerSecond(count: number | null | undefined, durationMs
   return count / (durationMs / 1000);
 }
 
+export function evidenceIdentityMatchesRun(
+  evidenceId: string,
+  scope: string,
+  runId: string,
+  operationEvidenceId?: string | null,
+) {
+  const normalizedEvidenceId = evidenceId.trim().toLowerCase();
+  const normalizedRunId = runId.trim().toLowerCase();
+  if (!normalizedRunId) return false;
+  if (operationEvidenceId && normalizedEvidenceId === operationEvidenceId.trim().toLowerCase()) return true;
+  const scopeTokens = scope
+    .toLowerCase()
+    .split(/[^a-z0-9-]+/)
+    .filter(Boolean);
+  return normalizedEvidenceId === normalizedRunId || scopeTokens.includes(normalizedRunId);
+}
+
 export function normalizeEvidenceCatalog(items: readonly RuntimeEvidenceCatalogItemResponse[]): EvidenceCatalogView[] {
   return items.map((item) => ({
     id: item.evidenceId,

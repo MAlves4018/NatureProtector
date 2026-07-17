@@ -31,7 +31,9 @@ export default defineConfig({
         },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1920, height: 1080 } } },
+    { name: 'desktop-1536', use: { ...devices['Desktop Chrome'], viewport: { width: 1536, height: 864 } } },
     { name: 'laptop', use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 } } },
+    { name: 'compact', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 720 } } },
     { name: 'narrow', use: { ...devices['Pixel 7'] } },
   ],
 });

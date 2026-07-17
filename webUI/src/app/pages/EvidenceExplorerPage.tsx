@@ -10,7 +10,7 @@ import { api } from '../services/api';
 import { useUiCapabilities } from '../state/CapabilityContext';
 import { useUiObservability } from '../state/ObservabilityContext';
 import { useUiActivity } from '../state/ActivityContext';
-import { normalizeEvidenceCatalog } from '../utils/operationalMetrics';
+import { evidenceIdentityMatchesRun, normalizeEvidenceCatalog } from '../utils/operationalMetrics';
 
 export function EvidenceExplorerPage() {
   const { catalog, operations, compare } = useOperations();
@@ -29,8 +29,7 @@ export function EvidenceExplorerPage() {
     () =>
       runtimeEvidence.filter((item) => {
         if (!selectedRunId) return false;
-        const identity = `${item.id} ${item.scope}`.toLowerCase();
-        return identity.includes(selectedRunId.toLowerCase()) || item.id === runOperation?.evidenceId;
+        return evidenceIdentityMatchesRun(item.id, item.scope, selectedRunId, runOperation?.evidenceId);
       }),
     [runtimeEvidence, selectedRunId, runOperation?.evidenceId],
   );

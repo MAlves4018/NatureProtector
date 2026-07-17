@@ -55,6 +55,20 @@ class LocalCloneToRunContractTests(unittest.TestCase):
         self.assertIn(r".\scripts\np.ps1 prepare-local", launcher)
         self.assertIn("/health/ready", launcher)
 
+    def test_start_enables_the_local_runtime_orchestrator_explicitly(self) -> None:
+        launcher = read("scripts/dev/start-local-runtime.ps1")
+        self.assertIn("RuntimeOrchestration__Mode", launcher)
+        self.assertIn("'LocalProcess'", launcher)
+        self.assertIn("RuntimeOrchestration__EvidenceMode", launcher)
+        self.assertIn("'FileSystem'", launcher)
+        self.assertIn("RuntimeOrchestration__WorkingDirectory", launcher)
+
+    def test_start_propagates_influx_reset_configuration(self) -> None:
+        launcher = read("scripts/dev/start-local-runtime.ps1")
+        self.assertIn("InfluxDb__Enabled", launcher)
+        self.assertIn("InfluxDb__Bucket", launcher)
+        self.assertIn("INFLUXDB_BUCKET", launcher)
+
     def test_postgres_bootstrap_uses_effective_configuration(self) -> None:
         bootstrap = read("scripts/postgres/bootstrap-control-plane.ps1")
         self.assertIn("Read-NpDotEnv", bootstrap)
