@@ -23,6 +23,8 @@ New manual entrypoints must be documented. Helpers imported by other scripts sho
 
 - `scripts/evidence/run-report-evidence-campaign.sh`: entrypoint manual suportado para Git Bash/Linux; delega na campanha Python e exige `--execute` para ações selecionadas.
 - `scripts/evidence/collect-reliability-evidence.sh`: entrypoint manual suportado para recolha de fiabilidade; não executa P3 sem confirmação explícita.
+- `scripts/evidence/collect-evidence-gap-closure.sh`: wrapper manual para regenerar e verificar a matriz de fecho de gaps de evidência.
+- `scripts/evidence/collect-evidence-intelligence.sh`: wrapper manual para recolher o inventário de claims e artefactos do relatório.
 - `scripts/evidence/Generate-DeepEngineeringExploration20260701.ps1`: entrypoint manual histórico para regenerar o pacote documental de exploração de engenharia de 2026-07-01. Mantém-se documentado como ferramenta de reprodução de evidência, não como fluxo CI ou deployment.
 - `scripts/evidence/run-final-evidence-campaign.py`: entrypoint manual para agregar a campanha final de evidência local; não substitui provas runtime/live ausentes.
 - `scripts/evidence/verify-final-evidence-campaign.py`: verificador manual do pacote de campanha final; falha evidência vazia ou sem identidade explícita.

@@ -88,7 +88,6 @@ def main() -> int:
             closed += 1
             if not row.get("sourceFile") or not row.get("sourceSha256"):
                 issues.append(f"Closed requirement lacks source/hash: {row.get('requirementId')}")
-            source = row.get("sourceFile")
             # Source may be outside the phase directory; only verify the admitted historical source locally.
             if state == "CLOSED_HISTORICAL":
                 local = root / "admitted" / "historical-runs.csv"

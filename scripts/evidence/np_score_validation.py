@@ -17,8 +17,7 @@ import re
 import statistics
 import unicodedata
 from collections import defaultdict
-from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
@@ -438,8 +437,8 @@ def mann_whitney(labels: Sequence[int], scores: Sequence[float]) -> dict[str, fl
 
 
 def bootstrap_metric(labels: Sequence[int], scores: Sequence[float], metric, iterations: int, seed: int) -> dict[str, float | int | None]:
-    positive = [(l, s) for l, s in zip(labels, scores) if l]
-    negative = [(l, s) for l, s in zip(labels, scores) if not l]
+    positive = [(label, score) for label, score in zip(labels, scores) if label]
+    negative = [(label, score) for label, score in zip(labels, scores) if not label]
     estimate = metric(labels, scores)
     if not positive or not negative or iterations <= 0:
         return {"estimate": estimate, "lower95": None, "upper95": None, "iterations": 0}

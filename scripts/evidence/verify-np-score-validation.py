@@ -209,7 +209,7 @@ def main() -> int:
         if "<svg" not in text or "<title" not in text or "<desc" not in text or 'fill="white"' not in text:
             raise SystemExit(f"Invalid or inaccessible SVG: {relative}")
 
-    print(f"PHASE_9_VERIFICATION=PASS")
+    print("PHASE_9_VERIFICATION=PASS")
     print(f"PHASE_9_STATUS={summary['status']}")
     print(f"PHASE_9_OUTPUT={root}")
     return 0

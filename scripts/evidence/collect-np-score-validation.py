@@ -8,7 +8,6 @@ import json
 import math
 import shutil
 import statistics
-import sys
 from collections import Counter, defaultdict
 from datetime import timedelta
 from pathlib import Path
@@ -16,7 +15,6 @@ from typing import Any, Sequence
 
 from np_score_validation import (
     SCRIPT_VERSION,
-    aggregate_area,
     as_date,
     as_float,
     average_precision,

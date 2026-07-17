@@ -17,8 +17,6 @@ import mimetypes
 import re
 import shutil
 import subprocess
-import sys
-from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
