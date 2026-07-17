@@ -59,10 +59,19 @@ services:
       influxdb-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "sh", "-c", "wget -qO- http://localhost:8181/health >/dev/null"]
+      test:
+        - CMD-SHELL
+        - >-
+          token=$$(sed -n
+          's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
+          /run/secrets/influx-admin-token.json | head -n 1) &&
+          test -n "$$token" &&
+          curl -fsS -H "Authorization: Bearer $$token"
+          http://127.0.0.1:8181/health >/dev/null
       interval: 10s
       timeout: 5s
       retries: 12
+      start_period: 20s
     restart: unless-stopped
 
   ipma-ingestor:
