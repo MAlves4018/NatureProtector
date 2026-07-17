@@ -67,7 +67,10 @@ public sealed record RuntimeAttemptTimingSummaryResponse(
     int QuarantinedAttempts,
     double? MinDurationMs,
     double? AvgDurationMs,
-    double? MaxDurationMs);
+    double? MaxDurationMs,
+    double? P50DurationMs = null,
+    double? P95DurationMs = null,
+    double? P99DurationMs = null);
 
 public sealed record RuntimeStageTimingSummaryResponse(
     string Stage,

@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "1.1",
+  "phaseId": "phase9",
+  "title": "NP_score exploratory validation",
+  "areaCode": "proenca-a-nova",
+  "analysisPeriod": {
+    "startDate": "2017-01-01",
+    "endDate": "2025-12-31",
+    "fireSeasonMonths": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "timezone": "Europe/Lisbon"
+  },
+  "sources": {
+    "weatherDaily": "data/baseline/areas/proenca-a-nova/weather_daily_reference.csv",
+    "fireHistory": "data/baseline/areas/proenca-a-nova/fire_history.csv",
+    "cellAttributes": "data/baseline/areas/proenca-a-nova/cells_attributes.csv",
+    "parameterSet": "src/NatureProtector.Prevention/Risk/CandidateParameterSetV1.cs",
+    "scoringService": "src/NatureProtector.Prevention/Risk/SimpleRiskScoringService.cs",
+    "territorialContext": "src/NatureProtector.Prevention/Risk/TerritorialRiskContext.cs",
+    "areaAggregation": "src/NatureProtector.Core/Risk/AreaRiskSnapshot.cs"
+  },
+  "formulaContract": {
+    "version": "Candidate Parameter Set V1.0",
+    "constants": {
+      "MeteorologyWeight": 0.5,
+      "DroughtWeight": 0.2,
+      "TerritoryWeight": 0.3,
+      "TerritoryHazardWeight": 0.5,
+      "TerritoryFuelWeight": 0.3,
+      "TerritoryGeomorphologyWeight": 0.2,
+      "TemperatureMetricWeight": 0.4,
+      "HumidityMetricWeight": 0.35,
+      "WindMetricWeight": 0.25,
+      "FireWeatherIndexNormalizationReference": 80.0,
+      "FireWeatherIndexMetricBlendWeight": 0.7,
+      "FireWeatherIndexBlendWeight": 0.3,
+      "KeetchByramDroughtIndexMaximum": 800.0,
+      "WarningOpenThreshold": 0.6,
+      "WarningCloseThreshold": 0.5,
+      "AlarmOpenThreshold": 0.8,
+      "AlarmCloseThreshold": 0.7,
+      "HighConfidenceFactor": 1.0,
+      "MediumConfidenceFactor": 0.97,
+      "LowConfidenceFactor": 0.93,
+      "IntactIntegrityFactor": 1.0,
+      "DegradedIntegrityFactor": 0.9,
+      "CompromisedIntegrityFactor": 0.8
+    },
+    "areaAggregation": {
+      "percentile": 0.8,
+      "percentileWeight": 0.7,
+      "maximumWeight": 0.3,
+      "method": "nearest-rank"
+    }
+  },
+  "eventDefinition": {
+    "dateField": "start_date",
+    "eligibleHistoryKinds": [
+      "icnf_burned_area_intersection",
+      "large_fire_progression"
+    ],
+    "collapseMultipleIncidentsPerDate": true,
+    "negativeExclusionWindowDays": 2,
+    "minimumEventDates": 5,
+    "coverageStartDate": "2017-01-01",
+    "coverageEndDate": "2024-12-31",
+    "coverageInterpretation": "Dates outside this window are unlabeled, not negative. The end date reflects the available fire-history source snapshot."
+  },
+  "matchedControls": {
+    "controlsPerEvent": 5,
+    "sameCalendarMonth": true,
+    "seed": 20260715
+  },
+  "statistics": {
+    "bootstrapIterations": 500,
+    "bootstrapSeed": 20260715,
+    "thresholdStep": 0.02,
+    "sensitivityWeightDelta": 0.2,
+    "minimumPositiveCountForMetric": 2,
+    "leadTimeDays": [
+      0,
+      1,
+      2
+    ],
+    "bootstrapModels": [
+      "np_score_v1",
+      "simple_weather_trainfit_score",
+      "fire_index_trainfit_score"
+    ],
+    "bootstrapPolicy": "Confidence intervals are produced for the candidate and leakage-controlled primary baselines; ablations retain point estimates to bound formal runtime."
+  },
+  "claimBoundary": {
+    "evidenceClass": "exploratory-retrospective",
+    "scoreMeaning": "relative danger index, not calibrated probability",
+    "allowed": [
+      "behavioural coherence",
+      "retrospective discrimination",
+      "comparison with baselines",
+      "threshold alignment",
+      "sensitivity and ablation findings"
+    ],
+    "notAllowed": [
+      "scientific validation of operational effectiveness",
+      "causal claims",
+      "probability interpretation",
+      "generalisation outside the evaluated area and period",
+      "local ignition prediction from regional event seeds",
+      "territorial added-value claims from a single static area profile",
+      "prospective forecasting claims based only on same-day noon inputs"
+    ]
+  },
+  "baselineComparison": {
+    "fitStartDate": "2017-01-01",
+    "fitEndYear": 2022,
+    "holdoutStartYear": 2023,
+    "method": "Empirical percentile transforms fitted only on the exploration period and then applied unchanged to holdout dates.",
+    "legacyColumnsInterpretation": "simple_weather_risk_score and fire_index_reference_score are retained as retrospective full-period baselines."
+  }
+}

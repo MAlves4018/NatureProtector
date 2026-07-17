@@ -91,11 +91,14 @@ describe('technical surfaces', () => {
     expect(p3.fields.find((field) => field.label === 'Runtime availability')?.state).toBe('not-confirmed');
   });
 
-  it('does not expose destructive reset as available administration', () => {
+  it('exposes the guarded runtime reset only to an authorized runtime writer', () => {
     const actions = buildUiAdminActions({ roles: ['Admin'] });
     const reset = actions.find((action) => action.action === 'Runtime reset');
 
-    expect(reset?.availability).toBe('blocked');
-    expect(reset?.limitations.join(' ')).toMatch(/not exposed/i);
+    expect(reset?.availability).toBe('partial');
+    expect(reset?.confirmationRequired).toMatch(/RESET_RUNTIME_STATE/);
+    expect(
+      buildUiAdminActions({ roles: ['View'] }).find((action) => action.action === 'Runtime reset')?.availability,
+    ).toBe('blocked');
   });
 });

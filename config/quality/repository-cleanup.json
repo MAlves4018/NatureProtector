@@ -35,6 +35,8 @@
       "scripts/evidence/Generate-DeepEngineeringExploration20260701.ps1",
       "scripts/autoscaling/analyze-capacity.py",
       "scripts/evidence/collect-reliability-evidence.sh",
+      "scripts/evidence/collect-evidence-gap-closure.sh",
+      "scripts/evidence/collect-evidence-intelligence.sh",
       "scripts/evidence/run-final-evidence-campaign.py",
       "scripts/evidence/run-report-evidence-campaign.sh",
       "scripts/evidence/verify-final-evidence-campaign.py",

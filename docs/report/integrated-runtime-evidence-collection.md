@@ -19,7 +19,7 @@ PowerShell:
 ```powershell
 & .\scripts\evidence\collect-integrated-runtime-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe"
+  -PythonExecutable "python"
 ```
 
 Git Bash:
@@ -54,7 +54,7 @@ Then run:
 ```powershell
 & .\scripts\evidence\collect-integrated-runtime-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+  -PythonExecutable "python" `
   -Live `
   -RequireLive
 ```
@@ -66,12 +66,12 @@ By default, the collector executes only a reset **dry run**. It changes runtime 
 The HTTP audit and timing contracts provide run-level evidence but do not expose every event, inbox, processing attempt, accepted reading, assessment and projection identifier. To close this gap, install psycopg v3 and provide a DSN through a named environment variable:
 
 ```powershell
-& "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" -m pip install "psycopg[binary]>=3.2,<4"
+& "python" -m pip install "psycopg[binary]>=3.2,<4"
 $env:NATUREPROTECTOR_POSTGRES_DSN = "Host=localhost;Port=5432;Database=natureprotector;Username=np;Password=<local password>"
 
 & .\scripts\evidence\collect-integrated-runtime-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+  -PythonExecutable "python" `
   -Live `
   -RequireLive `
   -PostgresDsnEnvironmentVariable "NATUREPROTECTOR_POSTGRES_DSN" `

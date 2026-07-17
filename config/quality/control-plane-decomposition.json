@@ -30,8 +30,8 @@
         96,
         241
       ],
-      "sha256": "d84d9061a4f5718f218f59fed885503e6926d5dfbdd23e1d9730c7d8ec147657",
-      "line_count": 146
+      "sha256": "681896f991ea0f16034d43ea3101082d18c42af4714746736d281767442f7626",
+      "line_count": 165
     },
     {
       "id": "catalog-queries",
@@ -90,8 +90,8 @@
         1,
         436
       ],
-      "sha256": "834ff2ef0f853c43b4f6ebd7088111db6a409f0f03a0965ccad07747757b0b9e",
-      "line_count": 423
+      "sha256": "8d966f32cef44501f124fafc4d5af454ce9886becd9d4a47698c8c64877ee09b",
+      "line_count": 426
     },
     {
       "id": "runtime-operations-api",

@@ -66,6 +66,7 @@ public interface IControlPlaneService
         RuntimeRunStartRequest request,
         CancellationToken cancellationToken);
     Task<RuntimeOperationResponse?> GetRuntimeOperationAsync(Guid operationId, CancellationToken cancellationToken);
+    Task<RuntimeOperationResponse?> GetRuntimeOperationByRunAsync(Guid runId, CancellationToken cancellationToken);
     Task<RuntimeOperationResponse?> GetCurrentRuntimeOperationAsync(CancellationToken cancellationToken);
     Task<RuntimeOperationResponse?> GetRuntimeOperationByRequestAsync(Guid requestId, CancellationToken cancellationToken);
     Task<RuntimeOperationResponse?> ReconcileRuntimeOperationWithProviderAsync(Guid operationId, CancellationToken cancellationToken);

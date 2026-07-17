@@ -13,6 +13,9 @@ public sealed partial class PostgresControlPlaneService
     public Task<RuntimeOperationResponse?> GetRuntimeOperationAsync(Guid operationId, CancellationToken cancellationToken)
         => GetAndReconcileRuntimeOperationAsync(entity => entity.OperationId == operationId, cancellationToken);
 
+    public Task<RuntimeOperationResponse?> GetRuntimeOperationByRunAsync(Guid runId, CancellationToken cancellationToken)
+        => GetAndReconcileRuntimeOperationAsync(entity => entity.SimulationRunId == runId, cancellationToken);
+
     public async Task<RuntimeOperationResponse?> GetCurrentRuntimeOperationAsync(CancellationToken cancellationToken)
     {
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);

@@ -12,7 +12,7 @@ Phase 6 separates four different claims:
 ```powershell
 & .\scripts\evidence\collect-reliability-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe"
+  -PythonExecutable "python"
 ```
 
 This does not publish messages, start services, change data, execute Docker, alter cloud resources or run deployment actions. It makes short availability probes only.
@@ -27,7 +27,7 @@ $runLabel = "controlled-validation-p3-negative-pipeline-$(Get-Date -Format 'yyyy
 
 & .\scripts\evidence\collect-reliability-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+  -PythonExecutable "python" `
   -ExecuteP3 `
   -AcknowledgeNonProduction `
   -P3RunLabel $runLabel `
@@ -57,7 +57,7 @@ Then ingest and require the P3 audit:
 ```powershell
 & .\scripts\evidence\collect-reliability-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+  -PythonExecutable "python" `
   -AuditDirectory "$auditRoot\p3\postgres" `
   -RequireAudit
 ```

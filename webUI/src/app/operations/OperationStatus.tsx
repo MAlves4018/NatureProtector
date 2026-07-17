@@ -1,6 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 import type { EngineeringOperationResponse } from '../types/operations';
 import { operationStatusMeaning } from '../truthfulPresentation';
+import { formatDurationMs, operationDurationMs } from '../utils/operationalMetrics';
 
 export function OperationStatus({
   operation,
@@ -39,8 +40,20 @@ export function OperationStatus({
           {new Date(operation.requestedAt).toLocaleString()}
         </span>
         <span>
+          <strong>Duração observada</strong>
+          {formatDurationMs(operationDurationMs(operation))}
+        </span>
+        <span>
+          <strong>Pedido por</strong>
+          {operation.requestedBy}
+        </span>
+        <span>
           <strong>Provider</strong>
           {operation.provider ?? 'não despachado'}
+        </span>
+        <span>
+          <strong>Artefactos</strong>
+          {operation.artifacts.length}
         </span>
       </div>
       {operation.limitations.length > 0 && (

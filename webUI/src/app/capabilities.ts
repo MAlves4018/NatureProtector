@@ -38,6 +38,7 @@ export type UiCapability =
 
 export type UiNavTarget =
   | 'demo'
+  | 'overview'
   | 'dashboard'
   | 'mission'
   | 'risk'
@@ -55,6 +56,7 @@ export type UiNavTarget =
   | 'p3'
   | 'context'
   | 'deployment-health'
+  | 'queries'
   | 'scenario-compare'
   | 'about';
 
@@ -62,6 +64,7 @@ export interface UiNavigationItem {
   id: UiNavTarget;
   labelKey:
     | 'nav.demo'
+    | 'nav.overview'
     | 'nav.dashboard'
     | 'nav.mission'
     | 'nav.risk'
@@ -72,6 +75,7 @@ export interface UiNavigationItem {
     | 'nav.qa'
     | 'nav.evidence'
     | 'nav.deployment-health'
+    | 'nav.queries'
     | 'nav.deployments'
     | 'nav.cloud'
     | 'nav.approvals'

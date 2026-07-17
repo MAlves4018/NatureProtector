@@ -152,6 +152,16 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
         return run is null ? NotFound(new { message = $"Simulation run '{runId}' was not found." }) : Ok(run);
     }
 
+    [HttpGet("runs/{runId:guid}/operation")]
+    [ProducesResponseType(typeof(RuntimeOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = OperationCapabilities.RunRead)]
+    public async Task<ActionResult> GetRunOperation(Guid runId, CancellationToken cancellationToken = default)
+    {
+        var operation = await ControlPlane.GetRuntimeOperationByRunAsync(runId, cancellationToken);
+        return operation is null ? NotFound(new { message = $"Runtime operation for run '{runId}' was not found." }) : Ok(operation);
+    }
+
     [HttpGet("runs/{runId:guid}/audit")]
     [ProducesResponseType(typeof(RuntimeRunAuditResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

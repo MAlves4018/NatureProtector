@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { createUiRuntimeSummaryFixture } from '../fixtures';
 import type {
   RuntimeRunAuditResponse,
@@ -16,6 +17,7 @@ const harness = vi.hoisted(() => ({
   getRuntimeRun: vi.fn(),
   getRuntimeRunAudit: vi.fn(),
   getRuntimeRunTimings: vi.fn(),
+  getRuntimeOperationByRun: vi.fn(),
 }));
 
 vi.mock('./AreaContext', () => ({ useUiArea: () => harness.area }));
@@ -31,6 +33,7 @@ vi.mock('../services/api', () => ({
     getRuntimeRun: harness.getRuntimeRun,
     getRuntimeRunAudit: harness.getRuntimeRunAudit,
     getRuntimeRunTimings: harness.getRuntimeRunTimings,
+    getRuntimeOperationByRun: harness.getRuntimeOperationByRun,
   },
 }));
 
@@ -110,6 +113,9 @@ function timings(value: RuntimeRunSummaryResponse): RuntimeRunTimingSummaryRespo
       minDurationMs: null,
       avgDurationMs: null,
       maxDurationMs: null,
+      p50DurationMs: null,
+      p95DurationMs: null,
+      p99DurationMs: null,
     },
     stages: [],
     limitations: [],
@@ -135,27 +141,35 @@ function deferred<T>() {
 
 function Probe() {
   const value = useUiActivity();
+  const location = useLocation();
+  const navigate = useNavigate();
   return (
     <>
       <output data-testid="scenario">{value.selectedScenarioCode}</output>
       <output data-testid="run-id">{value.selectedRunId}</output>
       <output data-testid="selected-run">{value.selectedRun?.id ?? ''}</output>
       <output data-testid="loading">{String(value.runDetailsLoading)}</output>
+      <output data-testid="search">{location.search}</output>
       <button type="button" onClick={() => value.setSelectedRunId('run-A')}>
         run A
       </button>
       <button type="button" onClick={() => value.setSelectedRunId('run-B')}>
         run B
       </button>
+      <button type="button" onClick={() => navigate('/queries')}>
+        queries
+      </button>
     </>
   );
 }
 
-function renderProvider() {
+function renderProvider(initialEntry = '/runs') {
   return render(
-    <UiActivityProvider>
-      <Probe />
-    </UiActivityProvider>,
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <UiActivityProvider>
+        <Probe />
+      </UiActivityProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -174,23 +188,26 @@ beforeEach(() => {
   harness.getRuntimeRunTimings.mockImplementation(async (id: string) =>
     timings(run(id, id === 'run-A' ? 'area-a' : 'area-b')),
   );
+  harness.getRuntimeOperationByRun.mockResolvedValue(null);
 });
 
 describe('R1M-002 ActivityContext scope contract', () => {
-  it('clears a run and its details when the selected area changes', async () => {
+  it('replaces the selected run and details when the selected area changes', async () => {
     const view = renderProvider();
     fireEvent.click(screen.getByRole('button', { name: 'run A' }));
     await waitFor(() => expect(screen.getByTestId('selected-run')).toHaveTextContent('run-A'));
 
     harness.area.resolvedAreaCode = 'area-b';
     view.rerender(
-      <UiActivityProvider>
-        <Probe />
-      </UiActivityProvider>,
+      <MemoryRouter>
+        <UiActivityProvider>
+          <Probe />
+        </UiActivityProvider>
+      </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getByTestId('run-id')).toHaveTextContent(/^$/));
-    expect(screen.getByTestId('selected-run')).toHaveTextContent(/^$/);
+    await waitFor(() => expect(screen.getByTestId('run-id')).toHaveTextContent('run-B'));
+    expect(screen.getByTestId('selected-run')).toHaveTextContent('run-B');
   });
 
   it('revalidates the selected scenario when the area changes', async () => {
@@ -200,9 +217,11 @@ describe('R1M-002 ActivityContext scope contract', () => {
 
     harness.area.resolvedAreaCode = 'area-b';
     view.rerender(
-      <UiActivityProvider>
-        <Probe />
-      </UiActivityProvider>,
+      <MemoryRouter>
+        <UiActivityProvider>
+          <Probe />
+        </UiActivityProvider>
+      </MemoryRouter>,
     );
     await waitFor(() => expect(screen.getByTestId('scenario')).toHaveTextContent('scenario-area-b'));
   });
@@ -240,5 +259,33 @@ describe('R1M-002 ActivityContext scope contract', () => {
       await lateA.promise;
     });
     expect(screen.getByTestId('selected-run')).toHaveTextContent('run-B');
+  });
+
+  it('uses the URL runId even when the run is outside the recent list', async () => {
+    harness.listSimulationRuns.mockResolvedValue([run('run-A', 'area-a')] as SimulationRunResponse[]);
+    harness.getRuntimeRun.mockImplementation(async (id: string) => run(id, 'area-a'));
+    harness.getRuntimeRunAudit.mockImplementation(async (id: string) => audit(run(id, 'area-a')));
+    harness.getRuntimeRunTimings.mockImplementation(async (id: string) => timings(run(id, 'area-a')));
+
+    renderProvider('/runs?runId=run-historical');
+
+    await waitFor(() => expect(screen.getByTestId('selected-run')).toHaveTextContent('run-historical'));
+    expect(screen.getByTestId('run-id')).toHaveTextContent('run-historical');
+    expect(screen.getByTestId('search')).toHaveTextContent('runId=run-historical');
+  });
+
+  it('writes an explicit selection to the URL', async () => {
+    renderProvider();
+    fireEvent.click(screen.getByRole('button', { name: 'run A' }));
+
+    await waitFor(() => expect(screen.getByTestId('search')).toHaveTextContent('runId=run-A'));
+  });
+
+  it('preserves the canonical runId during internal route navigation', async () => {
+    renderProvider();
+    fireEvent.click(screen.getByRole('button', { name: 'run A' }));
+    fireEvent.click(screen.getByRole('button', { name: 'queries' }));
+
+    await waitFor(() => expect(screen.getByTestId('search')).toHaveTextContent('runId=run-A'));
   });
 });

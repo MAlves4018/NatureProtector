@@ -392,6 +392,20 @@ public sealed class ControlPlaneApiTests
     }
 
     [Fact]
+    public async Task RuntimeRunOperationEndpoint_ReturnsRunScopedLifecycleAndAccounting()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/control/runtime/runs/90000000-0000-0000-0000-000000000001/operation");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("90000000-0000-0000-0000-000000000001", document.RootElement.GetProperty("simulationRunId").GetGuid().ToString());
+        Assert.True(document.RootElement.GetProperty("accounting").GetProperty("settled").GetBoolean());
+    }
+
+    [Fact]
     public async Task RuntimeRunStartAndReset_RespectDevelopmentAndReturnResponses()
     {
         await using var factory = new ControlPlaneApiWebApplicationFactory();

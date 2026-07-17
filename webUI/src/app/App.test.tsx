@@ -167,7 +167,7 @@ describe('App', () => {
 
     expect(await screen.findByRole('button', { name: /Risco e dados/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Simulação$/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Técnico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Análise e evidência/i }));
     expect(screen.getByRole('button', { name: /Evidence Explorer/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Deployments$/i })).not.toBeInTheDocument();
 
@@ -181,7 +181,7 @@ describe('App', () => {
     expect(screen.getByText(/Historical repository claims/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Evidence Explorer/i }));
-    expect(await screen.findByRole('heading', { name: /Evidence Explorer/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Cockpit de evidência/i })).toBeInTheDocument();
   });
 
   it('blocks direct access to protected routes without confirmed capabilities', async () => {
@@ -210,7 +210,7 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /Simulações/i })).not.toBeInTheDocument();
   });
 
-  it('retires browser-generated QA and database result surfaces', async () => {
+  it('retires browser-generated QA and protects prepared diagnostics with backend capabilities', async () => {
     window.history.replaceState(null, '', '/qa-tests');
     const { unmount } = renderUi();
     expect(await screen.findByRole('heading', { name: /Superfície operacional indisponível/i })).toBeInTheDocument();
@@ -218,7 +218,7 @@ describe('App', () => {
     unmount();
     window.history.replaceState(null, '', '/db-queries');
     renderUi();
-    expect(await screen.findByRole('heading', { name: /Superfície operacional indisponível/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Acesso negado/i })).toBeInTheDocument();
   });
 
   it('shows executable simulation with controlled degradation for Sim profiles', async () => {
@@ -230,11 +230,24 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: /simulação/i }));
 
     expect(await screen.findByRole('heading', { name: /^Simulação$/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^4 Degradações$/i }));
     expect(screen.getByRole('group', { name: /^Degradação$/i })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'none' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'missing-readings' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'noise' })).toBeInTheDocument();
     expect(screen.queryByText(/Sem capability de execucao/i)).not.toBeInTheDocument();
+  });
+
+  it('preserves the selected run identity across primary navigation', async () => {
+    window.history.replaceState(null, '', '/simulation?runId=run-001');
+    vi.stubGlobal('fetch', createFetchMock({ roles: ['Admin'] }));
+    renderAuthenticatedUi(['Admin']);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Simulações/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Execuções/i }));
+
+    await waitFor(() => expect(window.location.pathname).toBe('/runs'));
+    expect(new URLSearchParams(window.location.search).get('runId')).toBe('run-001');
   });
 
   it('submits a runtime run from the frontend when the Admin capability profile is active', async () => {
@@ -247,6 +260,7 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: /simulação/i }));
     fireEvent.change(await screen.findByLabelText(/selecionar área/i), { target: { value: 'proenca-a-nova' } });
 
+    fireEvent.click(await screen.findByRole('button', { name: /^6 Revisão$/i }));
     const submitButton = await screen.findByRole('button', { name: /Iniciar simulação/i });
     await waitFor(() => expect(submitButton).not.toBeDisabled());
     fireEvent.click(submitButton);
@@ -266,8 +280,8 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Admin$/i }));
     fireEvent.click(await screen.findByRole('button', { name: /^Administração$/i }));
     expect(await screen.findByRole('heading', { name: /Administração proporcional/i })).toBeInTheDocument();
-    expect(screen.getByText('Runtime reset')).toBeInTheDocument();
-    expect(screen.getAllByText('blocked').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Runtime reset')).not.toHaveLength(0);
+    expect(screen.getAllByText('partial').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: /P3 experimental/i }));
     expect(await screen.findByRole('heading', { name: /P3 experimental/i })).toBeInTheDocument();
