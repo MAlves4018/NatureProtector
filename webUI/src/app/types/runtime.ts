@@ -176,6 +176,9 @@ export interface RuntimeAttemptTimingSummaryResponse {
   minDurationMs: number | null;
   avgDurationMs: number | null;
   maxDurationMs: number | null;
+  p50DurationMs: number | null;
+  p95DurationMs: number | null;
+  p99DurationMs: number | null;
 }
 
 export interface RuntimeStageTimingSummaryResponse {

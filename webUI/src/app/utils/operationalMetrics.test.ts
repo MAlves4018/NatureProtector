@@ -9,7 +9,7 @@ import {
 
 describe('operational metrics', () => {
   it('formats only defensible durations and never turns missing data into zero', () => {
-    expect(formatDurationMs(null)).toBe('Não medido');
+    expect(formatDurationMs(null)).toBe('Indisponível');
     expect(formatDurationMs(850)).toBe('850 ms');
     expect(formatDurationMs(65_000)).toBe('1 min 05 s');
     expect(elapsedMs('2026-07-16T10:00:00Z', '2026-07-16T10:01:05Z')).toBe(65_000);
@@ -35,7 +35,13 @@ describe('operational metrics', () => {
       accepted: 15,
       assessed: 12,
       completedPercent: 60,
+      acceptedPercent: 75,
+      lostPercent: 25,
       pending: 4,
+      processing: 1,
+      retryPending: 1,
+      quarantined: 0,
+      settled: false,
     });
   });
 

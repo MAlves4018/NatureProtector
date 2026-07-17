@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ExportActions } from '../components/ExportActions';
 import { PageHeader } from '../components/PageHeader';
 import { RunProgressCockpit } from '../components/RunProgressCockpit';
+import { RunScientificMetrics } from '../components/RunScientificMetrics';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
 import { useUiActivity } from '../state/ActivityContext';
@@ -13,7 +14,17 @@ import { formatDurationMs, rowsToCsv, timingFacts } from '../utils/operationalMe
 export function RunsPage() {
   const { copy } = useUiLocale();
   const navigate = useNavigate();
-  const { runs, runsLoading, selectedRunId, setSelectedRunId, runContext, runAudit, runTimings } = useUiActivity();
+  const {
+    runs,
+    runsLoading,
+    selectedRunId,
+    setSelectedRunId,
+    runContext,
+    runAudit,
+    runTimings,
+    runOperation,
+    refreshSelectedRun,
+  } = useUiActivity();
   const [tab, setTab] = useState<'summary' | 'lifecycle' | 'accounting' | 'quality' | 'evidence'>('summary');
   const presentation = runPresentationState({
     status: runContext.run?.status ?? runContext.state,
@@ -64,7 +75,14 @@ export function RunsPage() {
               <strong>{runContext.run?.areaCode ?? 'Indisponível'}</strong>
             </div>
           </section>
-          <RunProgressCockpit operation={null} audit={runAudit} timings={runTimings} />
+          <RunProgressCockpit
+            operation={runOperation}
+            audit={runAudit}
+            timings={runTimings}
+            selectedRunId={selectedRunId}
+            onRefresh={refreshSelectedRun}
+          />
+          <RunScientificMetrics audit={runAudit} />
           <div className="ui-button-row ui-run-actions">
             <button type="button" className="ui-secondary" onClick={() => navigate('/scenario-compare')}>
               <GitCompareArrows size={15} /> Comparar cenários
@@ -119,8 +137,8 @@ export function RunsPage() {
               </div>
             </section>
           )}
-          {tab === 'lifecycle' && <Lifecycle timings={runTimings} />}
-          {tab === 'accounting' && <Accounting audit={runAudit} />}
+          {tab === 'lifecycle' && <Lifecycle timings={runTimings} operation={runOperation} />}
+          {tab === 'accounting' && <Accounting audit={runAudit} operation={runOperation} />}
           {tab === 'quality' && <Quality audit={runAudit} />}
           {tab === 'evidence' && (
             <section className="ui-card">
@@ -128,7 +146,11 @@ export function RunsPage() {
                 <h3>Pacote exportável da run</h3>
                 <ExportActions
                   filename={`run-${runContext.resolvedRunId}.json`}
-                  content={JSON.stringify({ run: runContext.run, audit: runAudit, timings: runTimings }, null, 2)}
+                  content={JSON.stringify(
+                    { run: runContext.run, operation: runOperation, audit: runAudit, timings: runTimings },
+                    null,
+                    2,
+                  )}
                   contentType="application/json;charset=utf-8"
                 />
               </div>
@@ -188,14 +210,24 @@ function RunTab({
   );
 }
 
-function Lifecycle({ timings }: { timings: ReturnType<typeof useUiActivity>['runTimings'] }) {
+function Lifecycle({
+  timings,
+  operation,
+}: {
+  timings: ReturnType<typeof useUiActivity>['runTimings'];
+  operation: ReturnType<typeof useUiActivity>['runOperation'];
+}) {
   const events = [
+    ['Pedido aceite', operation?.acceptedAt],
+    ['Simulator iniciado', operation?.startedAt],
     ['Run iniciada', timings?.startedAt],
     ['Primeiro evento recebido', timings?.firstInboxReceivedAt],
     ['Primeiro processamento', timings?.firstProcessingAttemptStartedAt],
     ['Primeiro risco', timings?.firstRiskAssessmentCreatedAt],
     ['Último processamento', timings?.lastProcessingAttemptFinishedAt],
     ['Run terminada', timings?.endedAt],
+    ['SystemCompleted', operation?.systemCompletedAt],
+    ['Settled', operation?.accounting.settled ? (operation.finishedAt ?? operation.systemCompletedAt) : null],
   ];
   return (
     <div className="ui-two-column">
@@ -224,7 +256,7 @@ function Lifecycle({ timings }: { timings: ReturnType<typeof useUiActivity>['run
           )}
         </div>
         <div className="ui-detail-grid">
-          {timingFacts(timings).map((fact) => (
+          {timingFacts(timings, operation).map((fact) => (
             <div key={fact.label} className="ui-detail-row">
               <span>{fact.label}</span>
               <strong>{fact.value}</strong>
@@ -265,17 +297,46 @@ function Lifecycle({ timings }: { timings: ReturnType<typeof useUiActivity>['run
   );
 }
 
-function Accounting({ audit }: { audit: ReturnType<typeof useUiActivity>['runAudit'] }) {
+function Accounting({
+  audit,
+  operation,
+}: {
+  audit: ReturnType<typeof useUiActivity>['runAudit'];
+  operation: ReturnType<typeof useUiActivity>['runOperation'];
+}) {
   const expected = audit?.expectedEvents;
   const accepted = audit?.acceptedReadings;
   return (
     <section className="ui-card">
       <h3>Accounting isolado por run</h3>
       <div className="ui-metric-grid">
-        <EvidenceBox title="Expected" value={expected == null ? 'Sem dados' : String(expected)} />
-        <EvidenceBox title="Accepted" value={accepted == null ? 'Sem dados' : String(accepted)} />
+        <EvidenceBox title="Esperados" value={expected == null ? 'Sem dados' : String(expected)} />
+        <EvidenceBox title="Aceites" value={accepted == null ? 'Sem dados' : String(accepted)} />
         <EvidenceBox title="Missing" value={audit?.missingEvents == null ? 'Sem dados' : String(audit.missingEvents)} />
         <EvidenceBox title="Processed" value={audit ? String(audit.riskAssessments) : 'Sem dados'} />
+        <EvidenceBox title="Pending" value={operation ? String(operation.accounting.pendingInbox) : 'Indisponível'} />
+        <EvidenceBox
+          title="Processing"
+          value={operation ? String(operation.accounting.processingInbox) : 'Indisponível'}
+        />
+        <EvidenceBox
+          title="A aguardar retry"
+          value={operation ? String(operation.accounting.retryPendingInbox) : 'Indisponível'}
+        />
+        <EvidenceBox
+          title="Em quarentena"
+          value={
+            operation
+              ? String(operation.accounting.quarantinedInbox)
+              : audit
+                ? String(audit.quarantined)
+                : 'Indisponível'
+          }
+        />
+        <EvidenceBox
+          title="Settled"
+          value={operation ? (operation.accounting.settled ? 'Sim' : 'Não') : 'Indisponível'}
+        />
       </div>
       {expected != null && accepted != null && accepted < expected && (
         <p className="ui-notice ui-warning">
@@ -293,7 +354,7 @@ function Quality({ audit }: { audit: ReturnType<typeof useUiActivity>['runAudit'
       <h3>Qualidade e perdas</h3>
       <div className="ui-metric-grid">
         <EvidenceBox title="Rejected" value={audit ? String(audit.rejected) : 'Sem dados'} />
-        <EvidenceBox title="Quarantined" value={audit ? String(audit.quarantined) : 'Sem dados'} />
+        <EvidenceBox title="Em quarentena" value={audit ? String(audit.quarantined) : 'Sem dados'} />
         <EvidenceBox title="Retries" value={audit ? String(audit.retryAttempts) : 'Sem dados'} />
         <EvidenceBox title="Risk assessments" value={audit ? String(audit.riskAssessments) : 'Sem dados'} />
       </div>

@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, ArrowRight, Database, Gauge, ShieldCheck } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, Database, Gauge, RotateCw, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AreaSelector } from '../components/AreaSelector';
 import { DataStatusSummary } from '../components/DataStatusSummary';
@@ -17,12 +17,12 @@ export function OverviewPage() {
   const { copy } = useUiLocale();
   const { riskModel, summary } = useUiRisk();
   const { runContext, setSelectedRunId } = useUiActivity();
-  const { operationalHealth, rabbitMqMetrics } = useUiObservability();
+  const { operationalHealth, rabbitMqMetrics, refreshObservability } = useUiObservability();
   const { activeAlerts } = useUiAlerts();
   const readinessItems = useReadinessItems();
   const health = globalOperationalStatus(operationalHealth?.components ?? []);
   const primaryQueue = rabbitMqMetrics?.queues.find((queue) => queue.queueRole === 'PrimaryWorkQueue');
-  const activeRun = summary?.currentRun ?? summary?.latestRun;
+  const activeRun = runContext.run ?? summary?.currentRun ?? summary?.latestRun;
 
   return (
     <section className="ui-page">
@@ -42,6 +42,9 @@ export function OverviewPage() {
           Última observação:{' '}
           {operationalHealth?.observedAt ? new Date(operationalHealth.observedAt).toLocaleTimeString() : 'indisponível'}
         </span>
+        <button type="button" className="ui-secondary" onClick={refreshObservability}>
+          <RotateCw size={14} /> Atualizar readiness
+        </button>
       </div>
       <div className="ui-metric-grid">
         <MetricCard
@@ -62,7 +65,7 @@ export function OverviewPage() {
           icon={<Database />}
           label="Backlog primário"
           value={primaryQueue?.messagesTotal == null ? 'Sem dados' : String(primaryQueue.messagesTotal)}
-          detail={primaryQueue ? `${primaryQueue.consumers ?? '—'} consumers` : 'RabbitMQ indisponível'}
+          detail={primaryQueue ? `${primaryQueue.consumers ?? '—'} consumidores` : 'RabbitMQ indisponível'}
           tone={primaryQueue?.messagesTotal ? 'Degraded' : 'Healthy'}
         />
         <MetricCard

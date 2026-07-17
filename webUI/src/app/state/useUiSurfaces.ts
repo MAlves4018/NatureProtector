@@ -65,9 +65,21 @@ export function useEvidenceItems() {
 export function useReadinessItems(): readonly UiReadinessItem[] {
   const { summary } = useUiRisk();
   const { selectedRun } = useUiActivity();
+  const { operationalHealth, rabbitMqMetrics, evidenceCatalog } = useUiObservability();
   const { user } = useToken();
 
-  return useMemo(() => buildUiReadinessItems({ summary, run: selectedRun, user }), [summary, selectedRun, user]);
+  return useMemo(
+    () =>
+      buildUiReadinessItems({
+        summary,
+        run: selectedRun,
+        user,
+        health: operationalHealth,
+        rabbitMq: rabbitMqMetrics,
+        evidence: evidenceCatalog,
+      }),
+    [summary, selectedRun, user, operationalHealth, rabbitMqMetrics, evidenceCatalog],
+  );
 }
 
 export function useAdminActions(): readonly UiAdminAction[] {

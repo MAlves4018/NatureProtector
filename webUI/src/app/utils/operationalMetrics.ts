@@ -11,7 +11,13 @@ export interface RunProgressMetric {
   accepted: number | null;
   assessed: number | null;
   completedPercent: number | null;
+  acceptedPercent: number | null;
+  lostPercent: number | null;
   pending: number | null;
+  processing: number | null;
+  retryPending: number | null;
+  quarantined: number | null;
+  settled: boolean | null;
 }
 
 export interface EvidenceCatalogView {
@@ -41,21 +47,26 @@ export function buildRunProgress(
       : operation.accounting.pendingInbox +
         operation.accounting.processingInbox +
         operation.accounting.retryPendingInbox;
+  const acceptedPercent = ratioPercent(accepted, expected);
+  const completedPercent = ratioPercent(assessed, expected);
 
   return {
     expected,
     accepted,
     assessed,
-    completedPercent:
-      expected != null && expected > 0 && assessed != null
-        ? Math.min(100, Math.max(0, (assessed / expected) * 100))
-        : null,
+    completedPercent,
+    acceptedPercent,
+    lostPercent: acceptedPercent == null ? null : Math.max(0, 100 - acceptedPercent),
     pending,
+    processing: operation?.accounting.processingInbox ?? null,
+    retryPending: operation?.accounting.retryPendingInbox ?? null,
+    quarantined: operation?.accounting.quarantinedInbox ?? audit?.quarantined ?? null,
+    settled: operation?.accounting.settled ?? (audit?.run.status === 'Completed' ? true : null),
   };
 }
 
 export function formatDurationMs(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value) || value < 0) return 'Não medido';
+  if (value == null || !Number.isFinite(value) || value < 0) return 'Indisponível';
   if (value < 1000) return `${Math.round(value)} ms`;
   const seconds = value / 1000;
   if (seconds < 60) return `${seconds.toFixed(seconds < 10 ? 1 : 0)} s`;
@@ -74,21 +85,46 @@ export function elapsedMs(start: string | null | undefined, end: string | null |
   return endMs - startMs;
 }
 
-export function operationDurationMs(operation: { requestedAt: string; updatedAt: string }): number | null {
-  return elapsedMs(operation.requestedAt, operation.updatedAt);
+export function operationDurationMs(operation: {
+  acceptedAt?: string;
+  requestedAt?: string;
+  updatedAt: string;
+}): number | null {
+  return elapsedMs(operation.acceptedAt ?? operation.requestedAt, operation.updatedAt);
 }
 
-export function timingFacts(timings: RuntimeRunTimingSummaryResponse | null) {
+export function timingFacts(
+  timings: RuntimeRunTimingSummaryResponse | null,
+  operation?: RuntimeOperationResponse | null,
+) {
+  const settledAt = operation?.accounting.settled ? (operation.finishedAt ?? operation.systemCompletedAt) : null;
   return [
+    {
+      label: 'Pedido aceite → Simulator iniciado',
+      value: formatDurationMs(elapsedMs(operation?.acceptedAt, operation?.startedAt)),
+    },
     { label: 'Duração total', value: formatDurationMs(timings?.runDurationMs) },
     { label: 'Até à primeira observação', value: formatDurationMs(timings?.timeToFirstInboxMs) },
     { label: 'Até ao processamento', value: formatDurationMs(timings?.timeToFirstProcessingAttemptMs) },
     { label: 'Até à primeira avaliação', value: formatDurationMs(timings?.timeToFirstRiskAssessmentMs) },
     { label: 'Até ao primeiro alerta', value: formatDurationMs(timings?.timeToFirstAlertMs) },
     { label: 'Latência média de tentativa', value: formatDurationMs(timings?.attempts?.avgDurationMs) },
+    { label: 'Latência p50', value: sampleDuration(timings?.attempts?.p50DurationMs, timings?.attempts?.attemptCount) },
+    { label: 'Latência p95', value: sampleDuration(timings?.attempts?.p95DurationMs, timings?.attempts?.attemptCount) },
+    { label: 'Latência p99', value: sampleDuration(timings?.attempts?.p99DurationMs, timings?.attempts?.attemptCount) },
     { label: 'Latência máxima de tentativa', value: formatDurationMs(timings?.attempts?.maxDurationMs) },
-    { label: 'p50 / p95', value: 'Não medido pelo contrato atual' },
+    {
+      label: 'Até SystemCompleted',
+      value: formatDurationMs(elapsedMs(operation?.acceptedAt, operation?.systemCompletedAt)),
+    },
+    { label: 'SystemCompleted → settled', value: formatDurationMs(elapsedMs(operation?.systemCompletedAt, settledAt)) },
+    { label: 'Duração operacional total', value: formatDurationMs(elapsedMs(operation?.acceptedAt, settledAt)) },
   ];
+}
+
+export function throughputPerSecond(count: number | null | undefined, durationMs: number | null | undefined) {
+  if (count == null || durationMs == null || durationMs <= 0) return null;
+  return count / (durationMs / 1000);
 }
 
 export function normalizeEvidenceCatalog(items: readonly RuntimeEvidenceCatalogItemResponse[]): EvidenceCatalogView[] {
@@ -126,6 +162,14 @@ function classifyEvidence(type: string, status: string) {
   if (normalized.includes('build') || normalized.includes('compile')) return 'Compilação';
   if (normalized.includes('config')) return 'Configuração';
   return 'Artefacto indexado';
+}
+
+function ratioPercent(value: number | null, total: number | null) {
+  return value == null || total == null || total <= 0 ? null : Math.min(100, Math.max(0, (value / total) * 100));
+}
+
+function sampleDuration(value: number | null | undefined, count: number | null | undefined) {
+  return count != null && count < 2 ? 'Amostra insuficiente' : formatDurationMs(value);
 }
 
 function csvCell(value: unknown) {

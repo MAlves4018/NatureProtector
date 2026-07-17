@@ -1,300 +1,270 @@
-import { useState, useCallback, useMemo } from 'react';
 import { GitCompareArrows } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, LabelList } from 'recharts';
-import { PageHeader } from '../components/PageHeader';
+import { useEffect, useState } from 'react';
 import { ExportActions } from '../components/ExportActions';
-import { useUiLocale } from '../state/LocaleContext';
-import { useUiArea } from '../state/AreaContext';
+import { PageHeader } from '../components/PageHeader';
 import { api } from '../services/api';
-import type { RuntimeDiagnosticResultResponse } from '../types';
-import { diagnosticResultToCsv } from '../utils/operationalMetrics';
+import { useUiActivity } from '../state/ActivityContext';
+import type {
+  RuntimeOperationResponse,
+  RuntimeRunAuditResponse,
+  RuntimeRunSummaryResponse,
+  RuntimeRunTimingSummaryResponse,
+} from '../types';
+import { elapsedMs, rowsToCsv, throughputPerSecond } from '../utils/operationalMetrics';
 
-const B_COLOR = '#255f85';
-const C_COLOR = '#176b4d';
+interface RunBundle {
+  run: RuntimeRunSummaryResponse;
+  audit: RuntimeRunAuditResponse;
+  timings: RuntimeRunTimingSummaryResponse;
+  operation: RuntimeOperationResponse | null;
+}
 
-interface MetricPair {
+interface ComparisonRow {
   metric: string;
-  b: string | null;
-  c: string | null;
-}
-
-interface ChartDatum {
-  name: string;
-  B: number;
-  C: number;
-}
-
-function groupRows(rows: RuntimeDiagnosticResultResponse['rows']): MetricPair[] {
-  const map = new Map<string, { b: string | null; c: string | null }>();
-  for (const row of rows) {
-    const scenario = row.scenario;
-    const metric = row.metric;
-    const value = row.value;
-    if (!metric) continue;
-    if (!map.has(metric)) {
-      map.set(metric, { b: null, c: null });
-    }
-    const entry = map.get(metric)!;
-    if (scenario === 'scenario_b') entry.b = value;
-    else if (scenario === 'scenario_c') entry.c = value;
-  }
-  return Array.from(map.entries()).map(([metric, { b, c }]) => ({ metric, b, c }));
-}
-
-function isNumeric(val: string | null): val is string {
-  return val !== null && val !== '' && !Number.isNaN(Number(val));
-}
-
-function parseCompound(val: string | null): number[] | null {
-  if (!val) return null;
-  const parts = val.split('/').map(Number);
-  if (parts.some(Number.isNaN)) return null;
-  return parts;
-}
-
-function getNumericChartData(pairs: MetricPair[]): ChartDatum[] {
-  const numericMetrics = [
-    'expected events',
-    'observed accepted readings',
-    'missing events',
-    'risk assessments',
-    'rejected count for area',
-    'quarantined count for area',
-  ];
-  const result: ChartDatum[] = [];
-  for (const m of numericMetrics) {
-    const pair = pairs.find((p) => p.metric === m);
-    if (pair && isNumeric(pair.b) && isNumeric(pair.c)) {
-      result.push({ name: m, B: Number(pair.b), C: Number(pair.c) });
-    }
-  }
-  return result;
-}
-
-function getCompoundChartData(pairs: MetricPair[]): { label: string; data: ChartDatum[] }[] {
-  const riskPair = pairs.find((p) => p.metric === 'risk min/max/avg');
-  const groups: { label: string; data: ChartDatum[] }[] = [];
-
-  if (riskPair) {
-    const bVals = parseCompound(riskPair.b);
-    const cVals = parseCompound(riskPair.c);
-    if (bVals && cVals && bVals.length >= 3 && cVals.length >= 3) {
-      groups.push({
-        label: 'risk min/max/avg',
-        data: [
-          { name: 'Min', B: bVals[0], C: cVals[0] },
-          { name: 'Max', B: bVals[1], C: cVals[1] },
-          { name: 'Avg', B: bVals[2], C: cVals[2] },
-        ],
-      });
-    }
-  }
-
-  const metricTypePairs = pairs.filter(
-    (p) => p.metric.startsWith('metric ') && p.metric.endsWith(' count/min/max/avg score'),
-  );
-  for (const pair of metricTypePairs) {
-    const bVals = parseCompound(pair.b);
-    const cVals = parseCompound(pair.c);
-    if (bVals && cVals && bVals.length >= 4 && cVals.length >= 4) {
-      const label = pair.metric.replace(' count/min/max/avg score', '');
-      groups.push({
-        label,
-        data: [
-          { name: 'Count', B: bVals[0], C: cVals[0] },
-          { name: 'Min', B: bVals[1], C: cVals[1] },
-          { name: 'Max', B: bVals[2], C: cVals[2] },
-          { name: 'Avg', B: bVals[3], C: cVals[3] },
-        ],
-      });
-    }
-  }
-
-  return groups;
+  a: string | number | null;
+  b: string | number | null;
+  absoluteDifference: number | null;
+  percentageDifference: number | null;
 }
 
 export function ScenarioComparisonPage() {
-  const { copy } = useUiLocale();
-  const { resolvedAreaCode, areas, selectedAreaCode, setSelectedAreaCode, areasLoading } = useUiArea();
-  const [result, setResult] = useState<RuntimeDiagnosticResultResponse | null>(null);
+  const { runs } = useUiActivity();
+  const [runAId, setRunAId] = useState('');
+  const [runBId, setRunBId] = useState('');
+  const [rows, setRows] = useState<ComparisonRow[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const pairs = useMemo(() => (result ? groupRows(result.rows) : []), [result]);
+  useEffect(() => {
+    if (runs.length < 2) return;
+    setRunAId((current) => current || runs.find((run) => run.scenarioCode === 'scenario_b')?.id || runs[0].id);
+    setRunBId((current) => current || runs.find((run) => run.scenarioCode === 'scenario_c')?.id || runs[1].id);
+  }, [runs]);
 
-  const numericChartData = useMemo(() => getNumericChartData(pairs), [pairs]);
-  const compoundChartGroups = useMemo(() => getCompoundChartData(pairs), [pairs]);
-
-  const handleCompare = useCallback(async () => {
-    if (!resolvedAreaCode) return;
+  const compare = async () => {
+    if (!runAId || !runBId || runAId === runBId) return;
     setLoading(true);
     setError(null);
-    setResult(null);
     try {
-      const data = await api.executeRuntimeDiagnostic('compare-latest-b-vs-c', {
-        areaCode: resolvedAreaCode,
-        recentMinutes: 30,
-      });
-      setResult(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to execute comparison');
+      const [a, b] = await Promise.all([loadRun(runAId), loadRun(runBId)]);
+      setRows(buildComparison(a, b));
+      setWarnings(comparabilityWarnings(a, b));
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Não foi possível comparar as runs.');
     } finally {
       setLoading(false);
     }
-  }, [resolvedAreaCode]);
-
-  const LABEL_B = 'Scenario B';
-  const LABEL_C = 'Scenario C';
+  };
 
   return (
     <section className="ui-page">
       <PageHeader
-        title={copy('scenario-compare.title')}
-        subtitle={copy('scenario-compare.subtitle')}
+        title="Comparar execuções"
+        subtitle="Comparação run-to-run usando duas SimulationRunId explícitas e dados persistidos."
         helpTopic="runState"
       />
-
       <section className="ui-card">
-        <div className="ui-section-heading">
-          <h3>{copy('area.title')}</h3>
-        </div>
-        <label className="ui-field">
-          <span>{copy('area.selectLabel')}</span>
-          <select
-            className="ui-select"
-            value={selectedAreaCode}
-            onChange={(event) => setSelectedAreaCode(event.target.value)}
-            disabled={areasLoading}
+        <div className="ui-compare-row">
+          <RunSelect label="Run A" value={runAId} onChange={setRunAId} runs={runs} />
+          <RunSelect label="Run B" value={runBId} onChange={setRunBId} runs={runs} />
+          <button
+            type="button"
+            className="ui-button"
+            disabled={!runAId || !runBId || runAId === runBId || loading}
+            onClick={() => void compare()}
           >
-            <option value="">{areasLoading ? copy('state.loading') : copy('area.placeholder')}</option>
-            {areas.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.name} ({item.code})
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="ui-button-row">
-          <button type="button" className="ui-button" onClick={handleCompare} disabled={!resolvedAreaCode || loading}>
             <GitCompareArrows size={16} />
-            {loading ? copy('state.loading') : copy('scenario-compare.execute')}
+            {loading ? 'A comparar…' : 'Comparar'}
           </button>
         </div>
+        {error && <p className="ui-notice ui-error">{error}</p>}
       </section>
-
-      {error && (
-        <section className="ui-card">
-          <p className="ui-state-error">{error}</p>
+      {warnings.length > 0 && (
+        <section className="ui-notice ui-warning">
+          <strong>Comparabilidade limitada</strong>
+          <ul>
+            {warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
         </section>
       )}
-
-      {result && (
-        <>
-          <section className="ui-card">
-            <div className="ui-section-heading">
-              <h3>{result.title}</h3>
+      {rows.length > 0 && (
+        <section className="ui-card">
+          <div className="ui-section-heading">
+            <div>
+              <span className="ui-eyebrow">Persistência run-scoped</span>
+              <h3>Valores A/B e diferenças</h3>
+            </div>
+            <div className="ui-button-row">
               <ExportActions
-                filename={`comparacao-${resolvedAreaCode ?? 'area'}.csv`}
-                content={diagnosticResultToCsv(result)}
+                filename={`comparacao-${runAId}-${runBId}.csv`}
+                content={rowsToCsv(rows.map((row) => ({ ...row })))}
+              />
+              <ExportActions
+                filename={`comparacao-${runAId}-${runBId}.json`}
+                content={JSON.stringify({ runAId, runBId, warnings, rows }, null, 2)}
+                contentType="application/json;charset=utf-8"
               />
             </div>
-            <p>{result.description}</p>
-          </section>
-
-          <section className="ui-card">
-            <div className="ui-table-wrap">
-              <table className="ui-table">
-                <thead>
-                  <tr>
-                    <th>{copy('scenario-compare.metric')}</th>
-                    <th>{LABEL_B}</th>
-                    <th>{LABEL_C}</th>
+          </div>
+          <div className="ui-table-wrap">
+            <table className="ui-table">
+              <thead>
+                <tr>
+                  <th>Métrica</th>
+                  <th>Run A</th>
+                  <th>Run B</th>
+                  <th>Diferença absoluta</th>
+                  <th>Diferença %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.metric}>
+                    <td>{row.metric}</td>
+                    <td>{display(row.a)}</td>
+                    <td>{display(row.b)}</td>
+                    <td>{display(row.absoluteDifference)}</td>
+                    <td>
+                      {row.percentageDifference == null ? 'Não aplicável' : `${row.percentageDifference.toFixed(1)}%`}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {pairs.length === 0 ? (
-                    <tr>
-                      <td colSpan={3}>{copy('scenario-compare.noData')}</td>
-                    </tr>
-                  ) : (
-                    pairs.map((pair) => (
-                      <tr key={pair.metric}>
-                        <td>{pair.metric}</td>
-                        <td>{pair.b ?? '\u2014'}</td>
-                        <td>{pair.c ?? '\u2014'}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {numericChartData.length > 0 && (
-            <section className="ui-card">
-              <div className="ui-section-heading">
-                <h3>Comparação numérica</h3>
-              </div>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={numericChartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-border, #d7e1da)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{
-                      background: 'var(--ui-surface, #fff)',
-                      border: '1px solid var(--ui-border, #d7e1da)',
-                      borderRadius: 6,
-                      fontSize: 13,
-                    }}
-                  />
-                  <Bar dataKey="B" fill={B_COLOR} radius={[4, 4, 0, 0]} name={LABEL_B}>
-                    <LabelList dataKey="B" position="top" fontSize={10} />
-                  </Bar>
-                  <Bar dataKey="C" fill={C_COLOR} radius={[4, 4, 0, 0]} name={LABEL_C}>
-                    <LabelList dataKey="C" position="top" fontSize={10} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </section>
-          )}
-
-          {compoundChartGroups.map((group) => (
-            <section key={group.label} className="ui-card">
-              <div className="ui-section-heading">
-                <h3>{group.label}</h3>
-              </div>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={group.data} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-border, #d7e1da)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{
-                      background: 'var(--ui-surface, #fff)',
-                      border: '1px solid var(--ui-border, #d7e1da)',
-                      borderRadius: 6,
-                      fontSize: 13,
-                    }}
-                  />
-                  <Bar dataKey="B" fill={B_COLOR} radius={[4, 4, 0, 0]} name={LABEL_B}>
-                    <LabelList dataKey="B" position="top" fontSize={10} />
-                  </Bar>
-                  <Bar dataKey="C" fill={C_COLOR} radius={[4, 4, 0, 0]} name={LABEL_C}>
-                    <LabelList dataKey="C" position="top" fontSize={10} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </section>
-          ))}
-        </>
-      )}
-
-      {!result && !loading && !error && (
-        <section className="ui-card">
-          <p>{resolvedAreaCode ? copy('scenario-compare.execute') + '...' : copy('scenario-compare.noArea')}</p>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="ui-notice">
+            A interface não classifica automaticamente “melhor” ou “pior”; essa interpretação depende do significado
+            científico de cada métrica.
+          </p>
         </section>
       )}
     </section>
   );
+}
+
+function RunSelect({
+  label,
+  value,
+  onChange,
+  runs,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  runs: ReturnType<typeof useUiActivity>['runs'];
+}) {
+  return (
+    <label className="ui-field">
+      <span>{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Selecione</option>
+        {runs.map((run) => (
+          <option key={run.id} value={run.id}>
+            {run.scenarioCode} · seed {run.executionSeed ?? '—'} · {run.id}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+async function loadRun(runId: string): Promise<RunBundle> {
+  const [run, audit, timings, operation] = await Promise.all([
+    api.getRuntimeRun(runId),
+    api.getRuntimeRunAudit(runId),
+    api.getRuntimeRunTimings(runId),
+    api.getRuntimeOperationByRun(runId).catch(() => null),
+  ]);
+  return { run, audit, timings, operation };
+}
+
+function buildComparison(a: RunBundle, b: RunBundle): ComparisonRow[] {
+  const valueRows: Array<[string, string | number | null | undefined, string | number | null | undefined]> = [
+    ['SimulationRunId', a.run.id, b.run.id],
+    ['Cenário', a.run.scenarioCode, b.run.scenarioCode],
+    ['Versão da configuração', a.run.configurationVersionNumber, b.run.configurationVersionNumber],
+    ['Seed', a.run.executionSeed, b.run.executionSeed],
+    ['Sensores', a.run.runOverrides?.resolved?.sensorCount, b.run.runOverrides?.resolved?.sensorCount],
+    ['Ciclos', a.run.numberOfCycles, b.run.numberOfCycles],
+    ['Intervalo (s)', a.run.intervalSeconds, b.run.intervalSeconds],
+    ['Perfis de degradação', profiles(a), profiles(b)],
+    ['Expected', a.audit.expectedEvents, b.audit.expectedEvents],
+    ['Accepted', a.audit.acceptedReadings, b.audit.acceptedReadings],
+    ['Processed/evaluated', a.audit.riskAssessments, b.audit.riskAssessments],
+    ['NP Score', a.audit.scoreComponents?.npScore, b.audit.scoreComponents?.npScore],
+    ['FWI', a.audit.indexComparison?.fireWeatherIndex, b.audit.indexComparison?.fireWeatherIndex],
+    ['KBDI', a.audit.indexComparison?.keetchByramDroughtIndex, b.audit.indexComparison?.keetchByramDroughtIndex],
+    [
+      'Portuguese Proxy',
+      a.audit.indexComparison?.portugueseContextRiskProxyLabel,
+      b.audit.indexComparison?.portugueseContextRiskProxyLabel,
+    ],
+    ['Confidence', a.audit.scoreComponents?.confidenceFactor, b.audit.scoreComponents?.confidenceFactor],
+    ['Integrity', a.audit.scoreComponents?.integrityFactor, b.audit.scoreComponents?.integrityFactor],
+    ['Coverage (%)', coverage(a), coverage(b)],
+    ['Risco', a.audit.scoreComponents?.npRiskClassLabel, b.audit.scoreComponents?.npRiskClassLabel],
+    ['Duração total (ms)', a.timings.runDurationMs, b.timings.runDurationMs],
+    ['Até primeira observação (ms)', a.timings.timeToFirstInboxMs, b.timings.timeToFirstInboxMs],
+    ['Até settled (ms)', timeToSettled(a), timeToSettled(b)],
+    [
+      'Throughput (obs/s)',
+      throughputPerSecond(a.audit.acceptedReadings, a.timings.runDurationMs),
+      throughputPerSecond(b.audit.acceptedReadings, b.timings.runDurationMs),
+    ],
+    ['Retries', a.audit.retryAttempts, b.audit.retryAttempts],
+    ['Quarantine', a.audit.quarantined, b.audit.quarantined],
+    ['Evidence associada', a.operation?.evidenceId ? 'Sim' : 'Não', b.operation?.evidenceId ? 'Sim' : 'Não'],
+  ];
+  return valueRows.map(([metric, valueA, valueB]) => difference(metric, valueA ?? null, valueB ?? null));
+}
+
+function comparabilityWarnings(a: RunBundle, b: RunBundle) {
+  const warnings: string[] = [];
+  if (a.run.executionSeed !== b.run.executionSeed) warnings.push('Seeds diferentes.');
+  if (a.run.numberOfCycles !== b.run.numberOfCycles || a.run.intervalSeconds !== b.run.intervalSeconds)
+    warnings.push('Duração ou cadência configurada diferente.');
+  if (a.run.runOverrides?.resolved?.sensorCount !== b.run.runOverrides?.resolved?.sensorCount)
+    warnings.push('Número de sensores diferente.');
+  if (profiles(a) !== profiles(b)) warnings.push('Perfis de degradação diferentes.');
+  if (a.run.configurationVersionNumber !== b.run.configurationVersionNumber)
+    warnings.push('Versões de configuração diferentes.');
+  return warnings;
+}
+
+function difference(metric: string, a: string | number | null, b: string | number | null): ComparisonRow {
+  const numeric = typeof a === 'number' && typeof b === 'number';
+  const absoluteDifference = numeric ? b - a : null;
+  return {
+    metric,
+    a,
+    b,
+    absoluteDifference,
+    percentageDifference: numeric && a !== 0 ? ((b - a) / Math.abs(a)) * 100 : null,
+  };
+}
+
+function profiles(bundle: RunBundle) {
+  return (
+    bundle.run.runOverrides?.resolved?.degradationProfiles?.join(', ') ||
+    bundle.run.runOverrides?.resolved?.degradationProfile ||
+    'Nenhum'
+  );
+}
+function coverage(bundle: RunBundle) {
+  return bundle.audit.expectedEvents ? (bundle.audit.acceptedReadings / bundle.audit.expectedEvents) * 100 : null;
+}
+function timeToSettled(bundle: RunBundle) {
+  return bundle.operation?.accounting.settled
+    ? elapsedMs(bundle.operation.acceptedAt, bundle.operation.finishedAt ?? bundle.operation.systemCompletedAt)
+    : null;
+}
+function display(value: string | number | null) {
+  return value == null || value === ''
+    ? 'Indisponível'
+    : typeof value === 'number'
+      ? value.toFixed(Number.isInteger(value) ? 0 : 3)
+      : value;
 }

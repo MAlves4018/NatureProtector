@@ -16,7 +16,16 @@ export function SimulationPage() {
   const [retrySeconds, setRetrySeconds] = useState(0);
   const navigate = useNavigate();
   const { copy } = useUiLocale();
-  const { scenarios, selectedScenarioCode, setSelectedScenarioCode, runAudit, runTimings } = useUiActivity();
+  const {
+    scenarios,
+    selectedScenarioCode,
+    setSelectedScenarioCode,
+    selectedRunId,
+    runAudit,
+    runTimings,
+    runOperation,
+    refreshSelectedRun,
+  } = useUiActivity();
   const {
     simulationForm,
     setSimulationForm,
@@ -29,6 +38,7 @@ export function SimulationPage() {
     submitSimulation,
     degradationProfiles,
   } = useUiSimulation();
+  const effectiveOperation = runtimeOperation ?? runOperation;
   const steps = ['Cenário', 'Sensores', 'Duração', 'Degradações', 'Execução', 'Revisão'];
   const rateLimited = simulationError instanceof HttpError && simulationError.status === 429;
 
@@ -281,35 +291,35 @@ export function SimulationPage() {
           <div className="ui-section-heading">
             <h3>{copy('simulation.review')}</h3>
             <StatusBadge
-              label={runtimeOperation?.state ?? simulationReview.resultStatus}
+              label={effectiveOperation?.state ?? simulationReview.resultStatus}
               state={executionStatusState(
-                runtimeOperation?.state ?? simulationReview.resultStatus,
+                effectiveOperation?.state ?? simulationReview.resultStatus,
                 copy('simulation.idle'),
               )}
             />
           </div>
-          <p>{runtimeOperation?.failureDetail ?? simulationReview.resultMessage}</p>
+          <p>{effectiveOperation?.failureDetail ?? simulationReview.resultMessage}</p>
           <div className="ui-review-summary">
             <ReviewFact label="Área" value={simulationReview.requested.areaCode || 'Por resolver'} />
             <ReviewFact label="Cenário" value={simulationReview.requested.scenarioCode || 'Por selecionar'} />
             <ReviewFact label="Sensores" value={String(simulationReview.requested.sensorCount ?? 'default')} />
             <ReviewFact label="Ciclos" value={String(simulationReview.requested.numberOfCycles ?? 'default')} />
           </div>
-          {runtimeOperation && (
+          {effectiveOperation && (
             <dl className="ui-definition-list">
               <dt>OperationId</dt>
-              <dd>{runtimeOperation.operationId}</dd>
+              <dd>{effectiveOperation.operationId}</dd>
               <dt>SimulationRunId</dt>
-              <dd>{runtimeOperation.simulationRunId ?? 'Pending'}</dd>
+              <dd>{effectiveOperation.simulationRunId ?? 'Pending'}</dd>
               <dt>Processing</dt>
-              <dd>{runtimeOperation.processingState}</dd>
+              <dd>{effectiveOperation.processingState}</dd>
               <dt>Accounting</dt>
               <dd>
-                {runtimeOperation.accounting.processedInbox + runtimeOperation.accounting.quarantinedInbox}/
-                {runtimeOperation.accounting.expectedObservations}
+                {effectiveOperation.accounting.processedInbox + effectiveOperation.accounting.quarantinedInbox}/
+                {effectiveOperation.accounting.expectedObservations}
               </dd>
               <dt>Evidence</dt>
-              <dd>{runtimeOperation.evidenceId ?? runtimeOperation.evidenceLocation ?? 'Not recorded'}</dd>
+              <dd>{effectiveOperation.evidenceId ?? effectiveOperation.evidenceLocation ?? 'Not recorded'}</dd>
             </dl>
           )}
           <div className="ui-table-wrap">
@@ -334,7 +344,7 @@ export function SimulationPage() {
               </tbody>
             </table>
           </div>
-          {(runtimeOperation?.simulationRunId || runAudit) && (
+          {(effectiveOperation?.simulationRunId || runAudit) && (
             <div className="ui-button-row">
               <button type="button" className="ui-secondary" onClick={() => navigate('/runs')}>
                 Abrir resultados
@@ -349,8 +359,14 @@ export function SimulationPage() {
           )}
         </section>
       </div>
-      {(runtimeOperation || runAudit) && (
-        <RunProgressCockpit operation={runtimeOperation} audit={runAudit} timings={runTimings} />
+      {(effectiveOperation || runAudit) && (
+        <RunProgressCockpit
+          operation={effectiveOperation}
+          audit={runAudit}
+          timings={runTimings}
+          selectedRunId={selectedRunId}
+          onRefresh={refreshSelectedRun}
+        />
       )}
     </section>
   );

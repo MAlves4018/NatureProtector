@@ -377,6 +377,21 @@ public sealed class RuntimeOperationsServiceTests
     }
 
     [Fact]
+    public async Task RuntimeOperation_ByRun_UsesExactSimulationRunIdentity()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        var operation = await SeedOperationAsync(scope, deadline: DateTimeOffset.UtcNow.AddMinutes(5));
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.GetRuntimeOperationByRunAsync(operation.SimulationRunId!.Value, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(operation.OperationId, result!.OperationId);
+        Assert.Equal(operation.SimulationRunId, result.SimulationRunId);
+    }
+
+    [Fact]
     public async Task RuntimeOperation_SettledAccounting_CompletesSystemForSameRunOnly()
     {
         await using var scope = new SqliteControlDbContextScope();

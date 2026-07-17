@@ -9,11 +9,13 @@ import { useOperations } from '../operations/OperationsContext';
 import { api } from '../services/api';
 import { useUiCapabilities } from '../state/CapabilityContext';
 import { useUiObservability } from '../state/ObservabilityContext';
+import { useUiActivity } from '../state/ActivityContext';
 import { normalizeEvidenceCatalog } from '../utils/operationalMetrics';
 
 export function EvidenceExplorerPage() {
   const { catalog, operations, compare } = useOperations();
   const { evidenceCatalog, observabilityError } = useUiObservability();
+  const { selectedRunId, runAudit, runTimings, runOperation } = useUiActivity();
   const { capabilities } = useUiCapabilities();
   const campaigns = catalog.filter((definition) => definition.category === 'evidence');
   const evidenceRuns = operations.filter(
@@ -22,6 +24,15 @@ export function EvidenceExplorerPage() {
   const runtimeEvidence = useMemo(
     () => normalizeEvidenceCatalog(evidenceCatalog?.items ?? []),
     [evidenceCatalog?.items],
+  );
+  const scopedEvidence = useMemo(
+    () =>
+      runtimeEvidence.filter((item) => {
+        if (!selectedRunId) return false;
+        const identity = `${item.id} ${item.scope}`.toLowerCase();
+        return identity.includes(selectedRunId.toLowerCase()) || item.id === runOperation?.evidenceId;
+      }),
+    [runtimeEvidence, selectedRunId, runOperation?.evidenceId],
   );
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
   const [left, setLeft] = useState('');
@@ -66,8 +77,78 @@ export function EvidenceExplorerPage() {
       <section className="ui-metric-grid">
         <EvidenceMetric label="Campanhas no catálogo" value={campaigns.length} />
         <EvidenceMetric label="Execuções registadas" value={evidenceRuns.length} />
-        <EvidenceMetric label="Artefactos runtime" value={runtimeEvidence.length} />
-        <EvidenceMetric label="Transferíveis" value={runtimeEvidence.filter((item) => item.downloadable).length} />
+        <EvidenceMetric label="Artefactos da run" value={scopedEvidence.length} />
+        <EvidenceMetric label="Transferíveis" value={scopedEvidence.filter((item) => item.downloadable).length} />
+      </section>
+      <section className="ui-card">
+        <div className="ui-section-heading">
+          <div>
+            <span className="ui-eyebrow">SimulationRunId</span>
+            <h3>{selectedRunId || 'Selecione uma execução'}</h3>
+          </div>
+          <ShieldCheck size={22} />
+        </div>
+        <div className="ui-table-wrap">
+          <table className="ui-table">
+            <thead>
+              <tr>
+                <th>Claim</th>
+                <th>Resultado</th>
+                <th>Fonte</th>
+                <th>Timestamp</th>
+                <th>Artefacto</th>
+                <th>Classe</th>
+                <th>Verificação</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ClaimRow
+                claim="Accounting run-scoped"
+                result={
+                  runAudit
+                    ? `${runAudit.acceptedReadings}/${runAudit.expectedEvents ?? '—'} aceites; ${runAudit.riskAssessments} avaliados`
+                    : null
+                }
+                source="GET /runtime/runs/{id}/audit"
+                timestamp={runAudit?.dataScope?.observedAt}
+                artifact={runAudit ? `run-${selectedRunId}-audit.json` : null}
+                verified={Boolean(runAudit)}
+              />
+              <ClaimRow
+                claim="Lifecycle e settlement"
+                result={runOperation ? `${runOperation.state}; settled=${runOperation.accounting.settled}` : null}
+                source="GET /runtime/runs/{id}/operation"
+                timestamp={runOperation?.updatedAt}
+                artifact={runOperation?.evidenceId}
+                verified={Boolean(runOperation)}
+              />
+              <ClaimRow
+                claim="Timings persistidos"
+                result={
+                  runTimings?.runDurationMs == null
+                    ? null
+                    : `${runTimings.runDurationMs.toFixed(1)} ms; ${runTimings.attempts.attemptCount} tentativas`
+                }
+                source="GET /runtime/runs/{id}/timings"
+                timestamp={runTimings?.dataScope?.observedAt}
+                artifact={runTimings ? `run-${selectedRunId}-timings.json` : null}
+                verified={Boolean(runTimings)}
+              />
+              <ClaimRow
+                claim="Índices científicos persistidos"
+                result={
+                  runAudit?.scoreComponents
+                    ? `NP=${runAudit.scoreComponents.npScore}; FWI=${runAudit.indexComparison?.fireWeatherIndex}; KBDI=${runAudit.indexComparison?.keetchByramDroughtIndex}`
+                    : null
+                }
+                source="GET /runtime/runs/{id}/audit"
+                timestamp={runAudit?.scoreComponents?.latestAssessmentTimestamp}
+                artifact={runOperation?.evidenceId}
+                verified={Boolean(runAudit?.scoreComponents)}
+              />
+            </tbody>
+          </table>
+        </div>
       </section>
       <section className="ui-card">
         <div className="ui-section-heading">
@@ -78,8 +159,8 @@ export function EvidenceExplorerPage() {
           <ShieldCheck size={22} />
         </div>
         <p className="ui-notice">
-          O índice vem do endpoint de evidence do runtime. Caminhos locais do brain não são lidos diretamente pelo
-          browser e o estado original do artefacto não é promovido.
+          O índice é filtrado pela run selecionada. Artefactos sem SimulationRunId ou EvidenceId correspondente não são
+          apresentados como prova desta execução.
         </p>
         {observabilityError && <p className="ui-notice ui-error">{observabilityError.message}</p>}
         <div className="ui-table-wrap">
@@ -95,12 +176,12 @@ export function EvidenceExplorerPage() {
               </tr>
             </thead>
             <tbody>
-              {runtimeEvidence.length === 0 ? (
+              {scopedEvidence.length === 0 ? (
                 <tr>
                   <td colSpan={6}>O runtime não publicou artefactos consultáveis.</td>
                 </tr>
               ) : (
-                runtimeEvidence.map((item) => (
+                scopedEvidence.map((item) => (
                   <tr key={item.id}>
                     <td>
                       <strong>{item.title}</strong>
@@ -233,5 +314,33 @@ function EvidenceMetric({ label, value }: { label: string; value: number }) {
       <strong>{value}</strong>
       <small>{label}</small>
     </article>
+  );
+}
+
+function ClaimRow({
+  claim,
+  result,
+  source,
+  timestamp,
+  artifact,
+  verified,
+}: {
+  claim: string;
+  result: string | null;
+  source: string;
+  timestamp?: string | null;
+  artifact?: string | null;
+  verified: boolean;
+}) {
+  return (
+    <tr>
+      <td>{claim}</td>
+      <td>{result ?? 'Indisponível para esta run'}</td>
+      <td>{source}</td>
+      <td>{timestamp ? new Date(timestamp).toLocaleString('pt-PT') : 'Indisponível'}</td>
+      <td>{artifact ?? 'Sem artefacto associado'}</td>
+      <td>Live local</td>
+      <td>{verified ? 'Verificado pela resposta API' : 'Não verificado'}</td>
+    </tr>
   );
 }

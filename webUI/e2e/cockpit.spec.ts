@@ -24,7 +24,7 @@ test('admin sees the operational overview and responsive shell', async ({ page }
 
   await expect(page.getByRole('heading', { name: 'Visão geral operacional' })).toBeVisible();
   await page.getByLabel(/selecionar área/i).selectOption('proenca-a-nova');
-  await expect(page.getByText(/SimulationRunId/)).toBeVisible();
+  await expect(page.getByText(/SimulationRunId/).first()).toBeVisible();
   await expect(page.getByText('Saúde global')).toBeVisible();
   await capture(page, testInfo.project.name, 'overview');
 
@@ -74,16 +74,17 @@ test('recovered product flows expose progress, queries, evidence and deployments
   await capture(page, testInfo.project.name, 'run-cockpit');
 
   await page.goto('/scenario-compare');
-  await page.getByLabel(/selecionar área/i).selectOption('proenca-a-nova');
+  await page.getByLabel('Run A').selectOption('run-ui-review-001');
+  await page.getByLabel('Run B').selectOption('run-ui-review-002');
   await page.getByRole('button', { name: /^Comparar$/i }).click();
-  await expect(page.getByText('Scenario B')).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Cenário' })).toBeVisible();
   await capture(page, testInfo.project.name, 'comparison');
 
   await page.goto('/queries');
   await expect(page.getByRole('heading', { name: 'Consultas preparadas' })).toBeVisible();
-  await page.getByRole('button', { name: /Eventos esperados/i }).click();
-  await page.getByRole('button', { name: /Executar consulta preparada/i }).click();
-  await expect(page.getByText('expectedEvents')).toBeVisible();
+  await page.getByRole('button', { name: /Convergência do accounting/i }).click();
+  await page.getByRole('button', { name: /Executar preset/i }).click();
+  await expect(page.getByRole('columnheader', { name: 'expected' })).toBeVisible();
   await capture(page, testInfo.project.name, 'prepared-queries');
 
   await page.goto('/evidence');
@@ -103,7 +104,7 @@ test('recovered product flows expose progress, queries, evidence and deployments
 test('prepared query errors and capability blockers are explicit', async ({ page }, testInfo) => {
   await login(page);
   await page.getByLabel(/selecionar área/i).selectOption('proenca-a-nova');
-  await page.route('**/api/control/runtime/diagnostics/*', (route) =>
+  await page.route('**/api/control/runtime/runs/run-ui-review-001', (route) =>
     route.fulfill({
       status: 503,
       contentType: 'application/json',
@@ -111,7 +112,7 @@ test('prepared query errors and capability blockers are explicit', async ({ page
     }),
   );
   await page.goto('/queries');
-  await page.getByRole('button', { name: /Executar consulta preparada/i }).click();
+  await page.getByRole('button', { name: /Executar preset/i }).click();
   await expect(page.getByText('Diagnostic store unavailable.')).toBeVisible();
   await capture(page, testInfo.project.name, 'query-error');
 
@@ -147,9 +148,9 @@ test('prepared query results can be exported', async ({ page }, testInfo) => {
   await login(page);
   await page.getByLabel(/selecionar área/i).selectOption('proenca-a-nova');
   await page.goto('/queries');
-  await page.getByRole('button', { name: /Executar consulta preparada/i }).click();
+  await page.getByRole('button', { name: /Executar preset/i }).click();
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Exportar' }).click();
+  await page.getByRole('button', { name: 'Exportar' }).first().click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/\.csv$/);
 });
@@ -225,6 +226,14 @@ async function installApiFixture(
     orchestratorCorrelationId: 'corr-ui-review',
     runOverrides: null,
   };
+  const comparisonRun = {
+    ...run,
+    id: 'run-ui-review-002',
+    scenarioCode: 'scenario_c',
+    scenarioName: 'Scenario C - Missing readings',
+    executionSeed: 43,
+    orchestratorCorrelationId: 'corr-ui-review-comparison',
+  };
   const area = {
     id: 'area-001',
     code: 'proenca-a-nova',
@@ -274,13 +283,21 @@ async function installApiFixture(
     if (pathname.includes('/scenarios')) {
       return json([{ id: 'scenario-001', code: 'scenario_b', name: 'Scenario B - High Risk', scenarioKind: 'HighRisk', configurationVersionNumber: 1, description: 'Operational high-risk fixture', baseScenarioCode: null, datasetBindingCount: 2 }]);
     }
-    if (pathname === '/control/simulation-runs') return json([run]);
-    if (pathname === `/control/runtime/runs/${run.id}`) return json(run);
+    if (pathname === '/control/simulation-runs') return json([run, comparisonRun]);
+    const scopedRun = pathname.includes(comparisonRun.id) ? comparisonRun : run;
+    if (pathname === `/control/runtime/runs/${scopedRun.id}`) return json(scopedRun);
+    if (pathname === `/control/runtime/runs/${scopedRun.id}/operation`) return json({
+      operationId: scopedRun === run ? '22222222-2222-2222-2222-222222222222' : '44444444-4444-4444-4444-444444444444', requestId: '33333333-3333-3333-3333-333333333333', correlationId: 'fixture-correlation', simulationRunId: scopedRun.id,
+      requestedState: 'Requested', providerState: 'Succeeded', runState: 'Completed', processingState: 'Settled', state: 'SystemCompleted', terminalOutcome: 'Succeeded',
+      acceptedAt: scopedRun.startedAt, updatedAt: scopedRun.endedAt, startedAt: scopedRun.startedAt, producerCompletedAt: scopedRun.endedAt, systemCompletedAt: scopedRun.endedAt, finishedAt: scopedRun.endedAt,
+      failureCode: null, failureDetail: null, evidenceId: 'fixture-run-evidence', evidenceLocation: 'docs/evidence/fixture',
+      accounting: { expectedObservations: 14, acceptedObservations: 14, pendingInbox: 0, processingInbox: 0, retryPendingInbox: 0, processedInbox: 14, quarantinedInbox: 0, settled: true },
+    });
     if (pathname.endsWith('/audit')) {
-      return json({ run, expectedEvents: 14, acceptedReadings: 14, missingEvents: 0, rejected: 0, quarantined: 0, retryAttempts: 0, riskAssessments: 14, qualityFlagsSummary: [], eligibilitySummary: [], areaSnapshot: null, limitations: [], scoreComponents: null, indexComparison: null });
+      return json({ run: scopedRun, expectedEvents: 14, acceptedReadings: scopedRun === run ? 14 : 12, missingEvents: scopedRun === run ? 0 : 2, rejected: 0, quarantined: 0, retryAttempts: 0, riskAssessments: scopedRun === run ? 14 : 12, qualityFlagsSummary: [], eligibilitySummary: [], areaSnapshot: null, limitations: [], scoreComponents: null, indexComparison: null });
     }
     if (pathname.endsWith('/timings')) {
-      return json({ simulationRunId: run.id, runDurationMs: 420000, startedAt: run.startedAt, endedAt: run.endedAt, firstInboxReceivedAt: run.startedAt, firstProcessingAttemptStartedAt: run.startedAt, lastProcessingAttemptFinishedAt: run.endedAt, firstRiskAssessmentCreatedAt: run.startedAt, firstAlertTriggeredAt: null, timeToFirstInboxMs: 500, timeToFirstProcessingAttemptMs: 800, timeToFirstRiskAssessmentMs: 1200, timeToFirstAlertMs: null, attempts: { attemptCount: 14, successfulAttempts: 14, failedAttempts: 0, quarantinedAttempts: 0, minDurationMs: 20, avgDurationMs: 30, maxDurationMs: 50 }, stages: [], limitations: [] });
+      return json({ simulationRunId: scopedRun.id, runDurationMs: 420000, startedAt: scopedRun.startedAt, endedAt: scopedRun.endedAt, firstInboxReceivedAt: scopedRun.startedAt, firstProcessingAttemptStartedAt: scopedRun.startedAt, lastProcessingAttemptFinishedAt: scopedRun.endedAt, firstRiskAssessmentCreatedAt: scopedRun.startedAt, firstAlertTriggeredAt: null, timeToFirstInboxMs: 500, timeToFirstProcessingAttemptMs: 800, timeToFirstRiskAssessmentMs: 1200, timeToFirstAlertMs: null, attempts: { attemptCount: 14, successfulAttempts: 14, failedAttempts: 0, quarantinedAttempts: 0, minDurationMs: 20, avgDurationMs: 30, maxDurationMs: 50, p50DurationMs: 28, p95DurationMs: 47, p99DurationMs: 49 }, stages: [], limitations: [] });
     }
     if (pathname === '/control/runtime/summary') {
       return json({

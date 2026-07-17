@@ -201,6 +201,13 @@ export const api = {
     return httpClient.get<RuntimeRunSummaryResponse>(`/control/runtime/runs/${runId}`, api.getRequestOptions());
   },
 
+  getRuntimeOperationByRun: (runId: string) => {
+    return httpClient.get<RuntimeOperationResponse>(
+      `/control/runtime/runs/${encodeURIComponent(runId)}/operation`,
+      api.getRequestOptions(),
+    );
+  },
+
   getRuntimeRunTimings: (runId: string) => {
     return httpClient.get<RuntimeRunTimingSummaryResponse>(
       `/control/runtime/runs/${runId}/timings`,

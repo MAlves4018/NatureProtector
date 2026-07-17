@@ -16,6 +16,7 @@ const harness = vi.hoisted(() => ({
   getRuntimeRun: vi.fn(),
   getRuntimeRunAudit: vi.fn(),
   getRuntimeRunTimings: vi.fn(),
+  getRuntimeOperationByRun: vi.fn(),
 }));
 
 vi.mock('./AreaContext', () => ({ useUiArea: () => harness.area }));
@@ -31,6 +32,7 @@ vi.mock('../services/api', () => ({
     getRuntimeRun: harness.getRuntimeRun,
     getRuntimeRunAudit: harness.getRuntimeRunAudit,
     getRuntimeRunTimings: harness.getRuntimeRunTimings,
+    getRuntimeOperationByRun: harness.getRuntimeOperationByRun,
   },
 }));
 
@@ -110,6 +112,9 @@ function timings(value: RuntimeRunSummaryResponse): RuntimeRunTimingSummaryRespo
       minDurationMs: null,
       avgDurationMs: null,
       maxDurationMs: null,
+      p50DurationMs: null,
+      p95DurationMs: null,
+      p99DurationMs: null,
     },
     stages: [],
     limitations: [],
@@ -174,10 +179,11 @@ beforeEach(() => {
   harness.getRuntimeRunTimings.mockImplementation(async (id: string) =>
     timings(run(id, id === 'run-A' ? 'area-a' : 'area-b')),
   );
+  harness.getRuntimeOperationByRun.mockResolvedValue(null);
 });
 
 describe('R1M-002 ActivityContext scope contract', () => {
-  it('clears a run and its details when the selected area changes', async () => {
+  it('replaces the selected run and details when the selected area changes', async () => {
     const view = renderProvider();
     fireEvent.click(screen.getByRole('button', { name: 'run A' }));
     await waitFor(() => expect(screen.getByTestId('selected-run')).toHaveTextContent('run-A'));
@@ -189,8 +195,8 @@ describe('R1M-002 ActivityContext scope contract', () => {
       </UiActivityProvider>,
     );
 
-    await waitFor(() => expect(screen.getByTestId('run-id')).toHaveTextContent(/^$/));
-    expect(screen.getByTestId('selected-run')).toHaveTextContent(/^$/);
+    await waitFor(() => expect(screen.getByTestId('run-id')).toHaveTextContent('run-B'));
+    expect(screen.getByTestId('selected-run')).toHaveTextContent('run-B');
   });
 
   it('revalidates the selected scenario when the area changes', async () => {

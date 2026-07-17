@@ -152,7 +152,10 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
                 attempts.Count(entity => entity.Outcome == ProcessingAttemptOutcome.Quarantined),
                 attemptDurations.Length == 0 ? null : attemptDurations.Min(),
                 attemptDurations.Length == 0 ? null : attemptDurations.Average(),
-                attemptDurations.Length == 0 ? null : attemptDurations.Max()),
+                attemptDurations.Length == 0 ? null : attemptDurations.Max(),
+                Percentile(attemptDurations, 0.50),
+                Percentile(attemptDurations, 0.95),
+                Percentile(attemptDurations, 0.99)),
             stages,
             limitations,
             BuildRunDataScope(
@@ -162,6 +165,22 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
                 "PostgreSQL runtime tables",
                 "simulation-run timings"),
             timeline);
+    }
+
+    private static double? Percentile(IReadOnlyCollection<double> values, double percentile)
+    {
+        if (values.Count < 2)
+        {
+            return null;
+        }
+
+        var sorted = values.Order().ToArray();
+        var position = (sorted.Length - 1) * percentile;
+        var lower = (int)Math.Floor(position);
+        var upper = (int)Math.Ceiling(position);
+        return lower == upper
+            ? sorted[lower]
+            : sorted[lower] + ((sorted[upper] - sorted[lower]) * (position - lower));
     }
     // </phase5-slice>
 

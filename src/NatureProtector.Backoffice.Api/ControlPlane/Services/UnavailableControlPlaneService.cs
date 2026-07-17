@@ -146,6 +146,9 @@ public sealed class UnavailableControlPlaneService : IControlPlaneService
     public Task<RuntimeOperationResponse?> GetRuntimeOperationAsync(Guid operationId, CancellationToken cancellationToken)
         => Task.FromResult<RuntimeOperationResponse?>(null);
 
+    public Task<RuntimeOperationResponse?> GetRuntimeOperationByRunAsync(Guid runId, CancellationToken cancellationToken)
+        => Task.FromResult<RuntimeOperationResponse?>(null);
+
     public Task<RuntimeOperationResponse?> GetCurrentRuntimeOperationAsync(CancellationToken cancellationToken)
         => Task.FromResult<RuntimeOperationResponse?>(null);
 
