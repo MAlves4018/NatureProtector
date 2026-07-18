@@ -1,6 +1,6 @@
 from __future__ import annotations
 import unittest
-from _loader import load
+from tests.evidence._loader import load
 
 MODULE = load("scripts/evidence/run-report-evidence-campaign.py", "campaign_redaction")
 

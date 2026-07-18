@@ -207,6 +207,7 @@ jobs:
           path: |
             webUI/coverage/
             webUI/npm-audit.json
+            webUI/test-results/vitest-junit.xml
 
   frontend-node22:
     name: Frontend Node 22 compatibility
@@ -284,6 +285,52 @@ jobs:
           fi
           echo "status=$STATUS" >> $GITHUB_OUTPUT
 
+      - name: Download all test artifacts
+        uses: actions/download-artifact@95815c38cf0ffb484c70ad26a4a34a4fc1175f64 # v4
+        with:
+          path: artifacts/all
+
+      - name: Consolidate test results
+        id: consolidate
+        shell: bash
+        run: |
+          python3 scripts/operations/consolidate-test-results.py \
+            --artifact-root artifacts/all \
+            --output artifacts/consolidated.json
+          python3 -c "
+import json
+
+with open('artifacts/consolidated.json') as f:
+    counts = json.load(f)
+
+job_status_map = {
+    'backend-test-artifacts': '${{ needs.backend.result }}',
+    'backend-docker-integration-artifacts': '${{ needs.backend-docker-integration.result }}',
+    'frontend-test-artifacts': '${{ needs.frontend.result }}',
+    'frontend-node22-test-artifacts': '${{ needs.frontend-node22.result }}',
+}
+
+summary = {
+    'push': '${{ github.ref_name }}',
+    'sha': '${{ github.sha }}',
+    'jobs': {},
+}
+
+for name, v in sorted(counts.items()):
+    summary['jobs'][name] = {
+        'status': job_status_map.get(name, 'unknown'),
+        'passed': v['passed'],
+        'failed': v['failed'],
+        'skipped': v['skipped'],
+        'tests': v['tests'],
+    }
+
+with open('artifacts/detail.json', 'w') as f:
+    json.dump(summary, f)
+
+print('Saved detail to artifacts/detail.json')
+"
+
       - name: Report to operations API
         shell: bash
         env:
@@ -294,4 +341,8 @@ jobs:
             --operation-id "${{ steps.op-id.outputs.operation-id }}" \
             --status "${{ steps.status.outputs.status }}" \
             --provider-reference "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --detail "Push CI on ${{ github.ref_name }} @ ${{ github.sha }}"
+            --detail "$(cat artifacts/detail.json)" \
+            --artifact-root artifacts/all \
+            --artifact-name "push-ci-evidence" \
+            --artifact-kind "test-results" \
+            --artifact-reference "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

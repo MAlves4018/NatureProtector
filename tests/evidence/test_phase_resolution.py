@@ -1,7 +1,7 @@
 from __future__ import annotations
 import tempfile, unittest
 from pathlib import Path
-from _loader import load
+from tests.evidence._loader import load
 
 MODULE = load("scripts/evidence/collect-report-integration-evidence.py", "phase7_collect")
 

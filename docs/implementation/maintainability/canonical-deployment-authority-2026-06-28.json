@@ -6,7 +6,7 @@
   "protected_file_count": 231,
   "protected_hashes": {
     "tests/cloud/Test-CloudScaffold.Static.ps1": "0b33ca479da270aa25920c98180f418f0504ba95678374aa63b6ea2b923ffa41",
-    "tests/cloud/Test-G8StateEvidence.py": "a1d8c340cd087f5d904a801156a25bb6b1ba18655186fd4ba0f88a207e54e4de",
+    "tests/cloud/test_g8_state_evidence.py": "46ec56e685434dd4f982efd6bc96b6536b02c7a8f5dee0572d6997da15ffec80",
     "tests/cloud/Test-StandardCd.Static.ps1": "4ef6e2b0767859da4cabe7aefc28f3bc11f826aa953a2e90b7be3dd8c367eed3",
     "scripts/ci/Start-DockerIntegrationServices.ps1": "681d5253a9ee128a611290b9f826b0edfc895c342f25cb9b8cef8bed7e4c1814",
     "scripts/ci/check-dotnet-audit.ps1": "29102dc01a8edd5828e7704fa214f277af4abebbb52daa4432dcf8ff79c030d2",

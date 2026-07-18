@@ -97,7 +97,7 @@ function isOperationComplete(op: EngineeringOperationResponse): boolean {
 }
 
 export function UiQaTestProvider({ children }: { children: ReactNode }) {
-  const [qaSuites, setQaSuites] = useState<UiQaSuite[]>(() => buildUiQaSuites());
+  const [qaSuites, setQaSuites] = useState<UiQaSuite[]>([]);
   const [suitesLoading, setSuitesLoading] = useState(true);
   const [runningSuiteIds, setRunningSuiteIds] = useState<Set<string>>(new Set());
   const [executions, setExecutions] = useState<QaTestExecution[]>([]);
@@ -133,14 +133,12 @@ export function UiQaTestProvider({ children }: { children: ReactNode }) {
     api
       .listQualityRuns(100)
       .then((runs) => {
-        console.log('Fetched push results', runs);
         if (cancelled) return;
         setPushResults(runs.filter((r) => r.operationId === 'push-ci'));
       })
-      .catch(() => {console.log('Failed to fetch push results')})
+      .catch(() => {})
       .finally(() => {
         if (!cancelled) setPushResultsLoading(false);
-        console.log('pushResults', pushResults);
       });
     return () => {
       cancelled = true;
