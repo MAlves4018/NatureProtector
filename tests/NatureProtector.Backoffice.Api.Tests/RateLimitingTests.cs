@@ -30,6 +30,26 @@ public sealed class RateLimitingTests
         Assert.Equal("anonymous-read", document.RootElement.GetProperty("policy").GetString());
     }
 
+    [Fact]
+    public async Task AuthenticatedRead_UsesIdentityAwarePolicyAfterAuthentication()
+    {
+        await using var factory = new ControlPlaneApiWebApplicationFactory(configurationOverrides: new Dictionary<string, string?>
+        {
+            ["RateLimiting:AnonymousRead:PermitLimit"] = "1",
+            ["RateLimiting:AnonymousRead:WindowSeconds"] = "60",
+            ["RateLimiting:AuthenticatedRead:PermitLimit"] = "2",
+            ["RateLimiting:AuthenticatedRead:WindowSeconds"] = "60"
+        });
+        using var client = factory.CreateClient();
+
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.GetAsync("/api/control/areas")).StatusCode);
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.GetAsync("/api/control/areas")).StatusCode);
+
+        using var rejected = await client.GetAsync("/api/control/areas");
+        Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
+        Assert.Equal("authenticated-read", rejected.Headers.GetValues("X-RateLimit-Policy").Single());
+    }
+
 
     [Fact]
     public async Task NormalizedForwardedFor_PartitionsAnonymousClientsWhenExplicitlyTrusted()

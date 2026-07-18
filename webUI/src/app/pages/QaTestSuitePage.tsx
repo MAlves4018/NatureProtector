@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, PlayCircle, RotateCw, RefreshCw, FileText } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
-import { useUiCapabilities } from '../state/CapabilityContext';
+import { PageHeader } from '../components/PageHeader';
 import { useUiQaTests } from '../state/QaTestContext';
 
 interface LocalTestResult {
@@ -18,6 +18,12 @@ interface LocalTestSummary {
   Overall: string;
   Timestamp: string;
   Results: LocalTestResult[];
+}
+
+function suiteState(status: string) {
+  if (status === 'Passed') return 'ready' as const;
+  if (status.toLowerCase().includes('finding')) return 'partial' as const;
+  return 'unknown' as const;
 }
 
 export function QaTestSuitePage() {

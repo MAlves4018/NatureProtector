@@ -25,7 +25,7 @@ using RabbitMQ.Client;
 namespace NatureProtector.IntegrationTests.Flow;
 
 [Collection(DockerIntegrationCollection.Name)]
-public sealed class DockerRabbitMqConsumerPipelineTests
+public sealed partial class DockerRabbitMqConsumerPipelineTests
 {
     [Fact]
     [Trait("Category", "DockerIntegration")]
@@ -1289,6 +1289,8 @@ public sealed class DockerRabbitMqConsumerPipelineTests
 
         public RabbitMqOptions RabbitMqOptions { get; }
 
+        public TemporaryRabbitMqVirtualHost VirtualHost => _virtualHost;
+
         public ConnectionFactory ConnectionFactory { get; }
 
         public RabbitMqReadingPublisher Publisher { get; }
@@ -1313,11 +1315,14 @@ public sealed class DockerRabbitMqConsumerPipelineTests
 
         public static async Task<ConsumerPipelineHarness> CreateAsync(
             IProcessingFaultInjector? processingFaultInjector = null,
-            bool startWorker = true)
+            bool startWorker = true,
+            bool observabilityRawEnabled = false)
         {
             var database = await TemporaryPostgresDatabase.CreateAsync();
             var exchangeName = $"np.it.consumer.{Guid.NewGuid():N}";
-            var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(exchangeName);
+            var baseOptions = DockerIntegrationSettings.CreateRabbitMqOptions(
+                exchangeName,
+                observabilityRawEnabled: observabilityRawEnabled);
             var virtualHost = await TemporaryRabbitMqVirtualHost.CreateAsync(baseOptions, CancellationToken.None);
             var rabbitMqOptions = virtualHost.CreateOptions(exchangeName);
             var connectionFactory = virtualHost.CreateConnectionFactory();

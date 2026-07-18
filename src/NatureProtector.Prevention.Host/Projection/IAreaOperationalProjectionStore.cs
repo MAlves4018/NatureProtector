@@ -15,5 +15,6 @@ public interface IAreaOperationalProjectionStore
         AreaRiskSnapshot snapshot,
         int assessmentCount,
         CancellationToken cancellationToken,
-        Guid? simulationRunId = null);
+        Guid? simulationRunId = null,
+        int? cycleIndex = null);
 }

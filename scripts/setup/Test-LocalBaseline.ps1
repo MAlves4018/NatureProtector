@@ -258,7 +258,7 @@ $rabbitContainer = Get-NpConfigValue $envValues "RABBITMQ_CONTAINER" "np-rabbitm
 
 $postgresDb = Get-NpConfigValue $envValues "POSTGRES_DB" "natureprotector" -EnvironmentFirst
 $postgresUser = Get-NpConfigValue $envValues "POSTGRES_USER" "np" -EnvironmentFirst
-$postgresPort = [int](Get-NpConfigValue $envValues "POSTGRES_PORT" "5432" -EnvironmentFirst)
+$postgresPort = [int](Get-NpConfigValue $envValues "POSTGRES_PORT" "5433" -EnvironmentFirst)
 $postgresContainer = Get-NpConfigValue $envValues "POSTGRES_CONTAINER" "np-postgres" -EnvironmentFirst
 
 $influxPort = [int](Get-NpConfigValue $envValues "INFLUXDB_PORT" "8181" -EnvironmentFirst)
@@ -271,6 +271,7 @@ $grafanaPort = [int](Get-NpConfigValue $envValues "GRAFANA_PORT" "3000" -Environ
 $grafanaContainer = Get-NpConfigValue $envValues "GRAFANA_CONTAINER" "np-grafana" -EnvironmentFirst
 
 $apiPort = [int](Get-NpConfigValue $envValues "BACKOFFICE_API_PORT" "5254" -EnvironmentFirst)
+$preventionPort = [int](Get-NpConfigValue $envValues "PREVENTION_HOST_PORT" "5260" -EnvironmentFirst)
 $webPort = [int](Get-NpConfigValue $envValues "WEBUI_PORT" "5173" -EnvironmentFirst)
 
 if ($checkInfrastructure) {
@@ -355,13 +356,40 @@ if ($checkInfrastructure) {
 }
 
 if ($checkRuntime) {
-    $backofficeHealthUri = "http://localhost:$apiPort/health"
-    $backofficeHealth = Invoke-HttpCheck $backofficeHealthUri
-    if ($backofficeHealth.Success) {
-        Add-Result "OK" "Backoffice API health" "$backofficeHealthUri returned HTTP $($backofficeHealth.StatusCode)" $true
+    $backofficeLiveUri = "http://localhost:$apiPort/health/live"
+    $backofficeLive = Invoke-HttpCheck $backofficeLiveUri
+    if ($backofficeLive.Success) {
+        Add-Result "OK" "Backoffice API liveness" "$backofficeLiveUri returned HTTP $($backofficeLive.StatusCode)" $true
     }
     else {
-        Add-Result "FAIL" "Backoffice API health" "not available or not ready at ${backofficeHealthUri}: $($backofficeHealth.Error)" $true
+        Add-Result "FAIL" "Backoffice API liveness" "not available at ${backofficeLiveUri}: $($backofficeLive.Error)" $true
+    }
+
+    $backofficeReadyUri = "http://localhost:$apiPort/health/ready"
+    $backofficeReady = Invoke-HttpCheck $backofficeReadyUri
+    if ($backofficeReady.Success) {
+        Add-Result "OK" "Backoffice API readiness" "$backofficeReadyUri returned HTTP $($backofficeReady.StatusCode)" $true
+    }
+    else {
+        Add-Result "FAIL" "Backoffice API readiness" "not ready at ${backofficeReadyUri}: $($backofficeReady.Error)" $true
+    }
+
+    $preventionLiveUri = "http://localhost:$preventionPort/health/live"
+    $preventionLive = Invoke-HttpCheck $preventionLiveUri
+    if ($preventionLive.Success) {
+        Add-Result "OK" "Prevention Host liveness" "$preventionLiveUri returned HTTP $($preventionLive.StatusCode)" $true
+    }
+    else {
+        Add-Result "FAIL" "Prevention Host liveness" "not available at ${preventionLiveUri}: $($preventionLive.Error)" $true
+    }
+
+    $preventionReadyUri = "http://localhost:$preventionPort/health/ready"
+    $preventionReady = Invoke-HttpCheck $preventionReadyUri
+    if ($preventionReady.Success) {
+        Add-Result "OK" "Prevention Host readiness" "$preventionReadyUri returned HTTP $($preventionReady.StatusCode)" $true
+    }
+    else {
+        Add-Result "FAIL" "Prevention Host readiness" "not ready at ${preventionReadyUri}: $($preventionReady.Error)" $true
     }
 
     $backofficeAuthGuardUri = "http://localhost:$apiPort/api/control/configurations/active"

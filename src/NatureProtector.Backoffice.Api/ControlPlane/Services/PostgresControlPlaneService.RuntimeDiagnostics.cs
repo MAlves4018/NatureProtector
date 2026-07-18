@@ -1438,8 +1438,7 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             .Where(entity => !string.IsNullOrWhiteSpace(entity.MetadataJson) &&
                 entity.MetadataJson.Contains(orchestratorCorrelationId, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(entity => entity.CreatedAt)
-            .FirstOrDefault()
-            ?? rows.OrderByDescending(entity => entity.CreatedAt).FirstOrDefault();
+            .FirstOrDefault();
     }
 
     private static async Task<int> CountAcceptedReadingsForRunAsync(

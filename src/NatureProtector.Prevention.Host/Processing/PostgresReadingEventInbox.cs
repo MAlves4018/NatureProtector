@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
+using System.Data;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -92,6 +93,7 @@ public sealed class PostgresReadingEventInbox(
             Producer = envelope.Producer,
             EventType = envelope.EventType,
             AreaId = envelope.AreaId,
+            SimulationRunId = envelope.Payload.SimulationRunId,
             EventTime = envelope.EventTime,
             ReceivedAt = now,
             IngestTime = envelope.IngestTime,
@@ -183,33 +185,33 @@ public sealed class PostgresReadingEventInbox(
     public async Task CompleteProcessingAsync(InboxProcessingLease lease, CancellationToken cancellationToken)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
         var now = DateTimeOffset.UtcNow;
-
-        var inboxEvent = await dbContext.InboxEvents
-            .SingleAsync(entity => entity.Id == lease.InboxEventId, cancellationToken);
-        var attempt = await dbContext.ProcessingAttempts
-            .SingleAsync(entity => entity.Id == lease.AttemptId, cancellationToken);
-
-        if (!IsCurrentStartedLease(inboxEvent, attempt, lease))
+        var inboxRows = await dbContext.InboxEvents
+            .Where(entity => entity.Id == lease.InboxEventId && entity.Status == InboxEventStatus.Processing && entity.AttemptCount == lease.AttemptNumber)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(entity => entity.Status, InboxEventStatus.Processed)
+                .SetProperty(entity => entity.LastAttemptAt, now)
+                .SetProperty(entity => entity.LastProcessedAt, now)
+                .SetProperty(entity => entity.NextAttemptNotBefore, (DateTimeOffset?)null)
+                .SetProperty(entity => entity.QuarantinedAt, (DateTimeOffset?)null)
+                .SetProperty(entity => entity.LastErrorCode, (string?)null)
+                .SetProperty(entity => entity.LastErrorMessage, (string?)null), cancellationToken);
+        var attemptRows = inboxRows == 1
+            ? await dbContext.ProcessingAttempts
+                .Where(entity => entity.Id == lease.AttemptId && entity.InboxEventId == lease.InboxEventId && entity.AttemptNumber == lease.AttemptNumber && entity.Outcome == ProcessingAttemptOutcome.Started)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(entity => entity.FinishedAt, now)
+                    .SetProperty(entity => entity.Outcome, ProcessingAttemptOutcome.Succeeded)
+                    .SetProperty(entity => entity.ErrorCode, (string?)null)
+                    .SetProperty(entity => entity.ErrorMessage, (string?)null), cancellationToken)
+            : 0;
+        if (inboxRows != 1 || attemptRows != 1)
         {
-            LogIgnoredStaleLease("complete", inboxEvent, attempt, lease);
+            await transaction.RollbackAsync(cancellationToken);
             return;
         }
-
-        inboxEvent.Status = InboxEventStatus.Processed;
-        inboxEvent.LastAttemptAt = now;
-        inboxEvent.LastProcessedAt = now;
-        inboxEvent.NextAttemptNotBefore = null;
-        inboxEvent.QuarantinedAt = null;
-        inboxEvent.LastErrorCode = null;
-        inboxEvent.LastErrorMessage = null;
-
-        attempt.FinishedAt = now;
-        attempt.Outcome = ProcessingAttemptOutcome.Succeeded;
-        attempt.ErrorCode = null;
-        attempt.ErrorMessage = null;
-
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     /// <summary>
@@ -227,33 +229,35 @@ public sealed class PostgresReadingEventInbox(
         activity?.SetTag(TelemetryTags.AttemptNumber, lease.AttemptNumber);
         activity?.SetTag(TelemetryTags.ErrorCode, errorCode);
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
         var now = DateTimeOffset.UtcNow;
-
-        var inboxEvent = await dbContext.InboxEvents
-            .SingleAsync(entity => entity.Id == lease.InboxEventId, cancellationToken);
-        var attempt = await dbContext.ProcessingAttempts
-            .SingleAsync(entity => entity.Id == lease.AttemptId, cancellationToken);
-
-        if (!IsCurrentStartedLease(inboxEvent, attempt, lease))
+        var code = Truncate(errorCode, 100);
+        var message = Truncate(errorMessage, 2000);
+        var inboxRows = await dbContext.InboxEvents
+            .Where(entity => entity.Id == lease.InboxEventId && entity.Status == InboxEventStatus.Processing && entity.AttemptCount == lease.AttemptNumber)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(entity => entity.Status, InboxEventStatus.RetryPending)
+                .SetProperty(entity => entity.LastAttemptAt, now)
+                .SetProperty(entity => entity.LastProcessedAt, (DateTimeOffset?)null)
+                .SetProperty(entity => entity.NextAttemptNotBefore, now.Add(retryDelay))
+                .SetProperty(entity => entity.QuarantinedAt, (DateTimeOffset?)null)
+                .SetProperty(entity => entity.LastErrorCode, code)
+                .SetProperty(entity => entity.LastErrorMessage, message), cancellationToken);
+        var attemptRows = inboxRows == 1
+            ? await dbContext.ProcessingAttempts
+                .Where(entity => entity.Id == lease.AttemptId && entity.InboxEventId == lease.InboxEventId && entity.AttemptNumber == lease.AttemptNumber && entity.Outcome == ProcessingAttemptOutcome.Started)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(entity => entity.FinishedAt, now)
+                    .SetProperty(entity => entity.Outcome, ProcessingAttemptOutcome.RetryScheduled)
+                    .SetProperty(entity => entity.ErrorCode, code)
+                    .SetProperty(entity => entity.ErrorMessage, message), cancellationToken)
+            : 0;
+        if (inboxRows != 1 || attemptRows != 1)
         {
-            LogIgnoredStaleLease("schedule_retry", inboxEvent, attempt, lease);
+            await transaction.RollbackAsync(cancellationToken);
             return;
         }
-
-        inboxEvent.Status = InboxEventStatus.RetryPending;
-        inboxEvent.LastAttemptAt = now;
-        inboxEvent.LastProcessedAt = null;
-        inboxEvent.NextAttemptNotBefore = now.Add(retryDelay);
-        inboxEvent.QuarantinedAt = null;
-        inboxEvent.LastErrorCode = Truncate(errorCode, 100);
-        inboxEvent.LastErrorMessage = Truncate(errorMessage, 2000);
-
-        attempt.FinishedAt = now;
-        attempt.Outcome = ProcessingAttemptOutcome.RetryScheduled;
-        attempt.ErrorCode = Truncate(errorCode, 100);
-        attempt.ErrorMessage = Truncate(errorMessage, 2000);
-
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     /// <summary>

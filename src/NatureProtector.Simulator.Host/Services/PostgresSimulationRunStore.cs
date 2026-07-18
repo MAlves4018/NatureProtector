@@ -67,9 +67,12 @@ public sealed class PostgresSimulationRunStore(
         record.NumberOfCycles = context.NumberOfCycles;
         record.ExecutionSeed = run.ExecutionSeed;
         record.Status = run.Status;
+        record.OrchestratorCorrelationId = context.RunOverrides?.Resolved.OrchestratorCorrelationId;
         record.MetadataJson = JsonSerializer.Serialize(new
         {
             sensor_count = context.Sensors.Count,
+            expected_sensor_ids = context.Sensors.Select(sensor => sensor.Id).OrderBy(id => id).ToArray(),
+            expected_sensor_names = context.Sensors.Select(sensor => sensor.Name).OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray(),
             scenario_category = context.Scenario.Category.ToString(),
             orchestrator_correlation_id = context.RunOverrides?.Resolved.OrchestratorCorrelationId,
             run_overrides = context.RunOverrides is null

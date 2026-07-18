@@ -176,6 +176,9 @@ export interface RuntimeAttemptTimingSummaryResponse {
   minDurationMs: number | null;
   avgDurationMs: number | null;
   maxDurationMs: number | null;
+  p50DurationMs: number | null;
+  p95DurationMs: number | null;
+  p99DurationMs: number | null;
 }
 
 export interface RuntimeStageTimingSummaryResponse {
@@ -360,6 +363,10 @@ export interface RabbitMqMetricsResponse {
 
 export interface RabbitMqQueueMetricResponse {
   queueName: string;
+  queueRole: 'PrimaryWorkQueue' | 'AuxiliaryDiagnosticQueue' | string;
+  enabled: boolean;
+  consumerRequired: boolean;
+  blocksRuntimeHealth: boolean;
   messagesReady: number | null;
   messagesUnacknowledged: number | null;
   messagesTotal: number | null;
@@ -454,6 +461,42 @@ export interface RuntimeRunStartResponse {
   warnings: string[];
   logDirectory: string | null;
   evidenceDirectory: string | null;
+  operationId?: string | null;
+}
+
+export interface RuntimeOperationAccountingResponse {
+  expectedObservations: number;
+  acceptedObservations: number;
+  pendingInbox: number;
+  processingInbox: number;
+  retryPendingInbox: number;
+  processedInbox: number;
+  quarantinedInbox: number;
+  settled: boolean;
+}
+
+export interface RuntimeOperationResponse {
+  operationId: string;
+  requestId: string;
+  correlationId: string;
+  simulationRunId: string | null;
+  requestedState: string;
+  providerState: string;
+  runState: string;
+  processingState: string;
+  state: string;
+  terminalOutcome: string | null;
+  acceptedAt: string;
+  updatedAt: string;
+  startedAt: string | null;
+  producerCompletedAt: string | null;
+  systemCompletedAt: string | null;
+  finishedAt: string | null;
+  failureCode: string | null;
+  failureDetail: string | null;
+  evidenceId: string | null;
+  evidenceLocation: string | null;
+  accounting: RuntimeOperationAccountingResponse;
 }
 
 export interface RuntimeResetRequest {

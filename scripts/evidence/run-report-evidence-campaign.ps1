@@ -30,7 +30,9 @@ param(
     [string]$P3RunLabel,
     [string]$AuditDirectory,
     [switch]$RequireP3,
-    [switch]$RequireAudit
+    [switch]$RequireAudit,
+    [int]$NpScoreBootstrapIterations = 500,
+    [string]$EvidenceClosureConfig = "config/evidence/evidence-gap-closure.json"
 )
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
@@ -42,7 +44,9 @@ $argsList = @(
     "--api-base-url", $ApiBaseUrl,
     "--postgres-dsn-env", $PostgresDsnEnvironmentVariable,
     "--http-profile", $HttpProfile,
-    "--benchmark-profile", $BenchmarkProfile
+    "--benchmark-profile", $BenchmarkProfile,
+    "--np-score-bootstrap-iterations", $NpScoreBootstrapIterations,
+    "--evidence-closure-config", $EvidenceClosureConfig
 )
 if ($Execute) { $argsList += "--execute" }
 if ($ContinueOnError) { $argsList += "--continue-on-error" }
@@ -74,3 +78,13 @@ $campaignRoot = Join-Path $repoRoot "artifacts/report-evidence/$BaselineId/08-ca
 & $PythonExecutable $verifier $campaignRoot
 if ($LASTEXITCODE -ne 0) { throw "Phase 8 campaign verification failed with exit code $LASTEXITCODE." }
 Write-Host "PHASE_8_OUTPUT=$campaignRoot"
+if ($Execute) {
+    $phase10Output = Join-Path $repoRoot "artifacts/report-evidence/$BaselineId/10-evidence-intelligence/$RunId"
+    $phase10Collector = Join-Path $PSScriptRoot "collect-evidence-intelligence.py"
+    $phase10Verifier = Join-Path $PSScriptRoot "verify-evidence-intelligence.py"
+    & $PythonExecutable $phase10Collector --repo $repoRoot --baseline-id $BaselineId --run-id $RunId --output $phase10Output --overwrite
+    if ($LASTEXITCODE -ne 0) { throw "Phase 10 evidence intelligence failed with exit code $LASTEXITCODE." }
+    & $PythonExecutable $phase10Verifier $phase10Output
+    if ($LASTEXITCODE -ne 0) { throw "Phase 10 verification failed with exit code $LASTEXITCODE." }
+    Write-Host "PHASE_10_OUTPUT=$phase10Output"
+}

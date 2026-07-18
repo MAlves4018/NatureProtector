@@ -41,21 +41,37 @@ public sealed class ControlledValidationOrchestrator(
             manifest.ScenarioCode,
             messages.Count);
 
-        foreach (var message in messages)
+        try
         {
-            await publisher.PublishAsync(message, cancellationToken);
+            foreach (var message in messages)
+            {
+                await publisher.PublishAsync(message, cancellationToken);
+            }
+
+            run.Complete(DateTimeOffset.UtcNow);
+            await simulationRunStore.UpsertAsync(context, run, cancellationToken);
+
+            logger.LogInformation(
+                "Completed controlled validation publication | Phase={Phase} | RunLabel={RunLabel} | ControlledValidationRunId={RunId}",
+                manifest.Phase,
+                manifest.RunLabel,
+                manifest.ControlledValidationRunId);
+
+            return manifest;
         }
+        catch
+        {
+            if (run.Status == SimulationRunStatus.Running)
+            {
+                run.Fail(DateTimeOffset.UtcNow);
+                await simulationRunStore.UpsertAsync(
+                    context,
+                    run,
+                    CancellationToken.None);
+            }
 
-        run.Complete(DateTimeOffset.UtcNow);
-        await simulationRunStore.UpsertAsync(context, run, cancellationToken);
-
-        logger.LogInformation(
-            "Completed controlled validation publication | Phase={Phase} | RunLabel={RunLabel} | ControlledValidationRunId={RunId}",
-            manifest.Phase,
-            manifest.RunLabel,
-            manifest.ControlledValidationRunId);
-
-        return manifest;
+            throw;
+        }
     }
 
     private async Task<(SimulationContext Context, SimulationRun Run)> EnsureSimulationRunAsync(

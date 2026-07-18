@@ -72,8 +72,20 @@ public sealed class OperationCatalog : IOperationCatalog
         Quality("backend-integration", "Backend integration", OperationCapabilities.QualityExecuteFull),
         Quality("architecture", "Architecture", OperationCapabilities.QualityExecuteStatic),
         Quality("security", "Security", OperationCapabilities.QualityExecuteFull),
-        Quality("playwright-fixture", "Playwright fixture", OperationCapabilities.QualityExecuteStatic),
-        Quality("playwright-full-stack", "Playwright full stack", OperationCapabilities.QualityExecuteFull),
+        Quality(
+            "playwright-fixture",
+            "Playwright fixture",
+            OperationCapabilities.QualityExecuteStatic,
+            availability: "blocked-workflow-suite-not-mapped",
+            evidenceLevel: "NOT_PROVED",
+            limitation: "The authoritative quality wrapper does not map this suite ID; dispatch would deterministically fail as an unknown suite."),
+        Quality(
+            "playwright-full-stack",
+            "Playwright full stack",
+            OperationCapabilities.QualityExecuteFull,
+            availability: "blocked-workflow-suite-not-mapped",
+            evidenceLevel: "NOT_PROVED",
+            limitation: "The authoritative quality wrapper does not map this suite ID; dispatch would deterministically fail as an unknown suite."),
         Quality("accessibility", "Accessibility", OperationCapabilities.QualityExecuteStatic),
         Quality("mutation", "Mutation", OperationCapabilities.QualityExecuteFull),
         Quality("terraform-static", "Terraform static", OperationCapabilities.QualityExecuteStatic),
@@ -114,9 +126,16 @@ public sealed class OperationCatalog : IOperationCatalog
     public OperationDefinition? Find(string operationId) => All.FirstOrDefault(
         definition => string.Equals(definition.OperationId, operationId, StringComparison.OrdinalIgnoreCase));
 
-    private static OperationDefinition Quality(string id, string name, string capability) => new(
+    private static OperationDefinition Quality(
+        string id,
+        string name,
+        string capability,
+        string availability = "implemented",
+        string evidenceLevel = "IMPLEMENTED_NOT_PROVED",
+        string? limitation = null) => new(
         id, "quality", name, $"Execute the closed '{id}' quality suite through the authoritative CI workflows.",
-        capability, "low", false, false, ["ci"], [RefInput], "_quality-operation.yml", string.Empty);
+        capability, "low", false, false, ["ci"], [RefInput], "_quality-operation.yml", string.Empty,
+        availability, evidenceLevel, limitation);
 
     private static OperationDefinition Evidence(
         string id,

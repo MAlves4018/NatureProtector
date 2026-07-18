@@ -557,6 +557,7 @@ NatureProtector workspace command
 Usage:
   .\scripts\np.ps1 doctor
   .\scripts\np.ps1 init-local -Force
+  .\scripts\np.ps1 prepare-local
   .\scripts\np.ps1 up
   .\scripts\np.ps1 start
   .\scripts\np.ps1 health

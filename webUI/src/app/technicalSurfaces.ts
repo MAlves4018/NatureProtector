@@ -133,8 +133,8 @@ export function buildUiPipelineSurface(
   const postgres = findComponent(input.health, 'PostgreSQL');
   const influx = findComponent(input.health, 'InfluxDB');
   const grafana = findComponent(input.health, 'Grafana');
-  const ingestionQueue = findQueue(rabbitMq, 'np.ingestion.readings');
-  const observabilityQueue = findQueue(rabbitMq, 'np.observability.raw');
+  const ingestionQueue = findQueueByRole(rabbitMq, 'PrimaryWorkQueue');
+  const observabilityQueue = findQueueByRole(rabbitMq, 'AuxiliaryDiagnosticQueue');
 
   const fields: UiTechnicalField[] = [
     field(
@@ -338,7 +338,7 @@ export function buildUiPipelineSurface(
       queueMetricState(ingestionQueue),
       ingestionQueue?.source ?? 'RabbitMQ Management API',
       formatUiDate(ingestionQueue?.observedAt, locale),
-      'np.ingestion.readings messages_ready',
+      `${ingestionQueue?.queueName ?? 'PrimaryWorkQueue'} messages_ready`,
       ingestionQueue?.limitation ?? none(locale),
     ),
     field(
@@ -347,7 +347,7 @@ export function buildUiPipelineSurface(
       queueMetricState(ingestionQueue),
       ingestionQueue?.source ?? 'RabbitMQ Management API',
       formatUiDate(ingestionQueue?.observedAt, locale),
-      'np.ingestion.readings messages_unacknowledged',
+      `${ingestionQueue?.queueName ?? 'PrimaryWorkQueue'} messages_unacknowledged`,
       ingestionQueue?.limitation ?? none(locale),
     ),
     field(
@@ -356,7 +356,7 @@ export function buildUiPipelineSurface(
       queueMetricState(ingestionQueue),
       ingestionQueue?.source ?? 'RabbitMQ Management API',
       formatUiDate(ingestionQueue?.observedAt, locale),
-      'np.ingestion.readings consumers',
+      `${ingestionQueue?.queueName ?? 'PrimaryWorkQueue'} consumers`,
       ingestionQueue?.limitation ?? none(locale),
     ),
     field(
@@ -365,7 +365,7 @@ export function buildUiPipelineSurface(
       queueMetricState(observabilityQueue),
       observabilityQueue?.source ?? 'RabbitMQ Management API',
       formatUiDate(observabilityQueue?.observedAt, locale),
-      'np.observability.raw messages_ready',
+      `${observabilityQueue?.queueName ?? 'AuxiliaryDiagnosticQueue'} messages_ready`,
       observabilityQueue?.limitation ?? none(locale),
     ),
     field(
@@ -648,13 +648,12 @@ export function buildUiAdminActions(user: Pick<User, 'roles'> | null | undefined
       capability: 'admin.execute',
       action: 'Runtime reset',
       riskLevel: 'High',
-      authorizationState:
-        'Backend endpoint exists for Sim/Admin in Development; executable reset is not exposed by this UI surface',
-      confirmationRequired: 'RESET confirm token and dry-run support in backend contract',
+      authorizationState: canRuntimeWrite ? 'Backend allows Sim/Admin in Development' : 'Backend denies this profile',
+      confirmationRequired: 'Exact RESET_RUNTIME_STATE token; dry-run is selected by default',
       auditAvailable: 'Before/after table counts in reset response',
-      availability: 'blocked',
+      availability: canRuntimeWrite ? 'partial' : 'blocked',
       limitations: [
-        'Preserving M04 smoke state is required; reset can be destructive and is not exposed as available administration.',
+        'The backend can still reject unsafe resets before deletion when active work or unavailable stores are detected.',
       ],
     },
     {
@@ -763,41 +762,73 @@ export function buildUiReadinessItems(input: {
   summary: RuntimeSummaryResponse | null;
   run: RuntimeRunSummaryResponse | SimulationRunResponse | null;
   user: Pick<User, 'roles'> | null | undefined;
+  health: RuntimeOperationalHealthResponse | null;
+  rabbitMq: RabbitMqMetricsResponse | null;
+  evidence: RuntimeEvidenceCatalogResponse | null;
 }): UiReadinessItem[] {
   const roles = input.user?.roles ?? [];
+  const components = (input.health?.components ?? []).map((component) => ({
+    item: component.component,
+    status: healthState(component.status),
+    evidence: `${component.reason} Último check: ${formatUiDate(component.observedAt, 'pt-PT')}. Fonte: ${component.source}.`,
+    limitation: component.limitation ?? `Scope: ${component.scope}.`,
+  }));
   return [
+    ...components,
     {
-      item: 'Docker local services',
-      status: 'not-confirmed',
-      evidence: 'M05 handoff records np-postgres, np-rabbitmq, np-influxdb and np-grafana active at entry.',
-      limitation: 'The browser UI cannot verify Docker health directly.',
+      item: 'RabbitMQ backlog',
+      status: input.rabbitMq?.collectionStatus === 'Measured' ? 'ready' : 'unknown',
+      evidence: input.rabbitMq
+        ? `${input.rabbitMq.queues.reduce((total, queue) => total + (queue.messagesTotal ?? 0), 0)} mensagens observadas em ${formatUiDate(input.rabbitMq.observedAt, 'pt-PT')}.`
+        : 'Métricas RabbitMQ não carregadas.',
+      limitation:
+        input.rabbitMq?.limitations.map((item) => item.message).join('; ') || 'Métricas obtidas pela Management API.',
     },
     {
-      item: 'Runtime API read path',
-      status: input.summary ? 'partial' : 'unknown',
+      item: 'Runtime API e projections',
+      status: input.summary ? 'ready' : 'unknown',
       evidence: input.summary ? 'Runtime summary loaded in current UI session.' : 'No runtime summary loaded.',
-      limitation: 'Summary load is not a full health/readiness probe.',
+      limitation: 'A saúde dos serviços é apresentada separadamente pelo endpoint observability/health.',
     },
     {
-      item: 'Demo run selection',
-      status: input.run ? 'partial' : 'not-available',
+      item: 'Execução selecionada',
+      status: input.run ? 'ready' : 'not-available',
       evidence: input.run ? `Selected/latest run ${input.run.id}.` : 'No run selected or loaded.',
-      limitation: 'M04 smoke run is preserved and may affect latest-run ordering.',
+      limitation: 'Todos os painéis run-scoped usam esta SimulationRunId.',
     },
     {
       item: 'Profiles',
-      status: roles.length > 0 ? 'partial' : 'not-confirmed',
+      status: roles.length > 0 ? 'ready' : 'not-confirmed',
       evidence:
         roles.length > 0 ? `Current profile roles: ${roles.join(', ')}.` : 'Unsigned prototype read-only profile.',
       limitation: 'Real Pipeline/Sim/Admin browser journeys require existing local identities.',
     },
     {
-      item: 'Reset/rebaseline',
-      status: 'blocked',
-      evidence: 'M05 guardrail: no destructive reset or volume deletion.',
-      limitation: 'Clean demo requires an explicit safe reset/rebaseline decision outside this UI action.',
+      item: 'Evidence HTTP',
+      status: input.evidence ? 'ready' : 'unknown',
+      evidence: input.evidence
+        ? `${input.evidence.items.length} artefactos allowlisted observados em ${formatUiDate(input.evidence.observedAt, 'pt-PT')}.`
+        : 'Catálogo de evidence não carregado.',
+      limitation:
+        input.evidence?.limitations.map((item) => item.message).join('; ') ||
+        'A presença no catálogo não promove o artefacto a verificado.',
+    },
+    {
+      item: 'Reset / rebaseline',
+      status: input.health && input.rabbitMq ? 'partial' : 'unknown',
+      evidence: 'O reset usa o endpoint governado com dry-run e validações dos stores.',
+      limitation: 'A disponibilidade para executar depende de não existir trabalho ativo e da autorização do perfil.',
     },
   ];
+}
+
+function healthState(status: string): UiTechnicalState {
+  const normalized = status.toLowerCase();
+  if (normalized === 'healthy' || normalized === 'notapplicable') return 'ready';
+  if (normalized === 'degraded' || normalized === 'authrequired') return 'partial';
+  if (normalized === 'unhealthy') return 'blocked';
+  if (normalized === 'notinstrumented') return 'not-instrumented';
+  return 'unknown';
 }
 
 function field(
@@ -846,8 +877,8 @@ function findComponent(health: RuntimeOperationalHealthResponse | null | undefin
   return health?.components.find((item) => item.component === component) ?? null;
 }
 
-function findQueue(rabbitMq: RabbitMqMetricsResponse | null | undefined, queueName: string) {
-  return rabbitMq?.queues.find((item) => item.queueName === queueName) ?? null;
+function findQueueByRole(rabbitMq: RabbitMqMetricsResponse | null | undefined, queueRole: string) {
+  return rabbitMq?.queues.find((item) => item.queueRole === queueRole) ?? null;
 }
 
 function statusToState(status: string | null | undefined): UiTechnicalState {
@@ -873,6 +904,10 @@ function statusToState(status: string | null | undefined): UiTechnicalState {
 function queueMetricState(queue: RabbitMqQueueMetricResponse | null | undefined): UiTechnicalState {
   if (!queue) {
     return 'unknown';
+  }
+
+  if (!queue.enabled) {
+    return 'partial';
   }
 
   return queue.collectionStatus === 'Measured' ? 'ready' : statusToState(queue.collectionStatus);

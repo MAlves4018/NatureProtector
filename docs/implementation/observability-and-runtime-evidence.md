@@ -42,7 +42,7 @@ Componentes atuais:
 
 - `Backoffice.Api`: sinal positivo quando o pedido autenticado chega ao controller.
 - `PostgreSQL`: probe de conectividade EF Core.
-- `RabbitMQ`: RabbitMQ Management HTTP API e estado relevante de filas.
+- `RabbitMQ`: RabbitMQ Management API por HTTP local explícito ou HTTPS com CA privada, e estado relevante de filas.
 - `Prevention.Host`: sinal proxy a partir de consumers em `np.ingestion.readings`.
 - `Simulator.Host`: ciclo de vida da última simulation run; uma run concluída é `NotApplicable`, não unhealthy.
 - `InfluxDB`: probe HTTP de health; probes unauthorized são `AuthRequired` e probes unreachable são `Unknown`.
@@ -70,7 +70,7 @@ CollectionStatus
 Limitation
 ```
 
-O endpoint usa a RabbitMQ Management HTTP API. Não expõe credenciais.
+O endpoint usa um cliente dedicado da RabbitMQ Management API. Em cloud usa HTTPS e a CA privada montada; HTTP exige opt-in explícito para desenvolvimento/Compose. Não expõe credenciais.
 
 Métricas indisponíveis são nullable e marcadas com `CollectionStatus`. Não são convertidas para zero. Um valor zero significa que RabbitMQ reportou zero.
 
@@ -240,4 +240,4 @@ Runtime smoke observado em 2026-06-14:
 - Esta passagem não criou dashboard Grafana.
 - Não há claim de latência integral por evento.
 - Runs históricas anteriores a futura persistência de quality/classifier continuarão sem evidence detalhada de classifier.
-- `np.observability.raw` pode mostrar backlog com zero consumers por desenho; esse backlog é limitação diagnóstica não bloqueante quando `np.ingestion.readings` tem consumer e sem backlog.
+- `np.observability.raw` mostra backlog com zero consumers na baseline. Embora seja apresentada como diagnóstica, não pode ser classificada como tecnicamente não bloqueante: a policy cloud `^np\.` usa `overflow=reject-publish`, pelo que a raw cheia pode produzir `basic.nack` ao publisher. O estado só se torna auxiliar não bloqueante depois da implementação e prova do ADR RMQ-01.

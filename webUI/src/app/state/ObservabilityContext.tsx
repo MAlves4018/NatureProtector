@@ -13,6 +13,7 @@ interface UiObservabilityContextValue {
   rabbitMqMetrics: RabbitMqMetricsResponse | null;
   evidenceCatalog: RuntimeEvidenceCatalogResponse | null;
   observabilityError: Error | null;
+  refreshObservability: () => void;
 }
 
 const UiObservabilityContext = createContext<UiObservabilityContextValue | null>(null);
@@ -25,8 +26,10 @@ export function UiObservabilityProvider({ children }: { children: ReactNode }) {
   const [rabbitMqMetrics, setRabbitMqMetrics] = useState<RabbitMqMetricsResponse | null>(null);
   const [evidenceCatalog, setEvidenceCatalog] = useState<RuntimeEvidenceCatalogResponse | null>(null);
   const [observabilityError, setObservabilityError] = useState<Error | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
 
   useEffect(() => {
+    void refreshVersion;
     if (!canReadPipeline && !canReadEvidence) {
       setOperationalHealth(null);
       setRabbitMqMetrics(null);
@@ -60,10 +63,22 @@ export function UiObservabilityProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [canReadPipeline, canReadEvidence, resolvedAreaCode, areasLoading]);
+  }, [canReadPipeline, canReadEvidence, resolvedAreaCode, areasLoading, refreshVersion]);
+
+  useEffect(() => {
+    if (!canReadPipeline && !canReadEvidence) return;
+    const timer = window.setInterval(() => setRefreshVersion((current) => current + 1), 15000);
+    return () => window.clearInterval(timer);
+  }, [canReadPipeline, canReadEvidence]);
 
   const value = useMemo(
-    () => ({ operationalHealth, rabbitMqMetrics, evidenceCatalog, observabilityError }),
+    () => ({
+      operationalHealth,
+      rabbitMqMetrics,
+      evidenceCatalog,
+      observabilityError,
+      refreshObservability: () => setRefreshVersion((current) => current + 1),
+    }),
     [operationalHealth, rabbitMqMetrics, evidenceCatalog, observabilityError],
   );
 

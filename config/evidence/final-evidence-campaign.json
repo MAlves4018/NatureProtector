@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "campaigns": [
+    {
+      "id": "E1",
+      "title": "Nominal baseline",
+      "claims": [
+        "Nominal runs reach SystemCompleted with complete run-scoped accounting."
+      ],
+      "reportChapters": [
+        4,
+        5,
+        6
+      ],
+      "cases": [
+        {
+          "id": "nominal-short",
+          "kind": "api-run",
+          "areaCode": "proenca-a-nova",
+          "scenarioCode": "scenario_a",
+          "sensorCount": 2,
+          "numberOfCycles": 4,
+          "intervalSeconds": 10,
+          "seed": 20260714,
+          "degradationProfiles": [],
+          "collectEvidence": true,
+          "timeoutSeconds": 120
+        },
+        {
+          "id": "nominal-long",
+          "kind": "api-run",
+          "areaCode": "proenca-a-nova",
+          "scenarioCode": "scenario_a",
+          "sensorCount": 2,
+          "numberOfCycles": 6,
+          "intervalSeconds": 60,
+          "seed": 20260714,
+          "degradationProfiles": [],
+          "collectEvidence": true,
+          "timeoutSeconds": 600
+        }
+      ]
+    },
+    {
+      "id": "E2",
+      "title": "Degradation profiles",
+      "claims": [
+        "Implemented degradation profiles remain attributable to one run and one configuration."
+      ],
+      "reportChapters": [
+        5,
+        6
+      ],
+      "cases": [
+        {
+          "id": "missing",
+          "kind": "api-run",
+          "areaCode": "proenca-a-nova",
+          "scenarioCode": "scenario_c",
+          "sensorCount": 2,
+          "numberOfCycles": 4,
+          "intervalSeconds": 10,
+          "seed": 20260714,
+          "degradationProfiles": [
+            "missing"
+          ],
+          "collectEvidence": true,
+          "timeoutSeconds": 180
+        },
+        {
+          "id": "noise-drift",
+          "kind": "api-run",
+          "areaCode": "proenca-a-nova",
+          "scenarioCode": "scenario_c",
+          "sensorCount": 2,
+          "numberOfCycles": 4,
+          "intervalSeconds": 10,
+          "seed": 20260714,
+          "degradationProfiles": [
+            "noise",
+            "drift"
+          ],
+          "collectEvidence": true,
+          "timeoutSeconds": 180
+        }
+      ]
+    },
+    {
+      "id": "E3",
+      "title": "Temporal membership and snapshots",
+      "claims": [
+        "Expected membership, explicit missing observations and cycle snapshots remain run-scoped."
+      ],
+      "reportChapters": [
+        4,
+        5,
+        6
+      ],
+      "cases": [
+        {
+          "id": "temporal-missing",
+          "kind": "api-run",
+          "areaCode": "proenca-a-nova",
+          "scenarioCode": "scenario_c",
+          "sensorCount": 2,
+          "numberOfCycles": 6,
+          "intervalSeconds": 10,
+          "seed": 20260715,
+          "degradationProfiles": [
+            "missing",
+            "out-of-order",
+            "duplicate"
+          ],
+          "collectEvidence": true,
+          "timeoutSeconds": 240
+        }
+      ]
+    },
+    {
+      "id": "E4",
+      "title": "Lifecycle and recovery",
+      "claims": [
+        "Timeout, cancellation, non-zero exit, orphan reconciliation and reset produce explicit outcomes."
+      ],
+      "reportChapters": [
+        5,
+        6,
+        7
+      ],
+      "cases": [
+        {
+          "id": "lifecycle-tests",
+          "kind": "command",
+          "command": [
+            "dotnet",
+            "test",
+            "NatureProtector.sln",
+            "-c",
+            "Release",
+            "--filter",
+            "FullyQualifiedName~RuntimeOperation|FullyQualifiedName~RuntimeReset"
+          ],
+          "successPatterns": [
+            "Passed!",
+            "Test Run Successful",
+            "Total tests",
+            "SYSTEM_CAPACITY_WORKLOAD_PASS",
+            "MULTI_REPLICA_TEMPORAL_CORRECTNESS_PASS"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E5",
+      "title": "Multi-replica correctness",
+      "claims": [
+        "One, two and three Prevention replicas preserve unique settlements and snapshots."
+      ],
+      "reportChapters": [
+        5,
+        6,
+        7
+      ],
+      "cases": [
+        {
+          "id": "postgres-concurrency",
+          "kind": "command",
+          "command": [
+            "dotnet",
+            "test",
+            "tests/NatureProtector.IntegrationTests/NatureProtector.IntegrationTests.csproj",
+            "-c",
+            "Release",
+            "--filter",
+            "FullyQualifiedName~PreventionWorker_CompetingConsumersProcessDistinctEventsWithoutDuplicateEffects",
+            "--no-build"
+          ],
+          "successPatterns": [
+            "Passed!",
+            "Test Run Successful",
+            "Total tests",
+            "System capacity workload complete",
+            "SYSTEM_CAPACITY_WORKLOAD_PASS",
+            "MULTI_REPLICA_TEMPORAL_CORRECTNESS_PASS"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E6",
+      "title": "Performance and capacity",
+      "claims": [
+        "Throughput, backlog, latency percentiles and settlement lag are measured before scaling."
+      ],
+      "reportChapters": [
+        6,
+        7
+      ],
+      "cases": [
+        {
+          "id": "capacity-workload",
+          "kind": "command",
+          "command": [
+            "pwsh",
+            "-NoProfile",
+            "-File",
+            "scripts/performance/run-system-capacity-workload.ps1"
+          ],
+          "successPatterns": [
+            "Passed!",
+            "Test Run Successful",
+            "Total tests",
+            "System capacity workload complete",
+            "SYSTEM_CAPACITY_WORKLOAD_PASS",
+            "MULTI_REPLICA_TEMPORAL_CORRECTNESS_PASS"
+          ]
+        }
+      ]
+    }
+  ]
+}

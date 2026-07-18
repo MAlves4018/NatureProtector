@@ -60,6 +60,7 @@ REQUIRED = [
     "infra/gcp/kubernetes/g8-1/base/prevention-scaling.yaml",
     "infra/gcp/kubernetes/g8-1/operator-lock.json",
     "infra/gcp/kubernetes/g8-1/base/rabbitmq.yaml",
+    "infra/gcp/kubernetes/g8-1/base/rabbitmq-topology.yaml",
     "infra/gcp/kubernetes/g8-1/base/network-policy.yaml",
     "infra/gcp/kubernetes/g8-1/base/otel-collector.yaml",
     "infra/gcp/kubernetes/g8-1/verifier-support/base/kustomization.yaml",
@@ -501,18 +502,27 @@ semantic_checks = {
     "prevention-postgres-explicit": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "POSTGRES_REQUIRE_EXPLICIT"),
     "prevention-postgres-cloudsql-ip": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "${cloud_sql_private_ip}"),
     "prevention-rabbitmq-private-ca": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "RabbitMq__TlsCertificateAuthorityPath"),
+    "rabbitmq-primary-policy-is-exact": (ROOT / "infra/gcp/kubernetes/g8-1/base/rabbitmq-topology.yaml", "pattern: '^np\\.ingestion\\.readings$'"),
+    "rabbitmq-primary-policy-name": (ROOT / "infra/gcp/kubernetes/g8-1/base/rabbitmq-topology.yaml", "name: natureprotector-primary-work-queue"),
+    "prevention-raw-explicitly-disabled": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "RabbitMq__ObservabilityRawEnabled"),
+    "simulator-raw-explicitly-disabled": (ROOT / "scripts/cloud/Deploy-G81RuntimeJobs.ps1", "RabbitMq__ObservabilityRawEnabled=false"),
+    "api-raw-explicitly-disabled": (ROOT / "infra/gcp/cloud-deploy/g8-1/api/service.yaml", "RabbitMq__ObservabilityRawEnabled"),
     "prevention-influx-explicitly-disabled": (ROOT / "infra/gcp/kubernetes/g8-1/base/prevention.yaml", "InfluxDb__Enabled"),
     "prevention-host-uses-web-health-server": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", "WebApplication.CreateBuilder(args)"),
     "prevention-host-registers-runtime-readiness": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", "AddSingleton<PreventionRuntimeState>()"),
-    "prevention-host-registers-readiness-check": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", 'AddCheck<PreventionReadinessHealthCheck>("prevention-ready")'),
+    "prevention-host-registers-readiness-check": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", "AddCheck<PreventionReadinessHealthCheck>("),
     "prevention-host-exposes-liveness": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", 'MapHealthChecks("/health/live"'),
-    "prevention-host-exposes-readiness": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", 'MapHealthChecks("/health/ready")'),
+    "prevention-host-exposes-readiness": (ROOT / "src/NatureProtector.Prevention.Host/Program.cs", 'Predicate = registration => registration.Tags.Contains("ready")'),
     "prevention-host-uses-aspnet-runtime": (ROOT / "src/NatureProtector.Prevention.Host/NatureProtector.Prevention.Host.csproj", "Microsoft.AspNetCore.App"),
     "staging-is-qualification-profile": (ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml", "deployment-profile: qualification"),
     "production-cloudsql-guardrail": (ROOT / "infra/gcp/terraform/g8-1-environment/cloud_sql.tf", "Production requires regional Cloud SQL"),
 }
 for name, (path, token) in semantic_checks.items():
     check(token in path.read_text(encoding="utf-8"), f"semantic:{name}")
+
+rabbitmq_topology_text = (ROOT / "infra/gcp/kubernetes/g8-1/base/rabbitmq-topology.yaml").read_text(encoding="utf-8")
+check("pattern: '^np\\.'" not in rabbitmq_topology_text, "semantic:rabbitmq-broad-reject-policy-forbidden")
+check("natureprotector-quorum-policy" not in rabbitmq_topology_text, "semantic:rabbitmq-legacy-policy-crd-forbidden")
 
 staging_kustomization = yaml.safe_load(
     (ROOT / "infra/gcp/kubernetes/g8-1/overlays/staging/kustomization.yaml").read_text(encoding="utf-8")

@@ -189,7 +189,7 @@ public sealed class ReadingGenerationService
             EventType: EventTypes.SensorReadingProduced,
             AreaId: truthSnapshot.AreaId,
             EventTime: truthSnapshot.LogicalTimestamp,
-            IngestTime: null,
+            IngestTime: truthSnapshot.LogicalTimestamp,
             Payload: observation.ToPayload());
     }
 

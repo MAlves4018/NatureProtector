@@ -141,6 +141,10 @@ public sealed class OpenApiSemanticTests : IClassFixture<WebApplicationFactory<P
         AssertSchemaProperty(healthComponent, "ageSeconds", "number", "double", nullable: true);
 
         AssertSchemaProperty(queueMetric, "queueName", "string", null, nullable: false);
+        AssertSchemaProperty(queueMetric, "queueRole", "string", null, nullable: false);
+        AssertSchemaProperty(queueMetric, "enabled", "boolean", null, nullable: false);
+        AssertSchemaProperty(queueMetric, "consumerRequired", "boolean", null, nullable: false);
+        AssertSchemaProperty(queueMetric, "blocksRuntimeHealth", "boolean", null, nullable: false);
         AssertSchemaProperty(queueMetric, "messagesReady", "integer", "int32", nullable: true);
         AssertSchemaProperty(queueMetric, "messagesUnacknowledged", "integer", "int32", nullable: true);
         AssertSchemaProperty(queueMetric, "consumers", "integer", "int32", nullable: true);

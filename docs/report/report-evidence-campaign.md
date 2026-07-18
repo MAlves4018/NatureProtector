@@ -16,7 +16,7 @@ A Fase 8 fornece um único orquestrador para executar, na ordem correta, os cole
 & .\scripts\evidence\run-report-evidence-campaign.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
   -Profile full `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe"
+  -PythonExecutable "python"
 ```
 
 O comando cria `08-campaign/<run-id>/preflight.json` e `execution-plan.*`, mas não executa as fases.
@@ -28,7 +28,7 @@ O comando cria `08-campaign/<run-id>/preflight.json` e `execution-plan.*`, mas n
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
   -Profile static `
   -Execute `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe"
+  -PythonExecutable "python"
 ```
 
 Executa inventário, arquitetura SQL estática e regeneração dos artefactos prontos para o relatório.
@@ -40,7 +40,7 @@ Executa inventário, arquitetura SQL estática e regeneração dos artefactos pr
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
   -Profile quality `
   -Execute `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe"
+  -PythonExecutable "python"
 ```
 
 Executa também backend/frontend, cobertura e gates de qualidade. E2E permanece opcional através de `-IncludeE2E`.
@@ -75,7 +75,7 @@ $runLabel = "controlled-validation-p3-negative-pipeline-$((Get-Date).ToUniversal
   -AcknowledgeNonProduction `
   -P3RunLabel $runLabel `
   -RequireP3 `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe"
+  -PythonExecutable "python"
 ```
 
 A auditoria PostgreSQL do P3 continua a ser um segundo passo deliberado. Depois de executar `tools/data-audit/run-postgres-audit.ps1`, volta a correr a campanha com `-AuditDirectory <...\p3\postgres> -RequireAudit`.
@@ -110,3 +110,52 @@ Cada campanha escreve:
 - `SHA256SUMS.txt`.
 
 O verificador falha perante hashes incorretos, estrutura inconsistente ou material com aparência de segredo.
+
+## 6. Validação exploratória do NP_score (Fase 9)
+
+Os perfis `static`, `quality` e `full` executam agora a Fase 9. Esta fase é
+estática quanto à reconstrução histórica e, no perfil `full`, importa também
+os diretórios produzidos pelas Fases 4–6 para comparar métricas atribuíveis a
+cenários atuais. A ordem canónica é `Fases 4–6 → Fase 9 → Fase 7`: a análise é
+primeiro verificada e só depois convertida em tabelas LaTeX, figuras, claims e
+texto pronto para integração no relatório.
+
+Execução isolada:
+
+```powershell
+& .\scripts\evidence\collect-np-score-validation.ps1 `
+  -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
+  -RunId "YYYYMMDDTHHMMSSZ" `
+  -RequireComplete
+```
+
+A configuração canónica fica em
+`config/evidence/np-score-validation.json`. O verificador impede promoção para
+“probabilidade calibrada”, “validação causal” ou generalização externa. A Fase
+7 reconhece estes resultados como `CURRENT_ANALYTICAL_EVIDENCE`, uma classe
+separada de execução runtime e de verificação estática.
+
+## 7. Governação e prontidão do pacote (Fase 10)
+
+Depois de a Fase 7 produzir tabelas, figuras e claims, a Fase 10 percorre toda a
+baseline e verifica:
+
+- cobertura das fases selecionadas;
+- integridade dos manifests SHA-256;
+- existência e classe das fontes dos claims;
+- disponibilidade dos assets de relatório;
+- formatos das figuras;
+- lacunas que impedem ou condicionam a apresentação.
+
+A ordem canónica completa passa a ser:
+
+`Fases 1–6 → Fase 9 → Fase 7 → Fase 10`.
+
+Os wrappers executam esta pós-validação apenas depois de `campaign-summary.*` e `SHA256SUMS.txt` da Fase 8 estarem concluídos. A Fase 10 produz um scorecard de prontidão, mas não altera o limite de afirmação
+definido pelas fases produtoras. Um pacote pode estar tecnicamente bem
+organizado e continuar a conter apenas evidência exploratória ou estática.
+
+
+## Fase 11 — fecho de lacunas
+
+A campanha executa a Fase 11 depois da validação do NP_score e antes da integração documental. A fase admite fontes históricas B/C verificáveis, calcula cobertura real e gera o runbook para as áreas ainda bloqueadas.

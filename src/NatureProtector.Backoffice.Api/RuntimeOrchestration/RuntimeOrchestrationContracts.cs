@@ -46,6 +46,7 @@ public sealed record RuntimeControlledValidationParameters(
     string EvidenceOutputReference);
 
 public sealed record RuntimeLaunchRequest(
+    RuntimeExecutionId ExecutionId,
     Guid RequestId,
     string IdempotencyKey,
     string Environment,
@@ -100,6 +101,7 @@ public sealed record RuntimeStopReceipt(
 
 public interface IRuntimeRunOrchestrator
 {
+    string Provider { get; }
     bool IsAvailable { get; }
     string AvailabilityMessage { get; }
 

@@ -444,13 +444,9 @@ public sealed class PreventionWorkerTests
     }
 
     [Fact]
-    public void DeclareTopology_DeclaresExchangeQueuesAndBindings()
+    public void DeclareTopology_DeclaresOnlyPrimaryQueue_WhenRawIsDisabled()
     {
         var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
-        var method = typeof(PreventionWorker).GetMethod(
-            "DeclareTopology",
-            BindingFlags.Static | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("DeclareTopology method was not found.");
         var options = new RabbitMqOptions
         {
             ExchangeName = "np.it.events",
@@ -458,17 +454,46 @@ public sealed class PreventionWorkerTests
             ObservabilityRawQueueName = "np.it.raw"
         };
 
-        method.Invoke(null, [channel, options]);
+        InvokeDeclareTopology(channel, options);
 
         var exchangeDeclare = Assert.Single(recorder.Invocations, x => x.MethodName == "ExchangeDeclare");
         Assert.Equal("np.it.events", Assert.IsType<string>(exchangeDeclare.Arguments[0]));
         Assert.Equal(NatureProtectorRabbitMqTopology.ExchangeType, Assert.IsType<string>(exchangeDeclare.Arguments[1]));
+        var queueDeclare = Assert.Single(recorder.Invocations, x => x.MethodName == "QueueDeclare");
+        Assert.Equal("np.it.ingestion", Assert.IsType<string>(queueDeclare.Arguments[0]));
+        var queueBind = Assert.Single(recorder.Invocations, x => x.MethodName == "QueueBind");
+        Assert.Equal("np.it.ingestion", Assert.IsType<string>(queueBind.Arguments[0]));
+    }
+
+    [Fact]
+    public void DeclareTopology_DeclaresRawQueue_WhenExplicitlyEnabled()
+    {
+        var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
+        var options = new RabbitMqOptions
+        {
+            ExchangeName = "np.it.events",
+            IngestionReadingsQueueName = "np.it.ingestion",
+            ObservabilityRawEnabled = true,
+            ObservabilityRawQueueName = "np.it.raw"
+        };
+
+        InvokeDeclareTopology(channel, options);
 
         var queueDeclares = recorder.Invocations.Where(x => x.MethodName == "QueueDeclare").ToList();
         Assert.Equal(2, queueDeclares.Count);
         Assert.Contains(queueDeclares, x => Equals(x.Arguments[0], "np.it.ingestion"));
         Assert.Contains(queueDeclares, x => Equals(x.Arguments[0], "np.it.raw"));
         Assert.Equal(2, recorder.Invocations.Count(x => x.MethodName == "QueueBind"));
+    }
+
+    private static void InvokeDeclareTopology(IModel channel, RabbitMqOptions options)
+    {
+        var method = typeof(PreventionWorker).GetMethod(
+            "DeclareTopology",
+            BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("DeclareTopology method was not found.");
+
+        method.Invoke(null, [channel, options]);
     }
 
     [Fact]

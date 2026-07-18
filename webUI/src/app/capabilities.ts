@@ -34,11 +34,11 @@ export type UiCapability =
   | 'admin.execute'
   | 'p3.read'
   | 'data_context.read'
-  | 'help.read'
-  | 'db.query';
+  | 'help.read';
 
 export type UiNavTarget =
   | 'demo'
+  | 'overview'
   | 'dashboard'
   | 'mission'
   | 'risk'
@@ -47,7 +47,6 @@ export type UiNavTarget =
   | 'runs'
   | 'quality'
   | 'qa'
-  | 'qa-tests'
   | 'evidence'
   | 'deployments'
   | 'cloud'
@@ -56,8 +55,8 @@ export type UiNavTarget =
   | 'admin'
   | 'p3'
   | 'context'
-  | 'db-queries'
   | 'deployment-health'
+  | 'queries'
   | 'scenario-compare'
   | 'about';
 
@@ -65,6 +64,7 @@ export interface UiNavigationItem {
   id: UiNavTarget;
   labelKey:
     | 'nav.demo'
+    | 'nav.overview'
     | 'nav.dashboard'
     | 'nav.mission'
     | 'nav.risk'
@@ -73,10 +73,9 @@ export interface UiNavigationItem {
     | 'nav.runs'
     | 'nav.quality'
     | 'nav.qa'
-    | 'nav.qa-tests'
-    | 'nav.db-queries'
     | 'nav.evidence'
     | 'nav.deployment-health'
+    | 'nav.queries'
     | 'nav.deployments'
     | 'nav.cloud'
     | 'nav.approvals'
@@ -156,7 +155,6 @@ export function getUiCapabilities(user: Pick<User, 'roles'> | null | undefined):
       'deployment.rollback',
       'cloud.read',
       'cloud.operate.staging',
-      'db.query',
     ]);
   }
   if (roles.includes('ReleaseApprover')) {
@@ -198,7 +196,6 @@ export function getUiCapabilities(user: Pick<User, 'roles'> | null | undefined):
       'admin.read',
       'admin.execute',
       'p3.read',
-      'db.query',
     ]);
   }
 

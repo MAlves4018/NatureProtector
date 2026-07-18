@@ -729,6 +729,57 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
                 null,
                 null));
 
+        public Task<RuntimeOperationResponse?> GetRuntimeOperationAsync(
+            Guid operationId,
+            CancellationToken cancellationToken)
+            => Task.FromResult<RuntimeOperationResponse?>(null);
+
+        public Task<RuntimeOperationResponse?> GetRuntimeOperationByRunAsync(
+            Guid runId,
+            CancellationToken cancellationToken)
+            => Task.FromResult(_simulationRuns.Any(run => run.Id == runId)
+                ? new RuntimeOperationResponse(
+                    Guid.Parse("94000000-0000-0000-0000-000000000001"),
+                    Guid.Parse("95000000-0000-0000-0000-000000000001"),
+                    "fake-correlation",
+                    runId,
+                    "Requested",
+                    "Succeeded",
+                    "Completed",
+                    "Settled",
+                    "SystemCompleted",
+                    "Succeeded",
+                    DateTimeOffset.UtcNow.AddMinutes(-15),
+                    DateTimeOffset.UtcNow,
+                    DateTimeOffset.UtcNow.AddMinutes(-14),
+                    DateTimeOffset.UtcNow.AddMinutes(-1),
+                    DateTimeOffset.UtcNow,
+                    DateTimeOffset.UtcNow,
+                    null,
+                    null,
+                    "fake-evidence",
+                    "docs/evidence/fake",
+                    new RuntimeOperationAccountingResponse(72, 70, 0, 0, 0, 70, 0, true))
+                : null);
+
+        public Task<RuntimeOperationResponse?> GetCurrentRuntimeOperationAsync(CancellationToken cancellationToken)
+            => Task.FromResult<RuntimeOperationResponse?>(null);
+
+        public Task<RuntimeOperationResponse?> GetRuntimeOperationByRequestAsync(
+            Guid requestId,
+            CancellationToken cancellationToken)
+            => Task.FromResult<RuntimeOperationResponse?>(null);
+
+        public Task<RuntimeOperationResponse?> ReconcileRuntimeOperationWithProviderAsync(
+            Guid operationId,
+            CancellationToken cancellationToken)
+            => Task.FromResult<RuntimeOperationResponse?>(null);
+
+        public Task EnsureRuntimeEvidenceAsync(
+            Guid operationId,
+            CancellationToken cancellationToken)
+            => Task.CompletedTask;
+
         public Task<ControlledValidationP3RunResponse> StartControlledValidationP3Async(
             ControlledValidationP3RunRequest request,
             string environmentName,

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using NatureProtector.Infrastructure.Influx.DependencyInjection;
 using NatureProtector.Infrastructure.Postgres.DependencyInjection;
 using NatureProtector.Prevention.Host;
@@ -52,8 +53,11 @@ builder.Services.Configure<RabbitMqOptions>(
 
 builder.Services.AddInfluxPersistence(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddSingleton<PreventionRuntimeState>();
-builder.Services.AddHealthChecks()
-    .AddCheck<PreventionReadinessHealthCheck>("prevention-ready");
+var healthChecks = builder.Services.AddHealthChecks()
+    .AddCheck<PreventionReadinessHealthCheck>(
+        "prevention-ready",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready"]);
 
 var preventionHostOptions = builder.Configuration
     .GetSection(PreventionHostOptions.SectionName)
@@ -64,9 +68,18 @@ if (preventionHostOptions.PipelinePersistenceEnabled)
     // Neste modo o fluxo operacional usa inbox durável, projeções persistidas
     // e um worker de novas tentativas apoiado por PostgreSQL.
     builder.Services.AddNatureProtectorControlPlanePostgres(builder.Environment.ContentRootPath);
+    healthChecks.AddCheck<PreventionDatabaseHealthCheck>(
+        "prevention-postgres",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready"],
+        timeout: TimeSpan.FromSeconds(5));
     builder.Services.AddSingleton<IReadingSemanticValidator, ReadingSemanticValidator>();
     builder.Services.AddSingleton<IReadingEventInbox, PostgresReadingEventInbox>();
     builder.Services.AddSingleton<IAreaOperationalProjectionStore, PostgresAreaOperationalProjectionStore>();
+    builder.Services.AddSingleton<PostgresCycleProjectionCoordinator>();
+    builder.Services.AddSingleton<ICycleProjectionCoordinator>(services =>
+        services.GetRequiredService<PostgresCycleProjectionCoordinator>());
+    builder.Services.AddHostedService<CycleSettlementWorker>();
     builder.Services.AddSingleton<IAcceptedReadingRepository, PostgresAcceptedReadingRepository>();
     builder.Services.AddSingleton<IDailyCellStateRepository, PostgresDailyCellStateRepository>();
     builder.Services.AddSingleton<IRiskAssessmentRepository, PostgresRiskAssessmentRepository>();
@@ -108,11 +121,15 @@ builder.Services.AddSingleton<ReadingRiskPipeline>();
 builder.Services.AddSingleton<ReadingEventProcessingService>();
 
 builder.Services.AddHostedService<PreventionWorker>();
+builder.Services.AddHostedService<InboxRetryWorker>();
 
 var app = builder.Build();
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
     Predicate = _ => false
 });
-app.MapHealthChecks("/health/ready");
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("ready")
+});
 app.Run();

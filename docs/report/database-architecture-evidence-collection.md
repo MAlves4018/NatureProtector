@@ -18,7 +18,7 @@ No PowerShell, a partir da raiz do repositório:
 ```powershell
 & .\scripts\evidence\collect-database-architecture-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe"
+  -PythonExecutable "python"
 ```
 
 Este modo não necessita de PostgreSQL, Docker ou .NET. Gera o ERD, inventários estáticos e o catálogo de queries críticas.
@@ -30,7 +30,7 @@ A ligação deve apontar para uma instância isolada da campanha de evidência. 
 ```powershell
 & .\scripts\evidence\collect-database-architecture-evidence.ps1 `
   -BaselineId "baseline-YYYYMMDDTHHMMSSZ" `
-  -PythonExecutable "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+  -PythonExecutable "python" `
   -Dsn $env:NATUREPROTECTOR_POSTGRES_DSN `
   -RequireLive
 ```
@@ -38,7 +38,7 @@ A ligação deve apontar para uma instância isolada da campanha de evidência. 
 Pré-requisito Python para live mode:
 
 ```powershell
-& "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+& "python" `
   -m pip install "psycopg[binary]>=3.2,<4"
 ```
 
@@ -117,7 +117,7 @@ Não pode afirmar-se sem live mode:
 ## Verificação independente
 
 ```powershell
-& "C:\Users\Miguel\AppData\Local\Programs\Python\Python313\python.exe" `
+& "python" `
   .\scripts\evidence\verify-database-architecture-evidence.py `
   .\artifacts\report-evidence\baseline-YYYYMMDDTHHMMSSZ\03-database\<run-id>
 ```

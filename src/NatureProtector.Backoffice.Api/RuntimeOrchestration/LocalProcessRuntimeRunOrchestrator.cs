@@ -27,6 +27,8 @@ public sealed class LocalProcessRuntimeRunOrchestrator : IRuntimeRunOrchestrator
         _logger = logger;
     }
 
+    public string Provider => "local-process";
+
     public bool IsAvailable => true;
 
     public string AvailabilityMessage =>
@@ -53,8 +55,8 @@ public sealed class LocalProcessRuntimeRunOrchestrator : IRuntimeRunOrchestrator
                 _idempotency.TryRemove(request.IdempotencyKey, out _);
             }
 
-            var timeout = ClampTimeout(request.Timeout);
-            var executionId = new RuntimeExecutionId(Guid.NewGuid());
+            var timeout = request.WaitForCompletion ? ClampTimeout(request.Timeout) : (TimeSpan?)null;
+            var executionId = request.ExecutionId;
             var startInfo = BuildStartInfo(request);
             var process = new Process
             {
@@ -287,26 +289,33 @@ public sealed class LocalProcessRuntimeRunOrchestrator : IRuntimeRunOrchestrator
         ExecutionHandle handle,
         Task<string>? stdoutTask,
         Task<string>? stderrTask,
-        TimeSpan timeout,
+        TimeSpan? timeout,
         CancellationToken cancellationToken)
     {
         try
         {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(timeout);
-            try
+            if (timeout is null)
             {
-                await handle.Process.WaitForExitAsync(timeoutCts.Token);
+                await handle.Process.WaitForExitAsync(cancellationToken);
             }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            else
             {
-                if (!handle.Process.HasExited)
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeoutCts.CancelAfter(timeout.Value);
+                try
                 {
-                    handle.Process.Kill(entireProcessTree: true);
-                    await handle.Process.WaitForExitAsync(CancellationToken.None);
+                    await handle.Process.WaitForExitAsync(timeoutCts.Token);
                 }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    if (!handle.Process.HasExited)
+                    {
+                        handle.Process.Kill(entireProcessTree: true);
+                        await handle.Process.WaitForExitAsync(CancellationToken.None);
+                    }
 
-                handle.MarkTimedOut($"Simulator.Host exceeded timeout {timeout.TotalSeconds:0} seconds.");
+                    handle.MarkTimedOut($"Simulator.Host exceeded timeout {timeout.Value.TotalSeconds:0} seconds.");
+                }
             }
 
             if (!handle.IsTerminal)

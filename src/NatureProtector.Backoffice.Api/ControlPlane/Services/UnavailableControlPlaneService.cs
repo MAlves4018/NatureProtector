@@ -143,6 +143,24 @@ public sealed class UnavailableControlPlaneService : IControlPlaneService
             null,
             null));
 
+    public Task<RuntimeOperationResponse?> GetRuntimeOperationAsync(Guid operationId, CancellationToken cancellationToken)
+        => Task.FromResult<RuntimeOperationResponse?>(null);
+
+    public Task<RuntimeOperationResponse?> GetRuntimeOperationByRunAsync(Guid runId, CancellationToken cancellationToken)
+        => Task.FromResult<RuntimeOperationResponse?>(null);
+
+    public Task<RuntimeOperationResponse?> GetCurrentRuntimeOperationAsync(CancellationToken cancellationToken)
+        => Task.FromResult<RuntimeOperationResponse?>(null);
+
+    public Task<RuntimeOperationResponse?> GetRuntimeOperationByRequestAsync(Guid requestId, CancellationToken cancellationToken)
+        => Task.FromResult<RuntimeOperationResponse?>(null);
+
+    public Task<RuntimeOperationResponse?> ReconcileRuntimeOperationWithProviderAsync(Guid operationId, CancellationToken cancellationToken)
+        => Task.FromResult<RuntimeOperationResponse?>(null);
+
+    public Task EnsureRuntimeEvidenceAsync(Guid operationId, CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
     public Task<ControlledValidationP3RunResponse> StartControlledValidationP3Async(
         ControlledValidationP3RunRequest request,
         string environmentName,

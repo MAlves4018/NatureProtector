@@ -8,6 +8,31 @@ O objetivo é permitir que uma pessoa clone o repositório, crie a configuraçã
 
 ---
 
+## Percurso rápido
+
+Use este percurso para um clone local em `Development`, sem cloud e sem produção:
+
+```powershell
+.\scripts\np.ps1 doctor
+.\scripts\np.ps1 init-local -Force
+.\scripts\np.ps1 prepare-local
+.\scripts\np.ps1 clean-local
+.\scripts\np.ps1 up
+.\scripts\np.ps1 start
+.\scripts\np.ps1 health
+```
+
+Depois abra a webUI local, entre com as credenciais de desenvolvimento e execute `scenario_b` no Run Orchestrator. O sucesso mínimo é: runtime saudável, run terminada, dados persistidos no PostgreSQL e ausência de um processo persistente `NatureProtector.Simulator.Host` após a run.
+
+Para parar:
+
+```powershell
+.\scripts\np.ps1 stop
+.\scripts\np.ps1 down
+```
+
+Este percurso valida a baseline local. Não valida cloud, staging, produção, carga, calibração científica, alerta oficial ou adoção institucional.
+
 ## 1. Fluxo suportado
 
 ```text
@@ -22,7 +47,7 @@ Run Orchestrator
 
 Responsabilidades principais:
 
-- `scripts/np.ps1` e o ponto de entrada canonico para clone-to-run local: `doctor`, `init-local`, `clean-local`, `up`, `start`, `health`, `stop` e `down`.
+- `scripts/np.ps1` é o ponto de entrada canonico para clone-to-run local: `doctor`, `init-local`, `prepare-local`, `clean-local`, `up`, `start`, `health`, `stop` e `down`.
 - `scripts/workspace.ps1` continua disponivel como compatibilidade para `setup`, `up`, `validate`, `down` e `reset`.
 - `infra/scripts/up.ps1` sobe a infraestrutura Docker: PostgreSQL, RabbitMQ, InfluxDB e Grafana. Este script exige `.env` existente e nao cria nem altera esse ficheiro.
 - `scripts/postgres/bootstrap-control-plane.ps1` inicializa/importa a baseline da base de dados local.
@@ -101,7 +126,7 @@ Verificar containers:
 docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 ```
 
-No fluxo canonico, `workspace.ps1 up` tambem executa o bootstrap do control plane e valida a infraestrutura. O passo seguinte fica como fallback manual para quem usar diretamente os scripts de baixo nivel.
+No fluxo canonico `np.ps1`, o bootstrap do control plane é tratado pelo arranque local documentado abaixo. O `workspace.ps1 up` permanece como compatibilidade para fluxos antigos que juntavam setup, infraestrutura, bootstrap e validação num único wrapper. O passo seguinte fica como fallback manual para quem usar diretamente os scripts de baixo nivel.
 
 ### Nota sobre `dotnet test` e infraestrutura local
 
@@ -117,7 +142,7 @@ Alguns testes, nomeadamente testes de API/integração, dependem dos serviços l
 dotnet test .\NatureProtector.sln --no-restore --nologo -v minimal -m:1
 ```
 
-Fluxo recomendado para validação técnica:
+Fluxo de compatibilidade para validação técnica antiga:
 
 ```powershell
 .\scripts\workspace.ps1 up
@@ -125,13 +150,13 @@ Fluxo recomendado para validação técnica:
 .\scripts\workspace.ps1 validate -Profile Full
 ```
 
-Se o runtime local já estiver ativo, ver primeiro a secção de troubleshooting sobre ficheiros bloqueados durante o build.
+Para clone-to-run novo, preferir primeiro `.\scripts\np.ps1 doctor`, `init-local`, `up`, `start` e `health`. Se o runtime local já estiver ativo, ver primeiro a secção de troubleshooting sobre ficheiros bloqueados durante o build.
 
 ---
 
 ## 5. Inicializar a base de dados local
 
-Se o fluxo `.\scripts\workspace.ps1 up` foi usado, este passo ja foi executado. Use o comando abaixo apenas no fluxo manual de baixo nivel ou depois de limpar volumes Docker.
+Se o fluxo de compatibilidade `.\scripts\workspace.ps1 up` foi usado, este passo ja foi executado. Use o comando abaixo apenas no fluxo manual de baixo nivel ou depois de limpar volumes Docker.
 
 Num clone novo ou depois de limpar volumes Docker, executar:
 
@@ -185,31 +210,31 @@ Resultado esperado no estado atual: tabelas nos schemas `control`, `pipeline` e 
 
 ---
 
-## 6. Instalar dependências da webUI
+## 6. Preparar dependências do checkout
 
-Num clone novo, `webUI/node_modules` ainda não existe. Instalar as dependências frontend antes de arrancar o runtime local.
-
-Como o projeto tem `package-lock.json`, usar:
+Num clone novo, os packages .NET ainda não foram restaurados e `webUI/node_modules` não existe. Executar o passo mutável canónico:
 
 ```powershell
-cd .\webUI
-npm ci
-cd ..
+.\scripts\np.ps1 prepare-local
 ```
 
-Se `package-lock.json` não existir num checkout futuro, usar `npm install`.
+O comando:
 
-Se este passo for ignorado, o launcher pode falhar com erro semelhante a:
+- configura `DOTNET_CLI_HOME` e `NUGET_PACKAGES` dentro do repositório;
+- executa `dotnet restore NatureProtector.sln --configfile NuGet.Config`;
+- exige `webUI/package-lock.json`;
+- executa `npm ci` na webUI;
+- confirma que o package Vite necessário ao launcher ficou instalado.
 
-```text
-'vite' is not recognized as an internal or external command
+`doctor` continua deliberadamente read-only: deteta ferramentas, lockfiles e indica se o checkout ainda precisa de `prepare-local`, mas não instala dependências.
+
+Para recuperar uma árvore frontend danificada:
+
+```powershell
+.\scripts\np.ps1 prepare-local -ForceFrontendInstall
 ```
 
-ou:
-
-```text
-webUI did not become reachable on TCP port 5173 within 60 seconds
-```
+Não substituir `npm ci` por `npm install` no percurso canónico, porque isso permitiria alterar o lockfile e reduzir a reprodutibilidade entre local e CI.
 
 ---
 
@@ -582,6 +607,7 @@ Se o token no `.env` tiver sido removido, truncado ou substituído por um valor 
 
 ```powershell
 .\scripts\np.ps1 init-local -Force
+.\scripts\np.ps1 prepare-local
 .\scripts\np.ps1 clean-local
 .\scripts\np.ps1 up
 ```
@@ -608,14 +634,7 @@ Depois repetir:
 Causa provável: dependências frontend não instaladas.
 
 ```powershell
-cd .\webUI
-npm ci
-cd ..
-```
-
-Depois:
-
-```powershell
+.\scripts\np.ps1 prepare-local -ForceFrontendInstall
 .\scripts\np.ps1 start
 ```
 

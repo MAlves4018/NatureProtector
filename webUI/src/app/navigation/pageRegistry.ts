@@ -5,6 +5,7 @@ export interface UiPageDefinition {
   id: UiNavTarget;
   labelKey:
     | 'nav.demo'
+    | 'nav.overview'
     | 'nav.dashboard'
     | 'nav.mission'
     | 'nav.risk'
@@ -13,10 +14,9 @@ export interface UiPageDefinition {
     | 'nav.runs'
     | 'nav.quality'
     | 'nav.qa'
-    | 'nav.qa-tests'
-    | 'nav.db-queries'
     | 'nav.evidence'
     | 'nav.deployment-health'
+    | 'nav.queries'
     | 'nav.deployments'
     | 'nav.cloud'
     | 'nav.approvals'
@@ -50,6 +50,15 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     audience: 'public',
     order: 15,
     group: 'public',
+    helpTopic: 'overview',
+  },
+  {
+    id: 'overview',
+    labelKey: 'nav.overview',
+    requiredCapabilities: ['quality.read'],
+    audience: 'common',
+    order: 22,
+    group: 'operate',
     helpTopic: 'overview',
   },
   {
@@ -116,6 +125,15 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     helpTopic: 'runState',
   },
   {
+    id: 'queries',
+    labelKey: 'nav.queries',
+    requiredCapabilities: ['simulation.execute'],
+    audience: 'sim',
+    order: 57,
+    group: 'simulate',
+    helpTopic: 'pipeline',
+  },
+  {
     id: 'pipeline',
     labelKey: 'nav.pipeline',
     requiredCapabilities: ['pipeline.read'],
@@ -130,15 +148,6 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     requiredCapabilities: ['qa.read'],
     audience: 'qa',
     order: 65,
-    group: 'technical',
-    helpTopic: 'qa',
-  },
-  {
-    id: 'qa-tests',
-    labelKey: 'nav.qa-tests',
-    requiredCapabilities: ['quality.read', 'quality.execute.static'],
-    audience: 'qa',
-    order: 67,
     group: 'technical',
     helpTopic: 'qa',
   },
@@ -175,15 +184,6 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     requiredCapabilities: ['cloud.read'],
     audience: 'operations',
     order: 80,
-    group: 'release',
-    helpTopic: 'pipeline',
-  },
-  {
-    id: 'db-queries',
-    labelKey: 'nav.db-queries',
-    requiredCapabilities: ['db.query'],
-    audience: 'operations',
-    order: 82,
     group: 'release',
     helpTopic: 'pipeline',
   },
@@ -233,10 +233,14 @@ export function getUiPages(capabilities: Set<UiCapability>) {
 
 export function defaultPageFor(capabilities: Set<UiCapability>): UiNavTarget {
   if (capabilities.has('quality.read')) {
-    return 'mission';
+    return 'overview';
   }
   if (capabilities.has('risk.read')) {
     return 'risk';
   }
   return 'demo';
+}
+
+export function findUiPageDefinition(page: string) {
+  return UI_PAGE_REGISTRY.find((definition) => definition.id === page);
 }

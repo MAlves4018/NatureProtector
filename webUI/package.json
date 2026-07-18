@@ -16,6 +16,7 @@
     "audit:ci": "node ./scripts/check-npm-audit.mjs",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "preview": "vite preview",
     "lint:all": "biome lint --config-path=biome.quality.jsonc --diagnostic-level=error --max-diagnostics=none .",
     "format:all:check": "biome format --config-path=biome.quality.jsonc --diagnostic-level=error --max-diagnostics=none .",
@@ -37,7 +38,9 @@
     "tailwind-merge": "3.2.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@biomejs/biome": "^2.5.0",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/vite": "^4.3.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

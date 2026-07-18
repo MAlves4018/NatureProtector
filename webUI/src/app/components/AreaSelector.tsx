@@ -9,7 +9,7 @@ export function AreaSelector({ compact = false }: { compact?: boolean }) {
   const area = areaResolution.resolvedArea;
 
   return (
-    <section className={compact ? 'ui-panel ui-area-selector' : 'ui-card ui-area-selector'}>
+    <section className={compact ? 'ui-panel ui-area-selector ui-area-selector-compact' : 'ui-card ui-area-selector'}>
       <div className="ui-section-heading">
         <MapPin size={18} />
         <h3>{copy('area.title')}</h3>
@@ -34,30 +34,39 @@ export function AreaSelector({ compact = false }: { compact?: boolean }) {
           ))}
         </select>
       </label>
-      <div className="ui-fact-list">
-        <span>
-          <strong>{copy('area.requested')}</strong>
-          {areaResolution.requestedArea ?? copy('area.notSelected')}
+      {!compact && (
+        <>
+          <div className="ui-fact-list">
+            <span>
+              <strong>{copy('area.requested')}</strong>
+              {areaResolution.requestedArea ?? copy('area.notSelected')}
+            </span>
+            <span>
+              <strong>{copy('area.resolved')}</strong>
+              {area ? `${area.name} (${area.code})` : copy('value.notAvailable')}
+            </span>
+            <span>
+              <strong>{copy('area.available')}</strong>
+              {areas.length}
+            </span>
+            {area && (
+              <span>
+                <strong>Grid/sensores</strong>
+                {area.gridCellCount} / {area.sensorNodeCount}
+              </span>
+            )}
+          </div>
+          <button type="button" className="ui-secondary" onClick={reloadAreaContext}>
+            <RefreshCw size={16} />
+            {copy('risk.reload')}
+          </button>
+        </>
+      )}
+      {compact && area && (
+        <span className="ui-area-compact-fact">
+          <strong>{area.gridCellCount}</strong> células · <strong>{area.sensorNodeCount}</strong> sensores
         </span>
-        <span>
-          <strong>{copy('area.resolved')}</strong>
-          {area ? `${area.name} (${area.code})` : copy('value.notAvailable')}
-        </span>
-        <span>
-          <strong>{copy('area.available')}</strong>
-          {areas.length}
-        </span>
-        {area && (
-          <span>
-            <strong>Grid/sensores</strong>
-            {area.gridCellCount} / {area.sensorNodeCount}
-          </span>
-        )}
-      </div>
-      <button type="button" className="ui-secondary" onClick={reloadAreaContext}>
-        <RefreshCw size={16} />
-        {copy('risk.reload')}
-      </button>
+      )}
     </section>
   );
 }

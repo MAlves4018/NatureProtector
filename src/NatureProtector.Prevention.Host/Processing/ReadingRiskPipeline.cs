@@ -42,7 +42,8 @@ public sealed class ReadingRiskPipeline(
     IAreaRiskSnapshotRepository areaRiskSnapshotRepository,
     IAreaOperationalProjectionStore areaOperationalProjectionStore,
     IInfluxWriteService influxWriteService,
-    ILogger<ReadingRiskPipeline> logger)
+    ILogger<ReadingRiskPipeline> logger,
+    ICycleProjectionCoordinator? cycleProjectionCoordinator = null)
 {
     /// <summary>
     /// Processa uma leitura aceite ao longo de todo o fluxo de risco.
@@ -54,6 +55,7 @@ public sealed class ReadingRiskPipeline(
         ArgumentNullException.ThrowIfNull(envelope);
         var operationalEvent = OperationalEvent.FromEnvelope(envelope);
         var normalizedReading = NormalizedReading.FromOperationalEvent(operationalEvent);
+        var temporalCycle = operationalEvent.CycleIndex.HasValue && cycleProjectionCoordinator is not null;
         using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.pipeline.process");
         activity?.SetTag(TelemetryTags.EventId, normalizedReading.EventId);
         activity?.SetTag(TelemetryTags.CorrelationId, normalizedReading.CorrelationId);
@@ -87,6 +89,15 @@ public sealed class ReadingRiskPipeline(
 
         if (eligibility.Status == RiskInputStatus.Blocked || !eligibility.IsEligible)
         {
+            if (temporalCycle)
+            {
+                var finalized = await cycleProjectionCoordinator!.RecordAsync(
+                    operationalEvent.SimulationRunId, operationalEvent.CycleIndex!.Value,
+                    normalizedReading.AreaId, normalizedReading.SensorId, normalizedReading.EventId,
+                    normalizedReading.EventTime, normalizedReading.Origin, CycleObservationOutcome.Blocked,
+                    null, cancellationToken);
+                await ApplyFinalizedCyclesAsync(finalized, cancellationToken);
+            }
             var acceptedOnlyInfluxWriteStopwatch = Stopwatch.StartNew();
             await influxWriteService.WriteBatchAsync(influxBatch, cancellationToken);
             acceptedOnlyInfluxWriteStopwatch.Stop();
@@ -137,6 +148,15 @@ public sealed class ReadingRiskPipeline(
             dailyStateLookup.TerritorialContext);
         if (riskInput.InputStatus == RiskInputStatus.Blocked)
         {
+            if (temporalCycle)
+            {
+                var finalized = await cycleProjectionCoordinator!.RecordAsync(
+                    operationalEvent.SimulationRunId, operationalEvent.CycleIndex!.Value,
+                    normalizedReading.AreaId, normalizedReading.SensorId, normalizedReading.EventId,
+                    normalizedReading.EventTime, normalizedReading.Origin, CycleObservationOutcome.Blocked,
+                    null, cancellationToken);
+                await ApplyFinalizedCyclesAsync(finalized, cancellationToken);
+            }
             var blockedInfluxWriteStopwatch = Stopwatch.StartNew();
             await influxWriteService.WriteBatchAsync(influxBatch, cancellationToken);
             blockedInfluxWriteStopwatch.Stop();
@@ -163,7 +183,7 @@ public sealed class ReadingRiskPipeline(
         var assessment = riskScoringService.CreateAssessment(riskInput);
 
         var riskAssessmentPersistStopwatch = Stopwatch.StartNew();
-        await riskAssessmentRepository.AddAsync(
+        assessment = await riskAssessmentRepository.AddAsync(
             normalizedReading.AreaId,
             normalizedReading.SensorId,
             normalizedReading.EventId,
@@ -178,6 +198,24 @@ public sealed class ReadingRiskPipeline(
             normalizedReading.CorrelationId,
             normalizedReading.AreaId,
             normalizedReading.SensorId);
+
+        if (temporalCycle)
+        {
+            influxBatch.AddRiskAssessment(
+                normalizedReading.AreaId,
+                normalizedReading.SensorId,
+                assessment,
+                normalizedReading.EventId,
+                operationalEvent.SimulationRunId);
+            var finalized = await cycleProjectionCoordinator!.RecordAsync(
+                operationalEvent.SimulationRunId, operationalEvent.CycleIndex!.Value,
+                normalizedReading.AreaId, normalizedReading.SensorId, normalizedReading.EventId,
+                normalizedReading.EventTime, normalizedReading.Origin, CycleObservationOutcome.Eligible,
+                assessment, cancellationToken);
+            await ApplyFinalizedCyclesAsync(finalized, cancellationToken);
+            await influxWriteService.WriteBatchAsync(influxBatch, cancellationToken);
+            return;
+        }
 
         var saveCellProjectionStopwatch = Stopwatch.StartNew();
         await areaOperationalProjectionStore.SaveCellAsync(
@@ -310,5 +348,21 @@ public sealed class ReadingRiskPipeline(
             snapshot.AggregateRiskLevel,
             severity,
             areaAssessments.Count);
+    }
+
+    private async Task ApplyFinalizedCyclesAsync(
+        IReadOnlyList<FinalizedCycleProjection> finalizations,
+        CancellationToken cancellationToken)
+    {
+        foreach (var finalized in finalizations.Where(item => item.IsOperational))
+        {
+            await areaOperationalProjectionStore.SaveAsync(
+                finalized.AreaId,
+                finalized.Snapshot,
+                finalized.EligibleCount,
+                cancellationToken,
+                finalized.SimulationRunId,
+                finalized.CycleIndex);
+        }
     }
 }

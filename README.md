@@ -94,6 +94,7 @@ Fluxo resumido:
 ```powershell
 .\scripts\np.ps1 doctor
 .\scripts\np.ps1 init-local -Force
+.\scripts\np.ps1 prepare-local
 .\scripts\np.ps1 clean-local
 .\scripts\np.ps1 up
 .\scripts\np.ps1 start
@@ -113,7 +114,7 @@ Para parar:
 .\scripts\np.ps1 down
 ```
 
-`scripts\np.ps1` é o entrypoint recomendado para clone-to-run. `scripts\workspace.ps1` continua disponível como compatibilidade para fluxos antigos.
+`scripts\np.ps1` é o entrypoint recomendado para clone-to-run. `prepare-local` executa o restore .NET e `npm ci` a partir dos lockfiles antes do arranque. `scripts\workspace.ps1` continua disponível como compatibilidade para fluxos antigos.
 
 O `.env.example` não contém um token InfluxDB local válido. `.\scripts\np.ps1 init-local -Force` gera `.env`, cria um `INFLUXDB_TOKEN` com prefixo `apiv3_` e prepara o token admin local usado pelo Docker Compose. O ficheiro `.env` é local e não deve ser versionado. `dotnet ef` fica reservado para validação avançada/desenvolvimento; não é parte do caminho normal clone-to-run.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run a controlled NatureProtector report-evidence campaign.
 
-The campaign orchestrates the evidence collectors introduced in Phases 1-7. It
+The campaign orchestrates the evidence collectors introduced in Phases 1-7 and the Phase 9 NP_score validation collector. It
 is deliberately explicit about live/runtime actions: no test, database, API,
 performance or reliability action is executed unless --execute is supplied and
 its profile/flags select that action. Credentials are read only from named
@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SCRIPT_VERSION = "1.1.0"
+SCRIPT_VERSION = "1.4.0"
 PHASE_DIRS = {
     "phase1": "01-inventory",
     "phase2": "02-tests",
@@ -37,15 +37,18 @@ PHASE_DIRS = {
     "phase5": "05-performance",
     "phase6": "06-reliability",
     "phase7": "07-report-integration",
+    "phase9": "09-np-score-validation",
+    "phase11": "11-evidence-gap-closure",
 }
+PHASE_ORDER = ("phase1", "phase2", "phase3", "phase4", "phase5", "phase6", "phase9", "phase11", "phase7")
 PROFILE_STEPS = {
     "plan": [],
-    "static": ["phase1", "phase3", "phase7"],
-    "quality": ["phase1", "phase2", "phase3", "phase7"],
-    "full": ["phase1", "phase2", "phase3", "phase4", "phase5", "phase6", "phase7"],
+    "static": ["phase1", "phase3", "phase9", "phase11", "phase7"],
+    "quality": ["phase1", "phase2", "phase3", "phase9", "phase11", "phase7"],
+    "full": ["phase1", "phase2", "phase3", "phase4", "phase5", "phase6", "phase9", "phase11", "phase7"],
 }
 
-SUCCESS_STEP_STATUSES = {"PASS", "PASS_COMPLETE_REPORT_PACKAGE", "PASS_PARTIAL_REPORT_PACKAGE"}
+SUCCESS_STEP_STATUSES = {"PASS", "PASS_COMPLETE_REPORT_PACKAGE", "PASS_PARTIAL_REPORT_PACKAGE", "PASS_EXPLORATORY_VALIDATION", "PASS_GAP_CLOSURE_READY", "PASS_EVIDENCE_COMPLETE", "PLAN_READY_EVIDENCE_INCOMPLETE", "PASS_WITH_LIMITATIONS"}
 
 
 def campaign_status(selected_results, safety_errors, execute, profile):
@@ -475,6 +478,48 @@ def build_commands(
         str(out7),
     ]
     commands["phase7"] = ([collect7, verify7], out7)
+
+    out9 = phase_output(baseline_root, "phase9", run_id)
+    collect9 = [
+        python,
+        str(scripts / "collect-np-score-validation.py"),
+        "--repo",
+        str(repo),
+        "--baseline-id",
+        args.baseline_id,
+        "--run-id",
+        run_id,
+        "--config",
+        args.np_score_config,
+        "--output",
+        str(out9),
+        "--bootstrap-iterations",
+        str(args.np_score_bootstrap_iterations),
+        "--overwrite",
+    ]
+    for evidence_root in (out4, out5, out6):
+        collect9 += ["--runtime-evidence-root", str(evidence_root)]
+    verify9 = [python, str(scripts / "verify-np-score-validation.py"), str(out9), "--require-complete"]
+    commands["phase9"] = ([collect9, verify9], out9)
+
+    out11 = phase_output(baseline_root, "phase11", run_id)
+    collect11 = [
+        python,
+        str(scripts / "collect-evidence-gap-closure.py"),
+        "--repo",
+        str(repo),
+        "--baseline-id",
+        args.baseline_id,
+        "--run-id",
+        run_id,
+        "--config",
+        args.evidence_closure_config,
+        "--output",
+        str(out11),
+        "--overwrite",
+    ]
+    verify11 = [python, str(scripts / "verify-evidence-gap-closure.py"), str(out11)]
+    commands["phase11"] = ([collect11, verify11], out11)
     return commands
 
 
@@ -526,6 +571,9 @@ def build_preflight(args: argparse.Namespace, repo: Path, baseline_root: Path) -
         "postgresDsnEnvironmentVariable": args.postgres_dsn_env,
         "postgresDsnPresent": bool(os.getenv(args.postgres_dsn_env)) if args.postgres_dsn_env else False,
         "profile": args.profile,
+        "npScoreValidationConfigExists": (repo / args.np_score_config).is_file(),
+        "npScoreBootstrapIterations": args.np_score_bootstrap_iterations,
+        "evidenceClosureConfigExists": (repo / args.evidence_closure_config).is_file(),
         "executeRequested": bool(args.execute),
         "nonProductionAcknowledged": bool(args.acknowledge_non_production),
     }
@@ -561,6 +609,8 @@ def write_markdown_summary(path: Path, summary: dict[str, Any]) -> None:
         "- `PASS` significa que todos os passos selecionados terminaram com código de saída zero.",
         "- `PARTIAL` significa que alguns passos passaram e outros falharam ou ficaram bloqueados.",
         "- A campanha não transforma evidência histórica ou estática em execução atual; essa classificação continua a ser definida pelos coletores de cada fase.",
+        "- A Fase 9 mede validação exploratória retrospectiva do NP_score e mantém explícito que o score não é uma probabilidade calibrada.",
+        "- A Fase 11 admite fontes históricas verificadas e prepara o fecho das lacunas; comandos planeados não contam como evidência recolhida.",
         "",
     ]
     path.write_text("\n".join(lines), encoding="utf-8")
@@ -605,6 +655,9 @@ def main() -> int:
     parser.add_argument("--require-p3", action="store_true")
     parser.add_argument("--require-audit", action="store_true")
     parser.add_argument("--reliability-timeout-seconds", type=int, default=300)
+    parser.add_argument("--np-score-config", default="config/evidence/np-score-validation.json")
+    parser.add_argument("--np-score-bootstrap-iterations", type=int, default=500)
+    parser.add_argument("--evidence-closure-config", default="config/evidence/evidence-gap-closure.json")
     args = parser.parse_args()
 
     repo = args.repo.resolve()
@@ -623,7 +676,7 @@ def main() -> int:
     commands = build_commands(args, repo, baseline_root)
     secret_values = [os.getenv(name, "") for name in SECRET_ENV_NAMES]
     plan_rows: list[dict[str, Any]] = []
-    for name in ("phase1", "phase2", "phase3", "phase4", "phase5", "phase6", "phase7"):
+    for name in PHASE_ORDER:
         command_chain, output = commands[name]
         plan_rows.append(
             {
@@ -643,7 +696,7 @@ def main() -> int:
                 StepResult(step=name, selected=True, status="BLOCKED_SAFETY", reason="; ".join(safety_errors))
             )
     elif not args.execute or args.profile == "plan":
-        for name in ("phase1", "phase2", "phase3", "phase4", "phase5", "phase6", "phase7"):
+        for name in PHASE_ORDER:
             step_results.append(
                 StepResult(
                     step=name,
@@ -657,7 +710,7 @@ def main() -> int:
             )
     else:
         failed = False
-        for name in ("phase1", "phase2", "phase3", "phase4", "phase5", "phase6", "phase7"):
+        for name in PHASE_ORDER:
             if name not in selected_steps:
                 step_results.append(StepResult(step=name, selected=False, status="NOT_SELECTED"))
                 continue
@@ -670,12 +723,19 @@ def main() -> int:
                 continue
             command_chain, output = commands[name]
             result = run_step(name, command_chain, repo, logs, output, secret_values)
-            if name == "phase7" and result.status == "PASS":
-                summary_path = output / "phase7-summary.json"
-                if summary_path.is_file():
-                    phase7_status = json.loads(summary_path.read_text(encoding="utf-8")).get("status")
-                    if phase7_status in {"PASS_COMPLETE_REPORT_PACKAGE", "PASS_PARTIAL_REPORT_PACKAGE"}:
-                        result.status = phase7_status
+            if result.status == "PASS":
+                summary_candidates = {
+                    "phase7": ("phase7-summary.json", {"PASS_COMPLETE_REPORT_PACKAGE", "PASS_PARTIAL_REPORT_PACKAGE"}),
+                    "phase9": ("phase9-summary.json", {"PASS_EXPLORATORY_VALIDATION", "PARTIAL_INSUFFICIENT_EVENTS"}),
+                    "phase11": ("phase11-summary.json", {"PASS_EVIDENCE_COMPLETE", "PLAN_READY_EVIDENCE_INCOMPLETE", "PASS_WITH_LIMITATIONS", "NEEDS_REVISION"}),
+                }
+                if name in summary_candidates:
+                    filename, allowed = summary_candidates[name]
+                    summary_path = output / filename
+                    if summary_path.is_file():
+                        reported = json.loads(summary_path.read_text(encoding="utf-8")).get("status")
+                        if reported in allowed:
+                            result.status = reported
             step_results.append(result)
             if result.status in SUCCESS_STEP_STATUSES:
                 normalize_latest_pointer(baseline_root, name, args.run_id)

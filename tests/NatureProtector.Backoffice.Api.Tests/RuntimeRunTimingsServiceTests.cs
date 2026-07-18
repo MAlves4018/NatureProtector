@@ -58,6 +58,8 @@ public sealed class RuntimeRunTimingsServiceTests
         Assert.Equal(1_000, timings.Attempts.MinDurationMs);
         Assert.Equal(1_000, timings.Attempts.AvgDurationMs);
         Assert.Equal(1_000, timings.Attempts.MaxDurationMs);
+        Assert.Null(timings.Attempts.P50DurationMs);
+        Assert.Null(timings.Attempts.P95DurationMs);
         Assert.Contains(timings.Stages, item => item.Stage == "reading_risk_pipeline" && item.Outcome == "Succeeded");
     }
 
@@ -78,6 +80,9 @@ public sealed class RuntimeRunTimingsServiceTests
         Assert.Equal(2, timings!.Attempts.AttemptCount);
         Assert.Equal(1, timings.Attempts.FailedAttempts);
         Assert.Equal(1, timings.Attempts.QuarantinedAttempts);
+        Assert.Equal(2_000, timings.Attempts.P50DurationMs);
+        Assert.Equal(2_000, timings.Attempts.P95DurationMs);
+        Assert.Equal(2_000, timings.Attempts.P99DurationMs);
         Assert.Contains(timings.Stages, item => item.Outcome == "Failed" && item.ErrorCode == "semantic_error");
         Assert.Contains(timings.Stages, item => item.Outcome == "Quarantined" && item.ErrorCode == "max_attempts");
     }

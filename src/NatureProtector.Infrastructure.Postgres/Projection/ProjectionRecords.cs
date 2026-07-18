@@ -151,6 +151,7 @@ public sealed class AreaOperationalStateRecord
     public Guid AreaId { get; set; }
     public Guid ConfigurationVersionId { get; set; }
     public Guid? SimulationRunId { get; set; }
+    public int? CycleIndex { get; set; }
     public DateTimeOffset SnapshotTimestamp { get; set; }
     public double AggregateRiskScore { get; set; }
     public string AggregateRiskLevel { get; set; } = string.Empty;
@@ -169,6 +170,79 @@ public sealed class AreaOperationalStateRecord
     public Control.ConfigurationVersionRecord? ConfigurationVersion { get; set; }
     public Control.SimulationRunRecord? SimulationRun { get; set; }
     public List<AlertStateRecord> Alerts { get; set; } = [];
+}
+
+public sealed class CycleSettlementRecord
+{
+    public Guid Id { get; set; }
+    public Guid SimulationRunId { get; set; }
+    public int CycleIndex { get; set; }
+    public Guid AreaId { get; set; }
+    public string ExpectedSensorIdsJson { get; set; } = "[]";
+    public string ObservedSensorIdsJson { get; set; } = "[]";
+    public string MissingSensorIdsJson { get; set; } = "[]";
+    public string BlockedSensorIdsJson { get; set; } = "[]";
+    public string EligibleSensorIdsJson { get; set; } = "[]";
+    public string Status { get; set; } = "Open";
+    public bool IsOperational { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? FinalizedAt { get; set; }
+    public string? FinalizationReason { get; set; }
+}
+
+public sealed class CycleObservationRecord
+{
+    public Guid Id { get; set; }
+    public Guid SimulationRunId { get; set; }
+    public int CycleIndex { get; set; }
+    public Guid AreaId { get; set; }
+    public Guid SensorId { get; set; }
+    public Guid GridCellId { get; set; }
+    public Guid EventId { get; set; }
+    public string MetricOrigin { get; set; } = "Observed";
+    public string Outcome { get; set; } = "Eligible";
+    public double? RiskScore { get; set; }
+    public string? RiskLevel { get; set; }
+    public DateTimeOffset EventTime { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+public sealed class CellCycleSnapshotRecord
+{
+    public Guid Id { get; set; }
+    public Guid SimulationRunId { get; set; }
+    public int CycleIndex { get; set; }
+    public Guid AreaId { get; set; }
+    public Guid GridCellId { get; set; }
+    public int ExpectedCount { get; set; }
+    public int ObservedCount { get; set; }
+    public int MissingCount { get; set; }
+    public int BlockedCount { get; set; }
+    public int EligibleCount { get; set; }
+    public double AggregateRiskScore { get; set; }
+    public string AggregateRiskLevel { get; set; } = "Unknown";
+    public DateTimeOffset SnapshotTimestamp { get; set; }
+}
+
+public sealed class AreaCycleSnapshotRecord
+{
+    public Guid Id { get; set; }
+    public Guid SimulationRunId { get; set; }
+    public int CycleIndex { get; set; }
+    public Guid AreaId { get; set; }
+    public int CellCount { get; set; }
+    public int ExpectedCount { get; set; }
+    public int ObservedCount { get; set; }
+    public int MissingCount { get; set; }
+    public int BlockedCount { get; set; }
+    public int EligibleCount { get; set; }
+    public double AggregateRiskScore { get; set; }
+    public string AggregateRiskLevel { get; set; } = "Unknown";
+    public DateTimeOffset SnapshotTimestamp { get; set; }
+    public DateTimeOffset AlertEvaluatedAt { get; set; }
+    public string AlertOutcome { get; set; } = "None";
+    public bool IsOperational { get; set; }
 }
 
 public sealed class AlertStateRecord

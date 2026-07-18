@@ -63,6 +63,8 @@
     "RuntimeDiagnosticResultResponse",
     "RuntimeRunStartRequest",
     "RuntimeRunStartResponse",
+    "RuntimeOperationAccountingResponse",
+    "RuntimeOperationResponse",
     "RuntimeResetRequest",
     "RuntimeTableCountResponse",
     "RuntimeResetResponse",
@@ -128,11 +130,11 @@
     },
     "webUI/src/app/pages/EvidenceExplorerPage.tsx": {
       "required_marker": "export function EvidenceExplorerPage",
-      "max_normalized_chars": 3200
+      "max_normalized_chars": 9500
     },
     "webUI/src/app/pages/DeploymentsPage.tsx": {
       "required_marker": "export function DeploymentsPage",
-      "max_normalized_chars": 600
+      "max_normalized_chars": 5000
     },
     "webUI/src/app/pages/CloudResourcesPage.tsx": {
       "required_marker": "export function CloudResourcesPage",

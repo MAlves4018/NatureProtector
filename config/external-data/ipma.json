@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "provider": "IPMA",
+  "observationsUrl": "https://api.ipma.pt/open-data/observation/meteorology/stations/observations.json",
+  "stationsUrl": "https://api.ipma.pt/open-data/observation/meteorology/stations/stations.json",
+  "pollSeconds": 300,
+  "metrics": {
+    "temperatura": {"name": "temperature", "unit": "celsius"},
+    "humidade": {"name": "relative_humidity", "unit": "percent"},
+    "intensidadeVentoKM": {"name": "wind_speed", "unit": "km_per_hour"},
+    "precAcumulada": {"name": "precipitation_accumulated", "unit": "millimetre"},
+    "pressao": {"name": "pressure", "unit": "hectopascal"}
+  }
+}

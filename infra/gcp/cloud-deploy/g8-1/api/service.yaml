@@ -64,7 +64,10 @@ spec:
             - {name: RabbitMq__Port, value: "5671"}
             - {name: RabbitMq__ManagementPort, value: "15671"}
             - {name: RabbitMq__ManagementScheme, value: https}
+            - {name: RabbitMq__ManagementTimeoutSeconds, value: "5"}
+            - {name: RabbitMq__ManagementCheckCertificateRevocation, value: "false"}
             - {name: RabbitMq__TlsEnabled, value: "true"}
+            - {name: RabbitMq__ObservabilityRawEnabled, value: "false"}
             - name: RabbitMq__TlsServerName
               value: missing-rabbitmq-server-name # from-param: ${rabbitmq_tls_server_name}
             - name: RabbitMq__UserName

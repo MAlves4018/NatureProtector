@@ -30,7 +30,9 @@ public sealed record LocalObservation(
             Value: ObservedValue,
             Latitude: Latitude,
             Longitude: Longitude,
-            OperationalState: OperationalState);
+            OperationalState: OperationalState,
+            CycleIndex: TruthSnapshot.CycleIndex,
+            GridCellId: TruthSnapshot.GridCellId);
     }
 
     public LocalObservation AsMissing(string degradationProfile)

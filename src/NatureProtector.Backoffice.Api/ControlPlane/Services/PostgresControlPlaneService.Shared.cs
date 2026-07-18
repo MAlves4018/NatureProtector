@@ -16,6 +16,16 @@ namespace NatureProtector.Backoffice.Api.ControlPlane.Services;
 
 public sealed partial class PostgresControlPlaneService : IControlPlaneService
 {
+    private const int RuntimeSettlementGraceSeconds = 120;
+    private const int MaximumRuntimeDeadlineSeconds = 24 * 60 * 60;
+
+    internal enum RuntimeProcessWaitOutcome
+    {
+        Exited,
+        TimedOut,
+        TimedOutAndTerminated
+    }
+
     // <phase5-slice id="shared-mapping-and-normalization">
     private static RuntimeRunSummaryResponse? ToRuntimeRun(
         SimulationRunResponse? run,
@@ -451,6 +461,72 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         }
 
         return Math.Clamp(recentMinutes, MinRecentMinutes, MaxRecentMinutes);
+    }
+
+    internal static async Task<RuntimeProcessWaitOutcome> WaitForRuntimeProcessAsync(
+        Process process,
+        TimeSpan? timeout,
+        bool terminateOnTimeout,
+        Func<string, Task> writeWarningAsync,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(process);
+        ArgumentNullException.ThrowIfNull(writeWarningAsync);
+
+        CancellationTokenSource? timeoutCts = null;
+        var waitToken = cancellationToken;
+        if (timeout is TimeSpan configuredTimeout)
+        {
+            if (configuredTimeout <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be positive when provided.");
+            }
+
+            timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(configuredTimeout);
+            waitToken = timeoutCts.Token;
+        }
+
+        try
+        {
+            await process.WaitForExitAsync(waitToken);
+            return RuntimeProcessWaitOutcome.Exited;
+        }
+        catch (OperationCanceledException) when (
+            timeoutCts is not null &&
+            timeoutCts.IsCancellationRequested &&
+            !cancellationToken.IsCancellationRequested)
+        {
+            if (terminateOnTimeout &&
+                await TryTerminateProcessTreeAsync(process, timeout!.Value, writeWarningAsync))
+            {
+                return RuntimeProcessWaitOutcome.TimedOutAndTerminated;
+            }
+
+            return RuntimeProcessWaitOutcome.TimedOut;
+        }
+        finally
+        {
+            timeoutCts?.Dispose();
+        }
+    }
+
+    internal static TimeSpan CalculateRuntimeOperationDeadline(RuntimeRunStartRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var configuredSeconds = Math.Clamp(request.TimeoutSeconds, 5, MaximumRuntimeDeadlineSeconds);
+        var predictedSeconds = 0L;
+        if (request.NumberOfCycles is > 0 && request.IntervalSeconds is > 0)
+        {
+            predictedSeconds = checked((long)request.NumberOfCycles.Value * request.IntervalSeconds.Value);
+        }
+
+        var producerBudgetSeconds = Math.Max(configuredSeconds, predictedSeconds);
+        var operationDeadlineSeconds = Math.Min(
+            producerBudgetSeconds + RuntimeSettlementGraceSeconds,
+            MaximumRuntimeDeadlineSeconds);
+        return TimeSpan.FromSeconds(operationDeadlineSeconds);
     }
 
     private static async Task<bool> TryTerminateProcessTreeAsync(

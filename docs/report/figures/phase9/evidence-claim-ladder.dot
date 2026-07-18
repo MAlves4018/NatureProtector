@@ -1,0 +1,11 @@
+digraph G {
+ graph [rankdir=BT, bgcolor="transparent", pad="0.25", nodesep="0.2", ranksep="0.35", fontname="Arial"];
+ node [shape=box, style="rounded,filled", fillcolor="white", color="#59636e", fontname="Arial", fontsize=11, width=4.5];
+ edge [color="#59636e", arrowsize=0.7];
+ l1 [label="Nível 1 — Verificação estática\nA fórmula e os contratos estão implementados corretamente"];
+ l2 [label="Nível 2 — Testes controlados\nO score reage coerentemente a alterações conhecidas"];
+ l3 [label="Nível 3 — Validação retrospetiva exploratória\nO score ordena eventos acima de controlos nesta amostra"];
+ l4 [label="Nível 4 — Validação temporal/externa\nO desempenho mantém-se em períodos e regiões não usados"];
+ l5 [label="Nível 5 — Calibração operacional\nValores e limiares representam risco/probabilidade mensurável"];
+ l1 -> l2 -> l3 -> l4 -> l5;
+}

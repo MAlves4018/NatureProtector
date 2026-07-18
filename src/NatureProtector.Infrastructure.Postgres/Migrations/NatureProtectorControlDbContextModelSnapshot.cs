@@ -298,6 +298,165 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.ToTable("rule_set_versions", "control");
                 });
 
+            modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Control.RuntimeOperationRecord", b =>
+                {
+                    b.Property<Guid>("OperationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("execution_id");
+
+                    b.Property<DateTimeOffset>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("log_correlation");
+
+                    b.Property<DateTimeOffset>("DeadlineAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deadline_at");
+
+                    b.Property<string>("EvidenceId")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("evidence_id");
+
+                    b.Property<string>("EvidenceLocation")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("evidence_location");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<string>("FailureMessage")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("failure_message");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<bool>("IsOperational")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_operational");
+
+                    b.Property<Guid?>("LaunchLeaseToken")
+                        .HasColumnType("uuid")
+                        .HasColumnName("launch_lease_token");
+
+                    b.Property<DateTimeOffset?>("LaunchLeaseUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("launch_lease_until");
+
+                    b.Property<string>("ProcessingState")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("processing_state");
+
+                    b.Property<DateTimeOffset?>("ProducerCompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("producer_completed_at");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("ProviderExecutionName")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_execution_name");
+
+                    b.Property<string>("ProviderOperationName")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_operation_name");
+
+                    b.Property<string>("ProviderState")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provider_state");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<string>("RequestedState")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("requested_state");
+
+                    b.Property<string>("RunState")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("run_state");
+
+                    b.Property<Guid?>("SimulationRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("simulation_run_id");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("state");
+
+                    b.Property<DateTimeOffset?>("SystemCompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("system_completed_at");
+
+                    b.Property<string>("TerminalOutcome")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("terminal_outcome");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("OperationId");
+
+                    b.HasIndex("CorrelationId")
+                        .IsUnique();
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("IsOperational")
+                        .IsUnique()
+                        .HasFilter("is_operational = TRUE AND terminal_outcome IS NULL");
+
+                    b.HasIndex("RequestId")
+                        .IsUnique();
+
+                    b.HasIndex("SimulationRunId")
+                        .IsUnique();
+
+                    b.ToTable("runtime_orchestrator_executions", "control");
+                });
+
             modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Control.ScenarioDatasetBindingRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -531,6 +690,11 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<int>("NumberOfCycles")
                         .HasColumnType("integer");
 
+                    b.Property<string>("OrchestratorCorrelationId")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("orchestrator_correlation_id");
+
                     b.Property<string>("ScenarioCode")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -553,6 +717,9 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ConfigurationVersionId");
+
+                    b.HasIndex("OrchestratorCorrelationId")
+                        .IsUnique();
 
                     b.HasIndex("AreaId", "CreatedAt");
 
@@ -633,6 +800,9 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<Guid?>("SimulationRunId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -640,6 +810,8 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.HasIndex("EventId")
                         .IsUnique();
+
+                    b.HasIndex("SimulationRunId", "Status");
 
                     b.HasIndex("Status", "NextAttemptNotBefore");
 
@@ -902,6 +1074,71 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.ToTable("alert_state", "projection");
                 });
 
+            modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Projection.AreaCycleSnapshotRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AggregateRiskLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<double>("AggregateRiskScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTimeOffset>("AlertEvaluatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AlertOutcome")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("AreaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BlockedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CellCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CycleIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EligibleCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ExpectedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsOperational")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MissingCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ObservedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SimulationRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("SnapshotTimestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId", "CycleIndex");
+
+                    b.HasIndex("SimulationRunId", "CycleIndex", "AreaId")
+                        .IsUnique();
+
+                    b.ToTable("area_cycle_snapshot", "projection");
+                });
+
             modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Projection.AreaOperationalStateRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -941,6 +1178,9 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("Complete");
+
+                    b.Property<int?>("CycleIndex")
+                        .HasColumnType("integer");
 
                     b.Property<string>("FreshnessStatus")
                         .IsRequired()
@@ -1033,6 +1273,58 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.ToTable("area_risk_snapshot_log", "projection");
                 });
 
+            modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Projection.CellCycleSnapshotRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AggregateRiskLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<double>("AggregateRiskScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("AreaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BlockedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CycleIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EligibleCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ExpectedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("GridCellId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("MissingCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ObservedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SimulationRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("SnapshotTimestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SimulationRunId", "CycleIndex", "GridCellId")
+                        .IsUnique();
+
+                    b.ToTable("cell_cycle_snapshot", "projection");
+                });
+
             modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Projection.CellOperationalStateRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1105,6 +1397,130 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.HasIndex("AreaId", "SnapshotTimestamp");
 
                     b.ToTable("cell_operational_state", "projection");
+                });
+
+            modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Projection.CycleObservationRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AreaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CycleIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("EventTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GridCellId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MetricOrigin")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("RiskLevel")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<double?>("RiskScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("SensorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SimulationRunId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.HasIndex("SimulationRunId", "CycleIndex", "SensorId")
+                        .IsUnique();
+
+                    b.ToTable("cycle_observation", "projection");
+                });
+
+            modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Projection.CycleSettlementRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AreaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BlockedSensorIdsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CycleIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("EligibleSensorIdsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ExpectedSensorIdsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("FinalizationReason")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset?>("FinalizedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsOperational")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MissingSensorIdsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ObservedSensorIdsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SimulationRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId", "Status");
+
+                    b.HasIndex("SimulationRunId", "CycleIndex")
+                        .IsUnique();
+
+                    b.ToTable("cycle_settlement", "projection");
                 });
 
             modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Projection.DailyCellStateRecord", b =>
@@ -1505,6 +1921,16 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .IsRequired();
 
                     b.Navigation("ConfigurationVersion");
+                });
+
+            modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Control.RuntimeOperationRecord", b =>
+                {
+                    b.HasOne("NatureProtector.Infrastructure.Postgres.Control.SimulationRunRecord", "SimulationRun")
+                        .WithOne("RuntimeOperation")
+                        .HasForeignKey("NatureProtector.Infrastructure.Postgres.Control.RuntimeOperationRecord", "SimulationRunId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("SimulationRun");
                 });
 
             modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Control.ScenarioDatasetBindingRecord", b =>
@@ -1944,6 +2370,11 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
             modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Control.SensorProfileRecord", b =>
                 {
                     b.Navigation("SensorNodes");
+                });
+
+            modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Control.SimulationRunRecord", b =>
+                {
+                    b.Navigation("RuntimeOperation");
                 });
 
             modelBuilder.Entity("NatureProtector.Infrastructure.Postgres.Pipeline.InboxEventRecord", b =>

@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react';
-import { Play, ShieldAlert } from 'lucide-react';
+import { ClipboardCheck, ShieldAlert } from 'lucide-react';
 import type { OperationDefinitionResponse, StartOperationRequest } from '../types/operations';
 import { useOperations } from './OperationsContext';
 
-export function OperationLauncher({ definition }: { definition: OperationDefinitionResponse }) {
+export function OperationLauncher({
+  definition,
+  showTruthWarning = true,
+}: {
+  definition: OperationDefinitionResponse;
+  showTruthWarning?: boolean;
+}) {
   const { start } = useOperations();
   const initialInputs = useMemo(
     () => Object.fromEntries(definition.inputs.map((input) => [input.name, input.defaultValue ?? ''])),
@@ -31,9 +37,11 @@ export function OperationLauncher({ definition }: { definition: OperationDefinit
     };
     try {
       const operation = await start(request);
-      setMessage(`Operação ${operation.id} registada com estado ${operation.status}.`);
+      setMessage(
+        `Pedido ${operation.id} registado com estado ${operation.status}. Este estado não prova conclusão sem resultado terminal e evidence verificável.`,
+      );
     } catch (value) {
-      setMessage(value instanceof Error ? value.message : 'Não foi possível iniciar a operação.');
+      setMessage(value instanceof Error ? value.message : 'Não foi possível registar o pedido de operação.');
     } finally {
       setSubmitting(false);
     }
@@ -51,6 +59,15 @@ export function OperationLauncher({ definition }: { definition: OperationDefinit
         </span>
       </div>
       <p>{definition.description}</p>
+      {showTruthWarning && (
+        <div className="ui-notice ui-warning">
+          <ShieldAlert size={16} />
+          <span>
+            Este controlo regista um pedido fechado. Catálogo, dispatcher, provider e resultado terminal são estados
+            distintos; Queued não significa sucesso.
+          </span>
+        </div>
+      )}
       <div className="ui-fact-list">
         <span>
           <strong>Capability</strong>
@@ -110,7 +127,11 @@ export function OperationLauncher({ definition }: { definition: OperationDefinit
       {!enabled && (
         <div className="ui-notice ui-warning">
           <ShieldAlert size={16} />
-          <span>{definition.availability}</span>
+          <span>
+            {definition.authorized
+              ? (definition.limitation ?? `Operação indisponível: ${definition.availability}.`)
+              : `Bloqueada: falta a capability ${definition.requiredCapability}. Um perfil autorizado tem de iniciar o pedido.`}
+          </span>
         </div>
       )}
       <button
@@ -119,8 +140,12 @@ export function OperationLauncher({ definition }: { definition: OperationDefinit
         disabled={!enabled || submitting || (definition.requiresConfirmation && confirmation !== expectedConfirmation)}
         onClick={submit}
       >
-        <Play size={16} />{' '}
-        {submitting ? 'A registar…' : definition.requiresApproval ? 'Pedir aprovação' : 'Executar operação'}
+        <ClipboardCheck size={16} />{' '}
+        {submitting
+          ? 'A registar pedido…'
+          : definition.requiresApproval
+            ? 'Registar pedido de aprovação'
+            : 'Registar pedido de operação'}
       </button>
       {message && <p className="ui-notice">{message}</p>}
     </article>

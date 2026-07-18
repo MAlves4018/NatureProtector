@@ -59,7 +59,7 @@ public sealed class RabbitMqReadingPublisherBehaviorTests
     }
 
     [Fact]
-    public void DeclareTopology_DeclaresExchangeQueuesAndBindings()
+    public void DeclareTopology_DeclaresOnlyPrimaryQueue_WhenRawIsDisabled()
     {
         using var publisher = CreatePublisher(new RabbitMqOptions
         {
@@ -78,6 +78,31 @@ public sealed class RabbitMqReadingPublisherBehaviorTests
         var exchangeDeclare = Assert.Single(recorder.Invocations, x => x.MethodName == "ExchangeDeclare");
         Assert.Equal("np.events", Assert.IsType<string>(exchangeDeclare.Arguments[0]));
         Assert.Equal(NatureProtectorRabbitMqTopology.ExchangeType, Assert.IsType<string>(exchangeDeclare.Arguments[1]));
+
+        var queueDeclare = Assert.Single(recorder.Invocations, x => x.MethodName == "QueueDeclare");
+        Assert.Equal("np.it.ingestion", Assert.IsType<string>(queueDeclare.Arguments[0]));
+
+        var queueBind = Assert.Single(recorder.Invocations, x => x.MethodName == "QueueBind");
+        Assert.Equal("np.it.ingestion", Assert.IsType<string>(queueBind.Arguments[0]));
+    }
+
+    [Fact]
+    public void DeclareTopology_DeclaresRawQueue_WhenExplicitlyEnabled()
+    {
+        using var publisher = CreatePublisher(new RabbitMqOptions
+        {
+            HostName = "localhost",
+            Port = 5672,
+            UserName = "np",
+            Password = "pass",
+            ExchangeName = "np.events",
+            IngestionReadingsQueueName = "np.it.ingestion",
+            ObservabilityRawEnabled = true,
+            ObservabilityRawQueueName = "np.it.raw"
+        });
+        var (channel, recorder) = RecordingDispatchProxy<IModel>.CreateProxy();
+
+        InvokePrivateMethod(publisher, "DeclareTopology", channel);
 
         var queueDeclares = recorder.Invocations.Where(x => x.MethodName == "QueueDeclare").ToList();
         Assert.Equal(2, queueDeclares.Count);

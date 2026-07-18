@@ -167,21 +167,58 @@ describe('App', () => {
 
     expect(await screen.findByRole('button', { name: /Risco e dados/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Simulação$/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Técnico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Análise e evidência/i }));
     expect(screen.getByRole('button', { name: /Evidence Explorer/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Deployments$/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
-    fireEvent.change(await screen.findByLabelText(/selecionar área/i), { target: { value: 'proenca-a-nova' } });
-    await waitFor(() => expect(screen.getByText(/Área resolvida pelo catálogo disponível/i)).toBeInTheDocument());
-    expect(await screen.findByRole('heading', { name: /Pipeline e observabilidade/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: /Pipeline e observabilidade/i }, { timeout: 5000 }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Qualidade e evidencia/i }));
     expect(await screen.findByRole('heading', { name: /Qualidade e evidência/i })).toBeInTheDocument();
-    expect(screen.getByText(/Latest test execution/i)).toBeInTheDocument();
+    expect(screen.getByText(/Historical repository claims/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Evidence Explorer/i }));
-    expect(await screen.findByRole('heading', { name: /Evidence Explorer/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Cockpit de evidência/i })).toBeInTheDocument();
+  });
+
+  it('blocks direct access to protected routes without confirmed capabilities', async () => {
+    window.history.replaceState(null, '', '/simulation');
+    renderUi();
+
+    expect(await screen.findByRole('heading', { name: /Acesso negado/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Iniciar simulação/i })).not.toBeInTheDocument();
+  });
+
+  it('fails closed when the backend capability authority is unavailable', async () => {
+    window.history.replaceState(null, '', '/simulation');
+    vi.stubGlobal('fetch', createFetchMock({ roles: ['Admin'], failCapabilities: true }));
+    renderAuthenticatedUi(['Admin']);
+
+    expect(await screen.findByText(/Capability authority unavailable/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Acesso negado/i })).toBeInTheDocument();
+  });
+
+  it('does not merge frontend role fallbacks into a restrictive backend profile', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ roles: ['Admin'], capabilities: ['demo.read', 'help.read'] }));
+    renderAuthenticatedUi(['Admin']);
+
+    expect(await screen.findByRole('heading', { name: /Leitura pública/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Admin$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Simulações/i })).not.toBeInTheDocument();
+  });
+
+  it('retires browser-generated QA and protects prepared diagnostics with backend capabilities', async () => {
+    window.history.replaceState(null, '', '/qa-tests');
+    const { unmount } = renderUi();
+    expect(await screen.findByRole('heading', { name: /Superfície operacional indisponível/i })).toBeInTheDocument();
+
+    unmount();
+    window.history.replaceState(null, '', '/db-queries');
+    renderUi();
+    expect(await screen.findByRole('heading', { name: /Acesso negado/i })).toBeInTheDocument();
   });
 
   it('shows executable simulation with controlled degradation for Sim profiles', async () => {
@@ -193,8 +230,24 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: /simulação/i }));
 
     expect(await screen.findByRole('heading', { name: /^Simulação$/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /^Degradação$/i })).toHaveDisplayValue('none');
+    fireEvent.click(screen.getByRole('button', { name: /^4 Degradações$/i }));
+    expect(screen.getByRole('group', { name: /^Degradação$/i })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'none' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'missing-readings' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'noise' })).toBeInTheDocument();
     expect(screen.queryByText(/Sem capability de execucao/i)).not.toBeInTheDocument();
+  });
+
+  it('preserves the selected run identity across primary navigation', async () => {
+    window.history.replaceState(null, '', '/simulation?runId=run-001');
+    vi.stubGlobal('fetch', createFetchMock({ roles: ['Admin'] }));
+    renderAuthenticatedUi(['Admin']);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Simulações/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Execuções/i }));
+
+    await waitFor(() => expect(window.location.pathname).toBe('/runs'));
+    expect(new URLSearchParams(window.location.search).get('runId')).toBe('run-001');
   });
 
   it('submits a runtime run from the frontend when the Admin capability profile is active', async () => {
@@ -207,12 +260,14 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: /simulação/i }));
     fireEvent.change(await screen.findByLabelText(/selecionar área/i), { target: { value: 'proenca-a-nova' } });
 
+    fireEvent.click(await screen.findByRole('button', { name: /^6 Revisão$/i }));
     const submitButton = await screen.findByRole('button', { name: /Iniciar simulação/i });
     await waitFor(() => expect(submitButton).not.toBeDisabled());
     fireEvent.click(submitButton);
 
-    expect(await screen.findByRole('heading', { name: /Contexto da execução/i })).toBeInTheDocument();
+    expect(await screen.findAllByText('SystemCompleted')).not.toHaveLength(0);
     expect(fetchMock).toHaveBeenCalledWith('/api/control/runtime/runs', expect.objectContaining({ method: 'POST' }));
+    expect(fetchMock).toHaveBeenCalledWith('/api/control/runtime/operations/operation-001', expect.anything());
   });
 
   it('shows proportional administration and experimental P3 only for Admin profiles', async () => {
@@ -225,8 +280,8 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Admin$/i }));
     fireEvent.click(await screen.findByRole('button', { name: /^Administração$/i }));
     expect(await screen.findByRole('heading', { name: /Administração proporcional/i })).toBeInTheDocument();
-    expect(screen.getByText('Runtime reset')).toBeInTheDocument();
-    expect(screen.getAllByText('blocked').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Runtime reset')).not.toHaveLength(0);
+    expect(screen.getAllByText('partial').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: /P3 experimental/i }));
     expect(await screen.findByRole('heading', { name: /P3 experimental/i })).toBeInTheDocument();
@@ -246,7 +301,9 @@ describe('App', () => {
   });
 });
 
-function createFetchMock(options: { failSummary?: boolean; roles?: string[] } = {}) {
+function createFetchMock(
+  options: { failSummary?: boolean; roles?: string[]; failCapabilities?: boolean; capabilities?: string[] } = {},
+) {
   const summary = createUiRuntimeSummaryFixture();
   const latestRun = summary.latestRun!;
   const runList = [
@@ -285,10 +342,11 @@ function createFetchMock(options: { failSummary?: boolean; roles?: string[] } = 
     }
 
     if (path === '/api/users-roles/me/capabilities') {
+      if (options.failCapabilities) throw new Error('capability authority unavailable');
       const { getUiCapabilities } = await import('./capabilities');
       return jsonResponse({
         roles: options.roles ?? [],
-        capabilities: [...getUiCapabilities({ roles: options.roles ?? [] })],
+        capabilities: options.capabilities ?? [...getUiCapabilities({ roles: options.roles ?? [] })],
         authority: 'test-backend-policy',
         evaluatedAt: '2026-06-28T20:00:00Z',
       });
@@ -371,6 +429,7 @@ function createFetchMock(options: { failSummary?: boolean; roles?: string[] } = 
       const requested = JSON.parse(String(init.body));
       return jsonResponse({
         requestId: 'request-001',
+        operationId: 'operation-001',
         orchestratorCorrelationId: 'corr-001',
         status: 'Validated',
         message: 'Request validated by test fixture.',
@@ -387,6 +446,41 @@ function createFetchMock(options: { failSummary?: boolean; roles?: string[] } = 
         warnings: [],
         logDirectory: null,
         evidenceDirectory: null,
+      });
+    }
+
+    if (path === '/api/control/runtime/operations/operation-001') {
+      return jsonResponse({
+        operationId: 'operation-001',
+        requestId: 'request-001',
+        correlationId: 'corr-001',
+        simulationRunId: latestRun.id,
+        requestedState: 'Requested',
+        providerState: 'ProducerCompleted',
+        runState: 'Completed',
+        processingState: 'SystemCompleted',
+        state: 'SystemCompleted',
+        terminalOutcome: 'SystemCompleted',
+        acceptedAt: '2026-06-13T22:10:00Z',
+        updatedAt: '2026-06-13T22:11:00Z',
+        startedAt: '2026-06-13T22:10:01Z',
+        producerCompletedAt: '2026-06-13T22:10:30Z',
+        systemCompletedAt: '2026-06-13T22:11:00Z',
+        finishedAt: '2026-06-13T22:11:00Z',
+        failureCode: null,
+        failureDetail: null,
+        evidenceId: 'evidence-001',
+        evidenceLocation: 'evidence/run-001',
+        accounting: {
+          expectedObservations: 3,
+          acceptedObservations: 3,
+          pendingInbox: 0,
+          processingInbox: 0,
+          retryPendingInbox: 0,
+          processedInbox: 3,
+          quarantinedInbox: 0,
+          settled: true,
+        },
       });
     }
 

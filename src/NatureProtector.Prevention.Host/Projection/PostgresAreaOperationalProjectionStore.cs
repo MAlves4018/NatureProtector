@@ -131,7 +131,8 @@ public sealed class PostgresAreaOperationalProjectionStore(
         AreaRiskSnapshot snapshot,
         int assessmentCount,
         CancellationToken cancellationToken,
-        Guid? simulationRunId = null)
+        Guid? simulationRunId = null,
+        int? cycleIndex = null)
     {
         using var activity = PreventionHostTelemetry.ActivitySource.StartActivity("natureprotector.prevention.postgres.write.area_projection");
         var stopwatch = Stopwatch.StartNew();
@@ -145,6 +146,8 @@ public sealed class PostgresAreaOperationalProjectionStore(
 
             var existingState = await dbContext.AreaOperationalStates
                 .SingleOrDefaultAsync(entity => entity.AreaId == areaId, cancellationToken);
+            if (cycleIndex.HasValue && existingState?.CycleIndex > cycleIndex.Value)
+                return;
             var previousAdjustedScore = existingState?.AggregateRiskScore ?? snapshot.AggregateRiskScore;
 
             var now = DateTimeOffset.UtcNow;
@@ -166,6 +169,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
 
             existingState.SnapshotTimestamp = snapshot.Timestamp;
             existingState.SimulationRunId = simulationRunId;
+            existingState.CycleIndex = cycleIndex;
             existingState.AggregateRiskScore = snapshot.AggregateRiskScore;
             existingState.AggregateRiskLevel = snapshot.AggregateRiskLevel.ToString();
             existingState.Severity = severity.ToString();

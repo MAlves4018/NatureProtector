@@ -1,3 +1,4 @@
+import { CircleHelp, LogIn, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import { UiNavigation } from './navigation/Navigation';
@@ -7,8 +8,9 @@ import { Breadcrumbs } from './components/Breadcrumbs';
 import { Skeleton } from './components/Skeleton';
 import type { UiNavTarget } from './capabilities';
 import { trapDialogTab } from './components/dialogFocus';
-import { defaultPageFor } from './navigation/pageRegistry';
+import { defaultPageFor, findUiPageDefinition } from './navigation/pageRegistry';
 import { useUiLocale, useUiCapabilities } from './state';
+import { useUiActivity } from './state/ActivityContext';
 import './theme/ui.css';
 import { UiProvider } from './state/Provider';
 import { NavBar } from './components/views/navBar';
@@ -17,6 +19,7 @@ import { LogInOut } from './components/views/LogInOut';
 const PublicOverviewPage = lazy(() =>
   import('./pages/PublicOverviewPage').then((module) => ({ default: module.PublicOverviewPage })),
 );
+const OverviewPage = lazy(() => import('./pages/OverviewPage').then((module) => ({ default: module.OverviewPage })));
 const DataContextPage = lazy(() =>
   import('./pages/DataContextPage').then((module) => ({ default: module.DataContextPage })),
 );
@@ -28,16 +31,13 @@ const SimulationPage = lazy(() =>
 const ScenarioComparisonPage = lazy(() =>
   import('./pages/ScenarioComparisonPage').then((module) => ({ default: module.ScenarioComparisonPage })),
 );
+const DatabaseQueriesPage = lazy(() =>
+  import('./pages/DatabaseQueriesPage').then((module) => ({ default: module.DatabaseQueriesPage })),
+);
 const AboutPage = lazy(() => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const PipelinePage = lazy(() => import('./pages/PipelinePage').then((module) => ({ default: module.PipelinePage })));
 const QualityEvidencePage = lazy(() =>
   import('./pages/QualityEvidencePage').then((module) => ({ default: module.QualityEvidencePage })),
-);
-const QaTestSuitePage = lazy(() =>
-  import('./pages/QaTestSuitePage').then((module) => ({ default: module.QaTestSuitePage })),
-);
-const DatabaseQueriesPage = lazy(() =>
-  import('./pages/DatabaseQueriesPage').then((module) => ({ default: module.DatabaseQueriesPage })),
 );
 const DeploymentHealthPage = lazy(() =>
   import('./pages/DeploymentHealthPage').then((module) => ({ default: module.DeploymentHealthPage })),
@@ -71,11 +71,7 @@ const UserRoleAdministrationPage = lazy(() =>
 
 export function App() {
   const [isDark, setIsDark] = useState(false);
-  return (
-    <UiProvider isDark={isDark}>
-      <UiRouter isDark={isDark} setIsDark={setIsDark} />
-    </UiProvider>
-  );
+  return <UiRouter isDark={isDark} setIsDark={setIsDark} />;
 }
 
 function UiRouter({
@@ -89,42 +85,53 @@ function UiRouter({
     () =>
       createBrowserRouter([
         {
-          path: '/login',
           element: (
-            <>
-              <NavBar isDark={isDark} setIsDark={setIsDark} />
-              <LogInOut isDark={isDark} mode="page" />
-            </>
+            <UiProvider isDark={isDark}>
+              <Outlet />
+            </UiProvider>
           ),
-        },
-        {
-          path: '/',
-          element: <UiShell isDark={isDark} setIsDark={setIsDark} />,
           children: [
-            { index: true, element: <UiDefaultRedirect /> },
-            { path: 'demo', element: <PublicOverviewPage /> },
-            { path: 'about', element: <AboutPage /> },
-            { path: 'context', element: <DataContextPage /> },
-            { path: 'dashboard', element: <DashboardsPage /> },
-            { path: 'mission', element: <MissionControlPage /> },
-            { path: 'risk', element: <RiskPage /> },
-            { path: 'runs', element: <RunsPage /> },
-            { path: 'simulation', element: <SimulationPage /> },
-            { path: 'scenario-compare', element: <ScenarioComparisonPage /> },
-            { path: 'pipeline', element: <PipelinePage /> },
-            { path: 'quality', element: <QualityRunsPage /> },
-            { path: 'qa', element: <QualityEvidencePage /> },
-            { path: 'qa-tests', element: <QaTestSuitePage /> },
-            { path: 'evidence', element: <EvidenceExplorerPage /> },
-            { path: 'deployments', element: <DeploymentsPage /> },
-            { path: 'deployment-health', element: <DeploymentHealthPage /> },
-            { path: 'cloud', element: <CloudResourcesPage /> },
-            { path: 'db-queries', element: <DatabaseQueriesPage /> },
-            { path: 'approvals', element: <ApprovalsPage /> },
-            { path: 'users', element: <UserRoleAdministrationPage /> },
-            { path: 'admin', element: <AdminPage /> },
-            { path: 'p3', element: <ExperimentalPage /> },
-            { path: '*', element: <UiDefaultRedirect /> },
+            {
+              path: '/login',
+              element: (
+                <>
+                  <NavBar isDark={isDark} setIsDark={setIsDark} />
+                  <LogInOut isDark={isDark} mode="page" />
+                </>
+              ),
+            },
+            {
+              path: '/',
+              element: <UiShell isDark={isDark} setIsDark={setIsDark} />,
+              children: [
+                { index: true, element: <UiDefaultRedirect /> },
+                { path: 'demo', element: protect('demo', <PublicOverviewPage />) },
+                { path: 'about', element: protect('about', <AboutPage />) },
+                { path: 'context', element: protect('context', <DataContextPage />) },
+                { path: 'dashboard', element: protect('dashboard', <DashboardsPage />) },
+                { path: 'overview', element: protect('overview', <OverviewPage />) },
+                { path: 'mission', element: protect('mission', <MissionControlPage />) },
+                { path: 'risk', element: protect('risk', <RiskPage />) },
+                { path: 'runs', element: protect('runs', <RunsPage />) },
+                { path: 'simulation', element: protect('simulation', <SimulationPage />) },
+                { path: 'scenario-compare', element: protect('scenario-compare', <ScenarioComparisonPage />) },
+                { path: 'queries', element: protect('queries', <DatabaseQueriesPage />) },
+                { path: 'pipeline', element: protect('pipeline', <PipelinePage />) },
+                { path: 'quality', element: protect('quality', <QualityRunsPage />) },
+                { path: 'qa', element: protect('qa', <QualityEvidencePage />) },
+                { path: 'qa-tests', element: <UiRetiredOperationalSurface name="Browser QA execution" /> },
+                { path: 'evidence', element: protect('evidence', <EvidenceExplorerPage />) },
+                { path: 'deployments', element: protect('deployments', <DeploymentsPage />) },
+                { path: 'deployment-health', element: protect('deployment-health', <DeploymentHealthPage />) },
+                { path: 'cloud', element: protect('cloud', <CloudResourcesPage />) },
+                { path: 'db-queries', element: <Navigate to="/queries" replace /> },
+                { path: 'approvals', element: protect('approvals', <ApprovalsPage />) },
+                { path: 'users', element: protect('users', <UserRoleAdministrationPage />) },
+                { path: 'admin', element: protect('admin', <AdminPage />) },
+                { path: 'p3', element: protect('p3', <ExperimentalPage />) },
+                { path: '*', element: <UiDefaultRedirect /> },
+              ],
+            },
           ],
         },
       ]),
@@ -135,10 +142,21 @@ function UiRouter({
 }
 
 function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {
-  const { pages, capabilities, setActivePage } =
-    useUiCapabilities();
-  const { copy } = useUiLocale();
+  const {
+    pages,
+    capabilities,
+    setActivePage,
+    user,
+    isPublic,
+    capabilityAuthority,
+    capabilitiesLoading,
+    capabilitiesError,
+  } = useUiCapabilities();
+  const { selectedRunId } = useUiActivity();
+  const { copy, locale, setLocale } = useUiLocale();
   const [helpTopic, setHelpTopic] = useState<string | null>(null);
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const [navigationCompact, setNavigationCompact] = useState(false);
   const helpCloseRef = useRef<HTMLButtonElement | null>(null);
   const helpReturnFocusRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
@@ -202,9 +220,10 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
   const handleNavigate = useCallback(
     (target: UiNavTarget) => {
       setActivePage(target);
-      navigate('/' + target);
+      const search = selectedRunId ? `?runId=${encodeURIComponent(selectedRunId)}` : '';
+      navigate({ pathname: '/' + target, search });
     },
-    [navigate, setActivePage],
+    [navigate, selectedRunId, setActivePage],
   );
 
   const mainId = 'ui-main';
@@ -219,7 +238,6 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
 
   return (
     <>
-      <NavBar isDark={isDark} setIsDark={setIsDark} />
       <div className="ui-shell" data-theme={isDark ? 'dark' : 'light'}>
         <a
           className="ui-skip"
@@ -231,16 +249,104 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
         >
           {copy('nav.skip')}
         </a>
-        <UiNavigation pages={pages} activePage={activePage} copy={copy} onSelect={handleNavigate} />
-        <AlertBanner />
-        <Breadcrumbs items={breadcrumbItems} onNavigate={handleNavigate} />
-        <main id={mainId} className="ui-content" tabIndex={-1}>
-          <ErrorBoundary key={activePage}>
-            <Suspense fallback={<UiRouteLoading />}>
-              <Outlet />
-            </Suspense>
-          </ErrorBoundary>
-        </main>
+        <aside
+          className={`ui-sidebar ${navigationOpen ? 'ui-sidebar-open' : ''} ${
+            navigationCompact ? 'ui-sidebar-compact' : ''
+          }`}
+        >
+          <UiNavigation pages={pages} activePage={activePage} copy={copy} onSelect={handleNavigate} />
+          <button
+            type="button"
+            className="ui-sidebar-collapse"
+            onClick={() => setNavigationCompact((value) => !value)}
+            aria-label={navigationCompact ? 'Expandir navegação' : 'Recolher navegação'}
+          >
+            {navigationCompact ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            <span>Recolher</span>
+          </button>
+        </aside>
+        {navigationOpen && (
+          <button
+            type="button"
+            className="ui-sidebar-scrim"
+            aria-label="Fechar navegação"
+            onClick={() => setNavigationOpen(false)}
+          />
+        )}
+        <div className={`ui-workspace ${navigationCompact ? 'ui-workspace-expanded' : ''}`}>
+          <NavBar isDark={isDark} setIsDark={setIsDark} />
+          <header className="ui-context-bar">
+            <button
+              type="button"
+              className="ui-top-icon ui-mobile-menu"
+              aria-label="Abrir navegação"
+              onClick={() => setNavigationOpen(true)}
+            >
+              <Menu size={18} />
+            </button>
+            <div>
+              <p className="ui-kicker">{activePageDef ? copy(activePageDef.labelKey) : copy('app.name')}</p>
+              <p className="ui-context-copy">
+                {isPublic
+                  ? 'Leitura pública do protótipo e do estado dos dados.'
+                  : `Perfil ${user?.roles.join(', ') || 'sem funções'} · ${
+                      capabilitiesLoading ? 'capabilities a validar' : capabilityAuthority
+                    }`}
+              </p>
+            </div>
+            <div className="ui-context-actions">
+              <div className="ui-language">
+                <button
+                  type="button"
+                  className={locale === 'pt-PT' ? 'ui-segment-active' : 'ui-segment'}
+                  onClick={() => setLocale('pt-PT')}
+                >
+                  PT
+                </button>
+                <button
+                  type="button"
+                  className={locale === 'en' ? 'ui-segment-active' : 'ui-segment'}
+                  onClick={() => setLocale('en')}
+                >
+                  EN
+                </button>
+              </div>
+              <button
+                type="button"
+                className="ui-top-icon"
+                onClick={() => {
+                  helpReturnFocusRef.current =
+                    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                  setHelpTopic(activePageDef?.helpTopic ?? 'overview');
+                }}
+                aria-label="Ajuda contextual"
+              >
+                <CircleHelp size={17} />
+              </button>
+              {isPublic && (
+                <button type="button" className="ui-button" onClick={() => navigate('/login')}>
+                  <LogIn size={16} />
+                  {copy('nav.login')}
+                </button>
+              )}
+            </div>
+          </header>
+          {capabilitiesError && (
+            <div className="ui-notice ui-warning" role="status">
+              Capability authority unavailable. Authenticated write and protected capabilities are disabled until the
+              backend profile is confirmed.
+            </div>
+          )}
+          <AlertBanner />
+          <Breadcrumbs items={breadcrumbItems} onNavigate={handleNavigate} />
+          <main id={mainId} className="ui-content" tabIndex={-1}>
+            <ErrorBoundary key={activePage}>
+              <Suspense fallback={<UiRouteLoading />}>
+                <Outlet />
+              </Suspense>
+            </ErrorBoundary>
+          </main>
+        </div>
         {helpTopic && (
           <div className="ui-help-overlay">
             <section
@@ -266,11 +372,49 @@ function UiShell({ isDark, setIsDark }: { isDark: boolean; setIsDark: React.Disp
 
 function getRoutePage(pathname: string): UiNavTarget | undefined {
   const segments = pathname.split('/').filter(Boolean);
-  return (segments[0] === 'ui-v2' ? segments[1] : segments[0]) as UiNavTarget | undefined;
+  const candidate = segments[0] === 'ui-v2' ? segments[1] : segments[0];
+  return candidate && findUiPageDefinition(candidate) ? (candidate as UiNavTarget) : undefined;
+}
+
+function protect(page: UiNavTarget, element: React.ReactNode) {
+  return <UiCapabilityRoute page={page}>{element}</UiCapabilityRoute>;
+}
+
+function UiCapabilityRoute({ page, children }: { page: UiNavTarget; children: React.ReactNode }) {
+  const { capabilities, capabilitiesLoading, capabilityAuthority } = useUiCapabilities();
+  const definition = findUiPageDefinition(page);
+
+  if (capabilitiesLoading) return <UiRouteLoading />;
+
+  const authorized = Boolean(definition?.requiredCapabilities.every((capability) => capabilities.has(capability)));
+  if (!authorized) {
+    return (
+      <section className="ui-page" role="alert">
+        <h2>Acesso negado</h2>
+        <p>Esta rota requer capabilities confirmadas pelo backend.</p>
+        <p className="ui-notice">Authority: {capabilityAuthority}</p>
+      </section>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+function UiRetiredOperationalSurface({ name }: { name: string }) {
+  return (
+    <section className="ui-page" role="alert">
+      <h2>Superfície operacional indisponível</h2>
+      <p>{name} was removed from delivery because it had no authoritative backend execution path.</p>
+      <p className="ui-notice ui-warning">No result, timing, row count or pass/fail state is generated here.</p>
+    </section>
+  );
 }
 
 function UiDefaultRedirect() {
-  const { pages, capabilities } = useUiCapabilities();
+  const { pages, capabilities, capabilitiesLoading } = useUiCapabilities();
+  if (capabilitiesLoading) {
+    return <UiRouteLoading />;
+  }
   const fallbackPage = defaultPageFor(capabilities);
   const targetPage = pages.some((page) => page.id === fallbackPage) ? fallbackPage : 'demo';
 

@@ -63,6 +63,10 @@ public sealed record RabbitMqMetricsResponse(
 
 public sealed record RabbitMqQueueMetricResponse(
     string QueueName,
+    string QueueRole,
+    bool Enabled,
+    bool ConsumerRequired,
+    bool BlocksRuntimeHealth,
     int? MessagesReady,
     int? MessagesUnacknowledged,
     int? MessagesTotal,

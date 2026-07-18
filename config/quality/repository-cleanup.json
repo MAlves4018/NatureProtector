@@ -26,12 +26,25 @@
       "scripts/cloud/g8_state_evidence.py"
     ],
     "retained_manual_entrypoints": [
+      "scripts/audit/Invoke-RabbitMqHealthPhase3EValidation.ps1",
+      "scripts/audit/Test-RabbitMqHealthPhase1Package.py",
+      "scripts/audit/Test-RabbitMqHealthPhase2Package.py",
       "scripts/dotnet/Invoke-RepoDotnet.ps1",
       "scripts/docker/Export-DockerDiagnostics.ps1",
       "scripts/evidence/export_db_evidence.py",
       "scripts/evidence/Generate-DeepEngineeringExploration20260701.ps1",
+      "scripts/autoscaling/analyze-capacity.py",
       "scripts/evidence/collect-reliability-evidence.sh",
-      "scripts/evidence/run-report-evidence-campaign.sh"
+      "scripts/evidence/collect-evidence-gap-closure.sh",
+      "scripts/evidence/collect-evidence-intelligence.sh",
+      "scripts/evidence/run-final-evidence-campaign.py",
+      "scripts/evidence/run-report-evidence-campaign.sh",
+      "scripts/evidence/verify-final-evidence-campaign.py",
+      "scripts/observability/generate-grafana-dashboards.py",
+      "scripts/runtime/verify-long-run-proof.py",
+      "scripts/testing/Invoke-AutoscalingExperimentMatrix.ps1",
+      "scripts/testing/Invoke-MultiReplicaTemporalMatrix.ps1",
+      "scripts/testing/Invoke-SystemResetRecoveryMatrix.ps1"
     ],
     "deployment_authority_wrappers": [
       "scripts/cloud/probes/capacity.ps1",

@@ -3,14 +3,6 @@ import { api } from '../services/api';
 import { buildUiQaSuites, type UiQaSuite } from '../technicalSurfaces';
 import type { EngineeringOperationResponse, OperationDefinitionResponse } from '../types';
 
-export interface QaTestExecution {
-  executionId: string;
-  startedAt: string;
-  finishedAt: string;
-  durationMs: number;
-  suites: UiQaSuite[];
-}
-
 interface UiQaTestContextValue {
   qaSuites: UiQaSuite[];
   suitesLoading: boolean;
@@ -247,8 +239,6 @@ export function UiQaTestProvider({ children }: { children: ReactNode }) {
 
 export function useUiQaTests() {
   const context = useContext(UiQaTestContext);
-  if (!context) {
-    throw new Error('useUiQaTests must be used within UiQaTestProvider');
-  }
+  if (!context) throw new Error('useUiQaTests must be used within UiQaTestProvider');
   return context;
 }

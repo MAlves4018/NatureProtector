@@ -12,6 +12,8 @@ Serve para responder, de forma operacional, a estas perguntas:
 - o que devo esperar em cada passo;
 - onde posso verificar que o sistema está vivo.
 
+Para clone-to-run, a fonte principal é [docs/setup/local-baseline-setup.md](../setup/local-baseline-setup.md), com `scripts/np.ps1` como entrypoint recomendado. Este documento é uma referência técnica complementar para perceber componentes, verificações e caminhos manuais/diagnósticos.
+
 Para a explicação arquitetural detalhada, ver [architecture.md](architecture.md). Para o detalhe consolidado do papel do `PostgreSQL`, ver [postgresql-architecture.md](postgresql-architecture.md). Para um percurso de leitura do código e dos docs, ver [repository-exploration-guide.md](repository-exploration-guide.md).
 
 ## O que este documento cobre e o que não cobre
@@ -20,7 +22,8 @@ Este documento cobre:
 
 - baseline local com Docker Compose;
 - bootstrap do plano de controlo em `PostgreSQL`;
-- arranque de `Backoffice.Api`, `Prevention.Host` e `Simulator.Host`;
+- arranque de `Backoffice.Api`, `Prevention.Host` e webUI;
+- execução normal de simulações pelo Run Orchestrator, que lança `Simulator.Host` por run;
 - o que já é observável em `RabbitMQ`, `PostgreSQL`, `InfluxDB`, `Grafana` e na API;
 - percursos práticos para validar o fluxo end-to-end.
 
@@ -35,15 +38,40 @@ Este documento não cobre:
 
 | Capacidade | Estado | Ponto de entrada principal |
 | --- | --- | --- |
-| levantar baseline local com broker, base relacional, Influx e Grafana | `Implementado` | [`../../infra/scripts/up.ps1`](../../infra/scripts/up.ps1) |
+| levantar baseline local com broker, base relacional, Influx e Grafana | `Implementado` | [`../../scripts/np.ps1`](../../scripts/np.ps1) `up` |
 | materializar o plano de controlo em `PostgreSQL` | `Implementado` | [`../../scripts/postgres/bootstrap-control-plane.ps1`](../../scripts/postgres/bootstrap-control-plane.ps1) |
 | arrancar a API de consulta do plano de controlo e do estado operacional | `Implementado` | [`../../src/NatureProtector.Backoffice.Api/Program.cs`](../../src/NatureProtector.Backoffice.Api/Program.cs) |
-| arrancar o simulador em modo com plano de controlo | `Implementado` | [`../../src/NatureProtector.Simulator.Host/Program.cs`](../../src/NatureProtector.Simulator.Host/Program.cs) |
+| executar uma simulação pelo fluxo normal | `Implementado` | Run Orchestrator na webUI/API; `Simulator.Host` é lançado por run |
 | consumir eventos e materializar estado operacional durável | `Implementado` | [`../../src/NatureProtector.Prevention.Host/Program.cs`](../../src/NatureProtector.Prevention.Host/Program.cs) |
 | observar o broker e a topologia principal | `Implementado` | `RabbitMQ Management` |
 | observar schemas `control`, `pipeline` e `projection` | `Implementado` | `PostgreSQL` |
 | observar telemetria em `InfluxDB` | `Implementado`, quando `InfluxDb:Enabled=true` e existe token válido | `Prevention.Host` + `InfluxDB` |
 | usar Grafana como observabilidade de apoio | `Parcial` | baseline local |
+
+### Contratos de apresentação da webUI
+
+- para utilizadores autenticados, as capabilities da resposta da API são a autoridade; enquanto essa resposta está
+  pendente ou indisponível, a webUI mantém apenas capabilities públicas e bloqueia rotas protegidas;
+- as rotas históricas `/qa-tests` e `/db-queries` não executam testes nem queries no browser e apresentam uma
+  superfície indisponível;
+- estados `Queued`, `Running`, desconhecidos ou simulados não são apresentados como conclusão comprovada;
+- o arranque local cria uma operação persistida, consultável por `OperationId` ou `RequestId`, e a webUI acompanha apenas
+  essa identidade até existir uma ligação explícita à `SimulationRunId`;
+- `ProducerCompleted` não é apresentado como conclusão do sistema: o estado terminal depende do accounting persistido da
+  própria run; falhas, timeout e runs órfãs permanecem estados explícitos;
+- a execução de simulações pela webUI fica desativada no bundle de produção;
+- detalhes de run são fail-closed quando os identificadores DataScope divergem, e respostas tardias de uma área ou run
+  anterior não podem substituir o contexto selecionado.
+
+### Contrato temporal da projeção
+
+- leituras com `CycleIndex` são agregadas por `SimulationRunId + CycleIndex`, com membership esperado persistido;
+- `Observed`, `Reference`, `CarriedForward`, `Missing` e `Blocked` são origens distintas; reference e carry-forward não
+  contam como cobertura observada;
+- cada ciclo finalizado materializa no máximo um snapshot por célula e um por área, ambos compostos exclusivamente por
+  dados do mesmo ciclo;
+- a avaliação de alerta ocorre no máximo uma vez por ciclo de área; runs sem operação operacional persistida não alteram
+  o estado corrente nem alertas operacionais.
 
 ## Pré-condições mínimas
 
@@ -71,13 +99,18 @@ Pré-condição importante para os comandos `dotnet`:
 ### Comandos
 
 ```powershell
-.\scripts\workspace.ps1 up
-.\infra\scripts\smoke-test.ps1
+.\scripts\np.ps1 doctor
+.\scripts\np.ps1 init-local -Force
+.\scripts\np.ps1 prepare-local
+.\scripts\np.ps1 up
+.\scripts\np.ps1 start
+.\scripts\np.ps1 health
 ```
 
 ### O que estes scripts fazem
 
-- [`../../scripts/workspace.ps1`](../../scripts/workspace.ps1) executa setup local, sobe o `docker compose`, executa bootstrap do control plane e valida a infraestrutura;
+- [`../../scripts/np.ps1`](../../scripts/np.ps1) é o entrypoint recomendado para clone-to-run local; `prepare-local` restaura .NET e instala a webUI a partir dos lockfiles;
+- [`../../scripts/workspace.ps1`](../../scripts/workspace.ps1) permanece como compatibilidade para fluxos antigos;
 - [`../../infra/scripts/up.ps1`](../../infra/scripts/up.ps1) e o wrapper de baixo nivel de Docker Compose; exige `.env` existente e nao cria nem altera esse ficheiro;
 - [`../../scripts/influx/Ensure-InfluxDatabase.ps1`](../../scripts/influx/Ensure-InfluxDatabase.ps1) e idempotente e pode ser corrido manualmente para confirmar/criar `np_telemetry`;
 - [`../../infra/scripts/smoke-test.ps1`](../../infra/scripts/smoke-test.ps1) mostra o estado dos contentores.
@@ -88,7 +121,7 @@ Pré-condição importante para os comandos `dotnet`:
 | --- | --- | --- |
 | `RabbitMQ` | `5672` | [`../../.env.example`](../../.env.example) |
 | `RabbitMQ Management` | `15672` | [`../../.env.example`](../../.env.example) |
-| `PostgreSQL` | `5432` | [`../../.env.example`](../../.env.example) |
+| `PostgreSQL` | `5433` | [`../../.env.example`](../../.env.example) |
 | `InfluxDB` | `8181` | [`../../.env.example`](../../.env.example) |
 | `Grafana` | `3000` | [`../../.env.example`](../../.env.example) |
 
@@ -96,7 +129,7 @@ Pré-condição importante para os comandos `dotnet`:
 
 - contentores `np-rabbitmq`, `np-postgres`, `np-influxdb` e `np-grafana` visíveis em `docker compose ps`;
 - o `RabbitMQ` expõe a interface de gestão;
-- o `PostgreSQL` fica acessível em `localhost:5432`.
+- o `PostgreSQL` fica acessível em `localhost:5433` pela configuração local por omissão.
 
 Credenciais práticas da baseline por omissão:
 
@@ -113,7 +146,7 @@ Credenciais práticas da baseline por omissão:
 
 ### O que o script faz
 
-- valida que `PostgreSQL` está acessível em `localhost:5432`;
+- resolve `POSTGRES_HOST`/`POSTGRES_PORT` por ambiente ou `.env` e valida esse endpoint exato;
 - prepara o ambiente `dotnet` local ao repositório;
 - compila a solução, salvo se usares `-SkipBuild`;
 - corre [`../../src/NatureProtector.Postgres.Bootstrap/Program.cs`](../../src/NatureProtector.Postgres.Bootstrap/Program.cs).

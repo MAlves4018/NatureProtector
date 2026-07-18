@@ -18,6 +18,7 @@ import {
   RabbitMqMetricsResponse,
   RuntimeResetRequest,
   RuntimeResetResponse,
+  RuntimeOperationResponse,
   RuntimeRunAuditResponse,
   RuntimeRunSummaryResponse,
   RuntimeRunStartRequest,
@@ -202,6 +203,13 @@ export const api = {
     return httpClient.get<RuntimeRunSummaryResponse>(`/control/runtime/runs/${runId}`, api.getRequestOptions());
   },
 
+  getRuntimeOperationByRun: (runId: string) => {
+    return httpClient.get<RuntimeOperationResponse>(
+      `/control/runtime/runs/${encodeURIComponent(runId)}/operation`,
+      api.getRequestOptions(),
+    );
+  },
+
   getRuntimeRunTimings: (runId: string) => {
     return httpClient.get<RuntimeRunTimingSummaryResponse>(
       `/control/runtime/runs/${runId}/timings`,
@@ -248,6 +256,20 @@ export const api = {
 
   startRuntimeRun: (request: RuntimeRunStartRequest) => {
     return httpClient.post<RuntimeRunStartResponse>('/control/runtime/runs', request, api.getRequestOptions());
+  },
+
+  getRuntimeOperation: (operationId: string) => {
+    return httpClient.get<RuntimeOperationResponse>(
+      `/control/runtime/operations/${encodeURIComponent(operationId)}`,
+      api.getRequestOptions(),
+    );
+  },
+
+  getRuntimeOperationByRequest: (requestId: string) => {
+    return httpClient.get<RuntimeOperationResponse>(
+      `/control/runtime/operations/by-request/${encodeURIComponent(requestId)}`,
+      api.getRequestOptions(),
+    );
   },
 
   resetRuntimeState: (request: RuntimeResetRequest) => {

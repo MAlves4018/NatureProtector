@@ -41,6 +41,8 @@ The API and Prevention expose HTTP liveness/readiness. Simulator and bootstrap r
 
 `np.ingestion.readings` and its functional semantics are unchanged.
 
+> **Current-state correction — 2026-07-13:** the executable baseline `NatureProtector-master (16)` does not implement this diagnostic-queue claim. `RabbitMqOptions` has no `ObservabilityRawEnabled` property, all declarers bind `np.observability.raw`, and local/Compose provide no TTL or length arguments. The cloud policy applies `reject-publish` to every `np.*` queue. Treat the paragraph above as a historical target, not current runtime proof, until ADR RMQ-01 is implemented and revalidated.
+
 ### Local compose
 
 `docker-compose.g1.yml` overlays the existing infrastructure compose. It keeps the Simulator and bootstrap behind explicit profiles and sets application filesystems read-only.

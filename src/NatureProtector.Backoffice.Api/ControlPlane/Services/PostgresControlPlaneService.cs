@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
+using NatureProtector.Backoffice.Api.RuntimeOrchestration;
 using NatureProtector.Core.Scenarios;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Pipeline;
@@ -48,6 +49,10 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
     private readonly IDbContextFactory<NatureProtectorControlDbContext> _dbContextFactory;
     private readonly string _repositoryRoot;
     private readonly bool _enableRuntimeProcessLaunch;
+    private readonly IRuntimeRunOrchestrator _runtimeRunOrchestrator;
+    private readonly IRuntimeEvidenceSink _runtimeEvidenceSink;
+    private readonly IRuntimeDataResetCoordinator _runtimeDataResetCoordinator;
+    private readonly string _environmentName;
     private static readonly Regex ControlledValidationRunLabelRegex = new(
         "^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$",
         RegexOptions.Compiled);
@@ -87,11 +92,19 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
     public PostgresControlPlaneService(
         IDbContextFactory<NatureProtectorControlDbContext> dbContextFactory,
         string? contentRootPath = null,
-        bool enableRuntimeProcessLaunch = false)
+        bool enableRuntimeProcessLaunch = false,
+        IRuntimeRunOrchestrator? runtimeRunOrchestrator = null,
+        IRuntimeEvidenceSink? runtimeEvidenceSink = null,
+        IRuntimeDataResetCoordinator? runtimeDataResetCoordinator = null,
+        string environmentName = "Development")
     {
         _dbContextFactory = dbContextFactory;
         _repositoryRoot = ResolveRepositoryRoot(contentRootPath ?? AppContext.BaseDirectory);
         _enableRuntimeProcessLaunch = enableRuntimeProcessLaunch;
+        _runtimeRunOrchestrator = runtimeRunOrchestrator ?? DisabledRuntimeRunOrchestrator.Instance;
+        _runtimeEvidenceSink = runtimeEvidenceSink ?? NullRuntimeEvidenceSink.Instance;
+        _runtimeDataResetCoordinator = runtimeDataResetCoordinator ?? DatabaseOnlyRuntimeDataResetCoordinator.Instance;
+        _environmentName = string.IsNullOrWhiteSpace(environmentName) ? "Production" : environmentName;
     }
     // </phase5-slice>
 

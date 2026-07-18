@@ -1,0 +1,16 @@
+digraph G {
+ graph [rankdir=TB, bgcolor="transparent", pad="0.2", nodesep="0.35", ranksep="0.45", fontname="Arial"];
+ node [shape=box, style="rounded,filled", fillcolor="white", color="#59636e", fontname="Arial", fontsize=11];
+ edge [color="#59636e", arrowsize=0.7];
+ freeze [label="1. Congelar Candidate V1\nfórmula, pesos, limiares e versão"];
+ sources [label="2. Inventariar dados e proveniência\nmeteorologia, território, incêndios e runtime"];
+ dq [label="3. Verificar qualidade dos dados\ncompletude, defaults, labels e cobertura"];
+ reconstruct [label="4. Reconstruir o score diariamente\nsem alterar a implementação de produção"];
+ compare [label="5. Comparar com baselines\nFWI, KBDI e score meteorológico simples"];
+ tests [label="6. Avaliar\nROC/PR, efeitos, thresholds, tempo e sensibilidade"];
+ runtime [label="7. Importar evidência A/B/C\napenas quando existe e foi verificada"];
+ claims [label="8. Aplicar teto de afirmação\nresultado exploratório ≠ calibração científica", penwidth=2];
+ report [label="9. Gerar tabelas, figuras e claims\npara o Capítulo 6"];
+ freeze -> sources -> dq -> reconstruct -> compare -> tests;
+ tests -> claims; runtime -> claims; claims -> report;
+}
