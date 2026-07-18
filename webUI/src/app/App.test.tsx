@@ -172,6 +172,8 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /^Deployments$/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
+    fireEvent.change(await screen.findByLabelText(/selecionar área/i), { target: { value: 'proenca-a-nova' } });
+    await waitFor(() => expect(screen.getByText(/Área resolvida pelo catálogo disponível/i)).toBeInTheDocument());
     expect(await screen.findByRole('heading', { name: /Pipeline e observabilidade/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Qualidade e evidencia/i }));

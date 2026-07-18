@@ -173,12 +173,14 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
     }
 
     [HttpGet("getTables")]
+    [Authorize(Policy = OperationCapabilities.DBRead)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<string?>>> GetTables(
         CancellationToken cancellationToken = default) =>
         Ok(await ControlPlane.GetDBTablesList(cancellationToken));
 
     [HttpPost("query")]    
+    [Authorize(Policy = OperationCapabilities.DBRead)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ROQueryResponse>> QueryDB(
         [FromBody] ROQueryRequest request,

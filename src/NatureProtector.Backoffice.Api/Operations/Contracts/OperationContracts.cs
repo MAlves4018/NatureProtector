@@ -89,7 +89,8 @@ public sealed record EngineeringOperationResponse(
     IReadOnlyList<OperationStepResponse> Steps,
     IReadOnlyList<OperationArtifactResponse> Artifacts,
     IReadOnlyList<OperationApprovalResponse> Approvals,
-    IReadOnlyList<string> Limitations);
+    IReadOnlyList<string> Limitations,
+    string? Detail);
 
 public sealed record OperationComparisonResponse(
     Guid LeftOperationId,

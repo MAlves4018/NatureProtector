@@ -91,6 +91,7 @@ export interface EngineeringOperationResponse {
   artifacts: OperationArtifactResponse[];
   approvals: OperationApprovalResponse[];
   limitations: string[];
+  detail: string | null;
 }
 
 export interface OperationComparisonResponse {

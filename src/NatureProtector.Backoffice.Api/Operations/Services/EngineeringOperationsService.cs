@@ -328,6 +328,7 @@ public sealed class EngineeringOperationsService : IEngineeringOperationsService
         operation.Status = request.Status;
         operation.ProviderReference = request.ProviderReference ?? operation.ProviderReference;
         operation.UpdatedAt = DateTimeOffset.UtcNow;
+        operation.Detail = request.Detail ?? operation.Detail;
         operation.Steps.Add(new OperationStepResponse(
             operation.Steps.Count + 1,
             "Provider callback",
