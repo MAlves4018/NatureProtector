@@ -14,6 +14,7 @@ export interface UiPageDefinition {
     | 'nav.runs'
     | 'nav.quality'
     | 'nav.qa'
+    | 'nav.qa-tests'
     | 'nav.evidence'
     | 'nav.deployment-health'
     | 'nav.queries'
@@ -143,11 +144,29 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     helpTopic: 'pipeline',
   },
   {
+    id: 'quality',
+    labelKey: 'nav.quality',
+    requiredCapabilities: ['quality.read'],
+    audience: 'qa',
+    order: 63,
+    group: 'technical',
+    helpTopic: 'qa',
+  },
+  {
     id: 'qa',
     labelKey: 'nav.qa',
     requiredCapabilities: ['qa.read'],
     audience: 'qa',
     order: 65,
+    group: 'technical',
+    helpTopic: 'qa',
+  },
+  {
+    id: 'qa-tests',
+    labelKey: 'nav.qa-tests',
+    requiredCapabilities: ['qa.read'],
+    audience: 'qa',
+    order: 67,
     group: 'technical',
     helpTopic: 'qa',
   },

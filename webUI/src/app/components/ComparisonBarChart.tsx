@@ -5,9 +5,9 @@ interface ComparisonBarChartProps {
   comparison: OperationComparisonResponse | null;
 }
 
-const LEFT_COLOR = 'var(--ui-accent)';
-const RIGHT_COLOR = 'var(--ui-primary)';
-const SHARED_COLOR = 'var(--ui-muted)';
+const LEFT_COLOR = '#3b82f6';
+const RIGHT_COLOR = '#22c55e';
+const SHARED_COLOR = '#6b7280';
 
 export function ComparisonBarChart({ comparison }: ComparisonBarChartProps) {
   if (!comparison) {
@@ -40,18 +40,18 @@ export function ComparisonBarChart({ comparison }: ComparisonBarChartProps) {
   return (
     <div className="ui-chart-card ui-chart-full">
       <h4>Comparacao de artefactos</h4>
-      <p style={{ margin: '0 0 8px', color: 'var(--ui-muted)', fontSize: 13 }}>
+      <p style={{ margin: '0 0 8px', fontSize: 13 }}>
         {comparison.leftStatus} &rarr; {comparison.rightStatus} &middot; Evidence: {comparison.evidenceLevel}
       </p>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-border, #d7e1da)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#d7e1da" />
           <XAxis dataKey="name" tick={{ fontSize: 11 }} />
           <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
           <Tooltip
             contentStyle={{
-              background: 'var(--ui-surface, #fff)',
-              border: '1px solid var(--ui-border, #d7e1da)',
+              background: '#fff',
+              border: '1px solid #d7e1da',
               borderRadius: 6,
               fontSize: 13,
             }}

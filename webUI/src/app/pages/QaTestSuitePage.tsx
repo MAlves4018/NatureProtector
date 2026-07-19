@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, PlayCircle, RotateCw, RefreshCw, FileText } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
-import { PageHeader } from '../components/PageHeader';
 import { useUiQaTests } from '../state/QaTestContext';
+import {useUiCapabilities} from '../state';
 
 interface LocalTestResult {
   Slug: string;
@@ -129,7 +129,7 @@ export function QaTestSuitePage() {
               {runningLocally ? 'A executar...' : 'Executar todas'}
             </button>
             {localError && (
-              <p className="ui-notice" style={{ color: 'var(--ui-error)', marginTop: 8 }}>
+              <p className="ui-notice" style={{ marginTop: 8 }}>
                 {localError}
               </p>
             )}
@@ -152,8 +152,8 @@ export function QaTestSuitePage() {
               <div style={{ display: 'grid', gap: 10 }}>
                 <div className="ui-fact-list" style={{ margin: 0 }}>
                   <span><strong>Overall</strong> <StatusBadge label={localSummary.Overall} state={localSummary.Overall === 'passed' ? 'ready' : 'partial'} /></span>
-                  <span><strong>Passed</strong> <span style={{ color: 'var(--ui-success)', fontWeight: 900 }}>{localSummary.Passed}</span></span>
-                  <span><strong>Failed</strong> <span style={{ color: 'var(--ui-error)', fontWeight: 900 }}>{localSummary.Failed}</span></span>
+                  <span><strong>Passed</strong> <span style={{ color: '#22c55e', fontWeight: 900 }}>{localSummary.Passed}</span></span>
+                  <span><strong>Failed</strong> <span style={{ color: '#ef4444', fontWeight: 900 }}>{localSummary.Failed}</span></span>
                   <span><strong>Timestamp</strong> {new Date(localSummary.Timestamp).toLocaleString()}</span>
                 </div>
 
@@ -207,8 +207,8 @@ export function QaTestSuitePage() {
                               lineHeight: 1.4,
                               maxHeight: 300,
                               overflow: 'auto',
-                              background: 'var(--ui-surface-alt)',
-                              border: '1px solid var(--ui-border)',
+                              background: '#f3f4f6',
+                              border: '1px solid #d1d5db',
                               borderRadius: 4,
                               whiteSpace: 'pre-wrap',
                               wordBreak: 'break-word',
@@ -338,13 +338,13 @@ export function QaTestSuitePage() {
                       </span>
                       <span>
                         <strong>Total passed</strong>
-                        <span style={{ color: 'var(--ui-success)', fontWeight: 900 }}>
+                        <span style={{ color: '#22c55e', fontWeight: 900 }}>
                           {exec.suites.reduce((s, su) => s + (su.passed ?? 0), 0)}
                         </span>
                       </span>
                       <span>
                         <strong>Total failed</strong>
-                        <span style={{ color: 'var(--ui-error)', fontWeight: 900 }}>
+                        <span style={{ color: '#ef4444', fontWeight: 900 }}>
                           {exec.suites.reduce((s, su) => s + (su.failed ?? 0), 0)}
                         </span>
                       </span>
@@ -362,12 +362,12 @@ export function QaTestSuitePage() {
                           >
                             <span style={{ fontWeight: 700 }}>{suite.suiteName}</span>
                             <span style={{ display: 'flex', gap: 8 }}>
-                              <span style={{ color: 'var(--ui-success)', fontWeight: 900 }}>P {suite.passed ?? '-'}</span>
+                              <span style={{ color: '#22c55e', fontWeight: 900 }}>P {suite.passed ?? '-'}</span>
                               {(suite.failed ?? 0) > 0 && (
-                                <span style={{ color: 'var(--ui-error)', fontWeight: 900 }}>F {suite.failed}</span>
+                                <span style={{ color: '#ef4444', fontWeight: 900 }}>F {suite.failed}</span>
                               )}
                               {(suite.skipped ?? 0) > 0 && (
-                                <span style={{ color: 'var(--ui-warning)', fontWeight: 900 }}>S {suite.skipped}</span>
+                                <span style={{ color: '#eab308', fontWeight: 900 }}>S {suite.skipped}</span>
                               )}
                             </span>
                             <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -451,16 +451,16 @@ export function QaTestSuitePage() {
                                   label={j.status}
                                   state={j.status === 'Succeeded' ? 'ready' : 'partial'}
                                 />
-                                <span style={{ color: 'var(--ui-success)', fontWeight: 900, fontSize: 13 }}>
+                                <span style={{ color: '#22c55e', fontWeight: 900, fontSize: 13 }}>
                                   P {j.passed}
                                 </span>
                                 {j.failed > 0 && (
-                                  <span style={{ color: 'var(--ui-error)', fontWeight: 900, fontSize: 13 }}>
+                                  <span style={{ color: '#ef4444', fontWeight: 900, fontSize: 13 }}>
                                     F {j.failed}
                                   </span>
                                 )}
                                 {j.skipped > 0 && (
-                                  <span style={{ color: 'var(--ui-warning)', fontWeight: 900, fontSize: 13 }}>
+                                  <span style={{ color: '#eab308', fontWeight: 900, fontSize: 13 }}>
                                     S {j.skipped}
                                   </span>
                                 )}

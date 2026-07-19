@@ -29,13 +29,13 @@ export function QueueMetricsChart({ rabbitMq }: Props) {
       </div>
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-border)" />
+          <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 11 }} />
           <Tooltip
             contentStyle={{
-              background: 'var(--ui-surface)',
-              border: '1px solid var(--ui-border)',
+              background: '#fff',
+              border: '1px solid #d7e1da',
               borderRadius: 6,
               fontSize: 12,
             }}

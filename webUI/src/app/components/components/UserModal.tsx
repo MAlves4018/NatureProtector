@@ -34,7 +34,7 @@ export function UserModal({ isDark, user, isOpen, onClose }: UserModalProps) {
 
   return createPortal(
     <div className="ui-overlay" role="dialog" aria-modal="true" aria-label="User information" data-theme={isDark ? 'dark' : 'light'} style={{ zIndex: 1000 }}>
-      <div className="ui-confirm-dialog" style={{ maxWidth: 'min(360px, 90vw)', width: '100%', borderTop: '4px solid var(--ui-primary)' }}>
+      <div className="ui-confirm-dialog" style={{ maxWidth: 'min(360px, 90vw)', width: '100%' }}>
         <div className="ui-section-heading">
           <h3>{user ? 'User Information' : 'Not signed in'}</h3>
           <button type="button" className="ui-alert-dismiss" onClick={onClose} aria-label="Close user dialog">

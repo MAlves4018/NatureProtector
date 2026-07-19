@@ -129,7 +129,10 @@ export function DatabaseQueriesPage() {
   const [resultPremadeQuery, setPremadeQueryResult] = useState<RuntimeDiagnosticResultResponse | null>(null);
   const [resultRunId, setResultRunId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [executing, setExecuting] = useState(false);
+  const [errorPremade, setErrorPremade] = useState<string | null>(null);
+  const [errorWritten, setErrorWritten] = useState<string | null>(null);
+  const [tab, setTab] = useState<'prepared' | 'written'>('prepared');
   const requestGeneration = useRef(0);
   const previousRunId = useRef(selectedRunId);
   const selected = PREPARED_QUERIES.find((item) => item.id === selectedId) ?? PREPARED_QUERIES[0];
@@ -139,16 +142,16 @@ export function DatabaseQueriesPage() {
       (item) => !needle || `${item.title} ${item.group} ${item.objective}`.toLowerCase().includes(needle),
     );
   }, [search]);
-  const [executing, setExecuting] = useState(false);
-
 
   useEffect(() => {
     if (previousRunId.current === selectedRunId) return;
     previousRunId.current = selectedRunId;
     requestGeneration.current += 1;
+    setPremadeQueryResult(null);
     setWrittenQueryResult(null);
     setResultRunId(null);
-    setError(null);
+    setErrorPremade(null);
+    setErrorWritten(null);
   }, [selectedRunId]);
 
   const handleExecutePreparedQuery = async () => {
@@ -156,16 +159,15 @@ export function DatabaseQueriesPage() {
     const requestedRunId = selectedRunId;
     const generation = ++requestGeneration.current;
     setLoading(true);
-    setError(null);
-    setWrittenQueryResult(null);
+    setErrorPremade(null);
     try {
       const response = await executePreparedQuery(selected, requestedRunId);
       if (generation !== requestGeneration.current) return;
-      setWrittenQueryResult(response);
+      setPremadeQueryResult(response);
       setResultRunId(requestedRunId);
     } catch (value) {
       if (generation !== requestGeneration.current) return;
-      setError(value instanceof Error ? value.message : 'A consulta preparada falhou.');
+      setErrorPremade(value instanceof Error ? value.message : 'A consulta preparada falhou.');
     } finally {
       if (generation === requestGeneration.current) setLoading(false);
     }
@@ -173,12 +175,11 @@ export function DatabaseQueriesPage() {
 
   const executeBuiltQuery = useCallback(async () => {
     if (!selectedRunId) return;
-    setLoading(true);
-    setError(null);
+    setExecuting(true);
+    setErrorWritten(null);
     setWrittenQueryResult(null);
     try {
       const upper = writtenQuery.trim().toUpperCase();
-      console.log('Executing query:', upper);
       if (
         !upper.startsWith('SELECT') &&
         !upper.startsWith('SHOW') &&
@@ -199,162 +200,206 @@ export function DatabaseQueriesPage() {
       const res = await api.postgresQuery(queryRequest);
       setWrittenQueryResult(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro desconhecido');
+      setErrorWritten(e instanceof Error ? e.message : 'Erro desconhecido');
+    } finally {
+      setExecuting(false);
     }
   }, [writtenQuery]);
 
   return (
     <section className="ui-page">
       <PageHeader
-        title="Consultas preparadas"
-        subtitle="Presets read-only ligados à SimulationRunId selecionada; SQL arbitrário não é aceite."
+        title="Consultas à base de dados"
+        subtitle="Consultas preparadas e bloco de escrita livre sobre os dados persistidos."
         helpTopic="pipeline"
       />
 
-      <div
-        className="ui-notice"
-        style={{
-          marginBottom: 16,
-          padding: '8px 12px',
-          borderRadius: 6,
-          background: 'var(--ui-warning-bg)',
-          color: 'var(--ui-warning)',
-        }}
-      >
-        <strong>⚠ Aviso:</strong> Apenas queries de leitura permitidas. Operacoes de escrita (INSERT, UPDATE, DELETE,
+      <div className="ui-notice ui-warning" style={{ marginBottom: 16 }}>
+        <strong>⚠ Aviso:</strong> Apenas queries de leitura permitidas. Operaçoes de escrita (INSERT, UPDATE, DELETE,
         DROP) sao bloqueadas.
       </div>
 
-      <div className="ui-card" style={{ marginTop: 0 }}>
-        <textarea
-          id="query-input"
-          className="ui-query-editor"
-          rows={6}
-          value={writtenQuery}
-          onChange={(e) => setWrittenQuery(e.target.value)}
-          placeholder="Digite sua query"
-          disabled={executing}
-          spellCheck={false}
-        />
-        <div className="ui-button-row" style={{ marginTop: 10 }}>
-          <button
-            type="button"
-            className="ui-button"
-            disabled={executing || !writtenQuery.trim()}
-            onClick={() => void executeBuiltQuery()}
-          >
-            <Play size={16} />
-            {executing ? 'A executar...' : 'Executar'}
-          </button>
-        </div>
+      <div className="ui-segment-group" role="tablist" style={{ marginBottom: 16 }}>
+        <button
+          type="button"
+          className={tab === 'prepared' ? 'ui-segment-active' : 'ui-segment'}
+          role="tab"
+          aria-selected={tab === 'prepared'}
+          onClick={() => setTab('prepared')}
+        >
+          <Database size={16} />
+          Consultas Preparadas
+        </button>
+        <button
+          type="button"
+          className={tab === 'written' ? 'ui-segment-active' : 'ui-segment'}
+          role="tab"
+          aria-selected={tab === 'written'}
+          onClick={() => setTab('written')}
+        >
+          <Play size={16} />
+          Bloco de Escrita
+        </button>
       </div>
 
-      {
-        error && (
-          <div className="ui-card" style={{ borderLeft: '4px solid var(--ui-error)' }}>
-            <p style={{ color: 'var(--ui-error)', fontWeight: 700 }}>{error}</p>
+      {tab === 'prepared' && (
+        <section className="ui-card">
+          <div className="ui-section-heading">
+            <h2>Consultas Preparadas</h2>
+            <span className="ui-badge">{PREPARED_QUERIES.length} presets</span>
           </div>
-        )
-      }
-
-      {
-        resultPremadeQuery && (
-          <div className="ui-card">
-            <div className="ui-section-heading">
-              <h3>Resultados</h3>
-              <span className="ui-badge">
-
-                <section className="ui-query-layout">
-                  <aside className="ui-card ui-query-library">
-                    <div className="ui-section-heading">
-                      <h3>Biblioteca</h3>
-                      <span className="ui-badge">{PREPARED_QUERIES.length} presets</span>
-                    </div>
-                    <label className="ui-field">
-                      <span>Filtrar consultas</span>
-                      <span className="ui-input-with-icon">
-                        <Search size={15} />
-                        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome ou grupo" />
-                      </span>
-                    </label>
-                    <div className="ui-query-list">
-                      {visibleQueries.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className={selectedId === item.id ? 'ui-query-item ui-query-item-active' : 'ui-query-item'}
-                          onClick={() => {
-                            requestGeneration.current += 1;
-                            setSelectedId(item.id);
-                            setWrittenQueryResult(null);
-                            setResultRunId(null);
-                            setLoading(false);
-                          }}
-                        >
-                          <span>{item.group}</span>
-                          <strong>{item.title}</strong>
-                          <small>{item.objective}</small>
-                        </button>
-                      ))}
-                    </div>
-                  </aside>
-                  <div className="ui-query-workspace">
-                    <section className="ui-card">
-                      <div className="ui-section-heading">
-                        <div>
-                          <span className="ui-eyebrow">{selected.group}</span>
-                          <h3>{selected.title}</h3>
-                        </div>
-                        <Database size={22} />
-                      </div>
-                      <p>{selected.objective}</p>
-                      <dl className="ui-definition-list">
-                        <dt>SimulationRunId</dt>
-                        <dd>{selectedRunId || 'Selecione uma run em Execuções'}</dd>
-                        <dt>Área / cenário</dt>
-                        <dd>
-                          {resolvedAreaCode ?? 'Indisponível'} / {selectedRun?.scenarioCode ?? 'Indisponível'}
-                        </dd>
-                        <dt>Fonte</dt>
-                        <dd>{selected.source}</dd>
-                        <dt>Filtro</dt>
-                        <dd>Dados persistidos associados à run selecionada; sem SQL fornecido pelo utilizador.</dd>
-                      </dl>
-                      <button
-                        type="button"
-                        className="ui-button"
-                        disabled={!selectedRunId || loading}
-                        onClick={() => void handleExecutePreparedQuery()}
-                      >
-                        <Play size={16} />
-                        {loading ? 'A consultar…' : 'Executar preset'}
-                      </button>
-                      {error && <p className="ui-notice ui-error">{error}</p>}
-                    </section>
-                    <section className="ui-card">
-                      <div className="ui-section-heading">
-                        <h3>Resultado</h3>
-                        {resultPremadeQuery && (
-                          <div className="ui-button-row">
-                            <ExportActions filename={`${resultPremadeQuery.id}-${resultRunId}.csv`} content={diagnosticResultToCsv(resultPremadeQuery)} />
-                            <ExportActions
-                              filename={`${resultPremadeQuery.id}-${resultRunId}.json`}
-                              content={JSON.stringify({ simulationRunId: resultRunId, ...resultPremadeQuery }, null, 2)}
-                              contentType="application/json;charset=utf-8"
-                            />
-                          </div>
-                        )}
-                      </div>
-                      {!resultPremadeQuery && !error && <p className="ui-notice">Execute o preset para ler os endpoints live.</p>}
-                      {resultPremadeQuery && <QueryResult result={resultPremadeQuery} runId={resultRunId} />}
-                    </section>
+          <div className="ui-query-layout">
+            <aside className="ui-query-library">
+              <label className="ui-field">
+                <span>Filtrar consultas</span>
+                <span className="ui-input-with-icon">
+                  <Search size={15} />
+                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome ou grupo" />
+                </span>
+              </label>
+              <div className="ui-query-list">
+                {visibleQueries.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={selectedId === item.id ? 'ui-query-item ui-query-item-active' : 'ui-query-item'}
+                    onClick={() => {
+                      requestGeneration.current += 1;
+                      setSelectedId(item.id);
+                      setPremadeQueryResult(null);
+                      setResultRunId(null);
+                      setLoading(false);
+                    }}
+                  >
+                    <span>{item.group}</span>
+                    <strong>{item.title}</strong>
+                    <small>{item.objective}</small>
+                  </button>
+                ))}
+              </div>
+            </aside>
+            <div className="ui-query-workspace">
+              <div className="ui-card">
+                <div className="ui-section-heading">
+                  <div>
+                    <span className="ui-eyebrow">{selected.group}</span>
+                    <h3>{selected.title}</h3>
                   </div>
-                </section>
-              </span>
+                  <Database size={22} />
+                </div>
+                <p>{selected.objective}</p>
+                <dl className="ui-definition-list">
+                  <dt>SimulationRunId</dt>
+                  <dd>{selectedRunId || 'Selecione uma run em Execuções'}</dd>
+                  <dt>Área / cenário</dt>
+                  <dd>
+                    {resolvedAreaCode ?? 'Indisponível'} / {selectedRun?.scenarioCode ?? 'Indisponível'}
+                  </dd>
+                  <dt>Fonte</dt>
+                  <dd>{selected.source}</dd>
+                  <dt>Filtro</dt>
+                  <dd>Dados persistidos associados à run selecionada; sem SQL fornecido pelo utilizador.</dd>
+                </dl>
+                <button
+                  type="button"
+                  className="ui-button"
+                  disabled={!selectedRunId || loading}
+                  onClick={() => void handleExecutePreparedQuery()}
+                >
+                  <Play size={16} />
+                  {loading ? 'A consultar…' : 'Executar preset'}
+                </button>
+                {errorPremade && <p className="ui-notice ui-error">{errorPremade}</p>}
+              </div>
+              <div className="ui-card">
+                <div className="ui-section-heading">
+                  <h3>Resultado</h3>
+                  {resultPremadeQuery && (
+                    <div className="ui-button-row">
+                      <ExportActions filename={`${resultPremadeQuery.id}-${resultRunId}.csv`} content={diagnosticResultToCsv(resultPremadeQuery)} />
+                      <ExportActions
+                        filename={`${resultPremadeQuery.id}-${resultRunId}.json`}
+                        content={JSON.stringify({ simulationRunId: resultRunId, ...resultPremadeQuery }, null, 2)}
+                        contentType="application/json;charset=utf-8"
+                      />
+                    </div>
+                  )}
+                </div>
+                {!resultPremadeQuery && !errorPremade && <p className="ui-notice">Execute o preset para ler os endpoints live.</p>}
+                {resultPremadeQuery && <QueryResult result={resultPremadeQuery} runId={resultRunId} />}
+              </div>
             </div>
           </div>
-        )
-      }
+        </section>
+      )}
+
+      {tab === 'written' && (
+        <section className="ui-card">
+          <div className="ui-section-heading">
+            <h2>Bloco de Escrita</h2>
+          </div>
+          <textarea
+            id="query-input"
+            className="ui-query-editor"
+            rows={6}
+            value={writtenQuery}
+            onChange={(e) => setWrittenQuery(e.target.value)}
+            placeholder="Digite a sua query SQL de leitura"
+            disabled={executing}
+            spellCheck={false}
+          />
+          <div className="ui-button-row" style={{ marginTop: 10 }}>
+            <button
+              type="button"
+              className="ui-button"
+              disabled={executing || !writtenQuery.trim()}
+              onClick={() => void executeBuiltQuery()}
+            >
+              <Play size={16} />
+              {executing ? 'A executar...' : 'Executar'}
+            </button>
+          </div>
+        {errorWritten && (
+          <div className="ui-notice ui-error" style={{ marginTop: 12 }}>
+            <p style={{ fontWeight: 700 }}>{errorWritten}</p>
+            </div>
+          )}
+          {resultWrittenQuery && (
+            <div className="ui-card" style={{ marginTop: 12 }}>
+              <div className="ui-section-heading">
+                <h3>Resultado</h3>
+              </div>
+              <p className="ui-section-note">Resultado da query escrita</p>
+              <div className="ui-table-wrap">
+                <table className="ui-table">
+                  <thead>
+                    <tr>
+                      {resultWrittenQuery.columns.map((col, i) => (
+                        <th key={i}>{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultWrittenQuery.rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={Math.max(1, resultWrittenQuery.columns.length)}>Sem resultados.</td>
+                      </tr>
+                    ) : (
+                      resultWrittenQuery.rows.map((row, ri) => (
+                        <tr key={ri}>
+                          {resultWrittenQuery.columns.map((col, ci) => (
+                            <td key={ci}>{row[col] ?? 'Indisponível'}</td>
+                          ))}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
     </section>
   );
 }

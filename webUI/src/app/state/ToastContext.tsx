@@ -26,10 +26,10 @@ const TOAST_ICONS: Record<ToastSeverity, typeof Info> = {
 };
 
 const TOAST_COLORS: Record<ToastSeverity, string> = {
-  success: 'var(--ui-success)',
-  error: 'var(--ui-error)',
-  warning: 'var(--ui-warning)',
-  info: 'var(--ui-accent)',
+  success: '#22c55e',
+  error: '#ef4444',
+  warning: '#eab308',
+  info: '#3b82f6',
 };
 
 export function UiToastProvider({ children }: { children: ReactNode }) {
@@ -65,7 +65,7 @@ export function UiToastProvider({ children }: { children: ReactNode }) {
               <div style={{ flex: 1 }}>
                 <strong style={{ fontSize: '0.85rem' }}>{toast.title}</strong>
                 {toast.message && (
-                  <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--ui-muted)' }}>{toast.message}</p>
+                  <p style={{ fontSize: '0.8rem', margin: 0 }}>{toast.message}</p>
                 )}
               </div>
               <button type="button" className="ui-alert-dismiss" onClick={() => removeToast(toast.id)}>

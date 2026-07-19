@@ -52,7 +52,7 @@ export function LogInOut({ isDark, message, onAuthChange, mode = 'page' }: LogIn
       <div className="ui-auth-backdrop" />
       <section className={`ui-auth-card${isPanel ? ' ui-auth-card-panel' : ''}`}>
         <div className="ui-button-row" style={{ gap: '10px' }}>
-          <div className="ui-icon-ring" style={{ color: signedIn ? 'var(--ui-success)' : 'var(--ui-warning)' }}>
+          <div className="ui-icon-ring">
             <img src="./images/NPIconNoBg.png" width={18} height={18} alt="" />
           </div>
           <div>
@@ -105,7 +105,7 @@ export function LogInOut({ isDark, message, onAuthChange, mode = 'page' }: LogIn
           </div>
         )}
 
-        {error && <div style={{ marginTop: '12px', color: 'var(--ui-error)', fontSize: '13px' }}>{error}</div>}
+        {error && <div className="ui-notice ui-error" style={{ marginTop: '12px' }}>{error}</div>}
       </section>
     </div>
   );

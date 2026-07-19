@@ -74,7 +74,7 @@ export function PublicOverviewPage() {
             {TEAM_MEMBERS.map((member) => (
               <article key={member.name} className="ui-card" style={{ display: 'grid', gap: 4, padding: 12 }}>
                 <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Flame size={14} style={{ color: 'var(--ui-error)' }} />
+                  <Flame size={14} />
                   {member.name}
                 </strong>
                 {member.email && <span className="ui-label">{member.email}</span>}

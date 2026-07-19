@@ -202,6 +202,8 @@ export function buildSimulationRequest(
   const legacyDegradationProfile = requestedDegradationProfiles[0];
   const runLabel = form.runLabel.trim();
 
+  const timeoutSeconds = (form.timeoutSeconds * form.numberOfCycles) * 1.5;
+
   return {
     areaCode,
     scenarioCode,
@@ -212,7 +214,7 @@ export function buildSimulationRequest(
     degradationProfile: legacyDegradationProfile,
     collectEvidence: form.collectEvidence,
     waitForCompletion: form.waitForCompletion,
-    timeoutSeconds: form.timeoutSeconds,
+    timeoutSeconds: timeoutSeconds,
     allowParallelRun: form.allowParallelRun,
     runLabel: runLabel || null,
     degradationProfiles: requestedDegradationProfiles,

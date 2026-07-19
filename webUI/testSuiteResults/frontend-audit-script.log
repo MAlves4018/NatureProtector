@@ -1,0 +1,22 @@
+
+> webui@0.0.0 test:audit-script
+> node --test ./scripts/check-npm-audit.test.mjs
+
+Ô£ö accepts valid npm audit report without blockers (148.3487ms)
+Ô£ö allows only the known Vite esbuild advisory chain from the explicit allowlist (143.602ms)
+Ô£ö blocks an allowed advisory when a new dependency path appears (166.7914ms)
+Ô£ö blocks a new direct high runtime advisory (169.1241ms)
+Ô£ö blocks a high transitive advisory reachable from runtime dependencies (162.9695ms)
+Ô£ö fails when npm audit stdout is invalid JSON (156.7004ms)
+Ô£ö fails when npm audit stdout is empty (149.6708ms)
+Ô£ö fails when npm audit returns an unexpected execution failure (140.8778ms)
+Ô£ö fails when the audit JSON schema is missing expected fields (137.6715ms)
+Ô£ö fails when a dependency path cannot be classified (136.6462ms)
+Ôä╣ tests 10
+Ôä╣ suites 0
+Ôä╣ pass 10
+Ôä╣ fail 0
+Ôä╣ cancelled 0
+Ôä╣ skipped 0
+Ôä╣ todo 0
+Ôä╣ duration_ms 1619.1075

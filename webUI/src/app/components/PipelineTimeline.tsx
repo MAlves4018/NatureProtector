@@ -72,9 +72,9 @@ export function PipelineTimeline({ timings }: PipelineTimelineProps) {
             <strong>{stage.label}</strong>
             <br />
             {stage.isAvailable ? (
-              <span style={{ color: 'var(--ui-text)', fontWeight: 700 }}>{stage.value}</span>
+              <span style={{ fontWeight: 700 }}>{stage.value}</span>
             ) : (
-              <span style={{ color: 'var(--ui-muted)', fontStyle: 'italic' }}>Nao instrumentado / indisponivel</span>
+              <span style={{ fontStyle: 'italic' }}>Nao instrumentado / indisponivel</span>
             )}
           </li>
         ))}

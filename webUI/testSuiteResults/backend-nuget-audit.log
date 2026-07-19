@@ -1,0 +1,24 @@
+
+The following sources were used:
+   https://api.nuget.org/v3/index.json
+
+The given project `NatureProtector.Core` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Shared` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Prevention` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Prevention.Host` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Simulator.Host` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Backoffice.Api` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Core.Tests` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Prevention.Tests` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Shared.Tests` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Infrastructure.Influx` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Simulator.Host.Tests` has no vulnerable packages given the current sources.
+The given project `NatureProtector.IntegrationTests` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Infrastructure.Influx.Tests` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Backoffice.Api.Tests` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Prevention.Host.Tests` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Infrastructure.Postgres` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Postgres.Bootstrap` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Benchmarks` has no vulnerable packages given the current sources.
+The given project `NatureProtector.Shared.Observability` has no vulnerable packages given the current sources.
+NuGet audit report written to .\artifacts\dotnet-audit.txt

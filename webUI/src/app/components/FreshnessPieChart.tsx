@@ -6,9 +6,9 @@ interface FreshnessPieChartProps {
   data: RuntimeFreshnessSummaryResponse | null | undefined;
 }
 
-const FRESH_COLOR = 'var(--ui-success)';
-const STALE_COLOR = 'var(--ui-warning)';
-const EXPIRED_COLOR = 'var(--ui-error)';
+const FRESH_COLOR = '#22c55e';
+const STALE_COLOR = '#eab308';
+const EXPIRED_COLOR = '#ef4444';
 
 export function FreshnessPieChart({ data }: FreshnessPieChartProps) {
   const { copy } = useUiLocale();
@@ -57,8 +57,8 @@ export function FreshnessPieChart({ data }: FreshnessPieChartProps) {
           </Pie>
           <Tooltip
             contentStyle={{
-              background: 'var(--ui-surface, #fff)',
-              border: '1px solid var(--ui-border, #d7e1da)',
+              background: '#fff',
+              border: '1px solid #d7e1da',
               borderRadius: 6,
               fontSize: 13,
             }}

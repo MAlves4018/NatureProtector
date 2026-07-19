@@ -1,0 +1,98 @@
+{
+  "Failed": 2,
+  "Overall": "failed",
+  "Results": [
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "backend-dotnet-build",
+      "Name": "Backend-dotnet-build"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "backend-nuget-audit",
+      "Name": "Backend-nuget-audit"
+    },
+    {
+      "ExitCode": 1,
+      "Status": "failed",
+      "Slug": "backend-unit-tests",
+      "Name": "Backend-unit-tests"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "frontend-audit-script",
+      "Name": "Frontend-audit-script"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "frontend-build",
+      "Name": "Frontend-build"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "frontend-format-check",
+      "Name": "Frontend-format-check"
+    },
+    {
+      "ExitCode": 1,
+      "Status": "failed",
+      "Slug": "frontend-lint",
+      "Name": "Frontend-lint"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "frontend-npm-audit",
+      "Name": "Frontend-npm-audit"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "frontend-typecheck",
+      "Name": "Frontend-typecheck"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "frontend-vitest",
+      "Name": "Frontend-vitest"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "python-tests-cloud",
+      "Name": "Python-tests-cloud"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "python-tests-evidence",
+      "Name": "Python-tests-evidence"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "python-tests-operations",
+      "Name": "Python-tests-operations"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "python-tools-tests",
+      "Name": "Python-tools-tests"
+    },
+    {
+      "ExitCode": 0,
+      "Status": "passed",
+      "Slug": "workspace-script-checks",
+      "Name": "Workspace-script-checks"
+    }
+  ],
+  "Timestamp": "2026-07-18T17:35:27.5563594+01:00",
+  "Passed": 13
+}

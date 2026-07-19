@@ -6,10 +6,10 @@ interface EligibilityPieChartProps {
   data: RuntimeStatusCountResponse[] | null | undefined;
 }
 
-const GREEN = 'var(--ui-success)';
-const AMBER = 'var(--ui-warning)';
-const RED = 'var(--ui-error)';
-const EMPTY_COLOR = 'var(--ui-border)';
+const GREEN = '#22c55e';
+const AMBER = '#eab308';
+const RED = '#ef4444';
+const EMPTY_COLOR = '#9ca3af';
 
 function statusColor(status: string) {
   const text = status?.toLowerCase() ?? '';
@@ -57,8 +57,8 @@ export function EligibilityPieChart({ data }: EligibilityPieChartProps) {
           </Pie>
           <Tooltip
             contentStyle={{
-              background: 'var(--ui-surface, #fff)',
-              border: '1px solid var(--ui-border, #d7e1da)',
+              background: '#fff',
+              border: '1px solid #d7e1da',
               borderRadius: 6,
               fontSize: 13,
             }}

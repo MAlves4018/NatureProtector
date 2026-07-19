@@ -1,0 +1,9 @@
+
+> webui@0.0.0 audit:ci
+> node ./scripts/check-npm-audit.mjs
+
+npm audit raw JSON written to C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\webUI\npm-audit.json
+npm audit exit code written to C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\webUI\npm-audit.exit-code.txt
+npm audit diagnostics written to C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\webUI\npm-audit.diagnostics.json
+npm audit policy result written to C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\webUI\npm-audit.policy.json
+npm audit totals: {"info":0,"low":0,"moderate":0,"high":0,"critical":0,"total":0}

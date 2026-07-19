@@ -1,0 +1,10 @@
+test_empty_state_document_is_not_accepted_as_fixture (tests.cloud.test_g8_state_evidence.G8StateEvidenceTests.test_empty_state_document_is_not_accepted_as_fixture) ... ok
+test_invalid_json_returns_controlled_failure (tests.cloud.test_g8_state_evidence.G8StateEvidenceTests.test_invalid_json_returns_controlled_failure) ... ok
+test_missing_file_returns_controlled_failure (tests.cloud.test_g8_state_evidence.G8StateEvidenceTests.test_missing_file_returns_controlled_failure) ... ok
+test_repository_g8_state_files_are_valid_static_contracts (tests.cloud.test_g8_state_evidence.G8StateEvidenceTests.test_repository_g8_state_files_are_valid_static_contracts) ... ok
+test_valid_json_is_loaded (tests.cloud.test_g8_state_evidence.G8StateEvidenceTests.test_valid_json_is_loaded) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.027s
+
+OK

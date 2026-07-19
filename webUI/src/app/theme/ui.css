@@ -1572,7 +1572,7 @@
 
 .ui-context-bar {
   position: sticky;
-  top: 58px;
+  top: 0px;
   z-index: 30;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2158,7 +2158,7 @@
   }
 
   .ui-context-bar {
-    top: 55px;
+    top: 0px;
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
 

@@ -2,7 +2,6 @@ import { Activity, AlertTriangle, ArrowRight, Database, Gauge, RotateCw, ShieldC
 import { useNavigate } from 'react-router-dom';
 import { AreaSelector } from '../components/AreaSelector';
 import { DataStatusSummary } from '../components/DataStatusSummary';
-import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
@@ -13,9 +12,11 @@ import { useReadinessItems } from '../state/useUiSurfaces';
 import { useUiObservability } from '../state/ObservabilityContext';
 import { useUiAlerts } from '../state/AlertContext';
 import { globalOperationalStatus } from '../truthfulPresentation';
+import { EmptyState } from '../components/EmptyState';
 
 export function OverviewPage() {
   const navigate = useNavigate();
+  const { resolvedAreaCode } = useUiArea();
   const { copy } = useUiLocale();
   const { riskModel, summary } = useUiRisk();
   const { runContext, setSelectedRunId } = useUiActivity();
@@ -48,104 +49,108 @@ export function OverviewPage() {
           <RotateCw size={14} /> Atualizar readiness
         </button>
       </div>
-      <div className="ui-metric-grid">
-        <MetricCard
-          icon={<ShieldCheck />}
-          label="Saúde global"
-          value={health}
-          detail="Componentes observados"
-          tone={health}
-        />
-        <MetricCard
-          icon={<Activity />}
-          label="Run ativa"
-          value={activeRun?.status ?? 'Sem run'}
-          detail={activeRun?.scenarioName ?? 'Nenhuma execução selecionada'}
-          tone={activeRun?.status ?? 'Unknown'}
-        />
-        <MetricCard
-          icon={<Database />}
-          label="Backlog primário"
-          value={primaryQueue?.messagesTotal == null ? 'Sem dados' : String(primaryQueue.messagesTotal)}
-          detail={primaryQueue ? `${primaryQueue.consumers ?? '—'} consumidores` : 'RabbitMQ indisponível'}
-          tone={primaryQueue?.messagesTotal ? 'Degraded' : 'Healthy'}
-        />
-        <MetricCard
-          icon={<Gauge />}
-          label="Risco territorial"
-          value={riskModel.canShowScore ? (riskModel.scoreDisplay ?? 'Sem score') : 'Sem score'}
-          detail={riskModel.classDisplay ?? riskModel.summary ?? 'Sem contexto disponível'}
-          tone={riskModel.state}
-        />
-      </div>
-      {activeRun && (
-        <article className="ui-run-strip">
-          <div>
-            <span className="ui-eyebrow">SimulationRunId · {activeRun.id}</span>
-            <h3>{activeRun.scenarioName}</h3>
-            <p>
-              {activeRun.areaCode} · {activeRun.numberOfCycles} ciclos
-            </p>
-          </div>
-          <StatusBadge label={runContext.state} state={runContext.state === 'completed' ? 'ready' : 'partial'} />
-          <button
-            type="button"
-            className="ui-secondary"
-            onClick={() => {
-              setSelectedRunId(activeRun.id);
-              navigate('/runs');
-            }}
-          >
-            Abrir run <ArrowRight size={15} />
-          </button>
-        </article>
-      )}
-      <div className="ui-two-column ui-overview-columns">
-        <DataStatusSummary showDetails={false} />
-        <section className="ui-panel">
-          <div className="ui-section-heading">
-            <h3>Atenção operacional</h3>
-            <StatusBadge
-              label={`${activeAlerts.length} alertas`}
-              state={activeAlerts.length > 0 ? 'partial' : 'ready'}
+      {resolvedAreaCode ? (
+        <>
+          <div className="ui-metric-grid">
+            <MetricCard
+              icon={<ShieldCheck />}
+              label="Saúde global"
+              value={health}
+              detail="Componentes observados"
+              tone={health}
+            />
+            <MetricCard
+              icon={<Activity />}
+              label="Run ativa"
+              value={activeRun?.status ?? 'Sem run'}
+              detail={activeRun?.scenarioName ?? 'Nenhuma execução selecionada'}
+              tone={activeRun?.status ?? 'Unknown'}
+            />
+            <MetricCard
+              icon={<Database />}
+              label="Backlog primário"
+              value={primaryQueue?.messagesTotal == null ? 'Sem dados' : String(primaryQueue.messagesTotal)}
+              detail={primaryQueue ? `${primaryQueue.consumers ?? '—'} consumidores` : 'RabbitMQ indisponível'}
+              tone={primaryQueue?.messagesTotal ? 'Degraded' : 'Healthy'}
+            />
+            <MetricCard
+              icon={<Gauge />}
+              label="Risco territorial"
+              value={riskModel.canShowScore ? (riskModel.scoreDisplay ?? 'Sem score') : 'Sem score'}
+              detail={riskModel.classDisplay ?? riskModel.summary ?? 'Sem contexto disponível'}
+              tone={riskModel.state}
             />
           </div>
-          {activeAlerts.length === 0 ? (
-            <div className="ui-empty-inline">
-              <ShieldCheck size={20} />
-              <span>Não existem alertas ativos observados para a área.</span>
+          {activeRun && (
+            <article className="ui-run-strip">
+              <div>
+                <span className="ui-eyebrow">SimulationRunId · {activeRun.id}</span>
+                <h3>{activeRun.scenarioName}</h3>
+                <p>
+                  {activeRun.areaCode} · {activeRun.numberOfCycles} ciclos
+                </p>
+              </div>
+              <StatusBadge label={runContext.state} state={runContext.state === 'completed' ? 'ready' : 'partial'} />
+              <button
+                type="button"
+                className="ui-secondary"
+                onClick={() => {
+                  setSelectedRunId(activeRun.id);
+                  navigate('/runs');
+                }}
+              >
+                Abrir run <ArrowRight size={15} />
+              </button>
+            </article>
+          )}
+          <div className="ui-two-column ui-overview-columns">
+            <DataStatusSummary showDetails={false} />
+            <section className="ui-panel">
+              <div className="ui-section-heading">
+                <h3>Atenção operacional</h3>
+                <StatusBadge
+                  label={`${activeAlerts.length} alertas`}
+                  state={activeAlerts.length > 0 ? 'partial' : 'ready'} />
+              </div>
+              {activeAlerts.length === 0 ? (
+                <div className="ui-empty-inline">
+                  <ShieldCheck size={20} />
+                  <span>Não existem alertas ativos observados para a área.</span>
+                </div>
+              ) : (
+                <div className="ui-attention-list">
+                  {activeAlerts.map((alert) => (
+                    <article key={alert.id}>
+                      <AlertTriangle size={17} />
+                      <span>
+                        <strong>{alert.severity}</strong>
+                        {alert.message}
+                      </span>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div><section className="ui-panel">
+            <div className="ui-section-heading">
+              <h3>{copy('readiness.title')}</h3>
+              <span className="ui-section-note">Capacidade declarada e respetiva evidência</span>
             </div>
-          ) : (
-            <div className="ui-attention-list">
-              {activeAlerts.map((alert) => (
-                <article key={alert.id}>
-                  <AlertTriangle size={17} />
-                  <span>
-                    <strong>{alert.severity}</strong>
-                    {alert.message}
-                  </span>
+            <div className="ui-readiness-grid">
+              {readinessItems.map((item) => (
+                <article className="ui-readiness-card" key={item.item}>
+                  <span className="ui-label">{item.item}</span>
+                  <StatusBadge label={item.status} state={item.status} />
+                  <p>{item.evidence}</p>
+                  <small>{item.limitation}</small>
                 </article>
               ))}
             </div>
-          )}
-        </section>
-      </div>
-      <section className="ui-panel">
-        <div className="ui-section-heading">
-          <h3>{copy('readiness.title')}</h3>
-          <span className="ui-section-note">Capacidade declarada e respetiva evidência</span>
-        </div>
-        <div className="ui-readiness-grid">
-          {readinessItems.map((item) => (
-            <article className="ui-readiness-card" key={item.item}>
-              <span className="ui-label">{item.item}</span>
-              <StatusBadge label={item.status} state={item.status} />
-              <p>{item.evidence}</p>
-              <small>{item.limitation}</small>
-            </article>
-          ))}
-        </div>
-      </section>
+          </section>
+        </>
+      ) : (
+        <EmptyState title={copy('area.selectPrompt')} />
+      )}
     </section>
   );
 }

@@ -17,7 +17,6 @@ import { RunProgressCockpit } from '../components/RunProgressCockpit';
 import { RunScientificMetrics } from '../components/RunScientificMetrics';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
-import { useUiArea } from '../state/AreaContext';
 import { useUiActivity } from '../state/ActivityContext';
 import { runPresentationState } from '../truthfulPresentation';
 import { formatDurationMs, rowsToCsv, timingFacts } from '../utils/operationalMetrics';

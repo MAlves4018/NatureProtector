@@ -12,7 +12,7 @@ export function LoggedOutBlock({ isDark, message, mode = 'panel' }: LogInOutProp
       <div className="ui-auth-backdrop" />
       <section className={`ui-auth-card${isPanel ? ' ui-auth-card-panel' : ''}`}>
         <div className="ui-button-row" style={{ justifyContent: 'center', gap: '10px' }}>
-          <div style={{ color: signedIn ? 'var(--ui-success)' : 'var(--ui-warning)' }}>
+          <div>
             <AlertTriangle style={{ width: '100%', height: '100%' }} />
           </div>
           <div>
@@ -21,7 +21,7 @@ export function LoggedOutBlock({ isDark, message, mode = 'panel' }: LogInOutProp
             </div>
           </div>
         </div>
-        <p style={{ textAlign: 'center', marginTop: '12px', color: 'var(--ui-muted)' }}>{message}</p>
+        <p style={{ textAlign: 'center', marginTop: '12px' }}>{message}</p>
       </section>
     </div>
   );

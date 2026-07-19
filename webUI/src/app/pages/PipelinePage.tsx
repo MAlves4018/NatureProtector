@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+import { ActivitySquare, BarChart3, Gauge, Clock, Code } from 'lucide-react';
 import { AreaSelector } from '../components/AreaSelector';
 import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
@@ -20,7 +20,7 @@ export function PipelinePage() {
   const { fields: pipelineFields } = usePipelineSurface();
   const { runTimings, runAudit } = useUiActivity();
   const { operationalHealth, rabbitMqMetrics } = useUiObservability();
-  const [showTechnical, setShowTechnical] = useState(false);
+  const [tab, setTab] = useState<'health' | 'queue' | 'throughput' | 'timeline' | 'technical'>('health');
 
   return (
     <section className="ui-page">
@@ -28,24 +28,70 @@ export function PipelinePage() {
       <AreaSelector compact />
       {resolvedAreaCode ? (
         <>
-          <ComponentHealthDashboard health={operationalHealth} />
-          <QueueMetricsChart rabbitMq={rabbitMqMetrics} />
-          <ThroughputDisplay audit={runAudit} timings={runTimings} />
-          <PipelineTimeline timings={runTimings} />
-          <section className="ui-card">
+          <div className="ui-segment-group" role="tablist" style={{ marginBottom: 16 }}>
             <button
               type="button"
-              className="ui-section-heading"
-              style={{ cursor: 'pointer', background: 'none', border: 'none', width: '100%', textAlign: 'left' }}
-              onClick={() => setShowTechnical(!showTechnical)}
+              className={tab === 'health' ? 'ui-segment-active' : 'ui-segment'}
+              role="tab"
+              aria-selected={tab === 'health'}
+              onClick={() => setTab('health')}
             >
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {showTechnical ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                Runtime current state (detalhes tecnicos)
-              </h3>
+              <ActivitySquare size={16} />
+              Saúde
             </button>
-            {showTechnical && <TechnicalDetail title="" fields={pipelineFields} />}
-          </section>
+            <button
+              type="button"
+              className={tab === 'queue' ? 'ui-segment-active' : 'ui-segment'}
+              role="tab"
+              aria-selected={tab === 'queue'}
+              onClick={() => setTab('queue')}
+            >
+              <BarChart3 size={16} />
+              Filas
+            </button>
+            <button
+              type="button"
+              className={tab === 'throughput' ? 'ui-segment-active' : 'ui-segment'}
+              role="tab"
+              aria-selected={tab === 'throughput'}
+              onClick={() => setTab('throughput')}
+            >
+              <Gauge size={16} />
+              Throughput
+            </button>
+            <button
+              type="button"
+              className={tab === 'timeline' ? 'ui-segment-active' : 'ui-segment'}
+              role="tab"
+              aria-selected={tab === 'timeline'}
+              onClick={() => setTab('timeline')}
+            >
+              <Clock size={16} />
+              Timeline
+            </button>
+            <button
+              type="button"
+              className={tab === 'technical' ? 'ui-segment-active' : 'ui-segment'}
+              role="tab"
+              aria-selected={tab === 'technical'}
+              onClick={() => setTab('technical')}
+            >
+              <Code size={16} />
+              Técnico
+            </button>
+          </div>
+          {tab === 'health' && <ComponentHealthDashboard health={operationalHealth} />}
+          {tab === 'queue' && <QueueMetricsChart rabbitMq={rabbitMqMetrics} />}
+          {tab === 'throughput' && <ThroughputDisplay audit={runAudit} timings={runTimings} />}
+          {tab === 'timeline' && <PipelineTimeline timings={runTimings} />}
+          {tab === 'technical' && (
+            <section className="ui-card">
+              <div className="ui-section-heading">
+                <h3>Runtime current state</h3>
+              </div>
+              <TechnicalDetail title="" fields={pipelineFields} />
+            </section>
+          )}
         </>
       ) : (
         <EmptyState title={copy('area.selectPrompt')} />

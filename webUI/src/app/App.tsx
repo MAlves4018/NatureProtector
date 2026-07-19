@@ -119,7 +119,7 @@ function UiRouter({
                 { path: 'pipeline', element: protect('pipeline', <PipelinePage />) },
                 { path: 'quality', element: protect('quality', <QualityRunsPage />) },
                 { path: 'qa', element: protect('qa', <QualityEvidencePage />) },
-                { path: 'qa-tests', element: <UiRetiredOperationalSurface name="Browser QA execution" /> },
+                { path: 'qa-tests', element: protect('qa-tests', <UiRetiredOperationalSurface name="Browser QA execution" />) },
                 { path: 'evidence', element: protect('evidence', <EvidenceExplorerPage />) },
                 { path: 'deployments', element: protect('deployments', <DeploymentsPage />) },
                 { path: 'deployment-health', element: protect('deployment-health', <DeploymentHealthPage />) },

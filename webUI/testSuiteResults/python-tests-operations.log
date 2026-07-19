@@ -1,0 +1,11 @@
+test_aggregate_hash_is_deterministic_and_path_sensitive (tests.operations.test_operation_callback_reporter.OperationCallbackReporterTests.test_aggregate_hash_is_deterministic_and_path_sensitive) ... ok
+test_non_https_non_loopback_callback_is_rejected (tests.operations.test_operation_callback_reporter.OperationCallbackReporterTests.test_non_https_non_loopback_callback_is_rejected) ... ok
+test_unconfigured_callback_is_truthfully_skipped (tests.operations.test_operation_callback_reporter.OperationCallbackReporterTests.test_unconfigured_callback_is_truthfully_skipped) ... ok
+test_browser_contract_has_no_provider_credential_fields (tests.operations.test_operations_architecture.OperationsArchitectureTests.test_browser_contract_has_no_provider_credential_fields) ... ok
+test_dangerous_capabilities_are_separated_from_admin (tests.operations.test_operations_architecture.OperationsArchitectureTests.test_dangerous_capabilities_are_separated_from_admin) ... ok
+test_operations_audit_passes (tests.operations.test_operations_architecture.OperationsArchitectureTests.test_operations_audit_passes) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.563s
+
+OK

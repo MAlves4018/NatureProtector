@@ -34,9 +34,9 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
       return (
         <div className="ui-card" style={{ textAlign: 'center', padding: 24 }}>
-          <AlertTriangle size={32} style={{ color: 'var(--ui-error)', marginBottom: 12 }} />
+          <AlertTriangle size={32} style={{ marginBottom: 12 }} />
           <h3>Algo correu mal</h3>
-          <p style={{ color: 'var(--ui-muted)', marginBottom: 12, fontSize: '0.85rem' }}>
+          <p style={{ marginBottom: 12, fontSize: '0.85rem' }}>
             {this.state.error?.message || 'Erro inesperado ao renderizar esta pagina.'}
           </p>
           <button type="button" className="ui-button" onClick={this.handleRetry}>

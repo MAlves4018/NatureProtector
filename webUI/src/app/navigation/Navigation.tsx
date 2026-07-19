@@ -138,6 +138,7 @@ function navIcon(target: UiNavTarget) {
       return <Database size={16} />;
     case 'quality':
     case 'qa':
+    case 'qa-tests':
       return <ListChecks size={16} />;
     case 'evidence':
       return <FileSearch size={16} />;
