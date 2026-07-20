@@ -141,6 +141,13 @@ public sealed class InMemoryRiskAssessmentRepository : IRiskAssessmentRepository
         }
     }
 
+    public Task MarkProjectedAsync(
+        Guid sourceEventId,
+        DateTimeOffset projectedAt,
+        DateTimeOffset? alertedAt,
+        CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
     private static bool IsMoreRecent(StoredAssessment candidate, StoredAssessment current)
     {
         return candidate.Assessment.Timestamp > current.Assessment.Timestamp ||

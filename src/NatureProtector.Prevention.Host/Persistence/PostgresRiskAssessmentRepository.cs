@@ -58,6 +58,7 @@ public sealed class PostgresRiskAssessmentRepository(
             .AsNoTracking()
             .SingleOrDefaultAsync(entity => entity.Id == sensorId, cancellationToken);
 
+        var assessedAt = DateTimeOffset.UtcNow;
         dbContext.RiskAssessmentLogs.Add(new RiskAssessmentLogRecord
         {
             Id = assessment.Id,
@@ -85,7 +86,8 @@ public sealed class PostgresRiskAssessmentRepository(
             Limitations = assessment.Limitations,
             RiskLevel = assessment.RiskLevel.ToString(),
             ExplanationSummary = assessment.ExplanationSummary,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = assessedAt,
+            AssessedAt = assessedAt
         });
 
         try
@@ -172,6 +174,21 @@ public sealed class PostgresRiskAssessmentRepository(
             .ToListAsync(cancellationToken);
 
         return SelectLatestAssessments(rows);
+    }
+
+    public async Task MarkProjectedAsync(
+        Guid sourceEventId,
+        DateTimeOffset projectedAt,
+        DateTimeOffset? alertedAt,
+        CancellationToken cancellationToken)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await dbContext.RiskAssessmentLogs
+            .Where(entity => entity.SourceEventId == sourceEventId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(entity => entity.ProjectedAt, projectedAt)
+                .SetProperty(entity => entity.AlertedAt, alertedAt),
+                cancellationToken);
     }
 
     /// <summary>

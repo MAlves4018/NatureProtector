@@ -16,6 +16,7 @@ public sealed record FinalizedCycleProjection(
     AreaRiskSnapshot? Snapshot,
     int EligibleCount,
     bool IsOperational,
+    IReadOnlyList<Guid> EligibleEventIds,
     string? AggregationReason = null);
 
 public interface ICycleProjectionCoordinator

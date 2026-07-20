@@ -168,6 +168,60 @@ class AggregateRuntimeMetricsTests(unittest.TestCase):
         self.assertEqual("88.15427", pipeline_rows[0]["value"])
         self.assertTrue(any(row["window"] == "first_published_to_last_processing_finished" and row["validForProcessingThroughput"] == "true" for row in windows))
 
+    def test_event_latency_csv_requires_complete_ordered_stage_timestamps(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "RAW_EVENT_LATENCY.csv"
+            output = root / "out"
+            write_csv(
+                source,
+                [
+                    {
+                        "SimulationRunId": "run-1",
+                        "EventId": "event-1",
+                        "PublishedAt": "2026-07-20T10:00:00.000Z",
+                        "ReceivedAt": "2026-07-20T10:00:00.010Z",
+                        "PersistedAt": "2026-07-20T10:00:00.020Z",
+                        "AssessedAt": "2026-07-20T10:00:00.030Z",
+                        "ProjectedAt": "2026-07-20T10:00:00.040Z",
+                        "AlertedAt": "2026-07-20T10:00:00.050Z",
+                    },
+                    {
+                        "SimulationRunId": "run-1",
+                        "EventId": "event-2",
+                        "PublishedAt": "2026-07-20T10:00:01.000Z",
+                        "ReceivedAt": "2026-07-20T10:00:00.900Z",
+                        "PersistedAt": "",
+                        "AssessedAt": "2026-07-20T10:00:01.030Z",
+                        "ProjectedAt": "2026-07-20T10:00:01.040Z",
+                        "AlertedAt": "",
+                    },
+                ],
+                [
+                    "SimulationRunId",
+                    "EventId",
+                    "PublishedAt",
+                    "ReceivedAt",
+                    "PersistedAt",
+                    "AssessedAt",
+                    "ProjectedAt",
+                    "AlertedAt",
+                ],
+            )
+
+            args = module.parse_args(["--output-root", str(output), "--event-latency-csv", str(source)])
+            summary = module.aggregate(args)
+            latency = read_csv(output / "05-latency" / "LATENCY_SUMMARY.csv")
+            invalid = read_csv(output / "05-latency" / "INVALID_LATENCY_SAMPLES.csv")
+            completeness = read_csv(output / "05-latency" / "SAMPLE_COMPLETENESS.csv")
+
+        publish_rows = [row for row in latency if row["sourceType"] == "domain-event" and row["stage"] == "publish_to_receive"]
+        self.assertEqual("PASS", summary["status"])
+        self.assertEqual("1", publish_rows[0]["count"])
+        self.assertEqual("10.0", publish_rows[0]["p50"])
+        self.assertTrue(any(row["stage"] == "publish_to_receive" and row["reason"] == "negative_duration" for row in invalid))
+        self.assertTrue(any(row["stage"] == "receive_to_persist" and row["missingSamples"] == "1" for row in completeness))
+
     def test_parse_float_accepts_powershell_decimal_comma(self) -> None:
         self.assertEqual(48.719, module.parse_float("48,719"))
 

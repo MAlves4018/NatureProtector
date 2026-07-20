@@ -97,6 +97,7 @@ public sealed class PostgresReadingEventInbox(
             EventTime = envelope.EventTime,
             PublishedAt = envelope.PublishedAt,
             ReceivedAt = now,
+            PersistedAt = now,
             IngestTime = envelope.IngestTime,
             PayloadJson = payloadJson,
             EnvelopeJson = envelopeJson,

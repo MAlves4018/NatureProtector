@@ -33,6 +33,7 @@ public sealed class InboxEventRecord
     public DateTimeOffset EventTime { get; set; }
     public DateTimeOffset? PublishedAt { get; set; }
     public DateTimeOffset ReceivedAt { get; set; }
+    public DateTimeOffset PersistedAt { get; set; }
     public DateTimeOffset? IngestTime { get; set; }
     public string PayloadJson { get; set; } = "{}";
     public string EnvelopeJson { get; set; } = "{}";

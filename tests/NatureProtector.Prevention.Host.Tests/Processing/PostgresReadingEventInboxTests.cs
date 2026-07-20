@@ -35,6 +35,8 @@ public sealed class PostgresReadingEventInboxTests
         Assert.Equal(envelope.EventId, inboxEvent.EventId);
         Assert.Equal(envelope.Payload.SimulationRunId, inboxEvent.SimulationRunId);
         Assert.Equal(publishedAt, inboxEvent.PublishedAt);
+        Assert.True(inboxEvent.PublishedAt <= inboxEvent.ReceivedAt);
+        Assert.True(inboxEvent.ReceivedAt <= inboxEvent.PersistedAt);
         Assert.Equal(InboxEventStatus.Processing, inboxEvent.Status);
         Assert.Equal(1, inboxEvent.AttemptCount);
 
@@ -111,6 +113,7 @@ public sealed class PostgresReadingEventInboxTests
                     AreaId = pendingInbox.AreaId,
                     EventTime = pendingInbox.EventTime,
                     ReceivedAt = pendingInbox.ReceivedAt,
+                    PersistedAt = pendingInbox.PersistedAt,
                     IngestTime = pendingInbox.IngestTime,
                     PayloadJson = pendingInbox.PayloadJson,
                     EnvelopeJson = pendingInbox.EnvelopeJson,

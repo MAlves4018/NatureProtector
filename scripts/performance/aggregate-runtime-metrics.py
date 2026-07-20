@@ -90,6 +90,27 @@ def parse_int(value: Any) -> int | None:
     return int(number)
 
 
+def parse_timestamp(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc)
+
+
+def elapsed_ms(start: datetime, end: datetime) -> float:
+    return round((end - start).total_seconds() * 1000.0, 3)
+
+
 def percentile_nearest_rank(values: Sequence[float], percentile: float) -> float | None:
     cleaned = sorted(value for value in values if math.isfinite(value))
     if not cleaned:
@@ -176,8 +197,18 @@ def collect_benchmark_run(run_dir: Path) -> dict[str, Any]:
     }
 
 
-def build_latency_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def collect_event_latency_csv(path: Path) -> dict[str, Any]:
+    return {
+        "kind": "event_latency",
+        "path": path,
+        "measurements": read_csv(path),
+    }
+
+
+def build_latency_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     raw: list[dict[str, Any]] = []
+    invalid: list[dict[str, Any]] = []
+    completeness: dict[str, dict[str, int]] = defaultdict(lambda: {"candidate": 0, "valid": 0, "missing": 0, "invalid": 0})
     for item in inputs:
         if item["kind"] == "system":
             for row in item["measurements"]:
@@ -190,9 +221,11 @@ def build_latency_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str,
                         "sourcePath": source,
                         "profile": row.get("profile", ""),
                         "runId": run_id,
+                        "eventId": "",
                         "stage": "run_request_elapsed",
                         "durationMs": round(elapsed, 3),
                         "timestampBasis": "Stopwatch around API run request, completion wait and evidence checks",
+                        "sampleQuality": "valid",
                         "claimCeiling": "Local run request duration; not per-event or publish-to-end latency.",
                     })
                 drain = parse_float(row.get("backlogDrainTimeMs"))
@@ -202,9 +235,11 @@ def build_latency_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str,
                         "sourcePath": source,
                         "profile": row.get("profile", ""),
                         "runId": run_id,
+                        "eventId": "",
                         "stage": "queue_drain_after_run",
                         "durationMs": round(drain, 3),
                         "timestampBasis": "Stopwatch after run request until np.ingestion.readings queue total reached zero",
+                        "sampleQuality": "valid",
                         "claimCeiling": "Local queue drain time for configured queue only.",
                     })
                 for field, stage in (
@@ -222,9 +257,11 @@ def build_latency_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str,
                             "sourcePath": source,
                             "profile": row.get("profile", ""),
                             "runId": run_id,
+                            "eventId": "",
                             "stage": stage,
                             "durationMs": round(value, 3),
                             "timestampBasis": "Persisted runtime timing endpoint",
+                            "sampleQuality": "valid",
                             "claimCeiling": "Persisted timing sample for this run; distribution is limited to collected samples.",
                         })
         elif item["kind"] == "http":
@@ -239,11 +276,84 @@ def build_latency_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str,
                     "sourcePath": str(item["path"]),
                     "profile": item["manifest"].get("profile", ""),
                     "runId": "",
+                    "eventId": "",
                     "stage": f"http_{row.get('surface', '')}_{row.get('probe', '')}",
                     "durationMs": round(elapsed, 3),
                     "timestampBasis": "perf_counter around one GET request",
+                    "sampleQuality": "valid",
                     "claimCeiling": "Local read-only HTTP response timing only.",
                 })
+        elif item["kind"] == "event_latency":
+            timestamp_pairs = (
+                ("publish_to_receive", "PublishedAt", "ReceivedAt", False),
+                ("receive_to_persist", "ReceivedAt", "PersistedAt", False),
+                ("persist_to_assess", "PersistedAt", "AssessedAt", False),
+                ("assess_to_project", "AssessedAt", "ProjectedAt", False),
+                ("project_to_alert", "ProjectedAt", "AlertedAt", True),
+                ("publish_to_assess", "PublishedAt", "AssessedAt", False),
+                ("publish_to_project", "PublishedAt", "ProjectedAt", False),
+                ("publish_to_alert", "PublishedAt", "AlertedAt", True),
+                ("producer_end_to_system_completed", "PublishedAt", "SystemCompletedAt", True),
+            )
+            for row_index, row in enumerate(item["measurements"], start=2):
+                source = str(item["path"])
+                run_id = row.get("SimulationRunId") or row.get("RunId") or row.get("runId") or ""
+                event_id = row.get("EventId") or row.get("eventId") or ""
+                profile = row.get("Profile") or row.get("profile") or ""
+                timestamps = {field: parse_timestamp(row.get(field) or row.get(field[0].lower() + field[1:])) for _, start, end, _ in timestamp_pairs for field in (start, end)}
+                for stage, start_field, end_field, optional_end in timestamp_pairs:
+                    completeness[stage]["candidate"] += 1
+                    start = timestamps.get(start_field)
+                    end = timestamps.get(end_field)
+                    if start is None or end is None:
+                        if not optional_end:
+                            completeness[stage]["missing"] += 1
+                            invalid.append({
+                                "sourceType": "domain-event",
+                                "sourcePath": source,
+                                "rowNumber": row_index,
+                                "profile": profile,
+                                "runId": run_id,
+                                "eventId": event_id,
+                                "stage": stage,
+                                "reason": "missing_timestamp",
+                                "startField": start_field,
+                                "endField": end_field,
+                                "startValue": row.get(start_field, ""),
+                                "endValue": row.get(end_field, ""),
+                            })
+                        continue
+                    duration = elapsed_ms(start, end)
+                    if duration < 0:
+                        completeness[stage]["invalid"] += 1
+                        invalid.append({
+                            "sourceType": "domain-event",
+                            "sourcePath": source,
+                            "rowNumber": row_index,
+                            "profile": profile,
+                            "runId": run_id,
+                            "eventId": event_id,
+                            "stage": stage,
+                            "reason": "negative_duration",
+                            "startField": start_field,
+                            "endField": end_field,
+                            "startValue": row.get(start_field, ""),
+                            "endValue": row.get(end_field, ""),
+                        })
+                        continue
+                    completeness[stage]["valid"] += 1
+                    raw.append({
+                        "sourceType": "domain-event",
+                        "sourcePath": source,
+                        "profile": profile,
+                        "runId": run_id,
+                        "eventId": event_id,
+                        "stage": stage,
+                        "durationMs": duration,
+                        "timestampBasis": f"{start_field}->{end_field}; persisted UTC pipeline timestamps",
+                        "sampleQuality": "valid",
+                        "claimCeiling": "Per-event local live latency for correlated persisted timestamps only.",
+                    })
 
     summary_rows: list[dict[str, Any]] = []
     groups: dict[tuple[str, str], list[float]] = defaultdict(list)
@@ -257,6 +367,8 @@ def build_latency_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str,
             "unit": "ms",
             "status": "MEASURED",
             **stats,
+            "missingSamples": completeness[stage]["missing"] if source_type == "domain-event" else stats["missingSamples"],
+            "invalidSamples": completeness[stage]["invalid"] if source_type == "domain-event" else stats["invalidSamples"],
             "claimCeiling": next(row["claimCeiling"] for row in raw if row["sourceType"] == source_type and row["stage"] == stage),
         })
     if not any(row["stage"] == "publish_to_receive" for row in raw):
@@ -278,7 +390,17 @@ def build_latency_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str,
             "invalidSamples": "",
             "claimCeiling": "Requires non-null PublishedAt and ReceivedAt samples from a live RabbitMQ run.",
         })
-    return raw, summary_rows
+    completeness_rows = [
+        {
+            "stage": stage,
+            "candidateSamples": counts["candidate"],
+            "validSamples": counts["valid"],
+            "missingSamples": counts["missing"],
+            "invalidSamples": counts["invalid"],
+        }
+        for stage, counts in sorted(completeness.items())
+    ]
+    return raw, summary_rows, invalid, completeness_rows
 
 
 def build_throughput_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -880,8 +1002,10 @@ def aggregate(args: argparse.Namespace) -> dict[str, Any]:
         inputs.append(collect_http_run(path.resolve()))
     for path in args.benchmark_dir:
         inputs.append(collect_benchmark_run(path.resolve()))
+    for path in args.event_latency_csv:
+        inputs.append(collect_event_latency_csv(path.resolve()))
 
-    raw_latency, latency_summary = build_latency_rows(inputs)
+    raw_latency, latency_summary, invalid_latency, latency_completeness = build_latency_rows(inputs)
     throughput_windows, throughput_results = build_throughput_rows(inputs)
     queue_samples, queue_summary, drain_results = build_queue_rows(inputs)
     disposition_counts, disposition_rates = build_disposition_rows(inputs)
@@ -899,7 +1023,13 @@ def aggregate(args: argparse.Namespace) -> dict[str, Any]:
     )
 
     write_csv(output_root / "05-latency" / "RAW_LATENCY_SAMPLES.csv", raw_latency, [
-        "sourceType", "sourcePath", "profile", "runId", "stage", "durationMs", "timestampBasis", "claimCeiling"
+        "sourceType", "sourcePath", "profile", "runId", "eventId", "stage", "durationMs", "timestampBasis", "sampleQuality", "claimCeiling"
+    ])
+    write_csv(output_root / "05-latency" / "INVALID_LATENCY_SAMPLES.csv", invalid_latency, [
+        "sourceType", "sourcePath", "rowNumber", "profile", "runId", "eventId", "stage", "reason", "startField", "endField", "startValue", "endValue"
+    ])
+    write_csv(output_root / "05-latency" / "SAMPLE_COMPLETENESS.csv", latency_completeness, [
+        "stage", "candidateSamples", "validSamples", "missingSamples", "invalidSamples"
     ])
     write_csv(output_root / "05-latency" / "LATENCY_SUMMARY.csv", latency_summary, [
         "sourceType", "stage", "unit", "status", "count", "min", "p50", "p90", "p95", "p99", "max", "mean", "stddev", "missingSamples", "invalidSamples", "claimCeiling"
@@ -997,6 +1127,7 @@ def aggregate(args: argparse.Namespace) -> dict[str, Any]:
         "inputs": [{"kind": item["kind"], "path": str(item["path"])} for item in inputs],
         "counts": {
             "latencySamples": len(raw_latency),
+            "invalidLatencySamples": len(invalid_latency),
             "latencySummaryRows": len(latency_summary),
             "throughputRows": len(throughput_results),
             "queueSamples": len(queue_samples),
@@ -1023,6 +1154,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--system-run-dir", type=Path, action="append", default=[])
     parser.add_argument("--http-run-dir", type=Path, action="append", default=[])
     parser.add_argument("--benchmark-dir", type=Path, action="append", default=[])
+    parser.add_argument("--event-latency-csv", type=Path, action="append", default=[])
     return parser.parse_args(argv)
 
 

@@ -20,4 +20,10 @@ public interface IRiskAssessmentRepository
         Guid areaId,
         CancellationToken cancellationToken,
         Guid? simulationRunId = null);
+
+    Task MarkProjectedAsync(
+        Guid sourceEventId,
+        DateTimeOffset projectedAt,
+        DateTimeOffset? alertedAt,
+        CancellationToken cancellationToken);
 }

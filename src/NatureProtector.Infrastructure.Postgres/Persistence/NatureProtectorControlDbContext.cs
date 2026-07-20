@@ -457,6 +457,7 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.HasIndex(entity => entity.EventId).IsUnique();
         builder.HasIndex(entity => new { entity.SimulationRunId, entity.Status });
         builder.HasIndex(entity => new { entity.SimulationRunId, entity.PublishedAt });
+        builder.HasIndex(entity => new { entity.SimulationRunId, entity.PersistedAt });
         builder.HasIndex(entity => new { entity.Status, entity.ReceivedAt });
         builder.HasIndex(entity => new { entity.Status, entity.NextAttemptNotBefore });
     }
@@ -527,6 +528,7 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.HasIndex(entity => entity.EventId).IsUnique();
         builder.HasIndex(entity => new { entity.AreaId, entity.EventTime });
         builder.HasIndex(entity => new { entity.SensorId, entity.EventTime });
+        builder.HasIndex(entity => entity.PersistedAt);
         builder.HasOne(entity => entity.Area)
             .WithMany()
             .HasForeignKey(entity => entity.AreaId)
@@ -555,6 +557,8 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.HasIndex(entity => entity.SimulationRunId);
         builder.HasIndex(entity => new { entity.AreaId, entity.Timestamp });
         builder.HasIndex(entity => new { entity.AreaId, entity.SimulationRunId, entity.Timestamp });
+        builder.HasIndex(entity => new { entity.SimulationRunId, entity.AssessedAt });
+        builder.HasIndex(entity => new { entity.SimulationRunId, entity.ProjectedAt });
         builder.HasIndex(entity => new { entity.GridCellId, entity.Timestamp });
         builder.HasOne(entity => entity.Area)
             .WithMany()
