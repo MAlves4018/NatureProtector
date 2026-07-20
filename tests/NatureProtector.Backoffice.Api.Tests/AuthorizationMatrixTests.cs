@@ -67,6 +67,9 @@ public sealed class AuthorizationMatrixTests
         Authenticated("POST", "/api/control/operations/{id:guid}/cancel", "/api/control/operations/00000000-0000-0000-0000-000000000001/cancel"),
         Anonymous("POST", "/api/control/operations/callback", "/api/control/operations/callback"),
 
+        Capability("GET", "/api/control/data-explorer/datasets", "/api/control/data-explorer/datasets", OperationCapabilities.DbRead, AccessPolicy.Admin),
+        Capability("POST", "/api/control/data-explorer/query", "/api/control/data-explorer/query", OperationCapabilities.DbRead, AccessPolicy.Admin),
+
         Capability("GET", "/api/control/quality/suites", "/api/control/quality/suites", OperationCapabilities.QualityRead, AccessPolicy.QualityRead),
         Capability("GET", "/api/control/quality/runs", "/api/control/quality/runs", OperationCapabilities.QualityRead, AccessPolicy.QualityRead),
         Capability("POST", "/api/control/quality/runs", "/api/control/quality/runs", OperationCapabilities.QualityRead, AccessPolicy.QualityRead),
@@ -378,6 +381,11 @@ public sealed class AuthorizationMatrixTests
         if (path.EndsWith("/roles", StringComparison.Ordinal))
         {
             return JsonContent.Create(new { name = "Reviewer" });
+        }
+
+        if (path.EndsWith("/data-explorer/query", StringComparison.Ordinal))
+        {
+            return JsonContent.Create(new { datasetId = "simulation-runs", limit = 1 });
         }
 
         return null;

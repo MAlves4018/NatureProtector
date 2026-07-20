@@ -11,6 +11,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using NatureProtector.Backoffice.Api.Bootstrap;
 using NatureProtector.Backoffice.Api.Configuration;
+using NatureProtector.Backoffice.Api.ControlPlane.DataExplorer.Services;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 using NatureProtector.Backoffice.Api.Health;
 using NatureProtector.Backoffice.Api.OpenApi;
@@ -136,6 +137,7 @@ if (backofficeOptions.ControlPlaneEnabled)
             environmentName: builder.Environment.EnvironmentName));
     builder.Services.AddScoped<IRuntimeObservabilityService, RuntimeObservabilityService>();
     builder.Services.AddSingleton<IPasswordHasher<UserRecord>, PasswordHasher<UserRecord>>();
+    builder.Services.AddSingleton<IReadOnlyDataExplorerService, EfReadOnlyDataExplorerService>();
     builder.Services.AddScoped<IUserRolePlaneService, PostgresUserRolePlaneService>();
 }
 else

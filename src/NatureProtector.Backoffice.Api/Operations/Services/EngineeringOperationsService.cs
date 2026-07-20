@@ -284,7 +284,12 @@ public sealed class EngineeringOperationsService : IEngineeringOperationsService
         string? secret,
         CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrWhiteSpace(_options.CallbackSecret) && !SecretsEqual(secret, _options.CallbackSecret))
+        if (!_options.CallbackEnabled)
+        {
+            return Error(404, "Operations callback is disabled.");
+        }
+
+        if (string.IsNullOrWhiteSpace(_options.CallbackSecret) || !SecretsEqual(secret, _options.CallbackSecret))
         {
             return Error(403, "Invalid operations callback secret.");
         }
