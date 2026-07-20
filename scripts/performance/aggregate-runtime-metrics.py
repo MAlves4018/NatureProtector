@@ -14,12 +14,11 @@ import hashlib
 import json
 import math
 import statistics
-import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Sequence
 
 SCRIPT_VERSION = "1.0.0"
 UNSUPPORTED = "UNSUPPORTED"
