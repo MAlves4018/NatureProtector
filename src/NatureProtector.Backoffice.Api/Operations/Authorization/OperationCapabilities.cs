@@ -36,6 +36,7 @@ public static class OperationCapabilities
     public const string AdminExecute = "admin.execute";
     public const string P3Read = "p3.read";
     public const string DataContextRead = "data_context.read";
+    public const string DbRead = "db.read";
     public const string HelpRead = "help.read";
 
     public static readonly IReadOnlyList<string> All =
@@ -45,7 +46,7 @@ public static class OperationCapabilities
         EvidenceDownload, EvidenceExecuteCampaign, EvidenceCompare, DeploymentRead, DeploymentPlan,
         DeploymentDeployStaging, DeploymentDeployProduction, DeploymentRollback, CloudRead,
         CloudOperateStaging, CloudOperateProduction, CloudDestroy, ApprovalReview, UsersManage,
-        RolesManage, AdminRead, AdminExecute, P3Read, DataContextRead, HelpRead
+        RolesManage, AdminRead, AdminExecute, DbRead, P3Read, DataContextRead, HelpRead
     ];
 }
 
@@ -110,7 +111,7 @@ public static class OperationRoleCatalog
                 OperationCapabilities.EvidenceCompare, OperationCapabilities.DeploymentRead,
                 OperationCapabilities.CloudRead, OperationCapabilities.UsersManage, OperationCapabilities.RolesManage,
                 OperationCapabilities.AdminRead, OperationCapabilities.AdminExecute, OperationCapabilities.P3Read,
-                OperationCapabilities.DataContextRead, OperationCapabilities.HelpRead
+                OperationCapabilities.DbRead, OperationCapabilities.DataContextRead, OperationCapabilities.HelpRead
             ]
         };
 

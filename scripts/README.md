@@ -19,6 +19,12 @@ Scripts are grouped by operational responsibility. A script that is not called b
 
 New manual entrypoints must be documented. Helpers imported by other scripts should use normal module imports so `tools/repo-audit/audit.py` can record the relationship. A script with no workflow, automation, documentation, test or source reference remains a review candidate rather than being removed automatically.
 
+## Package structure and operations scripts
+
+- `scripts/__init__.py`: package marker; makes `scripts` a proper Python package for import-based discovery.
+- `scripts/operations/__init__.py`: package marker for the `scripts.operations` subpackage.
+- `scripts/operations/consolidate_test_results.py`: consolidates JUnit and TRX test results into a deterministic JSON summary. Called by CI workflows and locally for test result aggregation.
+
 ## Tooling de evidência do relatório
 
 - `scripts/evidence/run-report-evidence-campaign.sh`: entrypoint manual suportado para Git Bash/Linux; delega na campanha Python e exige `--execute` para ações selecionadas.
