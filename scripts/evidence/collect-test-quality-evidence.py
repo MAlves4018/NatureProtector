@@ -15,6 +15,7 @@ resources, or claim that static declarations are executed tests.
 from __future__ import annotations
 
 import argparse
+import atexit
 import csv
 import hashlib
 import json
@@ -25,6 +26,7 @@ import shutil
 import subprocess
 import sys
 import time
+import tempfile
 import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
@@ -32,9 +34,49 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
-SCRIPT_VERSION = "1.0.0"
+SCRIPT_VERSION = "1.1.2"
 EVIDENCE_CLASS = "CURRENT_TEST_AND_COVERAGE_EXECUTION"
 
+
+
+
+def prepare_isolated_frontend_workspace(source: Path) -> tuple[Path, Path]:
+    """Copy repository-owned frontend sources to a temporary clean workspace.
+
+    The running Vite process can lock native files under repository node_modules on
+    Windows. Evidence collection must not stop the live runtime or reuse stale test
+    outputs, so Phase 2 performs npm ci and all frontend checks in an isolated copy.
+    """
+    temp_root = Path(tempfile.mkdtemp(prefix="np-phase2-frontend-"))
+    target = temp_root / "webUI"
+    ignored = shutil.ignore_patterns(
+        "node_modules",
+        "dist",
+        "coverage",
+        "test-results",
+        "playwright-report",
+        "blob-report",
+        ".vite",
+        ".cache",
+    )
+    shutil.copytree(source, target, ignore=ignored)
+
+    # The frontend toolchain contract also validates repository-level workflow
+    # manifests. Preserve that read-only context beside the isolated webUI copy
+    # without copying the rest of the repository or any runtime outputs.
+    workflows_source = source.resolve().parent / ".github" / "workflows"
+    workflows_target = temp_root / ".github" / "workflows"
+    if workflows_source.is_dir():
+        shutil.copytree(workflows_source, workflows_target)
+
+    # Biome resolves vcs.root=".." from webUI/biome*.jsonc and therefore
+    # expects the repository ignore file beside webUI in the isolated root.
+    ignore_source = source.resolve().parent / ".gitignore"
+    if ignore_source.is_file():
+        shutil.copy2(ignore_source, temp_root / ".gitignore")
+
+    atexit.register(lambda: shutil.rmtree(temp_root, ignore_errors=True))
+    return target, temp_root
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -42,6 +84,19 @@ def utc_now() -> str:
 
 def default_run_id() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def safe_console_write(value: str) -> None:
+    """Write subprocess output without allowing a Windows console codec to abort evidence collection."""
+    if not value:
+        return
+    try:
+        sys.stdout.write(value)
+    except UnicodeEncodeError:
+        encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        escaped = value.encode(encoding, errors="backslashreplace").decode(encoding, errors="strict")
+        sys.stdout.write(escaped)
+    sys.stdout.flush()
 
 
 def sha256_file(path: Path) -> str:
@@ -242,7 +297,7 @@ class EvidenceRunner:
             log.write(f"COMMAND={command_text(command)}\n\n")
             log.write(output_text)
         if self.echo and output_text:
-            print(output_text, end="" if output_text.endswith("\n") else "\n")
+            safe_console_write(output_text if output_text.endswith("\n") else output_text + "\n")
 
         duration = round(time.monotonic() - started, 3)
         finished_text = utc_now()
@@ -797,6 +852,12 @@ def main() -> int:
     parser.add_argument("--skip-backend", action="store_true")
     parser.add_argument("--skip-frontend", action="store_true")
     parser.add_argument("--skip-npm-ci", action="store_true")
+    parser.add_argument(
+        "--frontend-workspace-mode",
+        choices=("isolated", "repository"),
+        default="isolated",
+        help="Run frontend checks in a temporary clean copy (default) or directly in repository webUI.",
+    )
     parser.add_argument("--include-e2e", action="store_true")
     parser.add_argument("--no-restore", action="store_true")
     parser.add_argument("--no-build", action="store_true")
@@ -823,26 +884,30 @@ def main() -> int:
     parent.mkdir(parents=True, exist_ok=True)
     (parent / "LATEST.txt").write_text(args.run_id + "\n", encoding="utf-8")
 
+    dotnet_executable = tool_path("dotnet")
+    node_executable = tool_path("node")
+    npm_executable = tool_path("npm")
+
     toolchains = {
         "python": capture_version([sys.executable, "--version"], repo),
-        "dotnet": capture_version([tool_path("dotnet") or "dotnet", "--info"], repo)
-        if tool_path("dotnet")
+        "dotnet": capture_version([dotnet_executable, "--info"], repo)
+        if dotnet_executable
         else {
             "available": False,
             "command": "dotnet --info",
             "exit_code": None,
             "output": "dotnet executable not found on PATH",
         },
-        "node": capture_version([tool_path("node") or "node", "--version"], repo)
-        if tool_path("node")
+        "node": capture_version([node_executable, "--version"], repo)
+        if node_executable
         else {
             "available": False,
             "command": "node --version",
             "exit_code": None,
             "output": "node executable not found on PATH",
         },
-        "npm": capture_version([tool_path("npm") or "npm", "--version"], repo)
-        if tool_path("npm")
+        "npm": capture_version([npm_executable, "--version"], repo)
+        if npm_executable
         else {
             "available": False,
             "command": "npm --version",
@@ -850,6 +915,16 @@ def main() -> int:
             "output": "npm executable not found on PATH",
         },
     }
+    source_webui = repo / "webUI"
+    webui = source_webui
+    frontend_workspace_root: Path | None = None
+    frontend_workspace_error: str | None = None
+    if not args.skip_frontend and args.frontend_workspace_mode == "isolated":
+        try:
+            webui, frontend_workspace_root = prepare_isolated_frontend_workspace(source_webui)
+        except Exception as exc:
+            frontend_workspace_error = str(exc)
+
     environment = {
         "generated_at_utc": utc_now(),
         "collector_version": SCRIPT_VERSION,
@@ -861,6 +936,14 @@ def main() -> int:
         "python_executable": sys.executable,
         "cpu_count": os.cpu_count(),
         "toolchains": toolchains,
+        "frontend_workspace": {
+            "mode": args.frontend_workspace_mode,
+            "source": str(source_webui),
+            "effective": str(webui),
+            "temporaryRoot": str(frontend_workspace_root) if frontend_workspace_root else "",
+            "preparationError": frontend_workspace_error or "",
+            "staleRepositoryOutputsExcluded": args.frontend_workspace_mode == "isolated",
+        },
     }
     write_json(output / "environment.json", environment)
 
@@ -1019,10 +1102,23 @@ def main() -> int:
         )
 
     # Frontend current execution.
-    webui = repo / "webUI"
     npm_available = bool(toolchains["npm"].get("available") and toolchains["npm"].get("exit_code") == 0)
     frontend_prerequisite = True
-    if args.skip_frontend:
+    if frontend_workspace_error:
+        for command_id, purpose in (
+            ("frontend_npm_ci", "Install the lockfile-defined frontend dependency graph."),
+            ("frontend_toolchain", "Validate the declared Node/npm/React toolchain contract."),
+            ("frontend_typecheck", "Run TypeScript static type checking."),
+            ("frontend_lint", "Run Biome lint checks."),
+            ("frontend_format", "Check repository-owned frontend formatting."),
+            ("frontend_test_coverage", "Execute Vitest tests with current coverage."),
+            ("frontend_build", "Build the production frontend bundle."),
+        ):
+            runner.record_nonexecution(
+                command_id, "frontend", purpose, "BLOCKED", f"Isolated frontend workspace could not be prepared: {frontend_workspace_error}"
+            )
+        frontend_prerequisite = False
+    elif args.skip_frontend:
         for command_id, purpose in (
             ("frontend_npm_ci", "Install the lockfile-defined frontend dependency graph."),
             ("frontend_toolchain", "Validate the declared Node/npm/React toolchain contract."),
@@ -1067,7 +1163,7 @@ def main() -> int:
                 "frontend_npm_ci",
                 "frontend",
                 "Install the lockfile-defined frontend dependency graph.",
-                ["npm", "ci"],
+                [npm_executable or "npm", "ci"],
                 webui,
             )
             npm_ci_ok = npm_ci.status == "PASS"
@@ -1077,7 +1173,7 @@ def main() -> int:
             "frontend_toolchain",
             "frontend",
             "Validate the declared Node/npm/React toolchain contract.",
-            ["npm", "run", "check:toolchain"],
+            [npm_executable or "npm", "run", "check:toolchain"],
             webui,
             dependency_ok=frontend_prerequisite,
             dependency_reason="Frontend dependencies are unavailable.",
@@ -1087,7 +1183,7 @@ def main() -> int:
             "frontend_typecheck",
             "frontend",
             "Run TypeScript static type checking.",
-            ["npm", "run", "typecheck"],
+            [npm_executable or "npm", "run", "typecheck"],
             webui,
             dependency_ok=base_ok,
             dependency_reason="Frontend toolchain validation failed.",
@@ -1096,7 +1192,7 @@ def main() -> int:
             "frontend_lint",
             "frontend",
             "Run Biome lint checks.",
-            ["npm", "run", "lint"],
+            [npm_executable or "npm", "run", "lint"],
             webui,
             dependency_ok=base_ok,
             dependency_reason="Frontend toolchain validation failed.",
@@ -1105,7 +1201,7 @@ def main() -> int:
             "frontend_format",
             "frontend",
             "Check repository-owned frontend formatting.",
-            ["npm", "run", "format:check"],
+            [npm_executable or "npm", "run", "format:check"],
             webui,
             dependency_ok=base_ok,
             dependency_reason="Frontend toolchain validation failed.",
@@ -1114,7 +1210,7 @@ def main() -> int:
             "frontend_test_coverage",
             "frontend",
             "Execute Vitest tests with current coverage.",
-            ["npm", "run", "test:coverage"],
+            [npm_executable or "npm", "run", "test:coverage"],
             webui,
             dependency_ok=base_ok,
             dependency_reason="Frontend toolchain validation failed.",
@@ -1123,7 +1219,7 @@ def main() -> int:
             "frontend_build",
             "frontend",
             "Build the production frontend bundle.",
-            ["npm", "run", "build"],
+            [npm_executable or "npm", "run", "build"],
             webui,
             dependency_ok=base_ok,
             dependency_reason="Frontend toolchain validation failed.",
@@ -1134,7 +1230,7 @@ def main() -> int:
             "frontend_e2e",
             "frontend-e2e",
             "Execute Playwright browser tests.",
-            ["npm", "run", "test:e2e"],
+            [npm_executable or "npm", "run", "test:e2e"],
             webui,
             dependency_ok=(webui / "node_modules").is_dir(),
             dependency_reason="Frontend dependencies are unavailable.",

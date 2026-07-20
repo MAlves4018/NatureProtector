@@ -47,6 +47,25 @@ def verify_exact_hashes(root: Path) -> list[str]:
     return errors
 
 
+
+def validate_plan_case_tree(case_dir: Path) -> list[str]:
+    errors: list[str] = []
+    for rel in ("configuration/plan.json", "verdict.json", "hashes.sha256"):
+        path = case_dir / rel
+        if not path.is_file() or path.stat().st_size == 0:
+            errors.append(f"missing or empty {rel}")
+    verdict_path = case_dir / "verdict.json"
+    if verdict_path.is_file():
+        try:
+            verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
+            if verdict.get("status") != "PLANNED":
+                errors.append("plan verdict status is not PLANNED")
+            if verdict.get("operationId") is not None or verdict.get("simulationRunId") is not None:
+                errors.append("plan verdict unexpectedly contains runtime identities")
+        except (OSError, json.JSONDecodeError):
+            errors.append("verdict.json is not valid JSON")
+    return errors
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("portfolio", type=Path)
@@ -73,7 +92,11 @@ def main() -> int:
             errors.append(f"Duplicate case: {key}")
         ids.add(key)
         case_dir = root / case.get("artifact", "")
-        errors += [f"{key}: {e}" for e in validate_case_tree(case_dir, case.get("kind"))]
+        if manifest.get("mode") == "plan":
+            case_errors = validate_plan_case_tree(case_dir)
+        else:
+            case_errors = validate_case_tree(case_dir, case.get("kind"))
+        errors += [f"{key}: {e}" for e in case_errors]
         v = json.loads((case_dir / "verdict.json").read_text()) if (case_dir / "verdict.json").is_file() else {}
         claim = (
             json.loads((case_dir / "tables/claim-assertions.json").read_text())

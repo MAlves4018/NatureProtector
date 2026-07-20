@@ -113,6 +113,32 @@ public sealed class InMemoryAreaOperationalProjectionStoreAlertPolicyTests
         Assert.NotNull(resolved.ResolvedAt);
     }
 
+    [Fact]
+    public async Task MarkUnavailableAsync_PreservesOpenAlertWithoutFabricatingZeroScore()
+    {
+        var store = new InMemoryAreaOperationalProjectionStore();
+        var areaId = Guid.NewGuid();
+        var unavailableAt = new DateTimeOffset(2026, 7, 19, 22, 0, 0, TimeSpan.Zero);
+
+        await store.SaveAsync(areaId, CreateSnapshot(0.82, "Alarm open"), 1, CancellationToken.None);
+        await store.SaveAsync(areaId, CreateSnapshot(0.82, "Alarm persists"), 1, CancellationToken.None);
+        await store.MarkUnavailableAsync(
+            areaId,
+            unavailableAt,
+            "NoEligibleAssessments",
+            CancellationToken.None);
+
+        var state = Assert.Single(store.States);
+        Assert.Equal(0, state.AssessmentCount);
+        Assert.Equal(OperationalProjectionStatus.Blocked, state.CoverageStatus);
+        Assert.Equal(OperationalProjectionStatus.Unavailable, state.FreshnessStatus);
+
+        var alert = Assert.Single(store.Alerts);
+        Assert.Equal("Open", alert.Status);
+        Assert.Equal("Alarm", alert.AlertState);
+        Assert.Null(alert.ResolvedAt);
+    }
+
     private static AreaRiskSnapshot CreateSnapshot(double score, string summary)
     {
         return new AreaRiskSnapshot(

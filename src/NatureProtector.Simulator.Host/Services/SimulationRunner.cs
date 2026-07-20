@@ -152,6 +152,11 @@ public sealed class SimulationRunner(
                 publishableEnvelopes = ApplyTransportDegradation(
                     context,
                     publishableEnvelopes);
+                publishableEnvelopes = await ApplyLagDelayAsync(
+                    context,
+                    publishableEnvelopes,
+                    cycleIndex,
+                    stoppingToken);
                 var publishStopwatch = Stopwatch.StartNew();
                 SimulatorHostTelemetry.PublishBatchSize.Record(publishableEnvelopes.Length);
 
@@ -260,6 +265,51 @@ public sealed class SimulationRunner(
                 : observation)
             .Where(observation => !observation.IsMissing)
             .ToArray();
+    }
+
+
+    private async Task<EventEnvelope<SensorReadingProducedPayload>[]> ApplyLagDelayAsync(
+        SimulationContext context,
+        EventEnvelope<SensorReadingProducedPayload>[] envelopes,
+        int cycleIndex,
+        CancellationToken cancellationToken)
+    {
+        var profiles = SimulationDegradationProfiles.GetResolvedProfiles(context);
+        if (!SimulationDegradationProfiles.Contains(profiles, SimulationDegradationProfiles.LagDelay) ||
+            context.LagDelay <= TimeSpan.Zero ||
+            envelopes.Length == 0)
+        {
+            return envelopes;
+        }
+
+        var delayStartedAt = DateTimeOffset.UtcNow;
+        var scheduledPublishTime = delayStartedAt.Add(context.LagDelay);
+        var stopwatch = Stopwatch.StartNew();
+
+        await Task.Delay(context.LagDelay, cancellationToken);
+
+        stopwatch.Stop();
+        var actualPublishTime = DateTimeOffset.UtcNow;
+        var delayed = envelopes
+            .Select(envelope => envelope with
+            {
+                // Preserve event time and physical values; represent only late delivery.
+                IngestTime = envelope.EventTime.Add(context.LagDelay)
+            })
+            .ToArray();
+
+        logger.LogInformation(
+            "Lag/delay applied | CycleIndex={CycleIndex} | EventCount={EventCount} | " +
+            "DelayRequestedSeconds={DelayRequestedSeconds:F3} | DelayObservedSeconds={DelayObservedSeconds:F3} | " +
+            "ScheduledPublishTime={ScheduledPublishTime:o} | ActualPublishTime={ActualPublishTime:o}",
+            cycleIndex,
+            delayed.Length,
+            context.LagDelay.TotalSeconds,
+            stopwatch.Elapsed.TotalSeconds,
+            scheduledPublishTime,
+            actualPublishTime);
+
+        return delayed;
     }
 
     private static EventEnvelope<SensorReadingProducedPayload>[] ApplyTransportDegradation(

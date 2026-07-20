@@ -20,6 +20,7 @@ import { useUiLocale } from '../state/LocaleContext';
 import { useUiActivity } from '../state/ActivityContext';
 import { runPresentationState } from '../truthfulPresentation';
 import { formatDurationMs, rowsToCsv, timingFacts } from '../utils/operationalMetrics';
+import { formatRunProfiles, resolveRunSensorCount } from '../utils/runEvidence';
 
 export function RunsPage() {
   const { copy } = useUiLocale();
@@ -75,8 +76,8 @@ export function RunsPage() {
   return (
     <section className="ui-page">
       <PageHeader
-        title="Run workspace"
-        subtitle="Lifecycle, accounting, pipeline, qualidade e evidence no contexto da mesma SimulationRunId."
+        title="Espaço da execução"
+        subtitle="Ciclo de vida, contabilidade, pipeline, qualidade e evidência no contexto da mesma SimulationRunId."
         helpTopic="runState"
       />
       <section className="ui-run-selector">
@@ -206,7 +207,7 @@ export function RunsPage() {
                       {active && runAudit
                         ? `${runAudit.expectedEvents ?? '—'} / ${runAudit.acceptedReadings} / ${runAudit.riskAssessments}`
                         : 'Abrir para carregar'}
-                      <small className="ui-table-note">expected / accepted / processed</small>
+                      <small className="ui-table-note">esperados / aceites / processados</small>
                     </td>
                     <td>
                       <button type="button" className="ui-secondary" onClick={() => setSelectedRunId(run.id)}>
@@ -256,20 +257,20 @@ export function RunsPage() {
               <Search size={15} /> Consultas preparadas
             </button>
             <button type="button" className="ui-secondary" onClick={() => navigate(`/evidence${runQuerySuffix}`)}>
-              <FileCheck2 size={15} /> Abrir evidence
+              <FileCheck2 size={15} /> Abrir evidência
             </button>
           </div>
           <nav className="ui-tabs" aria-label="Detalhes da run">
             <RunTab icon={<Activity />} label="Resumo" active={tab === 'summary'} onClick={() => setTab('summary')} />
             <RunTab
               icon={<Clock3 />}
-              label="Lifecycle"
+              label="Ciclo de vida"
               active={tab === 'lifecycle'}
               onClick={() => setTab('lifecycle')}
             />
             <RunTab
               icon={<Database />}
-              label="Accounting"
+              label="Contabilidade"
               active={tab === 'accounting'}
               onClick={() => setTab('accounting')}
             />
@@ -281,13 +282,13 @@ export function RunsPage() {
             />
             <RunTab
               icon={<FileCheck2 />}
-              label="Evidence"
+              label="Evidência"
               active={tab === 'evidence'}
               onClick={() => setTab('evidence')}
             />
           </nav>
           {tab === 'summary' && (
-            <section className="ui-card ui-run-summary-card">
+            <section className="ui-card ui-run-summary-card" data-testid="run-summary-panel">
               <div className="ui-section-heading">
                 <h3>Resumo da execução</h3>
                 <StatusBadge label={presentation.label} state={presentation.state} />
@@ -306,7 +307,7 @@ export function RunsPage() {
           {tab === 'accounting' && <Accounting audit={runAudit} operation={runOperation} />}
           {tab === 'quality' && <Quality audit={runAudit} />}
           {tab === 'evidence' && (
-            <section className="ui-card">
+            <section className="ui-card" data-testid="run-evidence-panel">
               <div className="ui-section-heading">
                 <h3>Pacote exportável da run</h3>
                 <ExportActions
@@ -321,11 +322,11 @@ export function RunsPage() {
               </div>
               <div className="ui-grid">
                 <EvidenceBox
-                  title="Audit runtime"
+                  title="Auditoria da execução"
                   value={runAudit ? 'Recolhida para esta run' : copy('value.noEvidence')}
                 />
                 <EvidenceBox
-                  title="Timing"
+                  title="Tempos da execução"
                   value={
                     runTimings?.runDurationMs == null
                       ? copy('value.noEvidence')
@@ -397,7 +398,7 @@ function Lifecycle({
   return (
     <div className="ui-two-column">
       <section className="ui-card">
-        <h3>Lifecycle observado</h3>
+        <h3>Ciclo de vida observado</h3>
         <ol className="ui-lifecycle">
           {events.map(([label, timestamp]) => (
             <li key={label} data-observed={Boolean(timestamp)}>
@@ -472,16 +473,19 @@ function Accounting({
   const expected = audit?.expectedEvents;
   const accepted = audit?.acceptedReadings;
   return (
-    <section className="ui-card">
-      <h3>Accounting isolado por run</h3>
+    <section className="ui-card" data-testid="run-accounting-panel">
+      <h3>Contabilidade isolada por execução</h3>
       <div className="ui-metric-grid">
         <EvidenceBox title="Esperados" value={expected == null ? 'Sem dados' : String(expected)} />
         <EvidenceBox title="Aceites" value={accepted == null ? 'Sem dados' : String(accepted)} />
-        <EvidenceBox title="Missing" value={audit?.missingEvents == null ? 'Sem dados' : String(audit.missingEvents)} />
-        <EvidenceBox title="Processed" value={audit ? String(audit.riskAssessments) : 'Sem dados'} />
-        <EvidenceBox title="Pending" value={operation ? String(operation.accounting.pendingInbox) : 'Indisponível'} />
         <EvidenceBox
-          title="Processing"
+          title="Ausentes"
+          value={audit?.missingEvents == null ? 'Sem dados' : String(audit.missingEvents)}
+        />
+        <EvidenceBox title="Processados" value={audit ? String(audit.riskAssessments) : 'Sem dados'} />
+        <EvidenceBox title="Pendentes" value={operation ? String(operation.accounting.pendingInbox) : 'Indisponível'} />
+        <EvidenceBox
+          title="Em processamento"
           value={operation ? String(operation.accounting.processingInbox) : 'Indisponível'}
         />
         <EvidenceBox
@@ -499,7 +503,7 @@ function Accounting({
           }
         />
         <EvidenceBox
-          title="Settled"
+          title="Fecho reconciliado"
           value={operation ? (operation.accounting.settled ? 'Sim' : 'Não') : 'Indisponível'}
         />
       </div>
@@ -515,13 +519,13 @@ function Accounting({
 
 function Quality({ audit }: { audit: ReturnType<typeof useUiActivity>['runAudit'] }) {
   return (
-    <section className="ui-card">
-      <h3>Qualidade e perdas</h3>
+    <section className="ui-card" data-testid="run-quality-panel">
+      <h3>Qualidade, elegibilidade e perdas</h3>
       <div className="ui-metric-grid">
-        <EvidenceBox title="Rejected" value={audit ? String(audit.rejected) : 'Sem dados'} />
+        <EvidenceBox title="Rejeitados" value={audit ? String(audit.rejected) : 'Sem dados'} />
         <EvidenceBox title="Em quarentena" value={audit ? String(audit.quarantined) : 'Sem dados'} />
         <EvidenceBox title="Retries" value={audit ? String(audit.retryAttempts) : 'Sem dados'} />
-        <EvidenceBox title="Risk assessments" value={audit ? String(audit.riskAssessments) : 'Sem dados'} />
+        <EvidenceBox title="Avaliações de risco" value={audit ? String(audit.riskAssessments) : 'Sem dados'} />
       </div>
     </section>
   );
@@ -537,26 +541,11 @@ function EvidenceBox({ title, value }: { title: string; value: string }) {
 }
 
 function runProfiles(run: ReturnType<typeof useUiActivity>['runs'][number]) {
-  const resolved = runMetadata(run)?.run_overrides?.resolved;
-  return resolved?.degradation_profiles?.join(', ') || resolved?.degradation_profile || 'none';
+  return formatRunProfiles(run, 'resolved');
 }
 
 function runSensorCount(run: ReturnType<typeof useUiActivity>['runs'][number]) {
-  return runMetadata(run)?.sensor_count ?? null;
-}
-
-function runMetadata(run: ReturnType<typeof useUiActivity>['runs'][number]) {
-  if (!run.metadataJson) return null;
-  try {
-    return JSON.parse(run.metadataJson) as {
-      sensor_count?: number;
-      run_overrides?: {
-        resolved?: { degradation_profile?: string; degradation_profiles?: string[] };
-      };
-    };
-  } catch {
-    return null;
-  }
+  return resolveRunSensorCount(run);
 }
 
 function formatDate(value: string | null) {

@@ -10,6 +10,13 @@ public sealed class ApiRateLimitingOptions
     // by replacing caller-supplied values with client and forwarding-rule IPs.
     public bool TrustNormalizedForwardedFor { get; init; }
 
+    // Development-only partitioning for evidence campaigns. The header is
+    // ignored outside Development and never disables rate limiting.
+    public bool EvidenceSimulationLaunchPartitioningEnabled { get; init; }
+
+    public string EvidenceRunIdHeaderName { get; init; } = "X-NP-Evidence-Run-Id";
+
+
     public RateLimitWindowOptions AnonymousRead { get; init; } = new(120, 60);
 
     public RateLimitWindowOptions AuthenticatedRead { get; init; } = new(600, 60);

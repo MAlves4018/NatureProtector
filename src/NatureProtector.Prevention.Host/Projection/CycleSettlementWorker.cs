@@ -15,6 +15,18 @@ public sealed class CycleSettlementWorker(
                 var finalizations = await coordinator.FinalizeCompletedRunsAsync(stoppingToken);
                 foreach (var finalized in finalizations.Where(item => item.IsOperational))
                 {
+                    if (finalized.Snapshot is null)
+                    {
+                        await projectionStore.MarkUnavailableAsync(
+                            finalized.AreaId,
+                            DateTimeOffset.UtcNow,
+                            finalized.AggregationReason ?? "NoEligibleAssessments",
+                            stoppingToken,
+                            finalized.SimulationRunId,
+                            finalized.CycleIndex);
+                        continue;
+                    }
+
                     await projectionStore.SaveAsync(
                         finalized.AreaId, finalized.Snapshot, finalized.EligibleCount, stoppingToken,
                         finalized.SimulationRunId, finalized.CycleIndex);

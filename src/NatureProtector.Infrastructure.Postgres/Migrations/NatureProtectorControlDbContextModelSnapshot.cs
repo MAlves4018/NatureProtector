@@ -1085,8 +1085,19 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<double>("AggregateRiskScore")
+                    b.Property<double?>("AggregateRiskScore")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("AggregationReason")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("AggregationStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Available");
 
                     b.Property<DateTimeOffset>("AlertEvaluatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1284,8 +1295,19 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<double>("AggregateRiskScore")
+                    b.Property<double?>("AggregateRiskScore")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("AggregationReason")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("AggregationStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Available");
 
                     b.Property<Guid>("AreaId")
                         .HasColumnType("uuid");

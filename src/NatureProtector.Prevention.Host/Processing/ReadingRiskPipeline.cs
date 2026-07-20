@@ -356,6 +356,18 @@ public sealed class ReadingRiskPipeline(
     {
         foreach (var finalized in finalizations.Where(item => item.IsOperational))
         {
+            if (finalized.Snapshot is null)
+            {
+                await areaOperationalProjectionStore.MarkUnavailableAsync(
+                    finalized.AreaId,
+                    DateTimeOffset.UtcNow,
+                    finalized.AggregationReason ?? "NoEligibleAssessments",
+                    cancellationToken,
+                    finalized.SimulationRunId,
+                    finalized.CycleIndex);
+                continue;
+            }
+
             await areaOperationalProjectionStore.SaveAsync(
                 finalized.AreaId,
                 finalized.Snapshot,

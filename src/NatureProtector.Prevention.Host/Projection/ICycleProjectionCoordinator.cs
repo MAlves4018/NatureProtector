@@ -13,9 +13,10 @@ public sealed record FinalizedCycleProjection(
     Guid SimulationRunId,
     int CycleIndex,
     Guid AreaId,
-    AreaRiskSnapshot Snapshot,
+    AreaRiskSnapshot? Snapshot,
     int EligibleCount,
-    bool IsOperational);
+    bool IsOperational,
+    string? AggregationReason = null);
 
 public interface ICycleProjectionCoordinator
 {

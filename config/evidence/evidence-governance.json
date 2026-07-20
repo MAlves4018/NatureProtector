@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "phaseId": "phase10",
   "title": "Evidence governance, traceability and comparative reporting",
   "phaseDirectories": {
@@ -12,7 +12,8 @@
     "phase7": "07-report-integration",
     "phase8": "08-campaign",
     "phase9": "09-np-score-validation",
-    "phase11": "11-evidence-gap-closure"
+    "phase11": "11-evidence-gap-closure",
+    "phase13": "13-final-execution"
   },
   "summaryCandidates": {
     "phase1": [
@@ -48,6 +49,9 @@
     ],
     "phase11": [
       "phase11-summary.json"
+    ],
+    "phase13": [
+      "phase13-summary.json"
     ]
   },
   "scoring": {

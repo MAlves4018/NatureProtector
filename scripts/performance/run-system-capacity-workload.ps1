@@ -74,7 +74,7 @@ function Get-ProfileSpec {
                 numberOfCycles = 1
                 intervalSeconds = 1
                 repetitions = 1
-                timeoutSeconds = 120
+                timeoutSeconds = 150
                 observationWaitSeconds = 30
                 backlogDrainWaitSeconds = 30
                 purpose = "Short real-pipeline calibration before selecting B0/B1/B2 volumes."
@@ -134,6 +134,9 @@ function Invoke-ApiJson {
 
     $uri = $ApiBaseUrl.TrimEnd("/") + $Path
     $headers = @{}
+    if (-not [string]::IsNullOrWhiteSpace($env:NP_EVIDENCE_RUN_ID)) {
+        $headers["X-NP-Evidence-Run-Id"] = $env:NP_EVIDENCE_RUN_ID
+    }
     if (-not [string]::IsNullOrWhiteSpace($Token)) {
         $headers.Authorization = "Bearer $Token"
     }
@@ -203,10 +206,6 @@ function Invoke-ApiJson {
 }
 
 function Get-AuthToken {
-    if (-not [string]::IsNullOrWhiteSpace($AuthToken)) {
-        return $AuthToken
-    }
-
     if ($UseDevelopmentAdminDefault) {
         if ([string]::IsNullOrWhiteSpace($Username)) {
             $script:Username = "admin"
@@ -217,21 +216,28 @@ function Get-AuthToken {
         }
     }
 
-    if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
-        throw "A bearer token or username/password is required. Set NP_PERFORMANCE_AUTH_TOKEN, NP_PERFORMANCE_USERNAME/NP_PERFORMANCE_PASSWORD, or pass -UseDevelopmentAdminDefault in Development only."
+    if (
+        -not [string]::IsNullOrWhiteSpace($Username) -and
+        -not [string]::IsNullOrWhiteSpace($Password)
+    ) {
+        $login = Invoke-ApiJson `
+            -Method "POST" `
+            -Path "/api/users-roles/login" `
+            -Body @{ usernameOrEmail = $Username; password = $Password } `
+            -ExpectedStatusCodes @(200)
+
+        if ($null -eq $login.Json -or [string]::IsNullOrWhiteSpace([string]$login.Json.token)) {
+            throw "Login succeeded but no bearer token was returned."
+        }
+
+        return [string]$login.Json.token
     }
 
-    $login = Invoke-ApiJson `
-        -Method "POST" `
-        -Path "/api/users-roles/login" `
-        -Body @{ usernameOrEmail = $Username; password = $Password } `
-        -ExpectedStatusCodes @(200)
-
-    if ($null -eq $login.Json -or [string]::IsNullOrWhiteSpace([string]$login.Json.token)) {
-        throw "Login succeeded but no bearer token was returned."
+    if (-not [string]::IsNullOrWhiteSpace($AuthToken)) {
+        return $AuthToken
     }
 
-    return [string]$login.Json.token
+    throw "A bearer token or username/password is required. Set NP_PERFORMANCE_AUTH_TOKEN, NP_PERFORMANCE_USERNAME/NP_PERFORMANCE_PASSWORD, or pass -UseDevelopmentAdminDefault in Development only."
 }
 
 function Get-NatureProtectorProcessSnapshot {

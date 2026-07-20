@@ -743,6 +743,8 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.ToTable("cell_cycle_snapshot", PostgresSchemaNames.Projection);
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.AggregateRiskLevel).HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.AggregationStatus).HasMaxLength(50).HasDefaultValue("Available").IsRequired();
+        builder.Property(entity => entity.AggregationReason).HasMaxLength(100);
         builder.HasIndex(entity => new { entity.SimulationRunId, entity.CycleIndex, entity.GridCellId }).IsUnique();
     }
 
@@ -752,6 +754,8 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.ToTable("area_cycle_snapshot", PostgresSchemaNames.Projection);
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.AggregateRiskLevel).HasMaxLength(50).IsRequired();
+        builder.Property(entity => entity.AggregationStatus).HasMaxLength(50).HasDefaultValue("Available").IsRequired();
+        builder.Property(entity => entity.AggregationReason).HasMaxLength(100);
         builder.Property(entity => entity.AlertOutcome).HasMaxLength(50).IsRequired();
         builder.HasIndex(entity => new { entity.SimulationRunId, entity.CycleIndex, entity.AreaId }).IsUnique();
         builder.HasIndex(entity => new { entity.AreaId, entity.CycleIndex });

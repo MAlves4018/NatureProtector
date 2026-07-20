@@ -19,7 +19,7 @@ export interface SimulationFormState {
   waitForCompletion: boolean;
   collectEvidence: boolean;
   allowParallelRun: boolean;
-  timeoutSeconds: number;
+  waitTimeoutSeconds: number;
 }
 
 export const initialSimulationForm: SimulationFormState = {
@@ -32,10 +32,13 @@ export const initialSimulationForm: SimulationFormState = {
   waitForCompletion: false,
   collectEvidence: false,
   allowParallelRun: false,
-  timeoutSeconds: 60,
+  waitTimeoutSeconds: 300,
 };
 
-export const SIMULATION_FORM_STORAGE_KEY = 'natureprotector.ui.simulationForm.v1';
+export const SIMULATION_FORM_STORAGE_KEY = 'natureprotector.ui.simulationForm.v2';
+const LEGACY_SIMULATION_FORM_STORAGE_KEY = 'natureprotector.ui.simulationForm.v1';
+const SIMULATION_FORM_SCHEMA_VERSION = 2;
+const SYNCHRONOUS_WAIT_MARGIN_SECONDS = 30;
 
 export function isRuntimeLaunchAvailable(mode: string = import.meta.env.MODE) {
   return mode !== 'production';
@@ -202,6 +205,8 @@ export function buildSimulationRequest(
   const legacyDegradationProfile = requestedDegradationProfiles[0];
   const runLabel = form.runLabel.trim();
 
+  const timeoutSeconds = form.waitTimeoutSeconds;
+
   return {
     areaCode,
     scenarioCode,
@@ -212,11 +217,15 @@ export function buildSimulationRequest(
     degradationProfile: legacyDegradationProfile,
     collectEvidence: form.collectEvidence,
     waitForCompletion: form.waitForCompletion,
-    timeoutSeconds: form.timeoutSeconds,
+    timeoutSeconds: timeoutSeconds,
     allowParallelRun: form.allowParallelRun,
     runLabel: runLabel || null,
     degradationProfiles: requestedDegradationProfiles,
   };
+}
+
+export function minimumSynchronousWaitSeconds(form: SimulationFormState) {
+  return form.numberOfCycles * form.intervalSeconds + SYNCHRONOUS_WAIT_MARGIN_SECONDS;
 }
 
 export function toggleDegradationProfile(
@@ -256,26 +265,55 @@ export function hydrateSimulationForm(storage: Pick<Storage, 'getItem'> | null =
   }
 
   try {
-    const rawValue = storage.getItem(SIMULATION_FORM_STORAGE_KEY);
-    if (!rawValue) {
+    const currentRawValue = storage.getItem(SIMULATION_FORM_STORAGE_KEY);
+    if (currentRawValue) {
+      const value = JSON.parse(currentRawValue) as Partial<SimulationFormState> & {
+        schemaVersion?: unknown;
+        degradationProfile?: unknown;
+      };
+      const persistedProfiles =
+        'degradationProfiles' in value ? value.degradationProfiles : (value.degradationProfile ?? []);
+
+      return {
+        sensorCount: positiveNumberOrDefault(value.sensorCount, initialSimulationForm.sensorCount),
+        numberOfCycles: positiveNumberOrDefault(value.numberOfCycles, initialSimulationForm.numberOfCycles),
+        intervalSeconds: positiveNumberOrDefault(value.intervalSeconds, initialSimulationForm.intervalSeconds),
+        seed: stringOrDefault(value.seed, initialSimulationForm.seed),
+        degradationProfiles: normalizeDegradationProfiles(persistedProfiles),
+        runLabel: stringOrDefault(value.runLabel, initialSimulationForm.runLabel),
+        waitForCompletion: booleanOrDefault(value.waitForCompletion, initialSimulationForm.waitForCompletion),
+        collectEvidence: booleanOrDefault(value.collectEvidence, initialSimulationForm.collectEvidence),
+        allowParallelRun: booleanOrDefault(value.allowParallelRun, initialSimulationForm.allowParallelRun),
+        waitTimeoutSeconds: positiveNumberOrDefault(value.waitTimeoutSeconds, initialSimulationForm.waitTimeoutSeconds),
+      };
+    }
+
+    const legacyRawValue = storage.getItem(LEGACY_SIMULATION_FORM_STORAGE_KEY);
+    if (!legacyRawValue) {
       return initialSimulationForm;
     }
 
-    const value = JSON.parse(rawValue) as Partial<SimulationFormState> & { degradationProfile?: unknown };
+    const legacy = JSON.parse(legacyRawValue) as Partial<SimulationFormState> & {
+      timeoutSeconds?: unknown;
+      degradationProfile?: unknown;
+    };
     const persistedProfiles =
-      'degradationProfiles' in value ? value.degradationProfiles : (value.degradationProfile ?? []);
+      'degradationProfiles' in legacy ? legacy.degradationProfiles : (legacy.degradationProfile ?? []);
 
     return {
-      sensorCount: positiveNumberOrDefault(value.sensorCount, initialSimulationForm.sensorCount),
-      numberOfCycles: positiveNumberOrDefault(value.numberOfCycles, initialSimulationForm.numberOfCycles),
-      intervalSeconds: positiveNumberOrDefault(value.intervalSeconds, initialSimulationForm.intervalSeconds),
-      seed: stringOrDefault(value.seed, initialSimulationForm.seed),
+      sensorCount: positiveNumberOrDefault(legacy.sensorCount, initialSimulationForm.sensorCount),
+      numberOfCycles: positiveNumberOrDefault(legacy.numberOfCycles, initialSimulationForm.numberOfCycles),
+      intervalSeconds: positiveNumberOrDefault(legacy.intervalSeconds, initialSimulationForm.intervalSeconds),
+      seed: stringOrDefault(legacy.seed, initialSimulationForm.seed),
       degradationProfiles: normalizeDegradationProfiles(persistedProfiles),
-      runLabel: stringOrDefault(value.runLabel, initialSimulationForm.runLabel),
-      waitForCompletion: booleanOrDefault(value.waitForCompletion, initialSimulationForm.waitForCompletion),
-      collectEvidence: booleanOrDefault(value.collectEvidence, initialSimulationForm.collectEvidence),
-      allowParallelRun: booleanOrDefault(value.allowParallelRun, initialSimulationForm.allowParallelRun),
-      timeoutSeconds: positiveNumberOrDefault(value.timeoutSeconds, initialSimulationForm.timeoutSeconds),
+      runLabel: stringOrDefault(legacy.runLabel, initialSimulationForm.runLabel),
+      waitForCompletion: false,
+      collectEvidence: booleanOrDefault(legacy.collectEvidence, initialSimulationForm.collectEvidence),
+      allowParallelRun: booleanOrDefault(legacy.allowParallelRun, initialSimulationForm.allowParallelRun),
+      waitTimeoutSeconds: Math.max(
+        initialSimulationForm.waitTimeoutSeconds,
+        positiveNumberOrDefault(legacy.timeoutSeconds, initialSimulationForm.waitTimeoutSeconds),
+      ),
     };
   } catch {
     return initialSimulationForm;
@@ -294,6 +332,7 @@ export function persistSimulationForm(
     storage.setItem(
       SIMULATION_FORM_STORAGE_KEY,
       JSON.stringify({
+        schemaVersion: SIMULATION_FORM_SCHEMA_VERSION,
         sensorCount: form.sensorCount,
         numberOfCycles: form.numberOfCycles,
         intervalSeconds: form.intervalSeconds,
@@ -303,11 +342,12 @@ export function persistSimulationForm(
         waitForCompletion: form.waitForCompletion,
         collectEvidence: form.collectEvidence,
         allowParallelRun: form.allowParallelRun,
-        timeoutSeconds: form.timeoutSeconds,
+        waitTimeoutSeconds: form.waitTimeoutSeconds,
       }),
     );
   } catch {
     storage.removeItem(SIMULATION_FORM_STORAGE_KEY);
+    storage.removeItem(LEGACY_SIMULATION_FORM_STORAGE_KEY);
   }
 }
 

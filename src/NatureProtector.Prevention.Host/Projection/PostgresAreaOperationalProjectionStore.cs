@@ -269,6 +269,57 @@ public sealed class PostgresAreaOperationalProjectionStore(
         throw new InvalidOperationException("Area operational projection retry loop exited unexpectedly.");
     }
 
+
+    /// <summary>
+    /// Marks the current operational projection as unavailable without evaluating
+    /// alert transitions from a fabricated numeric score.
+    /// </summary>
+    public async Task MarkUnavailableAsync(
+        Guid areaId,
+        DateTimeOffset snapshotTimestamp,
+        string reason,
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null,
+        int? cycleIndex = null)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var existingState = await dbContext.AreaOperationalStates
+            .SingleOrDefaultAsync(entity => entity.AreaId == areaId, cancellationToken);
+
+        if (existingState is null)
+        {
+            logger.LogInformation(
+                "Operational projection unavailable and no previous state exists | AreaId={AreaId} | Reason={Reason}",
+                areaId,
+                reason);
+            return;
+        }
+
+        if (cycleIndex.HasValue && existingState.CycleIndex > cycleIndex.Value)
+        {
+            return;
+        }
+
+        existingState.SnapshotTimestamp = snapshotTimestamp;
+        existingState.SimulationRunId = simulationRunId;
+        existingState.CycleIndex = cycleIndex;
+        existingState.AggregateRiskLevel = RiskLevel.Unknown.ToString();
+        existingState.Severity = Severity.Info.ToString();
+        existingState.CoverageStatus = OperationalProjectionStatus.Blocked;
+        existingState.FreshnessStatus = OperationalProjectionStatus.Unavailable;
+        existingState.CarryForwardStatus = OperationalProjectionStatus.NotAvailable;
+        existingState.Summary = Truncate(reason, 2000);
+        existingState.AssessmentCount = 0;
+        existingState.PendingAlertState = V1AlertState.None.ToString();
+        existingState.PendingAlertCycles = 0;
+        existingState.UpdatedAt = DateTimeOffset.UtcNow;
+
+        // Deliberately preserve the previous numeric score internally for alert
+        // hysteresis memory. The API hides it while AssessmentCount is zero.
+        // Do not open, update or resolve AlertStateRecord in this path.
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Constrói a mensagem curta do alerta operacional agregado.
     /// </summary>

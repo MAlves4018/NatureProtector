@@ -135,6 +135,48 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         }
     }
 
+
+    public async Task MarkUnavailableAsync(
+        Guid areaId,
+        DateTimeOffset snapshotTimestamp,
+        string reason,
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null,
+        int? cycleIndex = null)
+    {
+        await _gate.WaitAsync(cancellationToken);
+
+        try
+        {
+            if (!_states.TryGetValue(areaId, out var existingState))
+            {
+                return;
+            }
+
+            _states[areaId] = existingState with
+            {
+                SimulationRunId = simulationRunId,
+                SnapshotTimestamp = snapshotTimestamp,
+                AggregateRiskLevel = RiskLevel.Unknown.ToString(),
+                Severity = Severity.Info.ToString(),
+                CoverageStatus = OperationalProjectionStatus.Blocked,
+                FreshnessStatus = OperationalProjectionStatus.Unavailable,
+                CarryForwardStatus = OperationalProjectionStatus.NotAvailable,
+                Summary = reason,
+                AssessmentCount = 0,
+                PendingAlertState = V1AlertState.None.ToString(),
+                PendingAlertCycles = 0,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+
+            // Absence of eligible data must not resolve an existing alert.
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private static string BuildAlertMessage(AreaRiskSnapshot snapshot, V1AlertState state)
         => $"AlertState={state}; Area risk is {snapshot.AggregateRiskLevel} with adjusted score {snapshot.AggregateRiskScore:F2}. {CandidateParameterSetV1.Version} (non-official).";
 

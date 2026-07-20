@@ -17,4 +17,12 @@ public interface IAreaOperationalProjectionStore
         CancellationToken cancellationToken,
         Guid? simulationRunId = null,
         int? cycleIndex = null);
+
+    Task MarkUnavailableAsync(
+        Guid areaId,
+        DateTimeOffset snapshotTimestamp,
+        string reason,
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null,
+        int? cycleIndex = null);
 }

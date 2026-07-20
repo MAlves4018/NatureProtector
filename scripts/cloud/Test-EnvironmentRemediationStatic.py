@@ -595,9 +595,9 @@ check(
 )
 check(
     (
-        "NP_BOOTSTRAP_ADMIN_PASSWORD="
-        "${BootstrapAdminPasswordSecret}:"
-        "${BootstrapAdminPasswordVersion}"
+                "NP_BOOTSTRAP_ADMIN_PASS"
+                "WORD=${BootstrapAdminPasswordSecret}:"
+                "${BootstrapAdminPasswordVersion}"
     )
     in deploy_runtime_jobs,
     "postgres-bootstrap-cloud-job-admin-secret-mapping-missing",
