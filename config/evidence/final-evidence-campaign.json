@@ -17,24 +17,24 @@
           "id": "nominal-short",
           "kind": "api-run",
           "areaCode": "proenca-a-nova",
-          "scenarioCode": "scenario_a",
-          "sensorCount": 2,
-          "numberOfCycles": 4,
-          "intervalSeconds": 10,
-          "seed": 20260714,
+          "scenarioCode": "scenario_b",
+          "sensorCount": 6,
+          "numberOfCycles": 5,
+          "intervalSeconds": 5,
+          "seed": 12345,
           "degradationProfiles": [],
           "collectEvidence": true,
-          "timeoutSeconds": 120
+          "timeoutSeconds": 180
         },
         {
           "id": "nominal-long",
           "kind": "api-run",
           "areaCode": "proenca-a-nova",
-          "scenarioCode": "scenario_a",
-          "sensorCount": 2,
+          "scenarioCode": "scenario_b",
+          "sensorCount": 6,
           "numberOfCycles": 6,
           "intervalSeconds": 60,
-          "seed": 20260714,
+          "seed": 12345,
           "degradationProfiles": [],
           "collectEvidence": true,
           "timeoutSeconds": 600
@@ -60,7 +60,7 @@
           "sensorCount": 2,
           "numberOfCycles": 4,
           "intervalSeconds": 10,
-          "seed": 20260714,
+          "seed": 12345,
           "degradationProfiles": [
             "missing"
           ],
@@ -75,7 +75,7 @@
           "sensorCount": 2,
           "numberOfCycles": 4,
           "intervalSeconds": 10,
-          "seed": 20260714,
+          "seed": 12345,
           "degradationProfiles": [
             "noise",
             "drift"
@@ -105,7 +105,7 @@
           "sensorCount": 2,
           "numberOfCycles": 6,
           "intervalSeconds": 10,
-          "seed": 20260715,
+          "seed": 12345,
           "degradationProfiles": [
             "missing",
             "out-of-order",
@@ -203,6 +203,8 @@
           "command": [
             "pwsh",
             "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
             "-File",
             "scripts/performance/run-system-capacity-workload.ps1"
           ],

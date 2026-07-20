@@ -14,6 +14,7 @@ public static class OperationalProjectionStatus
     public const string Fresh = "Fresh";
     public const string Stale = "Stale";
     public const string Expired = "Expired";
+    public const string Unavailable = "Unavailable";
 
     public const string Current = "Current";
     public const string CarriedForward = "CarriedForward";

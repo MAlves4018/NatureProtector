@@ -27,6 +27,7 @@ New manual entrypoints must be documented. Helpers imported by other scripts sho
 - `scripts/evidence/collect-evidence-intelligence.sh`: wrapper manual para recolher o inventário de claims e artefactos do relatório.
 - `scripts/evidence/Generate-DeepEngineeringExploration20260701.ps1`: entrypoint manual histórico para regenerar o pacote documental de exploração de engenharia de 2026-07-01. Mantém-se documentado como ferramenta de reprodução de evidência, não como fluxo CI ou deployment.
 - `scripts/evidence/run-final-evidence-campaign.py`: entrypoint manual para agregar a campanha final de evidência local; não substitui provas runtime/live ausentes.
+- `scripts/evidence/Invoke-NP-FinalEvidence-With-Point5.ps1`: wrapper manual para executar a campanha final de evidência incluindo o pacote Point5; escreve artefactos locais e não executa produção/cloud.
 - `scripts/evidence/verify-final-evidence-campaign.py`: verificador manual do pacote de campanha final; falha evidência vazia ou sem identidade explícita.
 - `scripts/runtime/verify-long-run-proof.py`: verificador manual de matrizes de long-run proof; classifica resultados e não executa produção.
 - `scripts/autoscaling/analyze-capacity.py`: analisador manual de capacidade/autoscaling a partir de amostras locais ou recolhidas.

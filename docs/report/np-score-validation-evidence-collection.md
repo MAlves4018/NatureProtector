@@ -75,11 +75,11 @@ Os perfis `static`, `quality` e `full` incluem a Fase 9. No perfil `full`, a Fas
 4. **Agregação de área** — `0,70 × p80 + 0,30 × máximo`, usando nearest rank, como em `AreaRiskSnapshot.cs`.
 5. **Definição de eventos** — são usadas datas de início dos tipos históricos autorizados; ocorrências múltiplas na mesma data são colapsadas para o label binário.
 6. **Controlos sazonais** — população maio–outubro e controlos emparelhados pelo mês, excluindo a janela temporal configurada em redor dos eventos.
-7. **Comparação de modelos** — NP_score, score meteorológico simples, FWI, KBDI, índice combinado e variantes de ablação.
-8. **Incerteza** — intervalos bootstrap estratificados para ROC-AUC e average precision.
+7. **Comparação de modelos** — NP_score, score meteorológico simples retrospetivo, score meteorológico ajustado apenas em 2017–2022, referência de índice de fogo e variantes de ablação. `source_datasets` é apenas proveniência e nunca é usado como split.
+8. **Incerteza** — intervalos bootstrap por data de calendário para ROC-AUC e average precision, com seed e número de iterações preservados.
 9. **Limiar operacional** — sensibilidade, especificidade, precisão, dias positivos e falsos alertas por 30 dias.
 10. **Estabilidade** — variações dos pesos, blend de FWI e referência de normalização.
-11. **Validação temporal** — 2017–2022, holdout 2023–2025 e cortes anuais.
+11. **Validação temporal** — exploração 2017–2022, holdout 2023–2024 e cortes anuais; 2025 fica fora porque a cobertura de eventos termina em 2024.
 12. **Importação runtime** — descoberta conservadora de registos com cenário e métricas conhecidas; nenhuma conclusão é promovida quando os artefactos não existem.
 
 ## Outputs
@@ -88,6 +88,10 @@ Os perfis `static`, `quality` e `full` incluem a Fase 9. No perfil `full`, a Fas
 |---|---|
 | `formula-contract.json` | Comparação entre configuração e constantes C#. |
 | `daily-score-dataset.csv` | Dataset diário reconstruído, componentes, baselines e labels. |
+| `predictions.csv` | Previsões reproduzíveis por data, label, split explícito e proveniência. |
+| `reference-model-spec.json` | Papéis e colunas explícitas dos modelos de referência. |
+| `metrics.json` | População, prevalência, métricas sazonais/holdout e protocolo bootstrap. |
+| `bootstrap-summary.csv` | Intervalos bootstrap por modelo e métrica. |
 | `territorial-components.csv` | Componentes territoriais por célula e limitações. |
 | `model-comparison.csv` | ROC-AUC, AP, IC95%, distribuições e efeito. |
 | `matched-controls.csv` | Relação determinística evento–controlo. |

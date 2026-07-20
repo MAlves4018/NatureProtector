@@ -305,6 +305,43 @@ public sealed class PostgresAreaOperationalProjectionStoreTests
     }
 
     [Fact]
+    public async Task MarkUnavailableAsync_PreservesOpenAlertWithoutFabricatingZeroScore()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var store = CreateStore(scope);
+        var openedAt = new DateTimeOffset(2026, 7, 19, 21, 58, 0, TimeSpan.Zero);
+        var unavailableAt = openedAt.AddMinutes(2);
+
+        await store.SaveAsync(
+            seed.AreaId,
+            new AreaRiskSnapshot(Guid.NewGuid(), openedAt, 0.82, "Alarm open"),
+            1,
+            CancellationToken.None);
+        await store.SaveAsync(
+            seed.AreaId,
+            new AreaRiskSnapshot(Guid.NewGuid(), openedAt.AddMinutes(1), 0.82, "Alarm persists"),
+            1,
+            CancellationToken.None);
+        await store.MarkUnavailableAsync(
+            seed.AreaId,
+            unavailableAt,
+            "NoEligibleAssessments",
+            CancellationToken.None);
+
+        await using var dbContext = scope.CreateDbContext();
+        var state = Assert.Single(dbContext.AreaOperationalStates);
+        Assert.Equal(0, state.AssessmentCount);
+        Assert.Equal(OperationalProjectionStatus.Blocked, state.CoverageStatus);
+        Assert.Equal(OperationalProjectionStatus.Unavailable, state.FreshnessStatus);
+
+        var alert = Assert.Single(dbContext.AlertStates);
+        Assert.Equal(OperationalAlertStatus.Open.ToString(), alert.Status);
+        Assert.Null(alert.ResolvedAt);
+        Assert.Contains("AlertState=Alarm", alert.Message);
+    }
+
+    [Fact]
     public async Task SaveAsync_ConcurrentUniqueViolation_RetriesAsUpdate()
     {
         var databasePath = Path.Combine(

@@ -630,7 +630,7 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
                 EligibilitySummary: [new RuntimeStatusCountResponse("CompleteEligible", 70)],
                 AreaSnapshot: new RuntimeAreaSnapshotAuditResponse(
                     _areaOperationalState.SnapshotTimestamp,
-                    _areaOperationalState.AggregateRiskScore,
+                    _areaOperationalState.AggregateRiskScore?? throw new InvalidOperationException("The test area snapshot must contain an aggregate risk score."),
                     _areaOperationalState.AggregateRiskLevel,
                     _areaOperationalState.AssessmentCount,
                     _areaOperationalState.Summary),

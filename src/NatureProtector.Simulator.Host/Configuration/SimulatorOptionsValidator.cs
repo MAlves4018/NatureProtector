@@ -113,6 +113,11 @@ public sealed class SimulatorOptionsValidator : IValidateOptions<SimulatorOption
             failures.Add("Simulator:RunOverrides:IntervalSeconds must be greater than zero when provided.");
         }
 
+        if (options.LagDelaySeconds is < 0 or > 3600)
+        {
+            failures.Add("Simulator:LagDelaySeconds must be between 0 and 3600.");
+        }
+
         return failures.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);

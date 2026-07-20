@@ -8,6 +8,8 @@ riderModule.iml
 /.nuget/packages/
 .tmp_pypdf/
 .venv/
+/.np_evidence_python_win/
+/.np-*-backup/
 
 /data/external/**
 !/data/external/**/.gitkeep
@@ -22,6 +24,8 @@ riderModule.iml
 /coveragereport_core/
 /coveragereport_backend/
 /artifacts/
+/src/**/artifacts/
+/webUI/artifacts/
 /.config/AppData/
 /.config/dotnet/
 *.diag.log
@@ -142,6 +146,7 @@ webUI/npm-audit.exit-code.txt
 webUI/npm-audit.policy.json
 
 /data/runtime/influx/admin-token.json
+/config/evidence/*.before-*
 
 # Local build/test output
 .testbin/

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import tempfile
 import unittest
 from datetime import date
@@ -7,7 +8,9 @@ from pathlib import Path
 
 from _loader import load
 
-MODULE = load("scripts/evidence/np_score_validation.py", "np_score_validation_core")
+MODULE = load("scripts/evidence/np_score_validation.py", "np_score_validation")
+COLLECTOR = load("scripts/evidence/collect-np-score-validation.py", "np_score_validation_collector")
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class NpScoreValidationTests(unittest.TestCase):
@@ -52,6 +55,52 @@ class NpScoreValidationTests(unittest.TestCase):
         config = {"formulaContract": {"version": "V1", "constants": {"Weight": 0.5}}}
         checks = MODULE.validate_formula_contract(config, {"Version": "V1", "Weight": 0.6})
         self.assertFalse(all(item["match"] for item in checks))
+
+    def test_canonical_population_and_holdout_are_derived_from_eligible_dates(self):
+        with (ROOT / "data/baseline/areas/proenca-a-nova/weather_daily_reference.csv").open(
+            encoding="utf-8", newline=""
+        ) as handle:
+            weather = list(csv.DictReader(handle))
+        with (ROOT / "data/baseline/areas/proenca-a-nova/fire_history.csv").open(
+            encoding="utf-8", newline=""
+        ) as handle:
+            fires = list(csv.DictReader(handle))
+
+        eligible_kinds = {"icnf_burned_area_intersection", "large_fire_progression"}
+        event_dates = {
+            MODULE.as_date(row["start_date"])
+            for row in fires
+            if row["history_kind"] in eligible_kinds
+            and MODULE.as_date(row["start_date"]).year <= 2024
+        }
+        seasonal_dates = [
+            MODULE.as_date(row["date_local"])
+            for row in weather
+            if MODULE.as_date(row["date_local"]).year <= 2024
+            and MODULE.as_date(row["date_local"]).month in {5, 6, 7, 8, 9, 10}
+        ]
+        holdout_dates = [day for day in seasonal_dates if day.year in {2023, 2024}]
+
+        self.assertEqual(1472, len(seasonal_dates))
+        self.assertEqual(23, sum(day in event_dates for day in seasonal_dates))
+        self.assertEqual(368, len(holdout_dates))
+        self.assertEqual(7, sum(day in event_dates for day in holdout_dates))
+        self.assertNotEqual((2922, 25), (len(seasonal_dates), sum(day in event_dates for day in seasonal_dates)))
+
+    def test_split_is_temporal_and_provenance_is_not_a_split(self):
+        self.assertEqual("exploration_2017_2022", COLLECTOR.temporal_split(date(2022, 12, 31), 2017, 2022, 2024))
+        self.assertEqual("holdout_2023_2024", COLLECTOR.temporal_split(date(2023, 1, 1), 2017, 2022, 2024))
+        self.assertNotIn("source_datasets", {"split": "holdout_2023_2024"})
+
+    def test_weather_and_fire_index_reference_models_have_distinct_roles(self):
+        specs = COLLECTOR.PRIMARY_MODEL_SPECS
+        self.assertEqual("retrospective_weather_baseline", specs["simple_weather_risk_score"]["role"])
+        self.assertEqual("temporally_fitted_weather_baseline", specs["simple_weather_trainfit_score"]["role"])
+        self.assertEqual("retrospective_fire_index_reference", specs["fire_index_reference_score"]["role"])
+        self.assertNotEqual(
+            specs["simple_weather_risk_score"]["role"],
+            specs["fire_index_reference_score"]["role"],
+        )
 
 
 if __name__ == "__main__":

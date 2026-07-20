@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-SCRIPT_VERSION = "1.2.0"
+SCRIPT_VERSION = "1.3.0"
 RUN_RE = re.compile(r"^\d{8}T\d{6}Z(?:[-_A-Za-z0-9]+)?$")
 SUCCESS_STATUSES = {
     "PASS",
@@ -119,8 +119,12 @@ def artifact_role(path: Path) -> str:
         return "latest_pointer"
     if "claims" in parts or "claim" in name:
         return "claim_register"
-    if "figures" in parts or suffix in {".svg", ".png", ".jpg", ".jpeg", ".webp"}:
-        return "figure"
+    if suffix in {".svg", ".png", ".jpg", ".jpeg", ".webp"}:
+        if {"coverage", "lcov-report", "assets"} & parts:
+            return "other"
+        if {"figures", "diagrams", "screenshots", "report-ready"} & parts:
+            return "figure"
+        return "other"
     if "tables" in parts or suffix == ".tex":
         return "table"
     if "logs" in parts or suffix in {".log"} or name.endswith(("stdout.txt", "stderr.txt")):
@@ -399,6 +403,12 @@ def main() -> int:
     artifact_rows: list[dict[str, Any]] = []
     for path in sorted(p for p in baseline_root.rglob("*") if p.is_file() and not (output == p or output in p.parents)):
         relative = path.relative_to(baseline_root)
+        artifact_run_id = run_id_for(relative)
+        artifact_phase = phase_for(relative, phase_dirs)
+        if artifact_run_id and artifact_run_id != args.run_id:
+            continue
+        if artifact_phase == "phase1":
+            artifact_run_id = ""
         integrity = integrity_coverage.get(relative.as_posix(), {})
         mime, _ = mimetypes.guess_type(path.name)
         artifact_rows.append({
@@ -456,8 +466,8 @@ def main() -> int:
             "manifestedCount": sum(1 for row in phase_artifacts if row["integrityStatus"] == "VERIFIED"),
         })
 
-    claim_register_candidates = sorted(baseline_root.glob("07-report-integration/*/claims/claim-evidence-register.json"))
-    claim_register = claim_register_candidates[-1] if claim_register_candidates else None
+    current_claim_register = baseline_root / "07-report-integration" / args.run_id / "claims" / "claim-evidence-register.json"
+    claim_register = current_claim_register if current_claim_register.is_file() else None
     claims = read_json(claim_register, []) if claim_register else []
     claim_rows: list[dict[str, Any]] = []
     allowed_classes = set(config.get("claimRules", {}).get("allowedEvidenceClasses", []))
@@ -537,8 +547,8 @@ def main() -> int:
         })
     figure_rows.sort(key=lambda row: (row["phase"], row["figureBase"]))
 
-    report_asset_candidates = sorted(baseline_root.glob("07-report-integration/*/report-ready/report-asset-manifest.json"))
-    report_assets_path = report_asset_candidates[-1] if report_asset_candidates else None
+    current_report_assets = baseline_root / "07-report-integration" / args.run_id / "report-ready" / "report-asset-manifest.json"
+    report_assets_path = current_report_assets if current_report_assets.is_file() else None
     report_assets = read_json(report_assets_path, []) if report_assets_path else []
     if isinstance(report_assets, dict):
         report_assets = report_assets.get("assets", report_assets.get("items", []))
@@ -707,8 +717,10 @@ def main() -> int:
     write_json(output / "phase10-summary.json", scorecard)
     write_csv(output / "evidence-quality-scorecard.csv", score_rows, ["dimension", "score", "weight"])
 
-    tables = output / "report-ready" / "tables"
-    figures = output / "report-ready" / "figures"
+    campaign_mode = str((campaign or {}).get("mode", "UNKNOWN")).upper()
+    presentation_root = output / ("report-ready" if campaign_mode == "EXECUTE" else "templates")
+    tables = presentation_root / "tables"
+    figures = presentation_root / "figures"
     tables.mkdir(parents=True, exist_ok=True)
     figures.mkdir(parents=True, exist_ok=True)
     (tables / "evidence-quality-scorecard.md").write_text(md_table(score_rows, [("dimension", "Dimensão"), ("score", "Pontuação"), ("weight", "Peso")]), encoding="utf-8")
@@ -723,9 +735,16 @@ def main() -> int:
     build_phase_svg(phase_svg, phase_rows)
     create_png_fallback(quality_svg, quality_svg.with_suffix(".png"))
     create_png_fallback(phase_svg, phase_svg.with_suffix(".png"))
-    claim_dot = figures / "claim-lineage.dot"
-    build_claim_dot(claim_dot, claim_rows)
-    rendered = render_dot(claim_dot)
+    rendered: list[str] = []
+    if claim_rows:
+        claim_dot = figures / "claim-lineage.dot"
+        build_claim_dot(claim_dot, claim_rows)
+        rendered = render_dot(claim_dot)
+    else:
+        (tables / "claim-lineage-not-generated.md").write_text(
+            "# Claim lineage not generated\n\nNo current-run claim register was available. No placeholder PNG/SVG was produced.\n",
+            encoding="utf-8",
+        )
 
     summary_md = [
         "# Fase 10 — governação e inteligência da evidência",

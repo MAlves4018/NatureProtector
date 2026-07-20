@@ -5,12 +5,14 @@ import {
   buildSimulationRequest,
   hydrateSimulationForm,
   initialSimulationForm,
+  minimumSynchronousWaitSeconds,
   normalizeDegradationProfiles,
   persistSimulationForm,
   toggleDegradationProfile,
 } from './SimulationContext';
 import { executionStatusState } from '../truthfulPresentation';
 
+const LEGACY_SIMULATION_FORM_STORAGE_KEY = 'natureprotector.ui.simulationForm.v1';
 const CANONICAL_DEGRADATION_PROFILES = [
   'none',
   'missing-readings',
@@ -86,9 +88,10 @@ describe('simulation context degradation profiles', () => {
     expect(normalizeDegradationProfiles(['none', 'missing-readings', 'noise'])).toEqual(['missing-readings', 'noise']);
   });
 
-  it('hydrates valid persisted simulation form values', () => {
+  it('hydrates valid v2 persisted simulation form values', () => {
     const storage = memoryStorage({
       [SIMULATION_FORM_STORAGE_KEY]: JSON.stringify({
+        schemaVersion: 2,
         sensorCount: 6,
         numberOfCycles: 5,
         intervalSeconds: 5,
@@ -98,7 +101,7 @@ describe('simulation context degradation profiles', () => {
         waitForCompletion: true,
         collectEvidence: true,
         allowParallelRun: true,
-        timeoutSeconds: 180,
+        waitTimeoutSeconds: 180,
       }),
     });
 
@@ -112,13 +115,36 @@ describe('simulation context degradation profiles', () => {
       waitForCompletion: true,
       collectEvidence: true,
       allowParallelRun: true,
-      timeoutSeconds: 180,
+      waitTimeoutSeconds: 180,
+    });
+  });
+
+  it('migrates v1 without restoring synchronous waiting or a 60 second timeout', () => {
+    const storage = memoryStorage({
+      [LEGACY_SIMULATION_FORM_STORAGE_KEY]: JSON.stringify({
+        sensorCount: 6,
+        numberOfCycles: 5,
+        intervalSeconds: 5,
+        seed: '12345',
+        degradationProfiles: ['missing-readings'],
+        runLabel: 'legacy-run',
+        waitForCompletion: true,
+        collectEvidence: true,
+        allowParallelRun: false,
+        timeoutSeconds: 60,
+      }),
+    });
+
+    expect(hydrateSimulationForm(storage)).toMatchObject({
+      waitForCompletion: false,
+      waitTimeoutSeconds: 300,
     });
   });
 
   it('ignores invalid persisted form values and drops non-canonical profiles', () => {
     const storage = memoryStorage({
       [SIMULATION_FORM_STORAGE_KEY]: JSON.stringify({
+        schemaVersion: 2,
         sensorCount: -1,
         numberOfCycles: 'bad',
         intervalSeconds: Number.NaN,
@@ -128,7 +154,7 @@ describe('simulation context degradation profiles', () => {
         waitForCompletion: 'true',
         collectEvidence: false,
         allowParallelRun: true,
-        timeoutSeconds: 0,
+        waitTimeoutSeconds: 0,
       }),
     });
 
@@ -148,7 +174,7 @@ describe('simulation context degradation profiles', () => {
     expect(hydrateSimulationForm(storage)).toEqual(initialSimulationForm);
   });
 
-  it('persists only the safe simulation form fields', () => {
+  it('persists only the safe v2 simulation form fields', () => {
     const storage = memoryStorage();
 
     persistSimulationForm(
@@ -161,6 +187,7 @@ describe('simulation context degradation profiles', () => {
     );
 
     expect(JSON.parse(storage.getItem(SIMULATION_FORM_STORAGE_KEY)!)).toEqual({
+      schemaVersion: 2,
       sensorCount: 4,
       numberOfCycles: 3,
       intervalSeconds: 60,
@@ -170,8 +197,19 @@ describe('simulation context degradation profiles', () => {
       waitForCompletion: false,
       collectEvidence: false,
       allowParallelRun: false,
-      timeoutSeconds: 60,
+      waitTimeoutSeconds: 300,
     });
+  });
+
+  it('sends the visible synchronous wait limit as timeoutSeconds', () => {
+    const request = buildSimulationRequest('proenca-a-nova', 'scenario_b', {
+      ...initialSimulationForm,
+      waitForCompletion: true,
+      waitTimeoutSeconds: 420,
+    });
+
+    expect(request.timeoutSeconds).toBe(420);
+    expect(minimumSynchronousWaitSeconds(initialSimulationForm)).toBe(210);
   });
 });
 

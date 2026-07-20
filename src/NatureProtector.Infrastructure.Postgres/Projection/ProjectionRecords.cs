@@ -220,8 +220,10 @@ public sealed class CellCycleSnapshotRecord
     public int MissingCount { get; set; }
     public int BlockedCount { get; set; }
     public int EligibleCount { get; set; }
-    public double AggregateRiskScore { get; set; }
+    public double? AggregateRiskScore { get; set; }
     public string AggregateRiskLevel { get; set; } = "Unknown";
+    public string AggregationStatus { get; set; } = "Available";
+    public string? AggregationReason { get; set; }
     public DateTimeOffset SnapshotTimestamp { get; set; }
 }
 
@@ -237,8 +239,10 @@ public sealed class AreaCycleSnapshotRecord
     public int MissingCount { get; set; }
     public int BlockedCount { get; set; }
     public int EligibleCount { get; set; }
-    public double AggregateRiskScore { get; set; }
+    public double? AggregateRiskScore { get; set; }
     public string AggregateRiskLevel { get; set; } = "Unknown";
+    public string AggregationStatus { get; set; } = "Available";
+    public string? AggregationReason { get; set; }
     public DateTimeOffset SnapshotTimestamp { get; set; }
     public DateTimeOffset AlertEvaluatedAt { get; set; }
     public string AlertOutcome { get; set; } = "None";

@@ -4,7 +4,8 @@ param(
     [string]$PostgresContainer = "np-postgres",
     [string]$PostgresUser = "np",
     [string]$Database = "natureprotector",
-    [int]$PollIntervalSeconds = 3
+    [int]$PollIntervalSeconds = 3,
+    [string]$OutputRoot = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -364,7 +365,14 @@ if ([string]::IsNullOrWhiteSpace($runLabel)) { $runLabel = $scenarioCode }
 $runLabel = New-SafeLabel -RawLabel $runLabel
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$runOutputDir = Join-Path $repoRoot "docs/evidence/runs/$timestamp-$scenarioCode-$runLabel"
+$resolvedOutputRoot = if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
+    Join-Path $repoRoot "docs/evidence/runs"
+}
+else {
+    if ([System.IO.Path]::IsPathRooted($OutputRoot)) { $OutputRoot } else { Join-Path $repoRoot $OutputRoot }
+}
+New-Item -ItemType Directory -Force -Path $resolvedOutputRoot | Out-Null
+$runOutputDir = Join-Path $resolvedOutputRoot "$timestamp-$scenarioCode-$runLabel"
 New-Item -ItemType Directory -Path $runOutputDir -Force | Out-Null
 
 $stdoutPath = Join-Path $runOutputDir "simulator-host.stdout.log"

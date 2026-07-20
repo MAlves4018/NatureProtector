@@ -143,7 +143,7 @@ public sealed class PostgresCycleProjectionCoordinatorTests
 
         await using var dbContext = scope.CreateDbContext();
         var snapshot = Assert.Single(dbContext.AreaCycleSnapshots);
-        return (snapshot.AggregateRiskScore, snapshot.ObservedCount, dbContext.AreaCycleSnapshots.Count(),
+        return (snapshot.AggregateRiskScore!.Value, snapshot.ObservedCount, dbContext.AreaCycleSnapshots.Count(),
             dbContext.AreaCycleSnapshots.Count(entity => entity.AlertEvaluatedAt != default));
     }
 

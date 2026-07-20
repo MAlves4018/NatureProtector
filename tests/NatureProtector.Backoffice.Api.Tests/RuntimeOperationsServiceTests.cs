@@ -409,6 +409,65 @@ public sealed class RuntimeOperationsServiceTests
     }
 
     [Fact]
+    public async Task RuntimeOperation_TemporalSettlement_DoesNotCompleteNominalRunBeforeExpectedInboxCoverage()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        var operation = await SeedOperationAsync(scope, deadline: DateTimeOffset.UtcNow.AddMinutes(5));
+        await AddRunInboxEventsAsync(scope, 4);
+        await AddFinalizedCycleSettlementsAsync(scope);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.GetRuntimeOperationAsync(operation.OperationId, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("PipelineSettling", result.State);
+        Assert.Null(result.TerminalOutcome);
+        Assert.False(result.Accounting.Settled);
+        Assert.Equal(5, result.Accounting.ExpectedObservations);
+        Assert.Equal(4, result.Accounting.AcceptedObservations);
+    }
+
+    [Fact]
+    public async Task RuntimeOperation_TemporalSettlement_AllowsExplicitMissingReadingsProfile()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        await SetRunDegradationProfilesAsync(scope, "missing-readings");
+        var operation = await SeedOperationAsync(scope, deadline: DateTimeOffset.UtcNow.AddMinutes(5));
+        await AddRunInboxEventsAsync(scope, 4);
+        await AddFinalizedCycleSettlementsAsync(scope);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.GetRuntimeOperationAsync(operation.OperationId, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("SystemCompleted", result.TerminalOutcome);
+        Assert.True(result.Accounting.Settled);
+        Assert.Equal(5, result.Accounting.ExpectedObservations);
+        Assert.Equal(4, result.Accounting.AcceptedObservations);
+    }
+
+    [Fact]
+    public async Task RuntimeOperation_MissingReadingsProfile_AllowsTrailingFullyMissingCycle()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: false);
+        await SetRunDegradationProfilesAsync(scope, "missing-readings", "out-of-order", "duplicate");
+        var operation = await SeedOperationAsync(scope, deadline: DateTimeOffset.UtcNow.AddMinutes(5));
+        await AddRunInboxEventsAsync(scope, 4);
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.GetRuntimeOperationAsync(operation.OperationId, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("SystemCompleted", result.TerminalOutcome);
+        Assert.True(result.Accounting.Settled);
+        Assert.Equal(5, result.Accounting.ExpectedObservations);
+        Assert.Equal(4, result.Accounting.AcceptedObservations);
+    }
+
+    [Fact]
     public async Task RuntimeOperation_CorrelationMiss_DoesNotFallbackToLatestRun()
     {
         await using var scope = new SqliteControlDbContextScope();
@@ -494,6 +553,70 @@ public sealed class RuntimeOperationsServiceTests
             return Task.CompletedTask;
         });
         return operation;
+    }
+
+    private static async Task SetRunDegradationProfilesAsync(
+        SqliteControlDbContextScope scope,
+        params string[] profiles)
+    {
+        if (profiles.Length == 0)
+        {
+            throw new ArgumentException("At least one degradation profile is required.", nameof(profiles));
+        }
+
+        var profileList = System.Text.Json.JsonSerializer.Serialize(profiles);
+        await scope.SeedAsync(async dbContext =>
+        {
+            var run = await dbContext.SimulationRuns.SingleAsync(
+                entity => entity.Id == Guid.Parse("70000000-0000-0000-0000-000000000001"));
+            run.MetadataJson = run.MetadataJson!
+                .Replace(
+                    "\"degradation_profile\": \"none\"",
+                    $"\"degradation_profile\": \"{profiles[0]}\"",
+                    StringComparison.Ordinal)
+                .Replace(
+                    "\"degradation_profiles\": [\"none\"]",
+                    $"\"degradation_profiles\": {profileList}",
+                    StringComparison.Ordinal);
+        });
+    }
+
+    private static async Task AddFinalizedCycleSettlementsAsync(SqliteControlDbContextScope scope)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var runId = Guid.Parse("70000000-0000-0000-0000-000000000001");
+        var areaId = Guid.Parse("20000000-0000-0000-0000-000000000001");
+        var sensorId = Guid.Parse("50000000-0000-0000-0000-000000000001");
+        var expected = System.Text.Json.JsonSerializer.Serialize(new[] { sensorId });
+
+        await scope.SeedAsync(dbContext =>
+        {
+            for (var cycleIndex = 0; cycleIndex < 5; cycleIndex++)
+            {
+                var observed = cycleIndex < 4 ? expected : "[]";
+                var missing = cycleIndex < 4 ? "[]" : expected;
+                dbContext.CycleSettlements.Add(new CycleSettlementRecord
+                {
+                    Id = Guid.NewGuid(),
+                    SimulationRunId = runId,
+                    CycleIndex = cycleIndex,
+                    AreaId = areaId,
+                    ExpectedSensorIdsJson = expected,
+                    ObservedSensorIdsJson = observed,
+                    MissingSensorIdsJson = missing,
+                    BlockedSensorIdsJson = "[]",
+                    EligibleSensorIdsJson = observed,
+                    Status = "Finalized",
+                    IsOperational = false,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    FinalizedAt = now,
+                    FinalizationReason = cycleIndex < 4 ? "AllExpectedTerminal" : "ProducerCompleted"
+                });
+            }
+
+            return Task.CompletedTask;
+        });
     }
 
     private static async Task AddRunInboxEventsAsync(SqliteControlDbContextScope scope, int count)

@@ -56,6 +56,8 @@ public sealed class V1AlertPolicyTests
     [Theory]
     [InlineData(0, 0.59, 0)]
     [InlineData(0, 0.60, 1)]
+    [InlineData(0, 0.75, 1)]
+    [InlineData(0, 0.79, 1)]
     [InlineData(0, 0.80, 2)]
     [InlineData(1, 0.49, 0)]
     [InlineData(1, 0.50, 1)]

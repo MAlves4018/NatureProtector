@@ -6,7 +6,7 @@ import { PageHeader } from '../components/PageHeader';
 import { RunProgressCockpit } from '../components/RunProgressCockpit';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
-import { toggleDegradationProfile, useUiSimulation } from '../state/SimulationContext';
+import { minimumSynchronousWaitSeconds, toggleDegradationProfile, useUiSimulation } from '../state/SimulationContext';
 import { useUiActivity } from '../state/ActivityContext';
 import { executionStatusState } from '../truthfulPresentation';
 import { HttpError } from '../services/httpError';
@@ -221,6 +221,24 @@ export function SimulationPage() {
               checked={simulationForm.waitForCompletion}
               onChange={(value) => setSimulationForm((form) => ({ ...form, waitForCompletion: value }))}
             />
+            {simulationForm.waitForCompletion ? (
+              <>
+                <NumberField
+                  label={copy('simulation.waitTimeout')}
+                  value={simulationForm.waitTimeoutSeconds}
+                  min={minimumSynchronousWaitSeconds(simulationForm)}
+                  onChange={(value) =>
+                    setSimulationForm((form) => ({
+                      ...form,
+                      waitTimeoutSeconds: value,
+                    }))
+                  }
+                />
+                <p className="ui-notice">{copy('simulation.waitTimeoutHelp')}</p>
+              </>
+            ) : (
+              <p className="ui-notice">{copy('simulation.asyncTimeoutHelp')}</p>
+            )}
             <Check
               label={copy('simulation.evidence')}
               checked={simulationForm.collectEvidence}
@@ -382,14 +400,24 @@ function ReviewFact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+function NumberField({
+  label,
+  value,
+  min = 1,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min?: number;
+  onChange: (value: number) => void;
+}) {
   return (
     <label className="ui-field">
       <span>{label}</span>
       <input
         className="ui-input"
         type="number"
-        min="1"
+        min={min}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
       />

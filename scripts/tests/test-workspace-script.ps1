@@ -206,6 +206,8 @@ $secretCanaryScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\ci\
 Assert-True ($secretScanScript -match "SkipGitBackedScans") "secret scan supports a no-Git validation mode"
 Assert-True ($secretScanScript -match "check-secret-canaries\.ps1") "secret scan still runs canary checks"
 Assert-True ($secretScanScript -match 'EndsWith\("/\.env"') "secret scan no-Git mode excludes local .env"
+Assert-True ($secretScanScript -match '\\.np_evidence_python') "secret scan excludes local evidence Python environments"
+Assert-True ($secretScanScript -match 'node_modules\|bin\|obj\|dist\|coverage\|TestResults\|artifacts\|graphify-out') "secret scan excludes generated working-tree roots"
 Assert-True ($secretCanaryScript -match "NoGit") "secret canary scan supports filesystem enumeration without Git"
 Assert-True ($secretCanaryScript -match 'EndsWith\("/\.env"') "secret canary no-Git mode excludes local .env"
 

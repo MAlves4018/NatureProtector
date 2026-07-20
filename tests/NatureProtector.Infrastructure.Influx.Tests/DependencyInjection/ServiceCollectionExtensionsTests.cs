@@ -75,8 +75,25 @@ public sealed class ServiceCollectionExtensionsTests
         var basePath = Path.Combine(Path.GetTempPath(), $"np-influx-{Guid.NewGuid():N}");
         Directory.CreateDirectory(basePath);
 
+        var environmentNames = new[]
+        {
+            "INFLUXDB_URL",
+            "INFLUXDB_PORT",
+            "INFLUXDB_TOKEN",
+            "INFLUXDB_ORGANIZATION",
+            "INFLUXDB_BUCKET"
+        };
+        var originalEnvironment = environmentNames.ToDictionary(
+            name => name,
+            Environment.GetEnvironmentVariable);
+
         try
         {
+            foreach (var name in environmentNames)
+            {
+                Environment.SetEnvironmentVariable(name, null);
+            }
+
             File.WriteAllText(
                 Path.Combine(basePath, ".env"),
                 string.Join(
@@ -114,6 +131,11 @@ public sealed class ServiceCollectionExtensionsTests
         }
         finally
         {
+            foreach (var pair in originalEnvironment)
+            {
+                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+            }
+
             Directory.Delete(basePath, recursive: true);
         }
     }
