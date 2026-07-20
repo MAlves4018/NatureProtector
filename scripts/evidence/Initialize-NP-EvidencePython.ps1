@@ -25,7 +25,7 @@ if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
 if ($LASTEXITCODE -ne 0) { throw "Failed to update pip in evidence Python environment." }
 & $python -m pip install -r $requirements
 if ($LASTEXITCODE -ne 0) { throw "Failed to install report/evidence requirements." }
-& $python -c "import cairosvg, hcl2, jsonschema, matplotlib, psycopg, pytest, yaml; import sys; print('EVIDENCE_PYTHON_READY=' + sys.executable); print('PYTHON_VERSION=' + sys.version.replace(chr(10), ' ')); print('DEPENDENCIES_READY=pytest,matplotlib,PyYAML,jsonschema,python-hcl2,CairoSVG,psycopg')"
+& $python -c "import hcl2, jsonschema, matplotlib, psycopg, pytest, yaml; import sys; print('EVIDENCE_PYTHON_READY=' + sys.executable); print('PYTHON_VERSION=' + sys.version.replace(chr(10), ' ')); print('DEPENDENCIES_READY=pytest,matplotlib,PyYAML,jsonschema,python-hcl2,psycopg')"
 if ($LASTEXITCODE -ne 0) { throw "Evidence Python validation failed." }
 & $python -m pip freeze
 if ($LASTEXITCODE -ne 0) { throw "Failed to inventory evidence Python dependencies." }

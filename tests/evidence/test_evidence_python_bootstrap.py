@@ -21,7 +21,6 @@ class EvidencePythonBootstrapTests(unittest.TestCase):
 
         self.assertTrue(
             {
-                "cairosvg",
                 "jsonschema",
                 "matplotlib",
                 "psycopg",
@@ -36,7 +35,7 @@ class EvidencePythonBootstrapTests(unittest.TestCase):
             ROOT / "scripts/evidence/Initialize-NP-EvidencePython.ps1"
         ).read_text(encoding="utf-8")
 
-        self.assertIn("import cairosvg", bootstrap)
+        self.assertNotIn("import cairosvg", bootstrap)
         self.assertIn("pytest", bootstrap)
         self.assertIn("pip freeze", bootstrap)
 
