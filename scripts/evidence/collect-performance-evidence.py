@@ -647,6 +647,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "--output",
             str(http_dir),
         ]
+        if args.require_http:
+            command.append("--auth-required")
         if args.include_web:
             command.append("--include-web")
         command_result = run_command(

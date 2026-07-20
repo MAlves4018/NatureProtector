@@ -784,10 +784,16 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTimeOffset>("PersistedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Producer")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset?>("QuarantinedAt")
                         .HasColumnType("timestamp with time zone");
@@ -810,6 +816,10 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.HasIndex("EventId")
                         .IsUnique();
+
+                    b.HasIndex("SimulationRunId", "PersistedAt");
+
+                    b.HasIndex("SimulationRunId", "PublishedAt");
 
                     b.HasIndex("SimulationRunId", "Status");
 
@@ -994,6 +1004,9 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTimeOffset>("PersistedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Producer")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1009,6 +1022,8 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.HasIndex("EventId")
                         .IsUnique();
+
+                    b.HasIndex("PersistedAt");
 
                     b.HasIndex("AreaId", "EventTime");
 
@@ -1085,8 +1100,19 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<double>("AggregateRiskScore")
+                    b.Property<double?>("AggregateRiskScore")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("AggregationReason")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("AggregationStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Available");
 
                     b.Property<DateTimeOffset>("AlertEvaluatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1284,8 +1310,19 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<double>("AggregateRiskScore")
+                    b.Property<double?>("AggregateRiskScore")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("AggregationReason")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("AggregationStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Available");
 
                     b.Property<Guid>("AreaId")
                         .HasColumnType("uuid");
@@ -1667,8 +1704,14 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<double>("AdjustedScore")
                         .HasColumnType("double precision");
 
+                    b.Property<DateTimeOffset?>("AlertedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("AreaId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AssessedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<double>("BaseRisk")
                         .HasColumnType("double precision");
@@ -1733,6 +1776,9 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .HasColumnType("character varying(100)")
                         .HasDefaultValue("Unknown");
 
+                    b.Property<DateTimeOffset?>("ProjectedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("RiskLevel")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1771,6 +1817,10 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.HasIndex("AreaId", "Timestamp");
 
                     b.HasIndex("GridCellId", "Timestamp");
+
+                    b.HasIndex("SimulationRunId", "AssessedAt");
+
+                    b.HasIndex("SimulationRunId", "ProjectedAt");
 
                     b.HasIndex("AreaId", "SimulationRunId", "Timestamp");
 

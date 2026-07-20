@@ -11,11 +11,20 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [
     ['list'],
-    ['html', { outputFolder: externalRoot ? path.join(externalRoot, 'playwright-report') : 'playwright-report' }],
+    [
+      'html',
+      {
+        outputFolder: externalRoot ? path.join(externalRoot, 'playwright-report') : 'playwright-report',
+        open: 'never',
+      },
+    ],
   ],
   outputDir: externalRoot ? path.join(externalRoot, 'playwright-artifacts') : 'test-results/playwright',
   use: {
     baseURL: process.env.LIVE_RUNTIME === '1' ? 'http://127.0.0.1:5173' : 'http://127.0.0.1:4173',
+    extraHTTPHeaders: process.env.NP_EVIDENCE_RUN_ID
+      ? { 'X-NP-Evidence-Run-Id': process.env.NP_EVIDENCE_RUN_ID }
+      : undefined,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

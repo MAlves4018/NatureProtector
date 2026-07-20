@@ -17,7 +17,8 @@ internal static class EnvelopeFactory
         double latitude = 39.8,
         double longitude = -7.9,
         SensorOperationalState operationalState = SensorOperationalState.Nominal,
-        DateTimeOffset? eventTime = null)
+        DateTimeOffset? eventTime = null,
+        DateTimeOffset? publishedAt = null)
     {
         return new EventEnvelope<SensorReadingProducedPayload>(
             SchemaVersion: "1.0",
@@ -37,6 +38,7 @@ internal static class EnvelopeFactory
                 Value: value,
                 Latitude: latitude,
                 Longitude: longitude,
-                OperationalState: operationalState));
+                OperationalState: operationalState),
+            PublishedAt: publishedAt);
     }
 }

@@ -77,6 +77,19 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         }
 
         DateTimeOffset? firstInboxReceivedAt = runInboxEvents.Length == 0 ? null : runInboxEvents.Min(entity => entity.ReceivedAt);
+        DateTimeOffset? firstPublishedAt = runInboxEvents.Length == 0
+            ? null
+            : runInboxEvents
+                .Where(entity => entity.PublishedAt.HasValue)
+                .Select(entity => entity.PublishedAt!.Value)
+                .DefaultIfEmpty()
+                .Min();
+        if (firstPublishedAt == default)
+        {
+            firstPublishedAt = null;
+            limitations.Add("No persisted PublishedAt values were associated with this SimulationRunId.");
+        }
+
         DateTimeOffset? firstProcessingAttemptStartedAt = attempts.Length == 0 ? null : attempts.Min(entity => entity.StartedAt);
         var lastProcessingAttemptFinishedAt = MaxFinishedAt(attempts);
         DateTimeOffset? firstRiskAssessmentCreatedAt = riskAssessments.Count == 0 ? null : riskAssessments.Min(entity => entity.CreatedAt);
@@ -123,6 +136,7 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             run.CreatedAt,
             run.StartedAt,
             run.EndedAt,
+            firstPublishedAt,
             firstInboxReceivedAt,
             firstProcessingAttemptStartedAt,
             lastProcessingAttemptFinishedAt,

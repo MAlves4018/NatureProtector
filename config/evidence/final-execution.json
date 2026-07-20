@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 2,
+  "phaseId": "phase13",
+  "phaseDirectory": "13-final-execution",
+  "title": "Final integrated execution and evidence closure",
+  "canonicalInputs": {
+    "reportCampaign": "scripts/evidence/run-report-evidence-campaign.py",
+    "reportCampaignVerifier": "scripts/evidence/verify-report-evidence-campaign.py",
+    "finalPortfolio": "scripts/evidence/run-final-evidence-campaign.py",
+    "finalPortfolioVerifier": "scripts/evidence/verify-final-evidence-campaign.py",
+    "finalPortfolioConfig": "config/evidence/final-evidence-campaign.json",
+    "longRunRunner": "scripts/runtime/run-long-run-proof.py",
+    "longRunVerifier": "scripts/runtime/verify-long-run-proof.py",
+    "longRunMatrix": "config/runtime/long-run-final-matrix.json",
+    "captureRegistrar": "scripts/evidence/register-evidence-capture.py",
+    "phase10Collector": "scripts/evidence/collect-evidence-intelligence.py",
+    "phase10Verifier": "scripts/evidence/verify-evidence-intelligence.py"
+  },
+  "modes": {
+    "plan": {
+      "phase8Profile": "plan",
+      "executePhase8": false,
+      "runFinalPortfolio": "plan",
+      "runLongRun": false,
+      "runScreenshots": false
+    },
+    "quick": {
+      "phase8Profile": "quality",
+      "executePhase8": true,
+      "runFinalPortfolio": "plan",
+      "runLongRun": false,
+      "runScreenshots": false
+    },
+    "full": {
+      "phase8Profile": "full",
+      "executePhase8": true,
+      "runFinalPortfolio": "live",
+      "runLongRun": true,
+      "runScreenshots": true
+    },
+    "analyze": {
+      "phase8Profile": "plan",
+      "executePhase8": false,
+      "runFinalPortfolio": "none",
+      "runLongRun": false,
+      "runScreenshots": false
+    }
+  },
+  "screenshots": {
+    "profiles": ["nominal", "missing"],
+    "project": "desktop",
+    "testPattern": "login, operational surfaces and simulation launcher use real services",
+    "chapterTarget": "5,6",
+    "limitations": "Captured from the local experimental runtime; not an operational deployment or user validation."
+  },
+  "claimBoundary": "Phase 13 orchestrates and links existing evidence producers. It does not raise the evidence class or claim ceiling of any source phase."
+}

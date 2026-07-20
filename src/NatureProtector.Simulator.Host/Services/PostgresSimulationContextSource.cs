@@ -116,6 +116,9 @@ public sealed class PostgresSimulationContextSource(
             scenarioOptions: simulatorOptions,
             propertyName: "NumberOfCycles",
             fallbackValue: _options.NumberOfCycles);
+        var lagDelaySeconds = ResolveLagDelaySeconds(
+            scenarioOptions: simulatorOptions,
+            fallbackValue: _options.LagDelaySeconds);
         var preferredSeed = requestedOverrides.Seed ?? _options.Seed;
         var selectedSensors = SelectSensors(sensors, requestedOverrides.SensorCount, preferredSeed);
 
@@ -141,7 +144,8 @@ public sealed class PostgresSimulationContextSource(
                     SelectedSensorNames: selectedSensors.Select(sensor => sensor.Name).ToArray())
                 {
                     DegradationProfiles = effectiveDegradationProfiles
-                }));
+                }),
+            lagDelay: TimeSpan.FromSeconds(lagDelaySeconds));
 
         activity?.SetTag(TelemetryTags.AreaId, context.AreaId);
         activity?.SetTag(TelemetryTags.ScenarioId, context.Scenario.Id);
@@ -351,6 +355,34 @@ public sealed class PostgresSimulationContextSource(
         if (fallbackValue <= 0)
         {
             throw new InvalidOperationException($"Simulator fallback option '{propertyName}' must be greater than zero.");
+        }
+
+        return fallbackValue;
+    }
+
+    private static int ResolveLagDelaySeconds(
+        JsonElement scenarioOptions,
+        int fallbackValue)
+    {
+        const int maximumLagDelaySeconds = 3600;
+
+        if (scenarioOptions.TryGetProperty("LagDelaySeconds", out var property) &&
+            property.ValueKind == JsonValueKind.Number)
+        {
+            var parsed = property.GetInt32();
+            if (parsed is < 0 or > maximumLagDelaySeconds)
+            {
+                throw new InvalidOperationException(
+                    $"Scenario simulator option 'LagDelaySeconds' must be between 0 and {maximumLagDelaySeconds} seconds.");
+            }
+
+            return parsed;
+        }
+
+        if (fallbackValue is < 0 or > maximumLagDelaySeconds)
+        {
+            throw new InvalidOperationException(
+                $"Simulator fallback option 'LagDelaySeconds' must be between 0 and {maximumLagDelaySeconds} seconds.");
         }
 
         return fallbackValue;

@@ -335,9 +335,6 @@ def build_commands(
         "--output",
         str(out3),
     ]
-    dsn_value = os.getenv(args.postgres_dsn_env) if args.postgres_dsn_env else None
-    if dsn_value:
-        collect3 += ["--dsn", dsn_value]
     if args.require_live_database:
         collect3.append("--require-live")
     verify3 = [python, str(scripts / "verify-database-architecture-evidence.py"), str(out3)]

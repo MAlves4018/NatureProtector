@@ -126,7 +126,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
     /// Atualiza a projeção agregada da área e o estado dos alertas simples
     /// derivados do snapshot.
     /// </summary>
-    public async Task SaveAsync(
+    public async Task<AreaProjectionWriteResult> SaveAsync(
         Guid areaId,
         AreaRiskSnapshot snapshot,
         int assessmentCount,
@@ -147,7 +147,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
             var existingState = await dbContext.AreaOperationalStates
                 .SingleOrDefaultAsync(entity => entity.AreaId == areaId, cancellationToken);
             if (cycleIndex.HasValue && existingState?.CycleIndex > cycleIndex.Value)
-                return;
+                return new AreaProjectionWriteResult(DateTimeOffset.UtcNow, null);
             var previousAdjustedScore = existingState?.AggregateRiskScore ?? snapshot.AggregateRiskScore;
 
             var now = DateTimeOffset.UtcNow;
@@ -208,6 +208,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
 
             if (nextState is V1AlertState.Warning or V1AlertState.Alarm)
             {
+                var alertedAt = now;
                 if (existingAlert is null)
                 {
                     dbContext.AlertStates.Add(new AlertStateRecord
@@ -221,7 +222,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
                         Status = OperationalAlertStatus.Open.ToString(),
                         Message = Truncate(BuildAlertMessage(snapshot, nextState), 2000) ?? string.Empty,
                         TriggeredAt = snapshot.Timestamp,
-                        UpdatedAt = now
+                        UpdatedAt = alertedAt
                     });
                 }
                 else
@@ -229,7 +230,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
                     existingAlert.AreaOperationalStateId = existingState.Id;
                     existingAlert.Severity = severity.ToString();
                     existingAlert.Message = Truncate(BuildAlertMessage(snapshot, nextState), 2000) ?? string.Empty;
-                    existingAlert.UpdatedAt = now;
+                    existingAlert.UpdatedAt = alertedAt;
                     existingAlert.ResolvedAt = null;
                 }
             }
@@ -256,7 +257,10 @@ public sealed class PostgresAreaOperationalProjectionStore(
                     snapshot.AggregateRiskLevel,
                     severity,
                     assessmentCount);
-                return;
+                var alertedAt = nextState is V1AlertState.Warning or V1AlertState.Alarm
+                    ? now
+                    : (DateTimeOffset?)null;
+                return new AreaProjectionWriteResult(now, alertedAt);
             }
             catch (DbUpdateException ex) when (attempt == 0 && ExpectedUniqueViolationDetector.IsExpected(ex, NatureProtectorUniqueConstraints.AreaOperationalStateAreaId))
             {
@@ -267,6 +271,57 @@ public sealed class PostgresAreaOperationalProjectionStore(
         }
 
         throw new InvalidOperationException("Area operational projection retry loop exited unexpectedly.");
+    }
+
+
+    /// <summary>
+    /// Marks the current operational projection as unavailable without evaluating
+    /// alert transitions from a fabricated numeric score.
+    /// </summary>
+    public async Task MarkUnavailableAsync(
+        Guid areaId,
+        DateTimeOffset snapshotTimestamp,
+        string reason,
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null,
+        int? cycleIndex = null)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var existingState = await dbContext.AreaOperationalStates
+            .SingleOrDefaultAsync(entity => entity.AreaId == areaId, cancellationToken);
+
+        if (existingState is null)
+        {
+            logger.LogInformation(
+                "Operational projection unavailable and no previous state exists | AreaId={AreaId} | Reason={Reason}",
+                areaId,
+                reason);
+            return;
+        }
+
+        if (cycleIndex.HasValue && existingState.CycleIndex > cycleIndex.Value)
+        {
+            return;
+        }
+
+        existingState.SnapshotTimestamp = snapshotTimestamp;
+        existingState.SimulationRunId = simulationRunId;
+        existingState.CycleIndex = cycleIndex;
+        existingState.AggregateRiskLevel = RiskLevel.Unknown.ToString();
+        existingState.Severity = Severity.Info.ToString();
+        existingState.CoverageStatus = OperationalProjectionStatus.Blocked;
+        existingState.FreshnessStatus = OperationalProjectionStatus.Unavailable;
+        existingState.CarryForwardStatus = OperationalProjectionStatus.NotAvailable;
+        existingState.Summary = Truncate(reason, 2000);
+        existingState.AssessmentCount = 0;
+        existingState.PendingAlertState = V1AlertState.None.ToString();
+        existingState.PendingAlertCycles = 0;
+        existingState.UpdatedAt = DateTimeOffset.UtcNow;
+
+        // Deliberately preserve the previous numeric score internally for alert
+        // hysteresis memory. The API hides it while AssessmentCount is zero.
+        // Do not open, update or resolve AlertStateRecord in this path.
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>

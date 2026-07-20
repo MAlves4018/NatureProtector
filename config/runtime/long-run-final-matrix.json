@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 2,
+  "description": "Final matrix separating asynchronous acceptance, synchronous completion above the historical one-minute cutoff, and validation rejection. A deterministic healthy timeout case is intentionally excluded because the API requires a timeout buffer greater than the nominal healthy duration.",
+  "cases": [
+    {
+      "id": "LR-A-030",
+      "mode": "async",
+      "numberOfCycles": 4,
+      "intervalSeconds": 10,
+      "collectEvidence": true,
+      "waitForCompletion": false,
+      "timeoutSeconds": 60,
+      "expectedMinimumWallSeconds": 27,
+      "expectedOutcome": "SystemCompleted"
+    },
+    {
+      "id": "LR-A-060",
+      "mode": "async",
+      "numberOfCycles": 4,
+      "intervalSeconds": 20,
+      "collectEvidence": true,
+      "waitForCompletion": false,
+      "timeoutSeconds": 60,
+      "expectedMinimumWallSeconds": 55,
+      "expectedOutcome": "SystemCompleted"
+    },
+    {
+      "id": "LR-A-120",
+      "mode": "async",
+      "numberOfCycles": 4,
+      "intervalSeconds": 40,
+      "collectEvidence": true,
+      "waitForCompletion": false,
+      "timeoutSeconds": 60,
+      "expectedMinimumWallSeconds": 110,
+      "expectedOutcome": "SystemCompleted"
+    },
+    {
+      "id": "LR-A-300",
+      "mode": "async",
+      "numberOfCycles": 6,
+      "intervalSeconds": 60,
+      "collectEvidence": true,
+      "waitForCompletion": false,
+      "timeoutSeconds": 60,
+      "expectedMinimumWallSeconds": 285,
+      "expectedOutcome": "SystemCompleted"
+    },
+    {
+      "id": "LR-S-BELOW",
+      "mode": "sync",
+      "numberOfCycles": 3,
+      "intervalSeconds": 5,
+      "collectEvidence": true,
+      "waitForCompletion": true,
+      "timeoutSeconds": 60,
+      "expectedMinimumWallSeconds": 10,
+      "expectedOutcome": "SystemCompleted"
+    },
+    {
+      "id": "LR-S-ABOVE",
+      "mode": "sync",
+      "numberOfCycles": 4,
+      "intervalSeconds": 30,
+      "collectEvidence": true,
+      "waitForCompletion": true,
+      "timeoutSeconds": 150,
+      "requestTimeoutSeconds": 360,
+      "expectedMinimumWallSeconds": 85,
+      "expectedOutcome": "SystemCompleted",
+      "requireSettlement": true
+    },
+    {
+      "id": "LR-INVALID",
+      "mode": "validation",
+      "numberOfCycles": 0,
+      "intervalSeconds": 5,
+      "collectEvidence": false,
+      "waitForCompletion": true,
+      "timeoutSeconds": 30,
+      "expectedOutcome": "Rejected",
+      "expectedMinimumWallSeconds": 0,
+      "requireDuration": false,
+      "requireSettlement": false
+    }
+  ]
+}

@@ -72,6 +72,11 @@ public sealed class SimulatorOptions
     public int IntervalSeconds { get; set; } = 15;
 
     /// <summary>
+    /// Physical and logical delivery delay applied when the lag/delay profile is active.
+    /// </summary>
+    public int LagDelaySeconds { get; set; } = 15;
+
+    /// <summary>
     /// Optional fixed logical start timestamp for deterministic runs.
     /// When omitted, the current UTC time is used.
     /// </summary>

@@ -34,10 +34,11 @@ public static class ApiRateLimitingExtensions
 
                 var policyName = Classify(context);
                 var clientKey = ResolveClientKey(context, configured.TrustNormalizedForwardedFor);
+                var partitionKey = ResolvePartitionKey(context, configured, policyName, clientKey);
                 var policy = configured.GetPolicy(policyName);
 
                 return RateLimitPartition.GetFixedWindowLimiter(
-                    $"{policyName}:{clientKey}",
+                    partitionKey,
                     _ => new FixedWindowRateLimiterOptions
                     {
                         PermitLimit = policy.PermitLimit,
@@ -120,6 +121,37 @@ public static class ApiRateLimitingExtensions
         return context.User.Identity?.IsAuthenticated == true
             ? ApiRateLimitPolicies.AuthenticatedRead
             : ApiRateLimitPolicies.AnonymousRead;
+    }
+
+
+    public static string ResolvePartitionKey(
+        HttpContext context,
+        ApiRateLimitingOptions configured,
+        string policyName,
+        string clientKey)
+    {
+        if (!string.Equals(policyName, ApiRateLimitPolicies.SimulationLaunch, StringComparison.Ordinal))
+        {
+            return $"{policyName}:{clientKey}";
+        }
+
+        var environment = context.RequestServices.GetService<IHostEnvironment>();
+        if (environment?.IsDevelopment() != true ||
+            !configured.EvidenceSimulationLaunchPartitioningEnabled ||
+            string.IsNullOrWhiteSpace(configured.EvidenceRunIdHeaderName))
+        {
+            return $"{policyName}:{clientKey}";
+        }
+
+        var evidenceRunId = context.Request.Headers[configured.EvidenceRunIdHeaderName].ToString().Trim();
+        if (evidenceRunId.Length is < 8 or > 128 ||
+            evidenceRunId.Any(character =>
+                !(char.IsLetterOrDigit(character) || character is '-' or '_' or '.')))
+        {
+            return $"{policyName}:{clientKey}";
+        }
+
+        return $"{policyName}:{clientKey}:evidence:{evidenceRunId}";
     }
 
 

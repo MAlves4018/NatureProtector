@@ -56,9 +56,41 @@ MODEL_FIELDS = [
     "np_equal_weights",
 ]
 
+PRIMARY_MODEL_SPECS = {
+    "np_score_v1": {
+        "role": "candidate_score",
+        "fitWindow": "Candidate Parameter Set V1.0; no statistical fit in this collector.",
+    },
+    "simple_weather_risk_score": {
+        "role": "retrospective_weather_baseline",
+        "fitWindow": "Full-period retrospective percentile transforms from the source dataset.",
+    },
+    "simple_weather_trainfit_score": {
+        "role": "temporally_fitted_weather_baseline",
+        "fitWindow": "Empirical percentile transforms fitted through the configured fitEndYear and applied unchanged afterwards.",
+        "formula": "0.35*temperature_max_percentile + 0.30*(100-relative_humidity_min)_percentile + 0.20*wind_max_percentile + 0.15*gust_max_percentile",
+    },
+    "fire_index_reference_score": {
+        "role": "retrospective_fire_index_reference",
+        "fitWindow": "Full-period retrospective FWI/KBDI percentile combination; not a simple weather model.",
+    },
+    "fire_index_trainfit_score": {
+        "role": "temporally_fitted_fire_index_reference",
+        "fitWindow": "FWI/KBDI percentile transforms fitted through the configured fitEndYear and applied unchanged afterwards.",
+    },
+}
+
 
 def finite_or_none(value: Any) -> float | None:
     return float(value) if isinstance(value, (int, float)) and math.isfinite(float(value)) else None
+
+
+def temporal_split(day: Any, start_year: int, fit_end_year: int, coverage_end_year: int) -> str:
+    if day.year <= fit_end_year:
+        return f"exploration_{start_year}_{fit_end_year}"
+    if day.year <= coverage_end_year:
+        return f"holdout_{fit_end_year + 1}_{coverage_end_year}"
+    raise ValueError(f"Date {day} is outside the eligible event-label coverage")
 
 
 def empirical_percentile(sorted_values: Sequence[float], value: float | None) -> float | None:
@@ -490,6 +522,45 @@ def main() -> int:
     iterations = args.bootstrap_iterations if args.bootstrap_iterations is not None else int(config["statistics"]["bootstrapIterations"])
     seed = int(config["statistics"]["bootstrapSeed"])
     holdout_rows = [row for row in seasonal if baseline_fit_end_year < row["date"].year <= event_coverage_end.year]
+    for population_name, population_rows in (("seasonal", seasonal), ("holdout", holdout_rows)):
+        population_labels = [int(row["event_label"]) for row in population_rows]
+        positives = sum(population_labels)
+        negatives = len(population_labels) - positives
+        if positives == 0 or negatives == 0:
+            raise SystemExit(
+                f"Phase 9 {population_name} population must contain positive and negative labels; "
+                f"observed rows={len(population_rows)}, positives={positives}, negatives={negatives}."
+            )
+
+    prediction_models = list(PRIMARY_MODEL_SPECS)
+    predictions = [
+        {
+            "date": row["date"].isoformat(),
+            "label": int(row["event_label"]),
+            "split": temporal_split(row["date"], start.year, baseline_fit_end_year, event_coverage_end.year),
+            "source_datasets": row.get("source_datasets", ""),
+            **{model: finite_or_none(row.get(model)) for model in prediction_models},
+        }
+        for row in seasonal
+    ]
+    write_csv(
+        output / "predictions.csv",
+        predictions,
+        ["date", "label", "split", "source_datasets", *prediction_models],
+    )
+    write_json(
+        output / "reference-model-spec.json",
+        {
+            "schemaVersion": 1,
+            "fitStartDate": config["baselineComparison"]["fitStartDate"],
+            "fitEndYear": baseline_fit_end_year,
+            "holdoutStartYear": int(config["baselineComparison"]["holdoutStartYear"]),
+            "eventCoverageEndDate": event_coverage_end.isoformat(),
+            "splitField": "split",
+            "provenanceField": "source_datasets",
+            "models": PRIMARY_MODEL_SPECS,
+        },
+    )
     bootstrap_models = set(config.get("statistics", {}).get("bootstrapModels", ["np_score_v1"]))
     comparisons = (
         metric_rows(seasonal, "seasonal_population", iterations, seed, bootstrap_models)
@@ -497,6 +568,35 @@ def main() -> int:
         + metric_rows(holdout_rows, f"holdout_{baseline_fit_end_year + 1}_{event_coverage_end.year}", iterations, seed + 40000, bootstrap_models)
     )
     write_csv(output / "model-comparison.csv", comparisons)
+    bootstrap_summary = [
+        row
+        for row in comparisons
+        if row.get("roc_auc_lower95") is not None or row.get("average_precision_lower95") is not None
+    ]
+    write_csv(output / "bootstrap-summary.csv", bootstrap_summary)
+    write_json(
+        output / "metrics.json",
+        {
+            "schemaVersion": 1,
+            "populationDefinition": "in_fire_season == 1 and event_label_eligible == 1",
+            "resamplingUnit": "calendar date",
+            "bootstrapIterations": iterations,
+            "bootstrapSeed": seed,
+            "seasonalPopulation": {
+                "rows": len(seasonal),
+                "positives": sum(int(row["event_label"]) for row in seasonal),
+                "negatives": len(seasonal) - sum(int(row["event_label"]) for row in seasonal),
+                "prevalence": sum(int(row["event_label"]) for row in seasonal) / len(seasonal),
+            },
+            "holdoutPopulation": {
+                "rows": len(holdout_rows),
+                "positives": sum(int(row["event_label"]) for row in holdout_rows),
+                "negatives": len(holdout_rows) - sum(int(row["event_label"]) for row in holdout_rows),
+                "prevalence": sum(int(row["event_label"]) for row in holdout_rows) / len(holdout_rows),
+            },
+            "modelMetrics": comparisons,
+        },
+    )
 
     labels = [int(row["event_label"]) for row in seasonal]
     scores = [float(row["np_score_v1"]) for row in seasonal]

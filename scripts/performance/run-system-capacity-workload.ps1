@@ -17,6 +17,7 @@ param(
     [int]$TimeoutSeconds = 0,
     [int]$ObservationWaitSeconds = 0,
     [int]$BacklogDrainWaitSeconds = 0,
+    [string[]]$DegradationProfiles = @("none"),
     [switch]$CollectRuntimeProcessEvidence,
     [switch]$AllowParallelRun,
     [switch]$DryRun
@@ -74,7 +75,7 @@ function Get-ProfileSpec {
                 numberOfCycles = 1
                 intervalSeconds = 1
                 repetitions = 1
-                timeoutSeconds = 120
+                timeoutSeconds = 150
                 observationWaitSeconds = 30
                 backlogDrainWaitSeconds = 30
                 purpose = "Short real-pipeline calibration before selecting B0/B1/B2 volumes."
@@ -129,22 +130,30 @@ function Invoke-ApiJson {
         [string]$Path,
         [object]$Body = $null,
         [string]$Token = $null,
-        [int[]]$ExpectedStatusCodes = @(200)
+        [int]$RequestTimeoutSeconds = 60,
+        [int[]]$ExpectedStatusCodes = @(200),
+        [int]$MaxRateLimitRetries = 5
     )
 
     $uri = $ApiBaseUrl.TrimEnd("/") + $Path
     $headers = @{}
+    if (-not [string]::IsNullOrWhiteSpace($env:NP_EVIDENCE_RUN_ID)) {
+        $headers["X-NP-Evidence-Run-Id"] = $env:NP_EVIDENCE_RUN_ID
+    }
     if (-not [string]::IsNullOrWhiteSpace($Token)) {
         $headers.Authorization = "Bearer $Token"
     }
 
-    try {
+    $attempt = 0
+    while ($true) {
+        $attempt++
+        try {
         $parameters = @{
             Method = $Method
             Uri = $uri
             Headers = $headers
             UseBasicParsing = $true
-            TimeoutSec = 60
+            TimeoutSec = $RequestTimeoutSeconds
             ErrorAction = "Stop"
         }
 
@@ -167,12 +176,22 @@ function Invoke-ApiJson {
             Raw = $content
             Uri = $uri
         }
-    }
-    catch {
+        }
+        catch {
         $statusCode = $null
         $content = ""
+        $retryAfterSeconds = $null
         if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
             $statusCode = [int]$_.Exception.Response.StatusCode
+            try {
+                $retryAfterHeader = $_.Exception.Response.Headers["Retry-After"]
+                if (-not [string]::IsNullOrWhiteSpace($retryAfterHeader)) {
+                    $retryAfterSeconds = [int][Math]::Ceiling([double]$retryAfterHeader)
+                }
+            }
+            catch {
+                $retryAfterSeconds = $null
+            }
             try {
                 $stream = $_.Exception.Response.GetResponseStream()
                 if ($stream) {
@@ -198,15 +217,24 @@ function Invoke-ApiJson {
             }
         }
 
+        if ($statusCode -eq 429 -and $attempt -le $MaxRateLimitRetries) {
+            $delaySeconds = if ($retryAfterSeconds -and $retryAfterSeconds -gt 0) {
+                [Math]::Min($retryAfterSeconds, 300)
+            }
+            else {
+                60
+            }
+            Write-Warning ("HTTP 429 for {0} {1}; retry {2}/{3} after {4}s." -f $Method, $Path, $attempt, $MaxRateLimitRetries, $delaySeconds)
+            Start-Sleep -Seconds $delaySeconds
+            continue
+        }
+
         throw
+        }
     }
 }
 
 function Get-AuthToken {
-    if (-not [string]::IsNullOrWhiteSpace($AuthToken)) {
-        return $AuthToken
-    }
-
     if ($UseDevelopmentAdminDefault) {
         if ([string]::IsNullOrWhiteSpace($Username)) {
             $script:Username = "admin"
@@ -217,21 +245,28 @@ function Get-AuthToken {
         }
     }
 
-    if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
-        throw "A bearer token or username/password is required. Set NP_PERFORMANCE_AUTH_TOKEN, NP_PERFORMANCE_USERNAME/NP_PERFORMANCE_PASSWORD, or pass -UseDevelopmentAdminDefault in Development only."
+    if (
+        -not [string]::IsNullOrWhiteSpace($Username) -and
+        -not [string]::IsNullOrWhiteSpace($Password)
+    ) {
+        $login = Invoke-ApiJson `
+            -Method "POST" `
+            -Path "/api/users-roles/login" `
+            -Body @{ usernameOrEmail = $Username; password = $Password } `
+            -ExpectedStatusCodes @(200)
+
+        if ($null -eq $login.Json -or [string]::IsNullOrWhiteSpace([string]$login.Json.token)) {
+            throw "Login succeeded but no bearer token was returned."
+        }
+
+        return [string]$login.Json.token
     }
 
-    $login = Invoke-ApiJson `
-        -Method "POST" `
-        -Path "/api/users-roles/login" `
-        -Body @{ usernameOrEmail = $Username; password = $Password } `
-        -ExpectedStatusCodes @(200)
-
-    if ($null -eq $login.Json -or [string]::IsNullOrWhiteSpace([string]$login.Json.token)) {
-        throw "Login succeeded but no bearer token was returned."
+    if (-not [string]::IsNullOrWhiteSpace($AuthToken)) {
+        return $AuthToken
     }
 
-    return [string]$login.Json.token
+    throw "A bearer token or username/password is required. Set NP_PERFORMANCE_AUTH_TOKEN, NP_PERFORMANCE_USERNAME/NP_PERFORMANCE_PASSWORD, or pass -UseDevelopmentAdminDefault in Development only."
 }
 
 function Get-NatureProtectorProcessSnapshot {
@@ -330,7 +365,8 @@ function Test-RunEvidenceComplete {
     param(
         [object]$Audit,
         [object]$Timings,
-        [int]$ExpectedEvents
+        [int]$ExpectedEvents,
+        [string[]]$ResolvedDegradationProfiles = @("none")
     )
 
     if ($null -eq $Audit -or $null -eq $Timings) {
@@ -339,7 +375,16 @@ function Test-RunEvidenceComplete {
 
     $acceptedReadings = if ($null -ne $Audit.acceptedReadings) { [int]$Audit.acceptedReadings } else { 0 }
     $riskAssessments = if ($null -ne $Audit.riskAssessments) { [int]$Audit.riskAssessments } else { 0 }
+    $missingEvents = if ($null -ne $Audit.missingEvents) { [int]$Audit.missingEvents } else { 0 }
     $attemptCount = if ($null -ne $Timings.attempts -and $null -ne $Timings.attempts.attemptCount) { [int]$Timings.attempts.attemptCount } else { 0 }
+
+    if ($ResolvedDegradationProfiles -contains "missing-readings") {
+        return $missingEvents -gt 0 -and
+            $acceptedReadings -gt 0 -and
+            $riskAssessments -gt 0 -and
+            $attemptCount -gt 0 -and
+            (($acceptedReadings + $missingEvents) -ge $ExpectedEvents)
+    }
 
     return $acceptedReadings -ge $ExpectedEvents -and
         $riskAssessments -ge $ExpectedEvents -and
@@ -351,7 +396,8 @@ function Wait-RunEvidence {
         [string]$SimulationRunId,
         [string]$Token,
         [int]$ExpectedEvents,
-        [int]$TimeoutSeconds
+        [int]$TimeoutSeconds,
+        [string[]]$ResolvedDegradationProfiles = @("none")
     )
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
@@ -363,7 +409,7 @@ function Wait-RunEvidence {
         try {
             $audit = (Invoke-ApiJson -Method "GET" -Path "/api/control/runtime/runs/$SimulationRunId/audit" -Token $Token).Json
             $timings = (Invoke-ApiJson -Method "GET" -Path "/api/control/runtime/runs/$SimulationRunId/timings" -Token $Token).Json
-            if (Test-RunEvidenceComplete -Audit $audit -Timings $timings -ExpectedEvents $ExpectedEvents) {
+            if (Test-RunEvidenceComplete -Audit $audit -Timings $timings -ExpectedEvents $ExpectedEvents -ResolvedDegradationProfiles $ResolvedDegradationProfiles) {
                 return [pscustomobject]@{
                     audit = $audit
                     timings = $timings
@@ -475,6 +521,54 @@ function Save-ApiSnapshot {
     return $snapshot
 }
 
+function Get-TimingPoint {
+    param(
+        $Timings,
+        [string]$Stage
+    )
+
+    if ($null -eq $Timings -or $null -eq $Timings.timeline) {
+        return $null
+    }
+
+    $point = @($Timings.timeline | Where-Object { $_.stage -eq $Stage } | Select-Object -First 1)
+    if ($point.Count -eq 0 -or $null -eq $point[0].timestamp) {
+        return $null
+    }
+
+    $timestamp = $point[0].timestamp
+    if ($timestamp -is [DateTimeOffset]) {
+        return $timestamp
+    }
+
+    if ($timestamp -is [DateTime]) {
+        return [DateTimeOffset]::new($timestamp)
+    }
+
+    $timestampText = [string]$timestamp
+    if ([string]::IsNullOrWhiteSpace($timestampText)) {
+        return $null
+    }
+
+    return [DateTimeOffset]::Parse($timestampText, [Globalization.CultureInfo]::InvariantCulture)
+}
+
+function Get-TimingDeltaMs {
+    param(
+        $Timings,
+        [string]$FromStage,
+        [string]$ToStage
+    )
+
+    $from = Get-TimingPoint -Timings $Timings -Stage $FromStage
+    $to = Get-TimingPoint -Timings $Timings -Stage $ToStage
+    if ($null -eq $from -or $null -eq $to) {
+        return $null
+    }
+
+    return [Math]::Round(($to - $from).TotalMilliseconds, 3)
+}
+
 $profileSpec = Get-ProfileSpec -Name $Profile
 if ($SensorCount -gt 0) { $profileSpec.sensorCount = $SensorCount }
 if ($NumberOfCycles -gt 0) { $profileSpec.numberOfCycles = $NumberOfCycles }
@@ -483,6 +577,17 @@ if ($Repetitions -gt 0) { $profileSpec.repetitions = $Repetitions }
 if ($TimeoutSeconds -gt 0) { $profileSpec.timeoutSeconds = $TimeoutSeconds }
 if ($ObservationWaitSeconds -gt 0) { $profileSpec.observationWaitSeconds = $ObservationWaitSeconds }
 if ($BacklogDrainWaitSeconds -gt 0) { $profileSpec.backlogDrainWaitSeconds = $BacklogDrainWaitSeconds }
+
+$resolvedDegradationProfiles = @($DegradationProfiles | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+if ($resolvedDegradationProfiles.Count -eq 0) {
+    $resolvedDegradationProfiles = @("none")
+}
+$legacyDegradationProfile = if ($resolvedDegradationProfiles.Count -eq 1) {
+    $resolvedDegradationProfiles[0]
+}
+else {
+    $resolvedDegradationProfiles -join "+"
+}
 
 $effectiveObservationWaitSeconds = [int]$profileSpec.observationWaitSeconds
 $effectiveBacklogDrainWaitSeconds = [int]$profileSpec.backlogDrainWaitSeconds
@@ -516,6 +621,8 @@ $workload = [ordered]@{
     observationWaitSeconds = $effectiveObservationWaitSeconds
     backlogDrainWaitSeconds = $effectiveBacklogDrainWaitSeconds
     expectedEventsPerRun = $expectedEventsPerRun
+    degradationProfile = $legacyDegradationProfile
+    degradationProfiles = $resolvedDegradationProfiles
     rabbitMqQueueDepthFilter = @("np.ingestion.readings")
     collectRuntimeProcessEvidence = [bool]$CollectRuntimeProcessEvidence
     allowParallelRun = [bool]$AllowParallelRun
@@ -588,8 +695,8 @@ for ($iteration = 1; $iteration -le [int]$profileSpec.repetitions; $iteration++)
         numberOfCycles = [int]$profileSpec.numberOfCycles
         intervalSeconds = [int]$profileSpec.intervalSeconds
         seed = 7300 + $iteration
-        degradationProfile = "none"
-        degradationProfiles = @("none")
+        degradationProfile = $legacyDegradationProfile
+        degradationProfiles = $resolvedDegradationProfiles
         collectEvidence = [bool]$CollectRuntimeProcessEvidence
         waitForCompletion = $true
         timeoutSeconds = [int]$profileSpec.timeoutSeconds
@@ -607,7 +714,13 @@ for ($iteration = 1; $iteration -le [int]$profileSpec.repetitions; $iteration++)
     $errorMessage = ""
 
     try {
-        $runResponse = Invoke-ApiJson -Method "POST" -Path "/api/control/runtime/runs" -Body $request -Token $token -ExpectedStatusCodes @(200)
+        $runResponse = Invoke-ApiJson `
+            -Method "POST" `
+            -Path "/api/control/runtime/runs" `
+            -Body $request `
+            -Token $token `
+            -RequestTimeoutSeconds ([Math]::Max(60, [int]$profileSpec.timeoutSeconds + 30)) `
+            -ExpectedStatusCodes @(200)
         Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runsDirectory "$iterationLabel-response.json") -Value $runResponse.Json
         $status = [string]$runResponse.Json.status
         if ($null -ne $runResponse.Json.run) {
@@ -620,7 +733,8 @@ for ($iteration = 1; $iteration -le [int]$profileSpec.repetitions; $iteration++)
                 -SimulationRunId $runIdFromApi `
                 -Token $token `
                 -ExpectedEvents $expectedEventsPerRun `
-                -TimeoutSeconds $effectiveObservationWaitSeconds
+                -TimeoutSeconds $effectiveObservationWaitSeconds `
+                -ResolvedDegradationProfiles $resolvedDegradationProfiles
             $audit = $evidence.audit
             $timings = $evidence.timings
             Write-SystemCapacityJsonFile -Depth 50 -NullWhenEmpty -Path (Join-Path $runsDirectory "$iterationLabel-audit.json") -Value $audit
@@ -696,6 +810,9 @@ for ($iteration = 1; $iteration -le [int]$profileSpec.repetitions; $iteration++)
         quarantined = $quarantined
         lostEvents = $lostEvents
         timeToFirstInboxMs = if ($null -ne $timings) { $timings.timeToFirstInboxMs } else { $null }
+        timeToFirstPublishedMs = if ($null -ne $timings) { Get-TimingDeltaMs -Timings $timings -FromStage "started" -ToStage "first_published" } else { $null }
+        publishToFirstInboxMs = if ($null -ne $timings) { Get-TimingDeltaMs -Timings $timings -FromStage "first_published" -ToStage "first_received" } else { $null }
+        publishToLastProcessingFinishedMs = if ($null -ne $timings) { Get-TimingDeltaMs -Timings $timings -FromStage "first_published" -ToStage "last_processing_finished" } else { $null }
         timeToFirstProcessingAttemptMs = if ($null -ne $timings) { $timings.timeToFirstProcessingAttemptMs } else { $null }
         timeToFirstRiskAssessmentMs = if ($null -ne $timings) { $timings.timeToFirstRiskAssessmentMs } else { $null }
         attemptCount = if ($null -ne $timings -and $null -ne $timings.attempts) { $timings.attempts.attemptCount } else { $null }
@@ -765,7 +882,7 @@ $summary = [ordered]@{
     }
     limitations = @(
         "This workload uses existing runtime API endpoints and persisted audit/timing projections.",
-        "PublishedAt is not persisted in the RabbitMQ envelope, so full publish-to-end latency is not claimed.",
+        "PublishedAt is persisted for new RabbitMQ-published readings; PublishedAt-derived latencies are emitted only when raw timing samples exist.",
         "p50/p95/p99 are calculated across completed run request durations, not per-event latency.",
         "Queue totals in summary are filtered to np.ingestion.readings; full RabbitMQ queue snapshots are retained under metrics/.",
         "Backlog drain time measures how long np.ingestion.readings took to reach zero after each run request.",

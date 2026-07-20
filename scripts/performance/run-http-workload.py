@@ -14,6 +14,7 @@ import csv
 import hashlib
 import json
 import math
+import os
 import platform
 import socket
 import sys
@@ -145,14 +146,20 @@ def execute_request(
     probe: Probe,
     url: str,
     timeout_seconds: float,
+    headers: dict[str, str],
 ) -> dict[str, Any]:
+    request_headers = dict(headers)
+    if probe.surface == "web":
+        request_headers.pop("Authorization", None)
+        request_headers["Accept"] = "text/html,application/xhtml+xml,*/*"
+
     started = time.perf_counter()
     status_code: int | None = None
     byte_count = 0
     error_kind = ""
     error_message = ""
     try:
-        request = Request(url, method="GET", headers={"User-Agent": "NatureProtector-HTTP-Workload/1.0"})
+        request = Request(url, method="GET", headers=request_headers)
         with urlopen(request, timeout=timeout_seconds) as response:
             status_code = int(response.status)
             byte_count = len(response.read())
@@ -202,6 +209,7 @@ def run_phase(
     repetitions: int,
     concurrency: int,
     timeout_seconds: float,
+    headers: dict[str, str],
 ) -> tuple[list[dict[str, Any]], float]:
     tasks: list[tuple[int, Probe, str]] = []
     sequence = 0
@@ -213,13 +221,63 @@ def run_phase(
     rows: list[dict[str, Any]] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, concurrency)) as executor:
         futures = [
-            executor.submit(execute_request, seq, phase, probe, url, timeout_seconds) for seq, probe, url in tasks
+            executor.submit(execute_request, seq, phase, probe, url, timeout_seconds, headers)
+            for seq, probe, url in tasks
         ]
         for future in concurrent.futures.as_completed(futures):
             rows.append(future.result())
     wall_seconds = time.perf_counter() - started
     rows.sort(key=lambda row: int(row["sequence"]))
     return rows, wall_seconds
+
+
+def login_for_token(api_base_url: str, username: str, password: str, timeout_seconds: float) -> str:
+    payload = json.dumps({"usernameOrEmail": username, "password": password}).encode("utf-8")
+    request = Request(
+        url_join(api_base_url, "/api/users-roles/login"),
+        data=payload,
+        method="POST",
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": "NatureProtector-HTTP-Workload/1.0",
+        },
+    )
+    with urlopen(request, timeout=timeout_seconds) as response:
+        body = json.loads(response.read().decode("utf-8"))
+    token = str((body or {}).get("token") or "").strip()
+    if not token:
+        raise RuntimeError("Login returned no bearer token for HTTP workload.")
+    return token
+
+
+def build_request_headers(args: argparse.Namespace) -> tuple[dict[str, str], str]:
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": "NatureProtector-HTTP-Workload/1.0",
+    }
+    evidence_run_id = os.getenv(args.evidence_run_id_env, "").strip()
+    if evidence_run_id:
+        headers["X-NP-Evidence-Run-Id"] = evidence_run_id
+
+    token = os.getenv(args.bearer_token_env, "").strip()
+    username = os.getenv(args.username_env, "").strip()
+    password = os.getenv(args.password_env, "").strip()
+    auth_mode = "none"
+    if not token and username and password:
+        token = login_for_token(args.api_base_url, username, password, args.timeout_seconds)
+        auth_mode = "login"
+    elif token:
+        auth_mode = "bearer-env"
+
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    elif args.auth_required:
+        raise RuntimeError(
+            f"HTTP workload requires authentication. Set {args.bearer_token_env} or both "
+            f"{args.username_env}/{args.password_env}."
+        )
+    return headers, auth_mode
 
 
 def summarize(rows: Sequence[dict[str, Any]], measured_wall_seconds: float) -> list[dict[str, Any]]:
@@ -269,6 +327,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--timeout-seconds", type=float, default=10.0)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--auth-required", action="store_true")
+    parser.add_argument("--bearer-token-env", default="NP_PERFORMANCE_AUTH_TOKEN")
+    parser.add_argument("--username-env", default="NP_PERFORMANCE_USERNAME")
+    parser.add_argument("--password-env", default="NP_PERFORMANCE_PASSWORD")
+    parser.add_argument("--evidence-run-id-env", default="NP_EVIDENCE_RUN_ID")
     return parser.parse_args(argv)
 
 
@@ -283,6 +346,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     output = (args.output or Path("artifacts/performance") / f"http-{args.profile}-{compact_utc_now()}").resolve()
     output.mkdir(parents=True, exist_ok=True)
     probes = build_probes(args.api_base_url, args.web_base_url, args.area_code, args.include_web)
+    headers, auth_mode = build_request_headers(args)
     manifest = {
         "scriptVersion": SCRIPT_VERSION,
         "generatedAtUtc": utc_now(),
@@ -297,6 +361,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         "timeoutSeconds": args.timeout_seconds,
         "probeCount": len(probes),
         "dryRun": args.dry_run,
+        "authentication": {
+            "mode": auth_mode,
+            "tokenPersisted": False,
+            "authRequired": args.auth_required,
+        },
         "environment": {
             "python": sys.version.split()[0],
             "platform": platform.platform(),
@@ -321,8 +390,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
-    warmup_rows, warmup_wall = run_phase("warmup", probes, warmup, concurrency, args.timeout_seconds)
-    measured_rows, measured_wall = run_phase("measured", probes, measured, concurrency, args.timeout_seconds)
+    warmup_rows, warmup_wall = run_phase("warmup", probes, warmup, concurrency, args.timeout_seconds, headers)
+    measured_rows, measured_wall = run_phase("measured", probes, measured, concurrency, args.timeout_seconds, headers)
     rows = warmup_rows + measured_rows
     fields = [
         "generatedAtUtc",
@@ -374,6 +443,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "expectedStatusAttempts": expected,
         "unexpectedStatusOrErrorAttempts": attempts - expected,
         "aggregateObservedRequestsPerSecond": round(attempts / measured_wall, 3) if measured_wall > 0 else None,
+        "authenticationMode": auth_mode,
     }
     write_json(output / "status.json", run_status)
     lines = [

@@ -193,7 +193,9 @@ function Get-RepositorySnapshotPaths {
 
         return @(
             Get-GitLines -Arguments $pathArguments |
-                Where-Object { $_ -notlike "graphify-out/*" } |
+                Where-Object {
+                    $_ -notmatch '(^|/)(\.np_evidence_python[^/]*|\.venv|venv|node_modules|bin|obj|dist|coverage|TestResults|artifacts|graphify-out)(/|$)'
+                } |
                 Sort-Object -Unique
         )
     }

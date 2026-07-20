@@ -119,7 +119,8 @@ public sealed class ScenarioContextFactory : ISimulationContextSource
             startTimestamp: startTimestamp,
             interval: interval,
             numberOfCycles: _options.NumberOfCycles,
-            runOverrides: runOverrides);
+            runOverrides: runOverrides,
+            lagDelay: TimeSpan.FromSeconds(_options.LagDelaySeconds));
 
         activity?.SetTag(TelemetryTags.AreaId, context.AreaId);
         activity?.SetTag(TelemetryTags.ScenarioId, context.Scenario.Id);

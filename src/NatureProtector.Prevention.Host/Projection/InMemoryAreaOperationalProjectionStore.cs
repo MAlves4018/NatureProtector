@@ -48,7 +48,7 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         }
     }
 
-    public async Task SaveAsync(
+    public async Task<AreaProjectionWriteResult> SaveAsync(
         Guid areaId,
         AreaRiskSnapshot snapshot,
         int assessmentCount,
@@ -118,6 +118,7 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
                     existingOpenAlert is null ? snapshot.Timestamp : existingOpenAlert.TriggeredAt,
                     updatedAt,
                     null);
+                return new AreaProjectionWriteResult(updatedAt, updatedAt);
             }
             else if (existingAlert is not null)
             {
@@ -128,6 +129,50 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
                     ResolvedAt = updatedAt
                 };
             }
+
+            return new AreaProjectionWriteResult(updatedAt, null);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+
+    public async Task MarkUnavailableAsync(
+        Guid areaId,
+        DateTimeOffset snapshotTimestamp,
+        string reason,
+        CancellationToken cancellationToken,
+        Guid? simulationRunId = null,
+        int? cycleIndex = null)
+    {
+        await _gate.WaitAsync(cancellationToken);
+
+        try
+        {
+            if (!_states.TryGetValue(areaId, out var existingState))
+            {
+                return;
+            }
+
+            _states[areaId] = existingState with
+            {
+                SimulationRunId = simulationRunId,
+                SnapshotTimestamp = snapshotTimestamp,
+                AggregateRiskLevel = RiskLevel.Unknown.ToString(),
+                Severity = Severity.Info.ToString(),
+                CoverageStatus = OperationalProjectionStatus.Blocked,
+                FreshnessStatus = OperationalProjectionStatus.Unavailable,
+                CarryForwardStatus = OperationalProjectionStatus.NotAvailable,
+                Summary = reason,
+                AssessmentCount = 0,
+                PendingAlertState = V1AlertState.None.ToString(),
+                PendingAlertCycles = 0,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+
+            // Absence of eligible data must not resolve an existing alert.
         }
         finally
         {

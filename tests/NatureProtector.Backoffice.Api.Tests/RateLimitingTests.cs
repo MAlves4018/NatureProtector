@@ -1,6 +1,9 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using NatureProtector.Backoffice.Api.Configuration;
 
 namespace NatureProtector.Backoffice.Api.Tests;
@@ -104,6 +107,70 @@ public sealed class RateLimitingTests
         context.Request.Path = path;
 
         Assert.Equal(expected, ApiRateLimitingExtensions.Classify(context));
+    }
+
+    [Fact]
+    public void EvidenceRunId_PartitionsSimulationLaunchOnlyInDevelopment()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IHostEnvironment>(new TestHostEnvironment("Development"));
+        using var provider = services.BuildServiceProvider();
+
+        var context = new DefaultHttpContext
+        {
+            RequestServices = provider
+        };
+        context.Request.Headers["X-NP-Evidence-Run-Id"] = "20260719T002117Z";
+
+        var options = new ApiRateLimitingOptions
+        {
+            EvidenceSimulationLaunchPartitioningEnabled = true
+        };
+
+        var key = ApiRateLimitingExtensions.ResolvePartitionKey(
+            context,
+            options,
+            ApiRateLimitPolicies.SimulationLaunch,
+            "subject:admin");
+
+        Assert.Equal(
+            "simulation-launch:subject:admin:evidence:20260719T002117Z",
+            key);
+    }
+
+    [Fact]
+    public void EvidenceRunId_IsIgnoredOutsideDevelopment()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IHostEnvironment>(new TestHostEnvironment("Production"));
+        using var provider = services.BuildServiceProvider();
+
+        var context = new DefaultHttpContext
+        {
+            RequestServices = provider
+        };
+        context.Request.Headers["X-NP-Evidence-Run-Id"] = "20260719T002117Z";
+
+        var options = new ApiRateLimitingOptions
+        {
+            EvidenceSimulationLaunchPartitioningEnabled = true
+        };
+
+        var key = ApiRateLimitingExtensions.ResolvePartitionKey(
+            context,
+            options,
+            ApiRateLimitPolicies.SimulationLaunch,
+            "subject:admin");
+
+        Assert.Equal("simulation-launch:subject:admin", key);
+    }
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = environmentName;
+        public string ApplicationName { get; set; } = "NatureProtector.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 
     private static ControlPlaneApiWebApplicationFactory CreateFactory(

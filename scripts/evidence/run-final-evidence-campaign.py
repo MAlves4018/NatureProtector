@@ -76,6 +76,13 @@ def write_hashes(root: Path) -> int:
     return len(files)
 
 
+def safe_relative_to(path: Path, root: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return str(path.resolve())
+
+
 class ApiClient:
     def __init__(self, base_url: str, token: str | None, timeout: float = 30.0):
         self.base_url = base_url.rstrip("/")
@@ -85,6 +92,9 @@ class ApiClient:
     def request(self, method: str, path: str, payload: dict[str, Any] | None = None, authenticated: bool = True) -> dict[str, Any]:
         body = json.dumps(payload).encode("utf-8") if payload is not None else None
         headers = {"Accept": "application/json"}
+        evidence_run_id = os.getenv("NP_EVIDENCE_RUN_ID", "").strip()
+        if evidence_run_id:
+            headers["X-NP-Evidence-Run-Id"] = evidence_run_id
         if body is not None:
             headers["Content-Type"] = "application/json"
         if authenticated and self.token:
@@ -117,6 +127,44 @@ def load_config(path: Path) -> dict[str, Any]:
     if ids != ["E1", "E2", "E3", "E4", "E5", "E6"]:
         raise ValueError("Final campaign must define E1-E6 exactly and in order.")
     return value
+
+
+def normalize_case_degradation_profiles(case: dict[str, Any]) -> tuple[str, list[str]]:
+    raw_profiles = case.get("degradationProfiles") or []
+    if isinstance(raw_profiles, str):
+        profiles = [raw_profiles.strip()] if raw_profiles.strip() else []
+    else:
+        profiles = [str(profile).strip() for profile in raw_profiles if str(profile).strip()]
+
+    legacy_profile = str(case.get("degradationProfile") or "").strip()
+    if profiles:
+        return legacy_profile or "+".join(profiles), profiles
+
+    if legacy_profile:
+        if legacy_profile.lower() == "none":
+            return "none", ["none"]
+        split_profiles = [part.strip() for part in legacy_profile.replace(",", "+").split("+") if part.strip()]
+        return legacy_profile, split_profiles or [legacy_profile]
+
+    return "none", ["none"]
+
+
+def build_api_run_payload(case: dict[str, Any]) -> dict[str, Any]:
+    degradation_profile, degradation_profiles = normalize_case_degradation_profiles(case)
+    return {
+        "areaCode": case["areaCode"],
+        "scenarioCode": case["scenarioCode"],
+        "sensorCount": case.get("sensorCount"),
+        "numberOfCycles": case.get("numberOfCycles"),
+        "intervalSeconds": case.get("intervalSeconds"),
+        "seed": case.get("seed"),
+        "degradationProfile": degradation_profile,
+        "degradationProfiles": degradation_profiles,
+        "collectEvidence": bool(case.get("collectEvidence", True)),
+        "waitForCompletion": False,
+        "timeoutSeconds": int(case.get("timeoutSeconds", 600)),
+        "runLabel": f"final-evidence-{case['id']}",
+    }
 
 
 def fetch_json(url: str, token: str | None = None, basic: tuple[str, str] | None = None) -> Any:
@@ -166,24 +214,60 @@ def collect_domain_evidence(case_dir: Path, operation_id: str, run_id: str) -> N
     write_json(case_dir / "grafana" / "dashboard-inventory.json", dashboards)
 
 
+def reset_runtime_when_quiescent(
+    client: ApiClient,
+    poll_seconds: float,
+    max_wait_seconds: float = 240.0,
+) -> dict[str, Any]:
+    deadline = time.monotonic() + max_wait_seconds
+
+    while True:
+        try:
+            return client.request(
+                "POST",
+                "/api/control/runtime/reset",
+                {
+                    "scope": "runtime-only",
+                    "confirm": "RESET_RUNTIME_STATE",
+                    "dryRun": False,
+                    "requireExternalStores": True,
+                    "reconcileTerminalOrphans": True,
+                },
+            )
+        except RuntimeError as error:
+            message = str(error).lower()
+            busy = (
+                "http 400" in message
+                and (
+                    "unacknowledged" in message
+                    or '"status":"busy"' in message
+                    or "active operations=" in message
+                    or "requires quiescence" in message
+                    or "requires quiescent" in message
+                )
+            )
+            if not busy and (
+                "configuration is incomplete" in message
+                or "configured rabbitmq and influxdb" in message
+                or "influxdb" in message and "unavailable" in message
+            ):
+                raise
+            if not busy:
+                raise
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"Runtime did not become quiescent within {max_wait_seconds}s. "
+                    f"Last reset response: {error}"
+                ) from error
+            time.sleep(max(0.5, poll_seconds))
+
+
 def run_api_case(client: ApiClient, case: dict[str, Any], case_dir: Path, poll_seconds: float) -> dict[str, Any]:
-    reset = client.request("POST", "/api/control/runtime/reset", {"scope":"runtime-only","confirm":"RESET_RUNTIME_STATE","dryRun":False,"requireExternalStores":True,"reconcileTerminalOrphans":True})
+    reset = reset_runtime_when_quiescent(client, poll_seconds)
     write_json(case_dir / "configuration" / "systemic-reset.json", reset)
     if str(reset.get("status", "")).lower() not in {"completed", "success", "passed"}:
         raise RuntimeError(f"Systemic reset did not complete: {reset}")
-    payload = {
-        "areaCode": case["areaCode"],
-        "scenarioCode": case["scenarioCode"],
-        "sensorCount": case.get("sensorCount"),
-        "numberOfCycles": case.get("numberOfCycles"),
-        "intervalSeconds": case.get("intervalSeconds"),
-        "seed": case.get("seed"),
-        "degradationProfiles": case.get("degradationProfiles", []),
-        "collectEvidence": bool(case.get("collectEvidence", True)),
-        "waitForCompletion": False,
-        "timeoutSeconds": int(case.get("timeoutSeconds", 600)),
-        "runLabel": f"final-evidence-{case['id']}",
-    }
+    payload = build_api_run_payload(case)
     write_json(case_dir / "configuration" / "request.json", payload)
     accepted = client.request("POST", "/api/control/runtime/runs", payload)
     write_json(case_dir / "acceptance.json", accepted)
@@ -278,8 +362,8 @@ def main() -> int:
     parser.add_argument("--mode", choices=("plan", "synthetic", "live"), default="plan")
     parser.add_argument("--api-base-url", default=os.getenv("NATUREPROTECTOR_API_BASE_URL", "http://localhost:5254"))
     parser.add_argument("--bearer-token", default=os.getenv("NATUREPROTECTOR_RUNTIME_BEARER_TOKEN"))
-    parser.add_argument("--username", default=os.getenv("NATUREPROTECTOR_USERNAME"))
-    parser.add_argument("--password", default=os.getenv("NATUREPROTECTOR_PASSWORD"))
+    parser.add_argument("--username", default=os.getenv("NATUREPROTECTOR_RUNTIME_USERNAME") or os.getenv("NATUREPROTECTOR_USERNAME"))
+    parser.add_argument("--password", default=os.getenv("NATUREPROTECTOR_RUNTIME_PASSWORD") or os.getenv("NATUREPROTECTOR_PASSWORD"))
     parser.add_argument("--allow-commands", action="store_true")
     parser.add_argument("--poll-seconds", type=float, default=2.0)
     args = parser.parse_args()
@@ -288,15 +372,22 @@ def main() -> int:
     config = load_config(config_path)
     portfolio = (args.output_root if args.output_root.is_absolute() else repo / args.output_root) / f"{utc_stamp()}-{args.mode}"
     portfolio.mkdir(parents=True, exist_ok=False)
-    client = ApiClient(args.api_base_url, args.bearer_token)
-    if args.mode == "live" and not client.token:
-        if not args.username or not args.password:
-            raise RuntimeError("Live mode requires --bearer-token or --username/--password.")
-        client.login(args.username, args.password)
-        os.environ.setdefault("NP_PERFORMANCE_USERNAME", args.username)
-        os.environ.setdefault("NP_PERFORMANCE_PASSWORD", args.password)
+    client = ApiClient(args.api_base_url, None)
     if args.mode == "live":
+        if args.username and args.password:
+            client.login(args.username, args.password)
+        elif args.bearer_token:
+            client.token = args.bearer_token
+        else:
+            raise RuntimeError("Live mode requires --bearer-token or --username/--password.")
+
         client.request("GET", "/api/control/runtime/operations/current")
+        os.environ["NATUREPROTECTOR_RUNTIME_BEARER_TOKEN"] = str(client.token)
+        os.environ["NP_PERFORMANCE_AUTH_TOKEN"] = str(client.token)
+        if args.username:
+            os.environ["NP_PERFORMANCE_USERNAME"] = args.username
+        if args.password:
+            os.environ["NP_PERFORMANCE_PASSWORD"] = args.password
     case_results: list[dict[str, Any]] = []
     evidence_rows: list[dict[str, Any]] = []
     for campaign in config["campaigns"]:
@@ -359,7 +450,7 @@ def main() -> int:
     live_pass = args.mode == "live" and case_results and all(item["status"] == "PASS" for item in case_results)
     status = "REPORT_EVIDENCE_PORTFOLIO_READY" if live_pass else ("SYNTHETIC_PORTFOLIO_PASS" if args.mode == "synthetic" and all(item["status"] == "SYNTHETIC_PASS" for item in case_results) else "PLAN_READY" if args.mode == "plan" else "REPORT_EVIDENCE_PORTFOLIO_NOT_READY")
     write_csv(portfolio / "REPORT_EVIDENCE_MATRIX.csv", evidence_rows, ["requirement_id", "claim", "campaign", "run_id", "operation_id", "artifact", "metric_or_query", "result", "report_chapter", "figure_or_table", "limitations"])
-    write_json(portfolio / "manifest.json", {"schemaVersion": 1, "generatedAtUtc": utc_iso(), "mode": args.mode, "config": str(config_path.relative_to(repo)), "commit": os.getenv("GITHUB_SHA") or os.getenv("NP_COMMIT") or "unavailable", "environment": os.getenv("NP_ENVIRONMENT", "local"), "status": status, "cases": case_results})
+    write_json(portfolio / "manifest.json", {"schemaVersion": 1, "generatedAtUtc": utc_iso(), "mode": args.mode, "config": safe_relative_to(config_path, repo), "commit": os.getenv("GITHUB_SHA") or os.getenv("NP_COMMIT") or "unavailable", "environment": os.getenv("NP_ENVIRONMENT", "local"), "status": status, "cases": case_results})
     write_json(portfolio / "verdict.json", {"status": status, "live": live_pass, "synthetic": args.mode == "synthetic", "caseCount": len(case_results), "passed": sum(item["status"] in {"PASS", "SYNTHETIC_PASS", "PLANNED"} for item in case_results), "failed": sum(item["status"] in {"FAIL", "ERROR"} for item in case_results), "limitations": [] if live_pass else ["Only a fully live E1-E6 execution can satisfy REPORT_EVIDENCE_PORTFOLIO_READY."]})
     write_hashes(portfolio)
     print(portfolio)

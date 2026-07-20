@@ -52,6 +52,11 @@ public sealed class SimulationContext
     public TimeSpan Interval { get; }
 
     /// <summary>
+    /// Delivery delay applied by the lag/delay transport profile.
+    /// </summary>
+    public TimeSpan LagDelay { get; }
+
+    /// <summary>
     /// Optional configuration version used when the context originates from the control plane.
     /// </summary>
     public Guid? ConfigurationVersionId { get; }
@@ -114,7 +119,8 @@ public sealed class SimulationContext
         Guid? configurationVersionId = null,
         string? scenarioCode = null,
         int? preferredSeed = null,
-        SimulationRunOverridesSnapshot? runOverrides = null)
+        SimulationRunOverridesSnapshot? runOverrides = null,
+        TimeSpan? lagDelay = null)
     {
         if (areaId == Guid.Empty)
         {
@@ -139,6 +145,15 @@ public sealed class SimulationContext
                 "Interval must be greater than zero.");
         }
 
+        var resolvedLagDelay = lagDelay ?? TimeSpan.Zero;
+        if (resolvedLagDelay < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(lagDelay),
+                resolvedLagDelay,
+                "Lag delay must not be negative.");
+        }
+
         Scenario = scenario ?? throw new ArgumentNullException(nameof(scenario));
         ScenarioCode = string.IsNullOrWhiteSpace(scenarioCode) ? null : scenarioCode.Trim();
         Sensors = sensors ?? throw new ArgumentNullException(nameof(sensors));
@@ -153,6 +168,7 @@ public sealed class SimulationContext
         AreaId = areaId;
         StartTimestamp = startTimestamp;
         Interval = interval;
+        LagDelay = resolvedLagDelay;
         NumberOfCycles = numberOfCycles;
         ConfigurationVersionId = configurationVersionId;
         PreferredSeed = preferredSeed;

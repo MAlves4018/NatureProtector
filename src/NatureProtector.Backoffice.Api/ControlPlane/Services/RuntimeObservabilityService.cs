@@ -66,7 +66,7 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
 
         var limitations = new List<RuntimeLimitationResponse>
         {
-            new("publisher_timestamp_hard_gate", "EventEnvelope has EventTime and optional IngestTime, but no persisted PublishedAt timestamp. End-to-end publish latency is not claimed."),
+            new("publisher_timestamp_optional", "PublishedAt is persisted for new RabbitMQ-published readings; older rows and non-RabbitMQ publishers may not carry it."),
             new("quality_classifier_projection_unavailable", "Detailed classifier payloads and aggregate quality projections are not persisted by this endpoint.")
         };
 

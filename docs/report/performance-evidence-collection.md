@@ -112,6 +112,26 @@ Ingest the completed directory into the Phase 5 package:
   -RequireSystem
 ```
 
+## Report-ready aggregation
+
+After collecting one or more raw workload directories, generate bounded report
+tables with the deterministic aggregator:
+
+```powershell
+& "python" `
+  .\scripts\performance\aggregate-runtime-metrics.py `
+  --output-root "<external dossier directory>" `
+  --benchmark-dir "<BenchmarkDotNet output directory>" `
+  --http-run-dir "<HTTP workload output directory>" `
+  --system-run-dir "<system workload output directory>"
+```
+
+The aggregator writes canonical CSV tables, method notes and SVG figures for
+supported samples. Unsupported metrics are not imputed: publish-to-receive
+latency remains `UNSUPPORTED` until a persisted `PublishedAt` or equivalent
+stage timestamp exists, and processing throughput is not calculated from a run
+request duration that includes deliberate generation intervals or drain waits.
+
 ## Required report presentation
 
 Every result must include:
