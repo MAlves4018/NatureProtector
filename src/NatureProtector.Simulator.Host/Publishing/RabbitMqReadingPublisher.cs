@@ -68,7 +68,9 @@ public sealed class RabbitMqReadingPublisher(
             var channel = _channel
                 ?? throw new InvalidOperationException("RabbitMQ channel was not initialized.");
 
-            var body = JsonEventSerializer.SerializeToUtf8Bytes(envelope);
+            var publishedAt = DateTimeOffset.UtcNow;
+            var publishedEnvelope = envelope with { PublishedAt = publishedAt };
+            var body = JsonEventSerializer.SerializeToUtf8Bytes(publishedEnvelope);
 
             var properties = channel.CreateBasicProperties();
             properties.Persistent = true;
@@ -77,7 +79,7 @@ public sealed class RabbitMqReadingPublisher(
             properties.MessageId = envelope.EventId.ToString();
             properties.CorrelationId = envelope.CorrelationId;
             properties.Type = envelope.EventType;
-            properties.Timestamp = new AmqpTimestamp(envelope.EventTime.ToUnixTimeSeconds());
+            properties.Timestamp = new AmqpTimestamp(publishedAt.ToUnixTimeSeconds());
 
             RabbitMqPublishGuarantees.PublishMandatoryAndWaitForConfirm(
                 channel,
@@ -87,7 +89,7 @@ public sealed class RabbitMqReadingPublisher(
                 properties,
                 body,
                 TimeSpan.FromSeconds(_options.PublisherConfirmTimeoutSeconds),
-                $"reading event {envelope.EventId}");
+                $"reading event {publishedEnvelope.EventId}");
         }
 
         logger.LogInformation(

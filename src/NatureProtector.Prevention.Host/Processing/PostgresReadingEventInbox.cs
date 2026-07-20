@@ -95,6 +95,7 @@ public sealed class PostgresReadingEventInbox(
             AreaId = envelope.AreaId,
             SimulationRunId = envelope.Payload.SimulationRunId,
             EventTime = envelope.EventTime,
+            PublishedAt = envelope.PublishedAt,
             ReceivedAt = now,
             IngestTime = envelope.IngestTime,
             PayloadJson = payloadJson,

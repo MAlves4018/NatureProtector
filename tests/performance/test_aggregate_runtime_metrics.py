@@ -97,6 +97,80 @@ class AggregateRuntimeMetricsTests(unittest.TestCase):
         self.assertTrue(any(row["metric"] == "pipeline_processing_throughput" and row["status"] == "UNSUPPORTED" for row in throughput))
         self.assertTrue(any(row["stage"] == "publish_to_receive" and row["status"] == "UNSUPPORTED" for row in latency))
 
+    def test_system_run_uses_persisted_publish_to_receive_samples_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run = root / "system-B0"
+            output = root / "out"
+            write_json(run / "summary.json", {"profile": "B0"})
+            write_json(run / "workload.json", {"profile": "B0"})
+            write_csv(
+                run / "measurements.csv",
+                [
+                    {
+                        "profile": "B0",
+                        "simulationRunId": "run-1",
+                        "elapsedMs": 10000,
+                        "expectedEvents": 8,
+                        "acceptedReadings": 8,
+                        "riskAssessments": 8,
+                        "rejected": 0,
+                        "quarantined": 0,
+                        "lostEvents": 0,
+                        "backlogDrainTimeMs": 100,
+                        "queueReadyAfter": 0,
+                        "queueUnacknowledgedAfter": 0,
+                        "queueTotalAfter": 0,
+                        "queueConsumersAfter": 1,
+                        "timeToFirstPublishedMs": 15.25,
+                        "publishToFirstInboxMs": 12.5,
+                        "publishToLastProcessingFinishedMs": 90.75,
+                    }
+                ],
+                [
+                    "profile",
+                    "simulationRunId",
+                    "elapsedMs",
+                    "expectedEvents",
+                    "acceptedReadings",
+                    "riskAssessments",
+                    "rejected",
+                    "quarantined",
+                    "lostEvents",
+                    "backlogDrainTimeMs",
+                    "queueReadyAfter",
+                    "queueUnacknowledgedAfter",
+                    "queueTotalAfter",
+                    "queueConsumersAfter",
+                    "timeToFirstPublishedMs",
+                    "publishToFirstInboxMs",
+                    "publishToLastProcessingFinishedMs",
+                ],
+            )
+
+            args = module.parse_args(["--output-root", str(output), "--system-run-dir", str(run)])
+            summary = module.aggregate(args)
+            latency = read_csv(output / "05-latency" / "LATENCY_SUMMARY.csv")
+            raw_latency = read_csv(output / "05-latency" / "RAW_LATENCY_SAMPLES.csv")
+            throughput = read_csv(output / "06-throughput" / "THROUGHPUT_RESULTS.csv")
+            windows = read_csv(output / "06-throughput" / "THROUGHPUT_WINDOWS.csv")
+
+        publish_rows = [row for row in latency if row["stage"] == "publish_to_receive"]
+        pipeline_rows = [row for row in throughput if row["metric"] == "pipeline_processing_throughput"]
+        self.assertEqual("PASS", summary["status"])
+        self.assertEqual(1, len(publish_rows))
+        self.assertEqual("MEASURED", publish_rows[0]["status"])
+        self.assertEqual("1", publish_rows[0]["count"])
+        self.assertEqual("12.5", publish_rows[0]["p95"])
+        self.assertTrue(any(row["stage"] == "publish_to_receive" and row["durationMs"] == "12.5" for row in raw_latency))
+        self.assertEqual(1, len(pipeline_rows))
+        self.assertEqual("MEASURED", pipeline_rows[0]["status"])
+        self.assertEqual("88.15427", pipeline_rows[0]["value"])
+        self.assertTrue(any(row["window"] == "first_published_to_last_processing_finished" and row["validForProcessingThroughput"] == "true" for row in windows))
+
+    def test_parse_float_accepts_powershell_decimal_comma(self) -> None:
+        self.assertEqual(48.719, module.parse_float("48,719"))
+
     def test_http_run_generates_api_and_observed_request_rate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

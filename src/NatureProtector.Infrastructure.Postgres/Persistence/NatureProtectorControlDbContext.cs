@@ -456,6 +456,7 @@ public sealed class NatureProtectorControlDbContext : DbContext
         builder.Property(entity => entity.LastErrorMessage).HasMaxLength(2000);
         builder.HasIndex(entity => entity.EventId).IsUnique();
         builder.HasIndex(entity => new { entity.SimulationRunId, entity.Status });
+        builder.HasIndex(entity => new { entity.SimulationRunId, entity.PublishedAt });
         builder.HasIndex(entity => new { entity.Status, entity.ReceivedAt });
         builder.HasIndex(entity => new { entity.Status, entity.NextAttemptNotBefore });
     }

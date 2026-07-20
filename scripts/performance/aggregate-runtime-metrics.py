@@ -72,6 +72,8 @@ def parse_float(value: Any) -> float | None:
     text = str(value).strip()
     if not text:
         return None
+    if "," in text and "." not in text:
+        text = text.replace(",", ".")
     try:
         number = float(text)
     except ValueError:
@@ -206,6 +208,9 @@ def build_latency_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str,
                         "claimCeiling": "Local queue drain time for configured queue only.",
                     })
                 for field, stage in (
+                    ("timeToFirstPublishedMs", "time_to_first_published"),
+                    ("publishToFirstInboxMs", "publish_to_receive"),
+                    ("publishToLastProcessingFinishedMs", "publish_to_last_processing_finished"),
                     ("timeToFirstInboxMs", "time_to_first_inbox"),
                     ("timeToFirstProcessingAttemptMs", "time_to_first_processing_attempt"),
                     ("timeToFirstRiskAssessmentMs", "time_to_first_risk_assessment"),
@@ -220,7 +225,7 @@ def build_latency_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str,
                             "stage": stage,
                             "durationMs": round(value, 3),
                             "timestampBasis": "Persisted runtime timing endpoint",
-                            "claimCeiling": "Time-to-first persisted signal; not full distribution.",
+                            "claimCeiling": "Persisted timing sample for this run; distribution is limited to collected samples.",
                         })
         elif item["kind"] == "http":
             for row in item["measurements"]:
@@ -254,30 +259,32 @@ def build_latency_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str,
             **stats,
             "claimCeiling": next(row["claimCeiling"] for row in raw if row["sourceType"] == source_type and row["stage"] == stage),
         })
-    summary_rows.append({
-        "sourceType": "domain-event",
-        "stage": "publish_to_receive",
-        "unit": "ms",
-        "status": UNSUPPORTED,
-        "count": 0,
-        "min": "",
-        "p50": "",
-        "p90": "",
-        "p95": "",
-        "p99": "",
-        "max": "",
-        "mean": "",
-        "stddev": "",
-        "missingSamples": "",
-        "invalidSamples": "",
-        "claimCeiling": "Not claimable: EventEnvelope has no persisted PublishedAt timestamp.",
-    })
+    if not any(row["stage"] == "publish_to_receive" for row in raw):
+        summary_rows.append({
+            "sourceType": "domain-event",
+            "stage": "publish_to_receive",
+            "unit": "ms",
+            "status": UNSUPPORTED,
+            "count": 0,
+            "min": "",
+            "p50": "",
+            "p90": "",
+            "p95": "",
+            "p99": "",
+            "max": "",
+            "mean": "",
+            "stddev": "",
+            "missingSamples": "",
+            "invalidSamples": "",
+            "claimCeiling": "Requires non-null PublishedAt and ReceivedAt samples from a live RabbitMQ run.",
+        })
     return raw, summary_rows
 
 
 def build_throughput_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     windows: list[dict[str, Any]] = []
     results: list[dict[str, Any]] = []
+    pipeline_windows: dict[str, list[tuple[float, float]]] = defaultdict(list)
     for item in inputs:
         if item["kind"] == "http":
             status = item["path"] / "status.json"
@@ -323,16 +330,45 @@ def build_throughput_rows(inputs: Sequence[dict[str, Any]]) -> tuple[list[dict[s
                     "exclusions": "none; includes deliberate generation interval, completion wait and evidence checks",
                     "validForProcessingThroughput": "false",
                 })
-    results.append({
-        "sourceType": "system-workload",
-        "metric": "pipeline_processing_throughput",
-        "profile": "",
-        "value": "",
-        "unit": "events/s",
-        "status": UNSUPPORTED,
-        "formula": "Not calculated because current run_request_total window includes generation intervals and waits.",
-        "claimCeiling": "Requires explicit steady-state processing windows before use.",
-    })
+                pipeline_window_ms = parse_float(row.get("publishToLastProcessingFinishedMs"))
+                if accepted is not None and pipeline_window_ms is not None and pipeline_window_ms > 0:
+                    profile = str(row.get("profile", ""))
+                    pipeline_windows[profile].append((accepted, pipeline_window_ms / 1000.0))
+                    windows.append({
+                        "sourceType": "system-workload",
+                        "sourcePath": str(item["path"]),
+                        "profile": profile,
+                        "window": "first_published_to_last_processing_finished",
+                        "durationSeconds": round(pipeline_window_ms / 1000.0, 3),
+                        "volume": accepted,
+                        "exclusions": "pre-publish request setup and post-run evidence checks excluded; configured publish cadence remains part of the observed live workload window",
+                        "validForProcessingThroughput": "true",
+                    })
+    if pipeline_windows:
+        for profile, values in sorted(pipeline_windows.items()):
+            total_events = sum(value[0] for value in values)
+            total_seconds = sum(value[1] for value in values)
+            results.append({
+                "sourceType": "system-workload",
+                "metric": "pipeline_processing_throughput",
+                "profile": profile,
+                "value": round(total_events / total_seconds, 6) if total_seconds > 0 else "",
+                "unit": "events/s",
+                "status": "MEASURED" if total_seconds > 0 else UNSUPPORTED,
+                "formula": "acceptedReadings / (last_processing_finished - first_published)",
+                "claimCeiling": "Observed local live workload throughput for the configured publish cadence; not maximum production capacity.",
+            })
+    else:
+        results.append({
+            "sourceType": "system-workload",
+            "metric": "pipeline_processing_throughput",
+            "profile": "",
+            "value": "",
+            "unit": "events/s",
+            "status": UNSUPPORTED,
+            "formula": "Not calculated because current run_request_total window includes generation intervals and waits.",
+            "claimCeiling": "Requires explicit publish-to-processing windows before use.",
+        })
     return windows, results
 
 
@@ -564,7 +600,7 @@ def build_benchmark_rows(inputs: Sequence[dict[str, Any]]) -> list[dict[str, Any
 def write_method_files(output_root: Path) -> None:
     (output_root / "05-latency" / "LATENCY_METHOD.md").write_text(
         "# Latency Method\n\n"
-        "Only explicit elapsed-duration samples are summarized. Full publish-to-receive and publish-to-end latency remain `UNSUPPORTED` until a persisted `PublishedAt` or compatible stage timestamps exist.\n",
+        "Only explicit elapsed-duration samples are summarized. Publish-to-receive latency is summarized only when live runs include persisted `PublishedAt` and `ReceivedAt` samples.\n",
         encoding="utf-8",
     )
     (output_root / "05-latency" / "LATENCY_VALIDATION.md").write_text(
@@ -726,7 +762,7 @@ def write_report_tables(output_root: Path, canonical_rows: Sequence[dict[str, An
     (report / "FORBIDDEN_CLAIMS.md").write_text(
         "# Forbidden Claims\n\n"
         "- Production readiness or SLO/SLA compliance.\n"
-        "- Publish-to-projection latency without persisted `PublishedAt` and compatible stage timestamps.\n"
+        "- Publish-to-projection latency when persisted `PublishedAt` and compatible stage timestamps are absent.\n"
         "- Sustained or maximum system throughput from run request duration.\n"
         "- Scientific equivalence between NP Score, FWI, KBDI, IPMA, EFFIS, PIR or RCM.\n",
         encoding="utf-8",
@@ -743,8 +779,8 @@ def write_report_tables(output_root: Path, canonical_rows: Sequence[dict[str, An
         "| Report area | Action | Source | Claim permitted | Limitation |\n"
         "| --- | --- | --- | --- | --- |\n"
         "| Performance evidence | Insert bounded metrics table | `CANONICAL_METRICS.csv` | local engineering measurement | not production capacity |\n"
-        "| Latency | Replace unsupported end-to-end text | `LATENCY_RESULTS.csv` | supported stages only | no PublishedAt |\n"
-        "| Throughput | Use observed HTTP request rate only | `THROUGHPUT_RESULTS.csv` | local request rate | not pipeline throughput |\n"
+        "| Latency | Replace unsupported end-to-end text | `LATENCY_RESULTS.csv` | supported stages only | requires raw PublishedAt-derived samples |\n"
+        "| Throughput | Use explicit live windows only | `THROUGHPUT_RESULTS.csv` | local HTTP request rate and observed pipeline window rate | not maximum capacity |\n"
         "| Queues | Add queue/drain table when samples exist | `QUEUE_RESULTS.csv` | queue snapshot/drain | not broker capacity |\n",
         encoding="utf-8",
     )
@@ -944,7 +980,7 @@ def aggregate(args: argparse.Namespace) -> dict[str, Any]:
     write_csv(output_root / "22-report-assets" / "TABLE_REGISTER.csv", [
         {"table": "CANONICAL_METRICS.csv", "source": "24-report-ready/report/CANONICAL_METRICS.csv", "claim": "Bounded canonical metric ledger."},
         {"table": "LATENCY_RESULTS.csv", "source": "24-report-ready/report/LATENCY_RESULTS.csv", "claim": "Supported stage latency."},
-        {"table": "THROUGHPUT_RESULTS.csv", "source": "24-report-ready/report/THROUGHPUT_RESULTS.csv", "claim": "Observed HTTP rate and unsupported processing-throughput boundary."},
+        {"table": "THROUGHPUT_RESULTS.csv", "source": "24-report-ready/report/THROUGHPUT_RESULTS.csv", "claim": "Observed HTTP rate and observed pipeline throughput over explicit live windows."},
     ], ["table", "source", "claim"])
     (output_root / "22-report-assets" / "CAPTIONS.md").write_text(
         "# Captions\n\n"
@@ -971,7 +1007,7 @@ def aggregate(args: argparse.Namespace) -> dict[str, Any]:
             "canonicalMetrics": len(canonical_rows),
         },
         "limitations": [
-            "No full publish-to-receive latency is calculated without persisted PublishedAt.",
+            "Publish-to-receive latency is calculated only when live runs provide persisted PublishedAt-derived samples.",
             "No processing throughput is calculated from run request duration.",
             "Resource samples are local and opportunistic.",
         ],

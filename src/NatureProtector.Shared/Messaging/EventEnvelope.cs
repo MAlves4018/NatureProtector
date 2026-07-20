@@ -32,4 +32,5 @@ public sealed record EventEnvelope<TPayload>(
     Guid AreaId,
     DateTimeOffset EventTime,
     DateTimeOffset? IngestTime,
-    TPayload Payload);
+    TPayload Payload,
+    DateTimeOffset? PublishedAt = null);

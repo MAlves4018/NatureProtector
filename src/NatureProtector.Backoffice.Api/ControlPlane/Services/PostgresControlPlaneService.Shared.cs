@@ -297,8 +297,8 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
                     "risk_not_recalculated",
                     "Runtime audit and timing endpoints read persisted runtime records only; they do not recalculate risk."),
                 new RuntimeLimitationResponse(
-                    "publisher_timestamp_not_persisted",
-                    "Event publish timestamps are not persisted as PublishedAt in the current RabbitMQ contract.")
+                    "publisher_timestamp_optional",
+                    "PublishedAt is populated by the RabbitMQ publisher for new live runs; older or non-RabbitMQ rows may have null PublishedAt.")
             ]);
 
     private static IReadOnlyList<RuntimeTimelinePointResponse> BuildRunTimeline(
@@ -306,6 +306,7 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         DateTimeOffset createdAt,
         DateTimeOffset? startedAt,
         DateTimeOffset? endedAt,
+        DateTimeOffset? firstPublishedAt,
         DateTimeOffset? firstInboxReceivedAt,
         DateTimeOffset? firstProcessingAttemptStartedAt,
         DateTimeOffset? lastProcessingAttemptFinishedAt,
@@ -318,6 +319,7 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         };
 
         AddTimelinePoint(points, "started", startedAt, "control.simulation_runs.started_at");
+        AddTimelinePoint(points, "first_published", firstPublishedAt, "pipeline.event_inbox.published_at");
         AddTimelinePoint(points, "first_received", firstInboxReceivedAt, "pipeline.event_inbox.received_at");
         AddTimelinePoint(points, "first_processing_started", firstProcessingAttemptStartedAt, "pipeline.processing_attempts.started_at");
         AddTimelinePoint(points, "first_risk_assessment", firstRiskAssessmentCreatedAt, "projection.risk_assessment_log.created_at");

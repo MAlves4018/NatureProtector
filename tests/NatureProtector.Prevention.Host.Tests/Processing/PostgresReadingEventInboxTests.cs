@@ -16,7 +16,8 @@ public sealed class PostgresReadingEventInboxTests
     {
         await using var scope = new SqliteControlDbContextScope();
         var inbox = CreateInbox(scope);
-        var envelope = EnvelopeFactory.Create();
+        var publishedAt = new DateTimeOffset(2026, 4, 6, 18, 0, 2, TimeSpan.Zero);
+        var envelope = EnvelopeFactory.Create(publishedAt: publishedAt);
 
         var result = await inbox.StoreIncomingAsync(
             envelope,
@@ -33,6 +34,7 @@ public sealed class PostgresReadingEventInboxTests
         var inboxEvent = Assert.Single(dbContext.InboxEvents);
         Assert.Equal(envelope.EventId, inboxEvent.EventId);
         Assert.Equal(envelope.Payload.SimulationRunId, inboxEvent.SimulationRunId);
+        Assert.Equal(publishedAt, inboxEvent.PublishedAt);
         Assert.Equal(InboxEventStatus.Processing, inboxEvent.Status);
         Assert.Equal(1, inboxEvent.AttemptCount);
 
