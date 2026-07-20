@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace NatureProtector.Infrastructure.Postgres.Migrations
 {
     [DbContext(typeof(NatureProtectorControlDbContext))]
-    partial class NatureProtectorControlDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260720172203_AddPublishedAtToInboxEvents")]
+    partial class AddPublishedAtToInboxEvents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -784,9 +787,6 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTimeOffset>("PersistedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Producer")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -816,8 +816,6 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.HasIndex("EventId")
                         .IsUnique();
-
-                    b.HasIndex("SimulationRunId", "PersistedAt");
 
                     b.HasIndex("SimulationRunId", "PublishedAt");
 
@@ -1004,9 +1002,6 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTimeOffset>("PersistedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Producer")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1022,8 +1017,6 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
 
                     b.HasIndex("EventId")
                         .IsUnique();
-
-                    b.HasIndex("PersistedAt");
 
                     b.HasIndex("AreaId", "EventTime");
 
@@ -1704,14 +1697,8 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.Property<double>("AdjustedScore")
                         .HasColumnType("double precision");
 
-                    b.Property<DateTimeOffset?>("AlertedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<Guid>("AreaId")
                         .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("AssessedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<double>("BaseRisk")
                         .HasColumnType("double precision");
@@ -1776,9 +1763,6 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                         .HasColumnType("character varying(100)")
                         .HasDefaultValue("Unknown");
 
-                    b.Property<DateTimeOffset?>("ProjectedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("RiskLevel")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1817,10 +1801,6 @@ namespace NatureProtector.Infrastructure.Postgres.Migrations
                     b.HasIndex("AreaId", "Timestamp");
 
                     b.HasIndex("GridCellId", "Timestamp");
-
-                    b.HasIndex("SimulationRunId", "AssessedAt");
-
-                    b.HasIndex("SimulationRunId", "ProjectedAt");
 
                     b.HasIndex("AreaId", "SimulationRunId", "Timestamp");
 

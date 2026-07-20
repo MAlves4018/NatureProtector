@@ -52,6 +52,7 @@ public sealed class PostgresAcceptedReadingRepository(
             return;
         }
 
+        var persistedAt = DateTimeOffset.UtcNow;
         dbContext.AcceptedReadingLogs.Add(new AcceptedReadingLogRecord
         {
             Id = Guid.NewGuid(),
@@ -68,7 +69,8 @@ public sealed class PostgresAcceptedReadingRepository(
             CorrelationId = envelope.CorrelationId,
             PayloadJson = JsonEventSerializer.SerializeToString(envelope.Payload),
             EnvelopeJson = JsonEventSerializer.SerializeToString(envelope),
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = persistedAt,
+            PersistedAt = persistedAt
         });
 
         try

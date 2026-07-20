@@ -126,7 +126,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
     /// Atualiza a projeção agregada da área e o estado dos alertas simples
     /// derivados do snapshot.
     /// </summary>
-    public async Task SaveAsync(
+    public async Task<AreaProjectionWriteResult> SaveAsync(
         Guid areaId,
         AreaRiskSnapshot snapshot,
         int assessmentCount,
@@ -147,7 +147,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
             var existingState = await dbContext.AreaOperationalStates
                 .SingleOrDefaultAsync(entity => entity.AreaId == areaId, cancellationToken);
             if (cycleIndex.HasValue && existingState?.CycleIndex > cycleIndex.Value)
-                return;
+                return new AreaProjectionWriteResult(DateTimeOffset.UtcNow, null);
             var previousAdjustedScore = existingState?.AggregateRiskScore ?? snapshot.AggregateRiskScore;
 
             var now = DateTimeOffset.UtcNow;
@@ -208,6 +208,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
 
             if (nextState is V1AlertState.Warning or V1AlertState.Alarm)
             {
+                var alertedAt = now;
                 if (existingAlert is null)
                 {
                     dbContext.AlertStates.Add(new AlertStateRecord
@@ -221,7 +222,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
                         Status = OperationalAlertStatus.Open.ToString(),
                         Message = Truncate(BuildAlertMessage(snapshot, nextState), 2000) ?? string.Empty,
                         TriggeredAt = snapshot.Timestamp,
-                        UpdatedAt = now
+                        UpdatedAt = alertedAt
                     });
                 }
                 else
@@ -229,7 +230,7 @@ public sealed class PostgresAreaOperationalProjectionStore(
                     existingAlert.AreaOperationalStateId = existingState.Id;
                     existingAlert.Severity = severity.ToString();
                     existingAlert.Message = Truncate(BuildAlertMessage(snapshot, nextState), 2000) ?? string.Empty;
-                    existingAlert.UpdatedAt = now;
+                    existingAlert.UpdatedAt = alertedAt;
                     existingAlert.ResolvedAt = null;
                 }
             }
@@ -256,7 +257,10 @@ public sealed class PostgresAreaOperationalProjectionStore(
                     snapshot.AggregateRiskLevel,
                     severity,
                     assessmentCount);
-                return;
+                var alertedAt = nextState is V1AlertState.Warning or V1AlertState.Alarm
+                    ? now
+                    : (DateTimeOffset?)null;
+                return new AreaProjectionWriteResult(now, alertedAt);
             }
             catch (DbUpdateException ex) when (attempt == 0 && ExpectedUniqueViolationDetector.IsExpected(ex, NatureProtectorUniqueConstraints.AreaOperationalStateAreaId))
             {

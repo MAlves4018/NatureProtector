@@ -10,7 +10,7 @@ on:
       authorization_submission_run_id: {description: Signed authorization decision submission run, required: true, type: string}
       confirmation: {description: VERIFY_G82_PRODUCTION_AUTHORIZATION, required: true, type: string}
 
-permissions: {contents: read, actions: read, attestations: read, attestations: write}
+permissions: {contents: read, actions: read, attestations: write}
 
 jobs:
   verify:

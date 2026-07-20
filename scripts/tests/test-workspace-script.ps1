@@ -261,7 +261,7 @@ Assert-True ($systemCapacityScript -match "Wait-QueueDrain") "system capacity wo
 Assert-True ($systemCapacityScript -match "observationWaitSeconds") "system capacity workload uses profile-specific observation windows"
 Assert-True ($systemCapacityScript -match "ConvertTo-Json -InputObject") "system capacity workload writes empty JSON collections deterministically"
 Assert-True ($systemCapacityScript -match "np\.ingestion\.readings") "system capacity workload reports pipeline queue depth separately from auxiliary queues"
-Assert-True ($systemCapacityScript -match "publisher_timestamp_not_persisted|PublishedAt is not persisted") "system capacity workload preserves latency limitation"
+Assert-True ($systemCapacityScript -match "PublishedAt|event-latency") "system capacity workload preserves timestamp latency contract"
 Assert-False ($systemCapacityScript -match '\bgit\b') "system capacity workload does not execute Git"
 
 $benchmarkScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\performance\run-benchmarks.ps1") -Raw

@@ -2,6 +2,10 @@ using NatureProtector.Core.Risk;
 
 namespace NatureProtector.Prevention.Host.Projection;
 
+public sealed record AreaProjectionWriteResult(
+    DateTimeOffset ProjectedAt,
+    DateTimeOffset? AlertedAt);
+
 public interface IAreaOperationalProjectionStore
 {
     Task SaveCellAsync(
@@ -10,7 +14,7 @@ public interface IAreaOperationalProjectionStore
         RiskAssessment assessment,
         CancellationToken cancellationToken);
 
-    Task SaveAsync(
+    Task<AreaProjectionWriteResult> SaveAsync(
         Guid areaId,
         AreaRiskSnapshot snapshot,
         int assessmentCount,

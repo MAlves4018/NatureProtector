@@ -23,6 +23,7 @@ public sealed class AcceptedReadingLogRecord
     public string PayloadJson { get; set; } = string.Empty;
     public string EnvelopeJson { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset PersistedAt { get; set; }
 
     public Control.AreaRecord? Area { get; set; }
     public Control.SensorNodeRecord? SensorNode { get; set; }
@@ -56,6 +57,9 @@ public sealed class RiskAssessmentLogRecord
     public string RiskLevel { get; set; } = string.Empty;
     public string? ExplanationSummary { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset AssessedAt { get; set; }
+    public DateTimeOffset? ProjectedAt { get; set; }
+    public DateTimeOffset? AlertedAt { get; set; }
 
     public Control.AreaRecord? Area { get; set; }
     public Control.SimulationRunRecord? SimulationRun { get; set; }

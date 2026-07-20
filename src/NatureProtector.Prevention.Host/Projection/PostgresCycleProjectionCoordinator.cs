@@ -213,6 +213,12 @@ public sealed class PostgresCycleProjectionCoordinator(
             .Select(item => item.SensorId).ToHashSet();
         var eligible = observations.Where(item => item.Outcome == CycleObservationOutcome.Eligible.ToString() && item.RiskScore.HasValue)
             .Select(item => item.SensorId).ToHashSet();
+        var eligibleEventIds = observations
+            .Where(item => item.Outcome == CycleObservationOutcome.Eligible.ToString() && item.RiskScore.HasValue)
+            .Select(item => item.EventId)
+            .Distinct()
+            .Order()
+            .ToArray();
         var missing = sensors.Select(item => item.Id).Where(id => !observed.Contains(id)).ToHashSet();
 
         settlement.ObservedSensorIdsJson = SerializeIds(observed);
@@ -308,6 +314,7 @@ public sealed class PostgresCycleProjectionCoordinator(
             areaSnapshot,
             eligible.Count,
             settlement.IsOperational,
+            eligibleEventIds,
             aggregationReason);
     }
 

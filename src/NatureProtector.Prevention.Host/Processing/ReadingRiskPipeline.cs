@@ -297,13 +297,18 @@ public sealed class ReadingRiskPipeline(
             operationalEvent.SimulationRunId);
 
         var saveAreaProjectionStopwatch = Stopwatch.StartNew();
-        await areaOperationalProjectionStore.SaveAsync(
+        var areaProjectionResult = await areaOperationalProjectionStore.SaveAsync(
             normalizedReading.AreaId,
             snapshot,
             areaAssessments.Count,
             cancellationToken,
             simulationRunId: operationalEvent.SimulationRunId);
         saveAreaProjectionStopwatch.Stop();
+        await riskAssessmentRepository.MarkProjectedAsync(
+            normalizedReading.EventId,
+            areaProjectionResult.ProjectedAt,
+            areaProjectionResult.AlertedAt,
+            cancellationToken);
 
         var influxBatchWriteStopwatch = Stopwatch.StartNew();
         await influxWriteService.WriteBatchAsync(influxBatch, cancellationToken);
@@ -368,13 +373,21 @@ public sealed class ReadingRiskPipeline(
                 continue;
             }
 
-            await areaOperationalProjectionStore.SaveAsync(
+            var projectionResult = await areaOperationalProjectionStore.SaveAsync(
                 finalized.AreaId,
                 finalized.Snapshot,
                 finalized.EligibleCount,
                 cancellationToken,
                 finalized.SimulationRunId,
                 finalized.CycleIndex);
+            foreach (var eventId in finalized.EligibleEventIds)
+            {
+                await riskAssessmentRepository.MarkProjectedAsync(
+                    eventId,
+                    projectionResult.ProjectedAt,
+                    projectionResult.AlertedAt,
+                    cancellationToken);
+            }
         }
     }
 }

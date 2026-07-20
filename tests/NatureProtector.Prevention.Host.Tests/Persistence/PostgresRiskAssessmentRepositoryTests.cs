@@ -62,6 +62,40 @@ public sealed class PostgresRiskAssessmentRepositoryTests
         Assert.Equal("Candidate Parameter Set V1.0", row.ParameterSetVersion);
         Assert.Equal("Complete", row.CalculationStatus);
         Assert.Equal("test limitation", row.Limitations);
+        Assert.True(row.CreatedAt <= row.AssessedAt);
+    }
+
+    [Fact]
+    public async Task MarkProjectedAsync_StoresProjectionAndAlertTimestamps()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var repository = CreateRepository(scope);
+        var sourceEventId = Guid.NewGuid();
+        var assessment = new RiskAssessment(
+            Guid.NewGuid(),
+            new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.Zero),
+            0.74,
+            "High risk");
+
+        await repository.AddAsync(seed.AreaId, seed.SensorId, sourceEventId, assessment, CancellationToken.None);
+        DateTimeOffset projectedAt;
+        DateTimeOffset alertedAt;
+        await using (var lookupContext = scope.CreateDbContext())
+        {
+            var persisted = Assert.Single(lookupContext.RiskAssessmentLogs);
+            projectedAt = persisted.AssessedAt.AddMilliseconds(10);
+            alertedAt = projectedAt.AddMilliseconds(10);
+
+            await repository.MarkProjectedAsync(sourceEventId, projectedAt, alertedAt, CancellationToken.None);
+        }
+
+        await using var dbContext = scope.CreateDbContext();
+        var row = Assert.Single(dbContext.RiskAssessmentLogs);
+        Assert.True(row.AssessedAt <= row.ProjectedAt);
+        Assert.True(row.ProjectedAt <= row.AlertedAt);
+        Assert.Equal(projectedAt, row.ProjectedAt);
+        Assert.Equal(alertedAt, row.AlertedAt);
     }
 
     [Fact]
@@ -150,7 +184,8 @@ public sealed class PostgresRiskAssessmentRepositoryTests
                     RiskScore = pending.RiskScore,
                     RiskLevel = pending.RiskLevel,
                     ExplanationSummary = pending.ExplanationSummary,
-                    CreatedAt = pending.CreatedAt
+                    CreatedAt = pending.CreatedAt,
+                    AssessedAt = pending.AssessedAt
                 });
 
                 return Task.CompletedTask;

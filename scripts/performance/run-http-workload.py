@@ -148,13 +148,18 @@ def execute_request(
     timeout_seconds: float,
     headers: dict[str, str],
 ) -> dict[str, Any]:
+    request_headers = dict(headers)
+    if probe.surface == "web":
+        request_headers.pop("Authorization", None)
+        request_headers["Accept"] = "text/html,application/xhtml+xml,*/*"
+
     started = time.perf_counter()
     status_code: int | None = None
     byte_count = 0
     error_kind = ""
     error_message = ""
     try:
-        request = Request(url, method="GET", headers=headers)
+        request = Request(url, method="GET", headers=request_headers)
         with urlopen(request, timeout=timeout_seconds) as response:
             status_code = int(response.status)
             byte_count = len(response.read())

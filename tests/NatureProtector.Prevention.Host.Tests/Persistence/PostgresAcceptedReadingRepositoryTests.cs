@@ -35,6 +35,7 @@ public sealed class PostgresAcceptedReadingRepositoryTests
         Assert.Equal("Nominal", row.OperationalState);
         Assert.Equal(34.2, row.Value);
         Assert.Equal(eventTime, row.EventTime);
+        Assert.True(row.CreatedAt <= row.PersistedAt);
         Assert.Equal(envelope.CorrelationId, row.CorrelationId);
     }
 
@@ -95,7 +96,8 @@ public sealed class PostgresAcceptedReadingRepositoryTests
                     CorrelationId = pending.CorrelationId,
                     PayloadJson = pending.PayloadJson,
                     EnvelopeJson = pending.EnvelopeJson,
-                    CreatedAt = pending.CreatedAt
+                    CreatedAt = pending.CreatedAt,
+                    PersistedAt = pending.PersistedAt
                 });
 
                 return Task.CompletedTask;

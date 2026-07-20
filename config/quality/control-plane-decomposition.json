@@ -30,8 +30,8 @@
         96,
         241
       ],
-      "sha256": "681896f991ea0f16034d43ea3101082d18c42af4714746736d281767442f7626",
-      "line_count": 165
+      "sha256": "15171ad8ac4962d616192d3f06d49d0b35b122c5234799a141a1ae197b94c7ac",
+      "line_count": 179
     },
     {
       "id": "catalog-queries",
@@ -120,8 +120,8 @@
         4503,
         4961
       ],
-      "sha256": "fa2a97b3fb7c6301b08ee00a879155f60ab5187d58dc8032be90838c526fe10f",
-      "line_count": 525
+      "sha256": "2a1b7553227afef07bc830a50a00ba8b7dd6238b57350c6156f9481012b69fcb",
+      "line_count": 527
     }
   ],
   "limits": {

@@ -48,7 +48,13 @@ public sealed class RabbitMqReadingPublisherBehaviorTests
         Assert.Equal(envelope.EventType, Assert.IsType<string>(propertiesRecorder.Properties["Type"]));
 
         var timestamp = Assert.IsType<AmqpTimestamp>(propertiesRecorder.Properties["Timestamp"]);
-        Assert.Equal(envelope.EventTime.ToUnixTimeSeconds(), timestamp.UnixTime);
+        Assert.True(timestamp.UnixTime >= envelope.EventTime.ToUnixTimeSeconds());
+        var publishedBody = Assert.IsType<ReadOnlyMemory<byte>>(publish.Arguments[4]);
+        var publishedEnvelope = JsonEventSerializer.Deserialize<EventEnvelope<SensorReadingProducedPayload>>(publishedBody);
+        Assert.NotNull(publishedEnvelope);
+        Assert.Equal(envelope.EventId, publishedEnvelope.EventId);
+        Assert.NotNull(publishedEnvelope.PublishedAt);
+        Assert.True(publishedEnvelope.PublishedAt >= envelope.EventTime);
 
         var confirm = Assert.Single(channelRecorder.Invocations, x => x.MethodName == "WaitForConfirmsOrDie");
         Assert.Equal(

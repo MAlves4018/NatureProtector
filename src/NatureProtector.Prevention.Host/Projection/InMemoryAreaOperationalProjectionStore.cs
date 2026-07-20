@@ -48,7 +48,7 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
         }
     }
 
-    public async Task SaveAsync(
+    public async Task<AreaProjectionWriteResult> SaveAsync(
         Guid areaId,
         AreaRiskSnapshot snapshot,
         int assessmentCount,
@@ -118,6 +118,7 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
                     existingOpenAlert is null ? snapshot.Timestamp : existingOpenAlert.TriggeredAt,
                     updatedAt,
                     null);
+                return new AreaProjectionWriteResult(updatedAt, updatedAt);
             }
             else if (existingAlert is not null)
             {
@@ -128,6 +129,8 @@ public sealed class InMemoryAreaOperationalProjectionStore : IAreaOperationalPro
                     ResolvedAt = updatedAt
                 };
             }
+
+            return new AreaProjectionWriteResult(updatedAt, null);
         }
         finally
         {
