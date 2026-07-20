@@ -115,8 +115,8 @@ test.describe('point 5 report evidence', () => {
     await runTabs.getByRole('button', { name: /Evidência|Evidence/i }).click();
     await captureLocator(page, page.getByTestId('run-evidence-panel'), 'hero-evidence', {
       ...common,
-      claim: 'Mostra o pacote exportável, a associação direta a evidenceId e o DataScope run-scoped da hero run.',
-      limitation: 'A disponibilidade do catálogo continua a ser demonstrada separadamente na superfície de evidência.',
+      claim: 'Mostra o pacote exportável e o DataScope run-scoped da hero run.',
+      limitation: 'A operação não possui evidenceId direto; a disponibilidade do catálogo é demonstrada separadamente.',
     });
 
     await page.goto(`/queries?runId=${encodeURIComponent(heroRunId)}`);
@@ -150,14 +150,14 @@ test.describe('point 5 report evidence', () => {
     await expect(profileRow).toContainText('none');
     await expect(profileRow).toContainText('missing-readings');
     const associationRow = page.locator('tbody tr', { hasText: 'Ligação direta a evidenceId' });
-    await expect(associationRow).toContainText('Associada diretamente');
+    await expect(associationRow).toContainText('Não associada estruturalmente');
     const comparisonCard = profileRow.locator('xpath=ancestor::section[contains(@class,"ui-card")][1]');
     await captureLocator(page, comparisonCard, 'hero-vs-nominal-comparison', {
       simulationRunId: heroRunId,
       simulationRunIds: [nominalRunId, heroRunId],
       scenario: `${nominalScenario} vs ${heroScenario}`,
-      claim: 'Compara explicitamente a run nominal e a hero run degradada, incluindo perfis resolvidos, accounting e ligação direta a evidenceId.',
-      limitation: 'Comparação de uma execução por cenário com seed controlada; não suporta claims de comportamento médio.',
+      claim: 'Compara explicitamente a run nominal e a hero run degradada, incluindo perfis resolvidos e accounting.',
+      limitation: 'Comparação de uma execução por cenário com seed 42; não suporta claims de comportamento médio.',
     });
 
     await page.goto(`/evidence?runId=${encodeURIComponent(heroRunId)}`);
@@ -165,7 +165,7 @@ test.describe('point 5 report evidence', () => {
     await captureViewport(page, 'hero-evidence-catalog', {
       ...common,
       claim: 'Demonstra que o catálogo local de evidência está disponível e navegável.',
-      limitation: 'A navegação do catálogo é evidência de disponibilidade local; a ligação estrutural por operation.evidenceId é validada na comparação run-scoped.',
+      limitation: 'Disponibilidade no catálogo não equivale a associação estrutural por operation.evidenceId.',
     });
 
     await page.goto(`/pipeline?runId=${encodeURIComponent(heroRunId)}`);
