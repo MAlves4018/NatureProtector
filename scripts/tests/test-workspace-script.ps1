@@ -238,6 +238,7 @@ Assert-True ($finalHardeningScript -match "NOT_IMPLEMENTED") "final hardening or
 $localFunctionalValidationScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\validation\Invoke-LocalFunctionalValidation.ps1") -Raw
 Assert-False ($localFunctionalValidationScript -match "C:\\Users\\Miguel") "local functional validation no longer defaults to a personal absolute evidence path"
 Assert-True ($localFunctionalValidationScript -match "git clone --no-local") "local functional validation CleanRoom uses a real Git clone"
+Assert-True ($localFunctionalValidationScript -match "GetTempPath" -and $localFunctionalValidationScript -match "np-clean-clone") "local functional validation CleanRoom uses a short temp clone root by default"
 Assert-True ($localFunctionalValidationScript -match '"np-prepare-local"') "local functional validation CleanRoom runs prepare-local before runtime smoke"
 
 $functionalPackageSmokeScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\release\test-functional-package-smoke.ps1") -Raw

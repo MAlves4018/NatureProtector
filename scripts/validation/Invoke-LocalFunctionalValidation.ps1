@@ -42,7 +42,7 @@ New-Item -ItemType Directory -Force -Path $RunRoot, $LogsDir, $ExportsDir, $Scre
 
 if ($CleanRoom) {
     $cloneParent = if ([string]::IsNullOrWhiteSpace($CleanCloneRoot)) {
-        Join-Path $RunRoot "clean-clone"
+        Join-Path ([IO.Path]::GetTempPath()) (Join-Path "np-clean-clone" ([guid]::NewGuid().ToString("N")))
     }
     else {
         [IO.Path]::GetFullPath($CleanCloneRoot)

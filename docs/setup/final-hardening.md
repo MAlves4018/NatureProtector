@@ -27,7 +27,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass `
 The clean-room path:
 
 1. resolves the current source `HEAD`;
-2. runs `git clone --no-local` into the run directory;
+2. runs `git clone --no-local` into a short temporary path by default, to avoid Windows path-length failures while keeping evidence under `RunRoot`;
 3. checks out the exact source `HEAD`;
 4. verifies `git status --porcelain` is empty;
 5. runs the local setup sequence through `scripts/np.ps1`.
