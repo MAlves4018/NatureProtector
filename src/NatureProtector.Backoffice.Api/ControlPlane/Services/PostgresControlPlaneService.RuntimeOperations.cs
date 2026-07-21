@@ -904,6 +904,8 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
 
         var queryType = request.Type?.Trim().ToLowerInvariant() ?? "select";
 
+        var tableColumns = entityTable.GetProperties().Select(p => p.GetColumnName()).Where(name => name != null).ToList();
+
         var limitations = new List<string>();
         if (queryType == "count")
         {
@@ -919,8 +921,10 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             if (request.Offset > 10000)
                 limitations.Add("Offset clamped to maximum allowed value (10000).");
 
-            var selectColumns = request.Columns is { Length: > 0 }
-                ? string.Join(", ", request.Columns.Select(c => $"\"{c}\""))
+
+            var validColumns = request.Columns?.Where(c => tableColumns.Contains(c)).ToArray() ?? [];
+            var selectColumns = validColumns.Length > 0
+                ? string.Join(", ", validColumns.Select(c => $"\"{c}\""))
                 : "*";
 
             command.CommandText = $"SELECT {selectColumns} FROM {qualifiedTable} LIMIT @limit OFFSET @offset";
