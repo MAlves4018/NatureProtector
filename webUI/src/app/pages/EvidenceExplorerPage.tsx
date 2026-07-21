@@ -11,6 +11,7 @@ import { useUiCapabilities } from '../state/CapabilityContext';
 import { useUiObservability } from '../state/ObservabilityContext';
 import { useUiActivity } from '../state/ActivityContext';
 import { evidenceIdentityMatchesRun, normalizeEvidenceCatalog } from '../utils/operationalMetrics';
+import { ClaimRow, EvidenceMetric } from '../utils/evidenceExplorerPage';
 
 export function EvidenceExplorerPage() {
   const { catalog, operations, compare } = useOperations();
@@ -364,45 +365,5 @@ export function EvidenceExplorerPage() {
         </section>
       )}
     </section>
-  );
-}
-
-function EvidenceMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <article className="ui-metric-card">
-      <span className="ui-metric-icon">
-        <FileCheck2 size={17} />
-      </span>
-      <strong>{value}</strong>
-      <small>{label}</small>
-    </article>
-  );
-}
-
-function ClaimRow({
-  claim,
-  result,
-  source,
-  timestamp,
-  artifact,
-  verified,
-}: {
-  claim: string;
-  result: string | null;
-  source: string;
-  timestamp?: string | null;
-  artifact?: string | null;
-  verified: boolean;
-}) {
-  return (
-    <tr>
-      <td>{claim}</td>
-      <td>{result ?? 'Indisponível para esta run'}</td>
-      <td>{source}</td>
-      <td>{timestamp ? new Date(timestamp).toLocaleString('pt-PT') : 'Indisponível'}</td>
-      <td>{artifact ?? 'Sem artefacto associado'}</td>
-      <td>Live local</td>
-      <td>{verified ? 'Verificado pela resposta API' : 'Não verificado'}</td>
-    </tr>
   );
 }

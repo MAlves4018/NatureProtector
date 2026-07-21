@@ -94,7 +94,9 @@
     "TechnicalLabel",
     "Copy",
     "localize",
-    "AlertStateResponse"
+    "AlertStateResponse",
+    "ROQueryRequest",
+    "ROQueryResponse"
   ],
   "type_modules": {
     "webUI/src/app/types/auth.ts": {
