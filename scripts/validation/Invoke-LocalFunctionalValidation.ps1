@@ -66,6 +66,10 @@ if ($CleanRoom) {
         throw "Clean clone is not clean. See clean-clone-status.txt."
     }
     $RepoRoot = (Resolve-Path $cloneRepo).Path
+    if ([string]::IsNullOrWhiteSpace($env:NP_NUGET_PACKAGES)) {
+        $env:NP_NUGET_PACKAGES = Join-Path ([IO.Path]::GetTempPath()) "np-nuget-packages"
+    }
+    New-Item -ItemType Directory -Force -Path $env:NP_NUGET_PACKAGES | Out-Null
 }
 $PreviousDockerConfig = $env:DOCKER_CONFIG
 $DockerConfigWasIsolated = $false
@@ -971,6 +975,7 @@ try {
         sourceRepoRoot = $SourceRepoRoot
         repoRoot = $RepoRoot
         cleanCloneRoot = if ($CleanRoom) { $RepoRoot } else { $null }
+        nugetPackages = $env:NP_NUGET_PACKAGES
         apiRoot = $ApiRoot
         apiBaseUrl = $ApiBaseUrl
         preventionBaseUrl = $PreventionBaseUrl

@@ -175,8 +175,10 @@ Assert-True ($bootstrapScript -match "POSTGRES_HOST" -and $bootstrapScript -matc
 Assert-False ($bootstrapScript -match 'Test-NetConnection\s+-ComputerName\s+["'']localhost["'']\s+-Port\s+5433') "bootstrap does not hardcode localhost:5433"
 
 $prepareScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\setup\Initialize-LocalWorkspace.ps1") -Raw
+$dotnetEnvironmentScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\dotnet\Use-RepoDotnetEnvironment.ps1") -Raw
 Assert-True ($prepareScript -match "dotnet restore" -and $prepareScript -match "NuGet.Config") "prepare-local restores the locked .NET dependency graph"
 Assert-True ($prepareScript -match "--disable-parallel") "prepare-local uses deterministic non-parallel NuGet restore"
+Assert-True ($dotnetEnvironmentScript -match "NP_NUGET_PACKAGES") "repo dotnet environment can use an explicit NuGet package cache"
 Assert-True ($prepareScript -match "npm ci") "prepare-local installs frontend dependencies from package-lock.json"
 Assert-False ($prepareScript -match "npm install") "prepare-local does not mutate the frontend lockfile through npm install"
 
@@ -240,6 +242,7 @@ $localFunctionalValidationScript = Get-Content -LiteralPath (Join-Path $RepoRoot
 Assert-False ($localFunctionalValidationScript -match "C:\\Users\\Miguel") "local functional validation no longer defaults to a personal absolute evidence path"
 Assert-True ($localFunctionalValidationScript -match "git clone --no-local") "local functional validation CleanRoom uses a real Git clone"
 Assert-True ($localFunctionalValidationScript -match "GetTempPath" -and $localFunctionalValidationScript -match "np-clean-clone") "local functional validation CleanRoom uses a short temp clone root by default"
+Assert-True ($localFunctionalValidationScript -match "np-nuget-packages") "local functional validation CleanRoom records an explicit short NuGet cache"
 Assert-True ($localFunctionalValidationScript -match '"np-prepare-local"') "local functional validation CleanRoom runs prepare-local before runtime smoke"
 
 $functionalPackageSmokeScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\release\test-functional-package-smoke.ps1") -Raw

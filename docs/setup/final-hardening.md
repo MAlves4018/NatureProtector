@@ -30,7 +30,8 @@ The clean-room path:
 2. runs `git clone --no-local` into a short temporary path by default, to avoid Windows path-length failures while keeping evidence under `RunRoot`;
 3. checks out the exact source `HEAD`;
 4. verifies `git status --porcelain` is empty;
-5. runs the local setup sequence through `scripts/np.ps1`.
+5. records an explicit short NuGet package cache path through `NP_NUGET_PACKAGES`;
+6. runs the local setup sequence through `scripts/np.ps1`.
 
 The setup sequence includes `prepare-local`, so dependencies are restored from declared lockfiles before the runtime smoke starts.
 
