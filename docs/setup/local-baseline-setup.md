@@ -223,7 +223,8 @@ Num clone novo, os packages .NET ainda não foram restaurados e `webUI/node_modu
 O comando:
 
 - configura `DOTNET_CLI_HOME` e `NUGET_PACKAGES` dentro do repositório;
-- executa `dotnet restore NatureProtector.sln --configfile NuGet.Config`;
+- executa `dotnet restore NatureProtector.sln --configfile NuGet.Config --disable-parallel /nodeReuse:false`;
+- desativa node reuse também por `MSBUILDDISABLENODEREUSE=1`, para evitar processos MSBuild persistentes em clones limpos no Windows;
 - exige `webUI/package-lock.json`;
 - executa `npm ci` na webUI;
 - confirma que o package Vite necessário ao launcher ficou instalado.

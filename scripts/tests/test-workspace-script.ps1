@@ -233,6 +233,9 @@ $finalFreezeScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\rele
 Assert-True ($finalFreezeScript -match 'ValidateSet\("Plan", "Verify", "Execute"\)') "final freeze wrapper exposes Plan/Verify/Execute modes"
 Assert-True ($finalFreezeScript -match 'Mode -eq "Execute"') "final freeze wrapper explicitly blocks Execute during hardening"
 Assert-True ($finalFreezeScript -match "build-release-candidate\.ps1") "final freeze wrapper reuses the release candidate authority"
+Assert-True ($finalFreezeScript -match "IsPathRooted") "final freeze wrapper accepts absolute output roots"
+Assert-True ($finalFreezeScript -match "RedirectStandardOutput" -and $finalFreezeScript -match "stdout\.tmp") "final freeze wrapper redirects child output to files"
+Assert-False ($finalFreezeScript -match "ReadToEnd") "final freeze wrapper avoids pipe-drain deadlocks"
 
 $finalHardeningScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\hardening\Invoke-NP-FinalHardening.ps1") -Raw
 Assert-True ($finalHardeningScript -match "REPRODUCIBILITY_FINGERPRINT\.json") "final hardening orchestrator writes a reproducibility fingerprint"

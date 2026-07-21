@@ -31,9 +31,14 @@ The clean-room path:
 3. checks out the exact source `HEAD`;
 4. verifies `git status --porcelain` is empty;
 5. records an explicit short NuGet package cache path through `NP_NUGET_PACKAGES`;
-6. runs the local setup sequence through `scripts/np.ps1`.
+6. runs `.NET restore` as an explicit setup gate before frontend setup;
+7. runs the local setup sequence through `scripts/np.ps1`.
 
-The setup sequence includes `prepare-local`, so dependencies are restored from declared lockfiles before the runtime smoke starts.
+The clean-room restore uses `NuGet.Config`, `--disable-parallel`, `MSBUILDDISABLENODEREUSE=1` and `/nodeReuse:false`. This avoids persistent MSBuild nodes and pipe-buffer deadlocks observed in clean clones on Windows.
+
+After the restore gate passes, the setup sequence runs `prepare-local -SkipDotnetRestore`, so frontend dependencies still come from the declared `webUI/package-lock.json` without repeating the already-proved .NET restore.
+
+Command output from the hardening and functional harnesses is redirected to per-command stdout/stderr files before being folded into the final command logs. This keeps logs durable without blocking long-running child processes on full stdout/stderr pipes.
 
 ## Hardening orchestration
 
@@ -75,6 +80,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass `
 ```
 
 `Execute` is blocked by policy in this mission. It is reserved for after the PR is merged and the owner explicitly authorizes final tagging/release actions.
+
+`-OutputRoot` accepts either a repository-relative path or an absolute external evidence path. Child command output is redirected to per-command stdout/stderr files before the final freeze logs are written.
 
 ## Protected local file
 

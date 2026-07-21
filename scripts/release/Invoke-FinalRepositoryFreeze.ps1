@@ -11,7 +11,12 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$OutputRoot = [IO.Path]::GetFullPath((Join-Path $RepoRoot $OutputRoot))
+$OutputRoot = if ([IO.Path]::IsPathRooted($OutputRoot)) {
+    [IO.Path]::GetFullPath($OutputRoot)
+}
+else {
+    [IO.Path]::GetFullPath((Join-Path $RepoRoot $OutputRoot))
+}
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 
 function Invoke-FreezeCommand {
@@ -21,27 +26,33 @@ function Invoke-FreezeCommand {
         [string[]]$Arguments,
         [int]$TimeoutSeconds = 900
     )
-    $logPath = Join-Path $OutputRoot "$($Name -replace '[^a-zA-Z0-9_.-]', '-').log"
+    $safeName = $Name -replace '[^a-zA-Z0-9_.-]', '-'
+    $logPath = Join-Path $OutputRoot "$safeName.log"
+    $stdoutPath = Join-Path $OutputRoot "$safeName.stdout.tmp"
+    $stderrPath = Join-Path $OutputRoot "$safeName.stderr.tmp"
     $started = Get-Date
-    $psi = [Diagnostics.ProcessStartInfo]::new()
-    $psi.FileName = $Executable
-    foreach ($argument in $Arguments) { [void]$psi.ArgumentList.Add($argument) }
-    $psi.WorkingDirectory = $RepoRoot
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.UseShellExecute = $false
-    $psi.CreateNoWindow = $true
-    $process = [Diagnostics.Process]::Start($psi)
+    Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+    $process = Start-Process -FilePath $Executable `
+        -ArgumentList $Arguments `
+        -WorkingDirectory $RepoRoot `
+        -RedirectStandardOutput $stdoutPath `
+        -RedirectStandardError $stderrPath `
+        -PassThru `
+        -WindowStyle Hidden
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
         try { $process.Kill($true) } catch {}
+        try { $process.WaitForExit(5000) | Out-Null } catch {}
         $exitCode = 124
-        $stdout = ""
-        $stderr = "Timed out after $TimeoutSeconds seconds."
+        $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
+        $stderr = (@(
+            "Timed out after $TimeoutSeconds seconds."
+            if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
+        ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join [Environment]::NewLine
     }
     else {
         $exitCode = [int]$process.ExitCode
-        $stdout = $process.StandardOutput.ReadToEnd()
-        $stderr = $process.StandardError.ReadToEnd()
+        $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
+        $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
     }
     @(
         "> $Executable $($Arguments -join ' ')"
