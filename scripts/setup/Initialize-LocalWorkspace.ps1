@@ -82,7 +82,8 @@ if (-not $SkipDotnetRestore) {
         & dotnet restore (Join-Path $repoRoot 'NatureProtector.sln') `
             --configfile (Join-Path $repoRoot 'NuGet.Config') `
             --disable-parallel `
-            --nologo
+            --nologo `
+            /nodeReuse:false
     }
 }
 else {
