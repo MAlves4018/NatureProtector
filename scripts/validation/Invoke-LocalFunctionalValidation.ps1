@@ -206,6 +206,18 @@ function Join-ProcessArguments {
     }) -join ' ')
 }
 
+function Stop-ProcessTree {
+    param([Parameter(Mandatory)][int]$ProcessId)
+
+    $children = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object { $_.ParentProcessId -eq $ProcessId })
+    foreach ($child in $children) {
+        Stop-ProcessTree -ProcessId ([int]$child.ProcessId)
+    }
+
+    Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+}
+
 function Invoke-LoggedCommand {
     param(
         [Parameter(Mandatory)][string]$Name,
@@ -236,6 +248,7 @@ function Invoke-LoggedCommand {
         $processInfo.CreateNoWindow = $true
         $process = [System.Diagnostics.Process]::Start($processInfo)
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            Stop-ProcessTree -ProcessId ([int]$process.Id)
             try { $process.Kill($true) } catch {}
             try { $process.WaitForExit(5000) | Out-Null } catch {}
             $stdout = $process.StandardOutput.ReadToEnd()
