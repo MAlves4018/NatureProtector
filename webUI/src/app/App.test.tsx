@@ -178,7 +178,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Qualidade e evidencia/i }));
     expect(await screen.findByRole('heading', { name: /Qualidade e evidência/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Historical claims/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /Historical claims/i }));
     expect(screen.getByText(/Historical repository claims/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Evidence Explorer/i }));
@@ -297,9 +297,10 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Risco e dados/i }));
     fireEvent.change(await screen.findByLabelText(/selecionar área/i), { target: { value: 'proenca-a-nova' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /Avisos/i }));
-    await waitFor(() => expect(screen.getByText('summary unavailable')).toBeInTheDocument());
-    expect(screen.getByText(/Sem score apresent/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Sem score apresent/i)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('tab', { name: /Avisos/i }));
+    expect(screen.getByText('summary unavailable')).toBeInTheDocument();
   });
 });
 
