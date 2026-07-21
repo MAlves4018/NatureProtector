@@ -75,7 +75,9 @@ describe('capabilities', () => {
       'runs',
       'scenario-compare',
       'pipeline',
+      'quality',
       'qa',
+      'qa-tests',
       'evidence',
     ]);
     expect(navigation.some((item) => item.id === 'deployments')).toBe(false);
