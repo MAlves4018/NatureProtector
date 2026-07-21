@@ -237,6 +237,13 @@ function Invoke-LoggedCommand {
         $process = [System.Diagnostics.Process]::Start($processInfo)
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
             try { $process.Kill($true) } catch {}
+            try { $process.WaitForExit(5000) | Out-Null } catch {}
+            $stdout = $process.StandardOutput.ReadToEnd()
+            $stderr = $process.StandardError.ReadToEnd()
+            $output.Add("Command timed out after $TimeoutSeconds seconds.") | Out-Null
+            if (-not [string]::IsNullOrWhiteSpace($stdout)) { $output.Add($stdout) | Out-Null }
+            if (-not [string]::IsNullOrWhiteSpace($stderr)) { $output.Add($stderr) | Out-Null }
+            $exitCode = 1
             throw "Command timed out after $TimeoutSeconds seconds."
         }
 
