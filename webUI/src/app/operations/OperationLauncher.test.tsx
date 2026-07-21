@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { EngineeringOperationResponse, OperationDefinitionResponse, StartOperationRequest } from '../types/operations';
+import type {
+  EngineeringOperationResponse,
+  OperationDefinitionResponse,
+  StartOperationRequest,
+} from '../types/operations';
 import { OperationLauncher } from './OperationLauncher';
 
 const start = vi.fn<(request: StartOperationRequest) => Promise<EngineeringOperationResponse>>();

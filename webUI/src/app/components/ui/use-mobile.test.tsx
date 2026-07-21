@@ -31,7 +31,9 @@ describe('useIsMobile', () => {
 
     act(() => {
       Object.defineProperty(window, 'innerWidth', { value: 640, configurable: true });
-      listeners.forEach((listener) => listener());
+      listeners.forEach((listener) => {
+        listener();
+      });
     });
     expect(result.current).toBe(true);
 

@@ -74,7 +74,9 @@ describe('OperationStatus', () => {
       />,
     );
 
-    expect(screen.getByText('Request recorded or accepted for dispatch; provider completion is not proved.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Request recorded or accepted for dispatch; provider completion is not proved.'),
+    ).toBeInTheDocument();
     expect(screen.getByText('não despachado')).toBeInTheDocument();
     expect(screen.getByText('provider result not observed')).toBeInTheDocument();
     expect(screen.queryByText('Queued')).not.toBeInTheDocument();

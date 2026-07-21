@@ -21,7 +21,9 @@ describe('GrafanaStrip and AreaRisk', () => {
   it('loads dashboard links and appends kiosk parameters while replacing area placeholders', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ text: () => Promise.resolve('https://grafana/d/one?var-area=???\nhttps://grafana/d/two\n') }),
+      vi.fn().mockResolvedValue({
+        text: () => Promise.resolve('https://grafana/d/one?var-area=???\nhttps://grafana/d/two\n'),
+      }),
     );
 
     render(<GrafanaStrip isDark={false} areaId="AREA-1" {...colors} />);
@@ -39,7 +41,9 @@ describe('GrafanaStrip and AreaRisk', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ text: () => Promise.resolve('https://risk/???\n') }));
     const view = render(<AreaRisk isDark areaId="PT-11" {...colors} />);
 
-    await waitFor(() => expect(screen.getByTitle('Area Risk Dashboard 1')).toHaveAttribute('src', 'https://risk/PT-11?kiosk&nav=false'));
+    await waitFor(() =>
+      expect(screen.getByTitle('Area Risk Dashboard 1')).toHaveAttribute('src', 'https://risk/PT-11?kiosk&nav=false'),
+    );
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('missing file')));
     view.rerender(<AreaRisk isDark areaId="PT-12" {...colors} />);

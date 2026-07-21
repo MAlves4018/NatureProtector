@@ -49,7 +49,9 @@ describe('ConfirmDialog', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledTimes(1);
 
-    rerender(<ConfirmDialog open={false} title="Confirmar" message="Mensagem" onConfirm={vi.fn()} onCancel={onCancel} />);
+    rerender(
+      <ConfirmDialog open={false} title="Confirmar" message="Mensagem" onConfirm={vi.fn()} onCancel={onCancel} />,
+    );
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledTimes(1);
   });

@@ -32,15 +32,7 @@ vi.mock('../components/views/dashBoards', () => ({
 }));
 
 vi.mock('./OperationCategoryPage', () => ({
-  OperationCategoryPage: ({
-    category,
-    title,
-    subtitle,
-  }: {
-    category: string;
-    title: string;
-    subtitle: string;
-  }) => (
+  OperationCategoryPage: ({ category, title, subtitle }: { category: string; title: string; subtitle: string }) => (
     <section aria-label={category}>
       <h1>{title}</h1>
       <p>{subtitle}</p>
