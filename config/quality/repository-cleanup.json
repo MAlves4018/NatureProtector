@@ -26,6 +26,7 @@
       "scripts/cloud/g8_state_evidence.py"
     ],
     "retained_manual_entrypoints": [
+      "scripts/ci/run-local-push-ci.ps1",
       "scripts/audit/Invoke-RabbitMqHealthPhase3EValidation.ps1",
       "scripts/audit/Test-RabbitMqHealthPhase1Package.py",
       "scripts/audit/Test-RabbitMqHealthPhase2Package.py",

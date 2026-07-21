@@ -7,9 +7,11 @@ useDefault = true
 description = "Approved local-only fixtures and non-secret placeholders used by tests, docs, and developer baseline setup."
 paths = [
   '''(^|.*[/\\])tests[/\\]NatureProtector\.Backoffice\.Api\.Tests[/\\]JwtAuthenticationTests\.cs$''',
+  '''(^|.*[/\\])tests[/\\]NatureProtector\.Backoffice\.Api\.Tests[/\\]JwtAuthenticationOptionsValidatorTests\.cs$''',
   '''(^|.*[/\\])tests[/\\]NatureProtector\.Backoffice\.Api\.Tests[/\\]ControlPlaneApiWebApplicationFactory\.cs$''',
   '''(^|.*[/\\])docs[/\\]implementation[/\\]maintainability[/\\]frontend-decomposition-migration-proof-phase6\.json$''',
   '''(^|.*[/\\])docs[/\\]implementation[/\\]maintainability[/\\]canonical-deployment-authority-2026-06-28\.json$''',
+  '''(^|.*[/\\])src[/\\]NatureProtector\.Backoffice\.Api[/\\]NatureProtector\.Backoffice\.Api\.http$''',
 ]
 regexes = [
   '''np_dev_pass''',
