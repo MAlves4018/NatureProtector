@@ -5,6 +5,7 @@ param(
     [switch]$Evidence,
     [switch]$Ui,
     [switch]$CleanRoom,
+    [string]$CleanCloneRoot,
     [string]$RunRoot,
     [string]$ApiRoot = "http://127.0.0.1:5254",
     [string]$ApiBaseUrl = "http://127.0.0.1:5254/api",
@@ -26,7 +27,8 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$DefaultEvidenceRoot = "C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector.brain\post-beta\FreezeCandidate\03-functional-validation"
+$SourceRepoRoot = $RepoRoot
+$DefaultEvidenceRoot = Join-Path $RepoRoot "artifacts\functional-validation"
 if ([string]::IsNullOrWhiteSpace($RunRoot)) {
     $RunRoot = Join-Path $DefaultEvidenceRoot ((Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ"))
 }
@@ -37,6 +39,38 @@ $ExportsDir = Join-Path $RunRoot "exports"
 $ScreenshotsDir = Join-Path $RunRoot "screenshots"
 $DockerConfigDir = Join-Path $RunRoot "docker-config"
 New-Item -ItemType Directory -Force -Path $RunRoot, $LogsDir, $ExportsDir, $ScreenshotsDir, $DockerConfigDir | Out-Null
+
+if ($CleanRoom) {
+    $cloneParent = if ([string]::IsNullOrWhiteSpace($CleanCloneRoot)) {
+        Join-Path ([IO.Path]::GetTempPath()) (Join-Path "np-clean-clone" ([guid]::NewGuid().ToString("N")))
+    }
+    else {
+        [IO.Path]::GetFullPath($CleanCloneRoot)
+    }
+    $cloneRepo = Join-Path $cloneParent "NatureProtector"
+    if (Test-Path -LiteralPath $cloneRepo) {
+        throw "Clean clone target already exists: $cloneRepo"
+    }
+    New-Item -ItemType Directory -Force -Path $cloneParent | Out-Null
+    $currentHead = (& git -C $SourceRepoRoot rev-parse HEAD).Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($currentHead)) {
+        throw "Unable to resolve source repository HEAD for clean-room validation."
+    }
+    & git clone --no-local $SourceRepoRoot $cloneRepo 2>&1 | Set-Content -LiteralPath (Join-Path $LogsDir "clean-clone.log") -Encoding utf8
+    if ($LASTEXITCODE -ne 0) { throw "git clone failed for clean-room validation. See clean-clone.log." }
+    & git -C $cloneRepo checkout --detach $currentHead 2>&1 | Add-Content -LiteralPath (Join-Path $LogsDir "clean-clone.log") -Encoding utf8
+    if ($LASTEXITCODE -ne 0) { throw "git checkout failed for clean-room validation. See clean-clone.log." }
+    $cloneStatus = (& git -C $cloneRepo status --porcelain=v1)
+    $cloneStatus | Set-Content -LiteralPath (Join-Path $LogsDir "clean-clone-status.txt") -Encoding utf8
+    if (-not [string]::IsNullOrWhiteSpace(($cloneStatus -join ""))) {
+        throw "Clean clone is not clean. See clean-clone-status.txt."
+    }
+    $RepoRoot = (Resolve-Path $cloneRepo).Path
+    if ([string]::IsNullOrWhiteSpace($env:NP_NUGET_PACKAGES)) {
+        $env:NP_NUGET_PACKAGES = Join-Path ([IO.Path]::GetTempPath()) "np-nuget-packages"
+    }
+    New-Item -ItemType Directory -Force -Path $env:NP_NUGET_PACKAGES | Out-Null
+}
 $PreviousDockerConfig = $env:DOCKER_CONFIG
 $DockerConfigWasIsolated = $false
 if ($env:NP_PHASE3_ISOLATE_DOCKER_CONFIG -eq "1") {
@@ -176,6 +210,18 @@ function Join-ProcessArguments {
     }) -join ' ')
 }
 
+function Stop-ProcessTree {
+    param([Parameter(Mandatory)][int]$ProcessId)
+
+    $children = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object { $_.ParentProcessId -eq $ProcessId })
+    foreach ($child in $children) {
+        Stop-ProcessTree -ProcessId ([int]$child.ProcessId)
+    }
+
+    Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+}
+
 function Invoke-LoggedCommand {
     param(
         [Parameter(Mandatory)][string]$Name,
@@ -190,28 +236,31 @@ function Invoke-LoggedCommand {
     $output = New-Object System.Collections.Generic.List[string]
     $exitCode = 1
     try {
-        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $processInfo.FileName = $Executable
-        $argumentListProperty = [System.Diagnostics.ProcessStartInfo].GetProperty("ArgumentList")
-        if ($argumentListProperty) {
-            foreach ($argument in $Arguments) { [void]$processInfo.ArgumentList.Add($argument) }
-        }
-        else {
-            $processInfo.Arguments = Join-ProcessArguments -Arguments $Arguments
-        }
-        $processInfo.WorkingDirectory = $RepoRoot
-        $processInfo.RedirectStandardOutput = $true
-        $processInfo.RedirectStandardError = $true
-        $processInfo.UseShellExecute = $false
-        $processInfo.CreateNoWindow = $true
-        $process = [System.Diagnostics.Process]::Start($processInfo)
+        $stdoutPath = Join-Path $LogsDir "$safeName.stdout.tmp"
+        $stderrPath = Join-Path $LogsDir "$safeName.stderr.tmp"
+        Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+        $process = Start-Process -FilePath $Executable `
+            -ArgumentList $Arguments `
+            -WorkingDirectory $RepoRoot `
+            -RedirectStandardOutput $stdoutPath `
+            -RedirectStandardError $stderrPath `
+            -PassThru `
+            -WindowStyle Hidden
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            Stop-ProcessTree -ProcessId ([int]$process.Id)
             try { $process.Kill($true) } catch {}
+            try { $process.WaitForExit(5000) | Out-Null } catch {}
+            $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
+            $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
+            $output.Add("Command timed out after $TimeoutSeconds seconds.") | Out-Null
+            if (-not [string]::IsNullOrWhiteSpace($stdout)) { $output.Add($stdout) | Out-Null }
+            if (-not [string]::IsNullOrWhiteSpace($stderr)) { $output.Add($stderr) | Out-Null }
+            $exitCode = 1
             throw "Command timed out after $TimeoutSeconds seconds."
         }
 
-        $stdout = $process.StandardOutput.ReadToEnd()
-        $stderr = $process.StandardError.ReadToEnd()
+        $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
+        $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
         if (-not [string]::IsNullOrWhiteSpace($stdout)) { $output.Add($stdout) | Out-Null }
         if (-not [string]::IsNullOrWhiteSpace($stderr)) { $output.Add($stderr) | Out-Null }
         $exitCode = [int]$process.ExitCode
@@ -918,7 +967,10 @@ function Complete-Reports {
 try {
     Write-JsonFile -Path (Join-Path $RunRoot "run-spec.json") -Value ([ordered]@{
         runRoot = $RunRoot
+        sourceRepoRoot = $SourceRepoRoot
         repoRoot = $RepoRoot
+        cleanCloneRoot = if ($CleanRoom) { $RepoRoot } else { $null }
+        nugetPackages = $env:NP_NUGET_PACKAGES
         apiRoot = $ApiRoot
         apiBaseUrl = $ApiBaseUrl
         preventionBaseUrl = $PreventionBaseUrl
@@ -936,10 +988,30 @@ try {
     })
 
     if ($CleanRoom) {
+        $restoreResult = Invoke-LoggedCommand `
+            -Name "clean-room-dotnet-restore" `
+            -Executable "pwsh" `
+            -Arguments @(
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                (Join-Path $RepoRoot "scripts\setup\Initialize-LocalWorkspace.ps1"),
+                "-SkipFrontendInstall"
+            ) `
+            -TimeoutSeconds 900
+        Add-Test -Name "clean-room-dotnet-restore" -Status ($(if ($restoreResult.ExitCode -eq 0) { "PASS" } else { "FAIL" })) -Detail "exit=$($restoreResult.ExitCode)" -EvidencePath $restoreResult.LogPath
+        if ($restoreResult.ExitCode -ne 0) {
+            Add-Blocker -Severity "BLOCKER" -Area "environment" -Command "scripts\\setup\\Initialize-LocalWorkspace.ps1 -SkipFrontendInstall" -RootCause "Clean-room dotnet restore failed. $($restoreResult.Output)" -EvidencePath $restoreResult.LogPath -NextStep "Fix restore precondition and rerun Phase 3."
+            throw "Clean-room startup failed at clean-room-dotnet-restore."
+        }
+
         foreach ($step in @(
+            @{ name = "np-doctor-before-mutation"; args = @("doctor"); timeout = 300 },
             @{ name = "np-init-local"; args = @("init-local", "-Force"); timeout = 180 },
+            @{ name = "np-prepare-local"; args = @("prepare-local", "-SkipDotnetRestore"); timeout = 900 },
             @{ name = "np-clean-local"; args = @("clean-local"); timeout = 600 },
-            @{ name = "np-doctor"; args = @("doctor"); timeout = 300 },
+            @{ name = "np-doctor-after-prepare"; args = @("doctor"); timeout = 300 },
             @{ name = "np-up"; args = @("up"); timeout = 900 },
             @{ name = "np-start"; args = @("start", "-NoBrowser"); timeout = 900 },
             @{ name = "np-health"; args = @("health"); timeout = 300 }
