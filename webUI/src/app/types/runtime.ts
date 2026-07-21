@@ -571,9 +571,11 @@ export interface AlertStateResponse {
 }
 
 export interface ROQueryRequest {
-  type: string;
+  type?: string;
   table: string;
-  query: string;
+  columns?: string[];
+  limit?: number;
+  offset?: number;
 }
 
 export interface ROQueryResponse {

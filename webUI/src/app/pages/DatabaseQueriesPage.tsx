@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode, type MouseEvent as ReactMouseEvent } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { api } from '../services/api';
 import { ROQueryResponse, ROQueryRequest } from '../types';
-import { Database, Play, Search } from 'lucide-react';
+import { Database, Play, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { ExportActions } from '../components/ExportActions';
 import { useUiActivity } from '../state/ActivityContext';
 import { useUiArea } from '../state/AreaContext';
@@ -124,7 +124,13 @@ export function DatabaseQueriesPage() {
   const { selectedRunId, selectedRun } = useUiActivity();
   const [selectedId, setSelectedId] = useState(PREPARED_QUERIES[0].id);
   const [search, setSearch] = useState('');
-  const [writtenQuery, setWrittenQuery] = useState<string>('');
+  const [tables, setTables] = useState<string[]>([]);
+  const [selectedTable, setSelectedTable] = useState('');
+  const [tableColumns, setTableColumns] = useState<string[]>([]);
+  const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
+  const [queryType, setQueryType] = useState<'select' | 'count'>('select');
+  const [queryLimit, setQueryLimit] = useState(100);
+  const [queryOffset, setQueryOffset] = useState(0);
   const [resultWrittenQuery, setWrittenQueryResult] = useState<ROQueryResponse | null>(null);
   const [resultPremadeQuery, setPremadeQueryResult] = useState<RuntimeDiagnosticResultResponse | null>(null);
   const [resultRunId, setResultRunId] = useState<string | null>(null);
@@ -133,6 +139,8 @@ export function DatabaseQueriesPage() {
   const [errorPremade, setErrorPremade] = useState<string | null>(null);
   const [errorWritten, setErrorWritten] = useState<string | null>(null);
   const [tab, setTab] = useState<'prepared' | 'written'>('prepared');
+  const writtenColumns = resultWrittenQuery?.columns ?? [];
+  const { widths: widthsWritten, setThRef: setThRefWritten, startResize: startResizeWritten } = useColumnResize(writtenColumns);
   const requestGeneration = useRef(0);
   const previousRunId = useRef(selectedRunId);
   const selected = PREPARED_QUERIES.find((item) => item.id === selectedId) ?? PREPARED_QUERIES[0];
@@ -154,6 +162,26 @@ export function DatabaseQueriesPage() {
     setErrorWritten(null);
   }, [selectedRunId]);
 
+  useEffect(() => {
+    api.getTablesPostgres().then((result) => {
+      setTables(result);
+      if (result.length > 0 && !selectedTable) {
+        setSelectedTable(result[0]);
+      }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!selectedTable) return;
+    api.getTableColumnsPostgres(selectedTable).then((cols) => {
+      setTableColumns(cols);
+      setSelectedColumns(new Set(cols));
+    }).catch(() => {
+      setTableColumns([]);
+      setSelectedColumns(new Set());
+    });
+  }, [selectedTable]);
+
   const handleExecutePreparedQuery = async () => {
     if (!selectedRunId) return;
     const requestedRunId = selectedRunId;
@@ -174,28 +202,20 @@ export function DatabaseQueriesPage() {
   };
 
   const executeBuiltQuery = useCallback(async () => {
-    if (!selectedRunId) return;
+    if (!selectedTable) return;
     setExecuting(true);
     setErrorWritten(null);
     setWrittenQueryResult(null);
     try {
-      const upper = writtenQuery.trim().toUpperCase();
-      if (
-        !upper.startsWith('SELECT') &&
-        !upper.startsWith('SHOW') &&
-        !upper.startsWith('DESCRIBE') &&
-        !upper.startsWith('EXPLAIN') || (
-          upper.includes('UPDATE') ||
-          upper.includes('INSERT') ||
-          upper.includes('DELETE') ||
-          upper.includes('DROP'))
-      ) {
-        throw new Error('Apenas queries de leitura sao permitidas (SELECT, SHOW, DESCRIBE, EXPLAIN).');
-      }
+      const chosenColumns = selectedColumns.size > 0 && selectedColumns.size < tableColumns.length
+        ? [...selectedColumns]
+        : undefined;
       const queryRequest: ROQueryRequest = {
-        type: writtenQuery.trim().split(' ')[0].toUpperCase(),
-        table: writtenQuery.trim().split('FROM')[1]?.trim() ?? '',
-        query: writtenQuery.trim(),
+        type: queryType,
+        table: selectedTable,
+        columns: chosenColumns,
+        limit: queryType === 'count' ? undefined : queryLimit,
+        offset: queryType === 'count' ? undefined : queryOffset,
       }
       const res = await api.postgresQuery(queryRequest);
       setWrittenQueryResult(res);
@@ -204,7 +224,7 @@ export function DatabaseQueriesPage() {
     } finally {
       setExecuting(false);
     }
-  }, [writtenQuery]);
+  }, [selectedTable, queryType, queryLimit, queryOffset, selectedColumns, tableColumns]);
 
   return (
     <section className="ui-page">
@@ -336,46 +356,152 @@ export function DatabaseQueriesPage() {
       {tab === 'written' && (
         <section className="ui-card">
           <div className="ui-section-heading">
-            <h2>Bloco de Escrita</h2>
+            <h2>Consulta Estruturada</h2>
           </div>
-          <textarea
-            id="query-input"
-            className="ui-query-editor"
-            rows={6}
-            value={writtenQuery}
-            onChange={(e) => setWrittenQuery(e.target.value)}
-            placeholder="Digite a sua query SQL de leitura"
-            disabled={executing}
-            spellCheck={false}
-          />
+          <div className="ui-field">
+            <span>Tabela</span>
+            <select
+              value={selectedTable}
+              onChange={(e) => setSelectedTable(e.target.value)}
+              disabled={executing || tables.length === 0}
+            >
+              {tables.length === 0 && <option value="">A carregar tabelas...</option>}
+              {tables.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <div className="ui-field">
+            <span>Tipo</span>
+            <select
+              value={queryType}
+              onChange={(e) => setQueryType(e.target.value as 'select' | 'count')}
+              disabled={executing}
+            >
+              <option value="select">SELECT (com paginação)</option>
+              <option value="count">COUNT (total de linhas)</option>
+            </select>
+          </div>
+          {queryType === 'select' && (
+            <div style={{ display: 'flex', gap: 16 }}>
+              <label className="ui-field">
+                <span>Limite (máx. 1000)</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={queryLimit}
+                  onChange={(e) => setQueryLimit(Number(e.target.value))}
+                  disabled={executing}
+                />
+              </label>
+              <label className="ui-field">
+                <span>Offset (máx. 10000)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={10000}
+                  value={queryOffset}
+                  onChange={(e) => setQueryOffset(Number(e.target.value))}
+                  disabled={executing}
+                />
+              </label>
+            </div>
+          )}
+          {tableColumns.length > 0 && queryType === 'select' && (
+            <div className="ui-field" style={{ marginTop: 8 }}>
+              <span>Colunas ({selectedColumns.size} de {tableColumns.length} selecionadas)</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedColumns.size === tableColumns.length}
+                    onChange={() => {
+                      if (selectedColumns.size === tableColumns.length) {
+                        setSelectedColumns(new Set());
+                      } else {
+                        setSelectedColumns(new Set(tableColumns));
+                      }
+                    }}
+                    disabled={executing}
+                  />
+                  <strong>Todas</strong>
+                </label>
+                {tableColumns.map((col) => (
+                  <label key={col} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedColumns.has(col)}
+                      onChange={() => {
+                        const next = new Set(selectedColumns);
+                        if (next.has(col)) next.delete(col); else next.add(col);
+                        setSelectedColumns(next);
+                      }}
+                      disabled={executing}
+                    />
+                    {col}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="ui-button-row" style={{ marginTop: 10 }}>
             <button
               type="button"
               className="ui-button"
-              disabled={executing || !writtenQuery.trim()}
+              disabled={executing || !selectedTable}
               onClick={() => void executeBuiltQuery()}
             >
               <Play size={16} />
-              {executing ? 'A executar...' : 'Executar'}
+              {executing ? 'A consultar...' : 'Executar'}
             </button>
           </div>
-        {errorWritten && (
-          <div className="ui-notice ui-error" style={{ marginTop: 12 }}>
-            <p style={{ fontWeight: 700 }}>{errorWritten}</p>
+          {errorWritten && (
+            <div className="ui-notice ui-error" style={{ marginTop: 12 }}>
+              <p style={{ fontWeight: 700 }}>{errorWritten}</p>
             </div>
           )}
           {resultWrittenQuery && (
             <div className="ui-card" style={{ marginTop: 12 }}>
               <div className="ui-section-heading">
                 <h3>Resultado</h3>
+                {resultWrittenQuery.columns.length > 0 && (
+                  <ExportActions
+                    filename={`${selectedTable}.json`}
+                    content={JSON.stringify({ table: selectedTable, ...resultWrittenQuery }, null, 2)}
+                    contentType="application/json;charset=utf-8"
+                  />
+                )}
               </div>
-              <p className="ui-section-note">Resultado da query escrita</p>
-              <div className="ui-table-wrap">
-                <table className="ui-table">
+              <p className="ui-section-note">
+                Tabela: {selectedTable}
+                {queryType === 'count' ? ' (contagem)' : ` (limite ${queryLimit}, offset ${queryOffset})`}
+                {selectedColumns.size > 0 && selectedColumns.size < tableColumns.length && ` (${selectedColumns.size} colunas selecionadas)`}
+              </p>
+              <div className="ui-table-wrap" style={{ overflowX: 'auto' }}>
+                <table className="ui-table" style={{ tableLayout: 'fixed', whiteSpace: 'nowrap' }}>
+                  <colgroup>
+                    {resultWrittenQuery.columns.map((col) => (
+                      <col key={col} style={{ width: widthsWritten?.[col] ? `${widthsWritten[col]}px` : undefined }} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr>
                       {resultWrittenQuery.columns.map((col, i) => (
-                        <th key={i}>{col}</th>
+                        <th key={i} ref={(el) => setThRefWritten(col, el)} style={{ position: 'relative' }}>
+                          {col}
+                          <div
+                            onMouseDown={(e: ReactMouseEvent) => {
+                              e.preventDefault();
+                              startResizeWritten(col, e.clientX);
+                            }}
+                            style={{
+                              display: 'inline-block', width: 6, height: '100%',
+                              cursor: 'col-resize', userSelect: 'none', position: 'absolute',
+                              top: 0, right: 0, bottom: 0,
+                            }}
+                          />
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -388,7 +514,7 @@ export function DatabaseQueriesPage() {
                       resultWrittenQuery.rows.map((row, ri) => (
                         <tr key={ri}>
                           {resultWrittenQuery.columns.map((col, ci) => (
-                            <td key={ci}>{row[col] ?? 'Indisponível'}</td>
+                            <td key={ci}><CollapsibleValue value={row[col]} /></td>
                           ))}
                         </tr>
                       ))
@@ -396,6 +522,16 @@ export function DatabaseQueriesPage() {
                   </tbody>
                 </table>
               </div>
+              {resultWrittenQuery.limitations.length > 0 && (
+                <div className="ui-notice ui-warning">
+                  <strong>Limitações</strong>
+                  <ul>
+                    {resultWrittenQuery.limitations.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -561,16 +697,85 @@ async function executePreparedQuery(
   return makeResult(definition, rows, limitations);
 }
 
+function useColumnResize(columns: string[]) {
+  const [widths, setWidths] = useState<Record<string, number> | null>(null);
+  const thRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
+  const dragRef = useRef<{ col: string; startX: number; startWidth: number } | null>(null);
+
+  const getOrInitWidths = useCallback(() => {
+    if (widths) return widths;
+    const init: Record<string, number> = {};
+    for (const col of columns) {
+      const el = thRefs.current.get(col);
+      init[col] = el?.offsetWidth ?? 120;
+    }
+    if (Object.keys(init).length > 0) setWidths(init);
+    return init;
+  }, [widths, columns]);
+
+  const setThRef = useCallback((col: string, el: HTMLTableCellElement | null) => {
+    if (el) thRefs.current.set(col, el);
+    else thRefs.current.delete(col);
+  }, []);
+
+  const startResize = useCallback((col: string, startX: number) => {
+    const currentWidths = getOrInitWidths();
+    const startWidth = currentWidths[col] ?? 120;
+    dragRef.current = { col, startX, startWidth };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      const { col, startX, startWidth } = dragRef.current;
+      const newWidth = Math.max(50, startWidth + e.clientX - startX);
+      setWidths(prev => ({ ...prev, [col]: newWidth }));
+    };
+
+    const onMouseUp = () => {
+      dragRef.current = null;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [getOrInitWidths]);
+
+  return { widths, setThRef, startResize };
+}
+
 function QueryResult({ result, runId }: { result: RuntimeDiagnosticResultResponse; runId: string | null }) {
+  const { widths, setThRef, startResize } = useColumnResize(result.columns);
   return (
     <>
       <p className="ui-section-note">Resultado associado a SimulationRunId: {runId}</p>
-      <div className="ui-table-wrap">
-        <table className="ui-table">
+      <div className="ui-table-wrap" style={{ overflowX: 'auto' }}>
+        <table className="ui-table" style={{ tableLayout: 'fixed', whiteSpace: 'nowrap' }}>
+          <colgroup>
+            {result.columns.map((column) => (
+              <col key={column} style={{ width: widths?.[column] ? `${widths[column]}px` : undefined }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
               {result.columns.map((column) => (
-                <th key={column}>{column}</th>
+                <th key={column} ref={(el) => setThRef(column, el)} style={{ position: 'relative' }}>
+                  {column}
+                  <div
+                    onMouseDown={(e: ReactMouseEvent) => {
+                      e.preventDefault();
+                      startResize(column, e.clientX);
+                    }}
+                    style={{
+                      display: 'inline-block', width: 6, height: '100%',
+                      cursor: 'col-resize', userSelect: 'none', position: 'absolute',
+                      top: 0, right: 0, bottom: 0,
+                    }}
+                  />
+                </th>
               ))}
             </tr>
           </thead>
@@ -583,7 +788,7 @@ function QueryResult({ result, runId }: { result: RuntimeDiagnosticResultRespons
               result.rows.map((row) => (
                 <tr key={`${result.id}-${JSON.stringify(row)}`}>
                   {result.columns.map((column) => (
-                    <td key={column}>{row[column] ?? 'Indisponível'}</td>
+                    <td key={column}><CollapsibleValue value={row[column]} /></td>
                   ))}
                 </tr>
               ))
@@ -621,6 +826,30 @@ function makeResult(
     rows,
     limitations,
   };
+}
+
+const LONG_VALUE_THRESHOLD = 120;
+
+function CollapsibleValue({ value }: { value: string | null | undefined }): ReactNode {
+  const [expanded, setExpanded] = useState(false);
+  if (value == null) return 'Indisponível';
+  const shouldCollapse = value.length > LONG_VALUE_THRESHOLD;
+  if (!shouldCollapse) return <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{value}</span>;
+  return (
+    <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+      {expanded ? value : `${value.slice(0, LONG_VALUE_THRESHOLD)}...`}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 6,
+          verticalAlign: 'middle', fontSize: 'inherit', color: '#005fa3',
+        }}
+      >
+        {expanded ? <><ChevronDown size={14} /> menos</> : <><ChevronRight size={14} /> {value.length - LONG_VALUE_THRESHOLD} mais</>}
+      </button>
+    </span>
+  );
 }
 
 function serialize(value: unknown): string | null {

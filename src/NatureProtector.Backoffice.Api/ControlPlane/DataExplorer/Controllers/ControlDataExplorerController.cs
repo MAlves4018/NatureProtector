@@ -17,7 +17,7 @@ public class ControlDataExplorerController : ControllerBase
         _service = service;
     }
 
-    [Authorize(Policy = OperationCapabilities.DbRead)]
+    [Authorize(Policy = OperationCapabilities.DBRead)]
     [HttpGet("datasets")]
     public async Task<ActionResult<IReadOnlyList<DatasetDefinition>>> ListDatasets(CancellationToken cancellationToken)
     {
@@ -25,7 +25,7 @@ public class ControlDataExplorerController : ControllerBase
         return Ok(datasets);
     }
 
-    [Authorize(Policy = OperationCapabilities.DbRead)]
+    [Authorize(Policy = OperationCapabilities.DBRead)]
     [HttpPost("query")]
     public async Task<ActionResult<DataExplorerQueryResponse>> Query(
         DataExplorerQueryRequest request,

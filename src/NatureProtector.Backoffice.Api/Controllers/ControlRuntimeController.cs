@@ -214,7 +214,15 @@ public sealed class ControlRuntimeController : ControlPlaneControllerBase
         CancellationToken cancellationToken = default) =>
         Ok(await ControlPlane.GetDBTablesList(cancellationToken));
 
-    [HttpPost("query")]    
+    [HttpGet("getTableColumns/{tableName}")]
+    [Authorize(Policy = OperationCapabilities.DBRead)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IEnumerable<string?>>> GetTableColumns(
+        [FromRoute] string tableName,
+        CancellationToken cancellationToken = default) =>
+        Ok(await ControlPlane.GetDBTableColumnsList(tableName, cancellationToken));
+
+    [HttpPost("query")]
     [Authorize(Policy = OperationCapabilities.DBRead)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ROQueryResponse>> QueryDB(

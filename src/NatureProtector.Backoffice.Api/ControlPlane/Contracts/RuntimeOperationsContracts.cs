@@ -214,11 +214,12 @@ public sealed record ControlledValidationP3RunResponse(
 
 
 public sealed record ROQueryRequest(
-    string Type,
+    string? Type,
     string Table,
-    string Query,
+    string[]? Columns = null,
     int? Limit = null,
-    int? Offset = null);
+    int? Offset = null
+    );
 
 public sealed record ROQueryResponse(
     IReadOnlyList<string> Columns,

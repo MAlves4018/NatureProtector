@@ -13,7 +13,7 @@ Content-Type: application/json
 ###
 
 // copia o token e userId do login anterior para a linha abaixo e descomenta
-// @adminToken =
+ @adminToken =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhZG1pbiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFhYUBhYWEuYWFhIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjpbIkFkbWluIiwiUmVsZWFzZUFwcHJvdmVyIl0sIm5iZiI6MTc4NDYyOTE0OCwiZXhwIjoxNzg0NjMyNzQ4LCJpc3MiOiJOYXR1cmVQcm90ZWN0b3IiLCJhdWQiOiJOYXR1cmVQcm90ZWN0b3IuQmFja29mZmljZSJ9.p1hZp9O0nA1XW1ouEVcw210GpEq3Wv1u5xXiVae6DWY
 // @adminId = 
 
 POST {{NatureProtector_Backoffice_Api_HostAddress}}/api/users-roles/users
@@ -240,5 +240,11 @@ Authorization: Bearer {{adminToken}}
 ###
 
 GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/areas/proenca-a-nova/grid-cells
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+
+###
+GET {{NatureProtector_Backoffice_Api_HostAddress}}/api/control/runtime/getTables
 Accept: application/json
 Authorization: Bearer {{adminToken}}

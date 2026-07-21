@@ -319,6 +319,10 @@ export const api = {
     return httpClient.post<ROQueryResponse>('/control/runtime/query', query, api.getRequestOptions());
   },
 
+  getTableColumnsPostgres: (tableName: string) => {
+    return httpClient.get<string[]>(`/control/runtime/getTableColumns/${encodeURIComponent(tableName)}`, api.getRequestOptions());
+  },
+
   withAuthToken(token: string) {
     this.options.headers = {
       ...(this.options.headers as Record<string, string> | undefined),
