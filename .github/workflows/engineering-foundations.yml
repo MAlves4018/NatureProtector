@@ -298,38 +298,38 @@ jobs:
             --artifact-root artifacts/all \
             --output artifacts/consolidated.json
           python3 -c "
-import json
+            import json
 
-with open('artifacts/consolidated.json') as f:
-    counts = json.load(f)
+            with open('artifacts/consolidated.json') as f:
+                counts = json.load(f)
 
-job_status_map = {
-    'backend-test-artifacts': '${{ needs.backend.result }}',
-    'backend-docker-integration-artifacts': '${{ needs.backend-docker-integration.result }}',
-    'frontend-test-artifacts': '${{ needs.frontend.result }}',
-    'frontend-node22-test-artifacts': '${{ needs.frontend-node22.result }}',
-}
+            job_status_map = {
+                'backend-test-artifacts': '${{ needs.backend.result }}',
+                'backend-docker-integration-artifacts': '${{ needs.backend-docker-integration.result }}',
+                'frontend-test-artifacts': '${{ needs.frontend.result }}',
+                'frontend-node22-test-artifacts': '${{ needs.frontend-node22.result }}',
+            }
 
-summary = {
-    'push': '${{ github.ref_name }}',
-    'sha': '${{ github.sha }}',
-    'jobs': {},
-}
+            summary = {
+                'push': '${{ github.ref_name }}',
+                'sha': '${{ github.sha }}',
+                'jobs': {},
+            }
 
-for name, v in sorted(counts.items()):
-    summary['jobs'][name] = {
-        'status': job_status_map.get(name, 'unknown'),
-        'passed': v['passed'],
-        'failed': v['failed'],
-        'skipped': v['skipped'],
-        'tests': v['tests'],
-    }
+            for name, v in sorted(counts.items()):
+                summary['jobs'][name] = {
+                    'status': job_status_map.get(name, 'unknown'),
+                    'passed': v['passed'],
+                    'failed': v['failed'],
+                    'skipped': v['skipped'],
+                    'tests': v['tests'],
+                }
 
-with open('artifacts/detail.json', 'w') as f:
-    json.dump(summary, f)
+            with open('artifacts/detail.json', 'w') as f:
+                json.dump(summary, f)
 
-print('Saved detail to artifacts/detail.json')
-"
+            print('Saved detail to artifacts/detail.json')
+          "
 
       - name: Report to operations API
         shell: bash
