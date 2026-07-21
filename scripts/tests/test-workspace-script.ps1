@@ -105,6 +105,8 @@ $envExampleHashBefore = Get-OptionalFileHash $envExamplePath
     (Join-Path $RepoRoot "scripts\release\test-package-tamper-detection.ps1"),
     (Join-Path $RepoRoot "scripts\release\test-postgres-backup-restore.ps1"),
     (Join-Path $RepoRoot "scripts\release\test-postgres-real-data-backup-restore.ps1"),
+    (Join-Path $RepoRoot "scripts\release\Invoke-FinalRepositoryFreeze.ps1"),
+    (Join-Path $RepoRoot "scripts\hardening\Invoke-NP-FinalHardening.ps1"),
     (Join-Path $RepoRoot "scripts\dev\start-local-runtime.ps1"),
     (Join-Path $RepoRoot "scripts\runtime\Start-LocalRuntime.ps1"),
     (Join-Path $RepoRoot "scripts\runtime\Test-LocalRuntimeHealth.ps1"),
@@ -114,6 +116,7 @@ $envExampleHashBefore = Get-OptionalFileHash $envExamplePath
     (Join-Path $RepoRoot "scripts\observability\export-telemetry-catalog.ps1"),
     (Join-Path $RepoRoot "scripts\observability\test-otlp-collector-smoke.ps1"),
     (Join-Path $RepoRoot "scripts\validation\export-artifact-inventory.ps1"),
+    (Join-Path $RepoRoot "scripts\validation\Invoke-LocalFunctionalValidation.ps1"),
     (Join-Path $RepoRoot "infra\scripts\up.ps1"),
     (Join-Path $RepoRoot "infra\scripts\down.ps1"),
     (Join-Path $RepoRoot "scripts\postgres\bootstrap-control-plane.ps1"),
@@ -220,6 +223,22 @@ Assert-True ($releaseCandidateScript -match '\$npmDependencyInventory = npm --pr
 Assert-True ($releaseCandidateScript -match "sbom\.json") "release candidate builder writes local SBOM evidence"
 Assert-True ($releaseCandidateScript -match 'Copy-Item -Path \(Join-Path \$repoRoot "data\\\*"\)') "release candidate builder packages bootstrap data inputs"
 Assert-True ($releaseCandidateScript -match 'if \(\$LASTEXITCODE -ne 0\) \{ exit \$LASTEXITCODE \}') "release candidate builder checks dependency inventory exit codes"
+
+$finalFreezeScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\release\Invoke-FinalRepositoryFreeze.ps1") -Raw
+Assert-True ($finalFreezeScript -match 'ValidateSet\("Plan", "Verify", "Execute"\)') "final freeze wrapper exposes Plan/Verify/Execute modes"
+Assert-True ($finalFreezeScript -match 'Mode -eq "Execute"') "final freeze wrapper explicitly blocks Execute during hardening"
+Assert-True ($finalFreezeScript -match "build-release-candidate\.ps1") "final freeze wrapper reuses the release candidate authority"
+
+$finalHardeningScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\hardening\Invoke-NP-FinalHardening.ps1") -Raw
+Assert-True ($finalHardeningScript -match "REPRODUCIBILITY_FINGERPRINT\.json") "final hardening orchestrator writes a reproducibility fingerprint"
+Assert-True ($finalHardeningScript -match "PHASE_STATE\.json") "final hardening orchestrator writes resumable phase state"
+Assert-True ($finalHardeningScript -match "Invoke-LocalFunctionalValidation\.ps1") "final hardening orchestrator delegates functional proof to the existing harness"
+Assert-True ($finalHardeningScript -match "NOT_IMPLEMENTED") "final hardening orchestrator refuses placeholder PASS for undelegated modes"
+
+$localFunctionalValidationScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\validation\Invoke-LocalFunctionalValidation.ps1") -Raw
+Assert-False ($localFunctionalValidationScript -match "C:\\Users\\Miguel") "local functional validation no longer defaults to a personal absolute evidence path"
+Assert-True ($localFunctionalValidationScript -match "git clone --no-local") "local functional validation CleanRoom uses a real Git clone"
+Assert-True ($localFunctionalValidationScript -match '"np-prepare-local"') "local functional validation CleanRoom runs prepare-local before runtime smoke"
 
 $functionalPackageSmokeScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\release\test-functional-package-smoke.ps1") -Raw
 Assert-True ($functionalPackageSmokeScript -match "GetTempPath") "functional package smoke expands outside the source tree"

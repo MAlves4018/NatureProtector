@@ -5,6 +5,8 @@ Este documento descreve o caminho **clone-to-run** para correr a baseline local 
 O objetivo é permitir que uma pessoa clone o repositório, crie a configuração local, suba a infraestrutura, inicialize a base de dados, instale a webUI, faça login e execute uma run no Run Orchestrator.
 
 > Fonte principal: este documento deve ser seguido antes de usar instruções antigas dispersas por outros ficheiros. O `Simulator.Host` não deve ser arrancado manualmente no fluxo normal; deve ser lançado pelo Run Orchestrator.
+>
+> Para validação hardening/freeze, usar também `docs/setup/final-hardening.md`. Esse guia mantém `scripts/np.ps1` como autoridade e descreve o clone limpo real usado por `Invoke-LocalFunctionalValidation.ps1 -CleanRoom`.
 
 ---
 

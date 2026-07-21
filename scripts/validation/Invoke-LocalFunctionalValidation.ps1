@@ -5,6 +5,7 @@ param(
     [switch]$Evidence,
     [switch]$Ui,
     [switch]$CleanRoom,
+    [string]$CleanCloneRoot,
     [string]$RunRoot,
     [string]$ApiRoot = "http://127.0.0.1:5254",
     [string]$ApiBaseUrl = "http://127.0.0.1:5254/api",
@@ -26,7 +27,8 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$DefaultEvidenceRoot = "C:\Users\Miguel\UNI\6sem\PS\IMP\D\NatureProtector.brain\post-beta\FreezeCandidate\03-functional-validation"
+$SourceRepoRoot = $RepoRoot
+$DefaultEvidenceRoot = Join-Path $RepoRoot "artifacts\functional-validation"
 if ([string]::IsNullOrWhiteSpace($RunRoot)) {
     $RunRoot = Join-Path $DefaultEvidenceRoot ((Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ"))
 }
@@ -37,6 +39,34 @@ $ExportsDir = Join-Path $RunRoot "exports"
 $ScreenshotsDir = Join-Path $RunRoot "screenshots"
 $DockerConfigDir = Join-Path $RunRoot "docker-config"
 New-Item -ItemType Directory -Force -Path $RunRoot, $LogsDir, $ExportsDir, $ScreenshotsDir, $DockerConfigDir | Out-Null
+
+if ($CleanRoom) {
+    $cloneParent = if ([string]::IsNullOrWhiteSpace($CleanCloneRoot)) {
+        Join-Path $RunRoot "clean-clone"
+    }
+    else {
+        [IO.Path]::GetFullPath($CleanCloneRoot)
+    }
+    $cloneRepo = Join-Path $cloneParent "NatureProtector"
+    if (Test-Path -LiteralPath $cloneRepo) {
+        throw "Clean clone target already exists: $cloneRepo"
+    }
+    New-Item -ItemType Directory -Force -Path $cloneParent | Out-Null
+    $currentHead = (& git -C $SourceRepoRoot rev-parse HEAD).Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($currentHead)) {
+        throw "Unable to resolve source repository HEAD for clean-room validation."
+    }
+    & git clone --no-local $SourceRepoRoot $cloneRepo 2>&1 | Set-Content -LiteralPath (Join-Path $LogsDir "clean-clone.log") -Encoding utf8
+    if ($LASTEXITCODE -ne 0) { throw "git clone failed for clean-room validation. See clean-clone.log." }
+    & git -C $cloneRepo checkout --detach $currentHead 2>&1 | Add-Content -LiteralPath (Join-Path $LogsDir "clean-clone.log") -Encoding utf8
+    if ($LASTEXITCODE -ne 0) { throw "git checkout failed for clean-room validation. See clean-clone.log." }
+    $cloneStatus = (& git -C $cloneRepo status --porcelain=v1)
+    $cloneStatus | Set-Content -LiteralPath (Join-Path $LogsDir "clean-clone-status.txt") -Encoding utf8
+    if (-not [string]::IsNullOrWhiteSpace(($cloneStatus -join ""))) {
+        throw "Clean clone is not clean. See clean-clone-status.txt."
+    }
+    $RepoRoot = (Resolve-Path $cloneRepo).Path
+}
 $PreviousDockerConfig = $env:DOCKER_CONFIG
 $DockerConfigWasIsolated = $false
 if ($env:NP_PHASE3_ISOLATE_DOCKER_CONFIG -eq "1") {
@@ -918,7 +948,9 @@ function Complete-Reports {
 try {
     Write-JsonFile -Path (Join-Path $RunRoot "run-spec.json") -Value ([ordered]@{
         runRoot = $RunRoot
+        sourceRepoRoot = $SourceRepoRoot
         repoRoot = $RepoRoot
+        cleanCloneRoot = if ($CleanRoom) { $RepoRoot } else { $null }
         apiRoot = $ApiRoot
         apiBaseUrl = $ApiBaseUrl
         preventionBaseUrl = $PreventionBaseUrl
@@ -937,9 +969,11 @@ try {
 
     if ($CleanRoom) {
         foreach ($step in @(
+            @{ name = "np-doctor-before-mutation"; args = @("doctor"); timeout = 300 },
             @{ name = "np-init-local"; args = @("init-local", "-Force"); timeout = 180 },
+            @{ name = "np-prepare-local"; args = @("prepare-local"); timeout = 1800 },
             @{ name = "np-clean-local"; args = @("clean-local"); timeout = 600 },
-            @{ name = "np-doctor"; args = @("doctor"); timeout = 300 },
+            @{ name = "np-doctor-after-prepare"; args = @("doctor"); timeout = 300 },
             @{ name = "np-up"; args = @("up"); timeout = 900 },
             @{ name = "np-start"; args = @("start", "-NoBrowser"); timeout = 900 },
             @{ name = "np-health"; args = @("health"); timeout = 300 }
