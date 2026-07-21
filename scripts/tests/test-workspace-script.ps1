@@ -243,7 +243,8 @@ Assert-False ($localFunctionalValidationScript -match "C:\\Users\\Miguel") "loca
 Assert-True ($localFunctionalValidationScript -match "git clone --no-local") "local functional validation CleanRoom uses a real Git clone"
 Assert-True ($localFunctionalValidationScript -match "GetTempPath" -and $localFunctionalValidationScript -match "np-clean-clone") "local functional validation CleanRoom uses a short temp clone root by default"
 Assert-True ($localFunctionalValidationScript -match "np-nuget-packages") "local functional validation CleanRoom records an explicit short NuGet cache"
-Assert-True ($localFunctionalValidationScript -match '"np-prepare-local"') "local functional validation CleanRoom runs prepare-local before runtime smoke"
+Assert-True ($localFunctionalValidationScript -match "clean-room-dotnet-restore") "local functional validation CleanRoom restores .NET dependencies as an explicit setup gate"
+Assert-True ($localFunctionalValidationScript -match '"np-prepare-local"' -and $localFunctionalValidationScript -match '"-SkipDotnetRestore"') "local functional validation CleanRoom runs prepare-local for frontend setup before runtime smoke"
 
 $functionalPackageSmokeScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\release\test-functional-package-smoke.ps1") -Raw
 Assert-True ($functionalPackageSmokeScript -match "GetTempPath") "functional package smoke expands outside the source tree"

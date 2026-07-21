@@ -993,10 +993,28 @@ try {
     })
 
     if ($CleanRoom) {
+        $restoreResult = Invoke-LoggedCommand `
+            -Name "clean-room-dotnet-restore" `
+            -Executable "pwsh" `
+            -Arguments @(
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                (Join-Path $RepoRoot "scripts\setup\Initialize-LocalWorkspace.ps1"),
+                "-SkipFrontendInstall"
+            ) `
+            -TimeoutSeconds 900
+        Add-Test -Name "clean-room-dotnet-restore" -Status ($(if ($restoreResult.ExitCode -eq 0) { "PASS" } else { "FAIL" })) -Detail "exit=$($restoreResult.ExitCode)" -EvidencePath $restoreResult.LogPath
+        if ($restoreResult.ExitCode -ne 0) {
+            Add-Blocker -Severity "BLOCKER" -Area "environment" -Command "scripts\\setup\\Initialize-LocalWorkspace.ps1 -SkipFrontendInstall" -RootCause "Clean-room dotnet restore failed. $($restoreResult.Output)" -EvidencePath $restoreResult.LogPath -NextStep "Fix restore precondition and rerun Phase 3."
+            throw "Clean-room startup failed at clean-room-dotnet-restore."
+        }
+
         foreach ($step in @(
             @{ name = "np-doctor-before-mutation"; args = @("doctor"); timeout = 300 },
             @{ name = "np-init-local"; args = @("init-local", "-Force"); timeout = 180 },
-            @{ name = "np-prepare-local"; args = @("prepare-local"); timeout = 1800 },
+            @{ name = "np-prepare-local"; args = @("prepare-local", "-SkipDotnetRestore"); timeout = 900 },
             @{ name = "np-clean-local"; args = @("clean-local"); timeout = 600 },
             @{ name = "np-doctor-after-prepare"; args = @("doctor"); timeout = 300 },
             @{ name = "np-up"; args = @("up"); timeout = 900 },
