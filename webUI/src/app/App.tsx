@@ -68,6 +68,9 @@ const ApprovalsPage = lazy(() => import('./pages/ApprovalsPage').then((module) =
 const UserRoleAdministrationPage = lazy(() =>
   import('./pages/UserRoleAdministrationPage').then((module) => ({ default: module.UserRoleAdministrationPage })),
 );
+const QaTestSuitePage = lazy(() =>
+  import('./pages/QaTestSuitePage').then((module) => ({ default: module.QaTestSuitePage })),
+);
 
 export function App() {
   const [isDark, setIsDark] = useState(false);
@@ -119,7 +122,7 @@ function UiRouter({
                 { path: 'pipeline', element: protect('pipeline', <PipelinePage />) },
                 { path: 'quality', element: protect('quality', <QualityRunsPage />) },
                 { path: 'qa', element: protect('qa', <QualityEvidencePage />) },
-                { path: 'qa-tests', element: protect('qa-tests', <UiRetiredOperationalSurface name="Browser QA execution" />) },
+                { path: 'qa-tests', element: protect('qa-tests', <QaTestSuitePage />) },
                 { path: 'evidence', element: protect('evidence', <EvidenceExplorerPage />) },
                 { path: 'deployments', element: protect('deployments', <DeploymentsPage />) },
                 { path: 'deployment-health', element: protect('deployment-health', <DeploymentHealthPage />) },
@@ -398,16 +401,6 @@ function UiCapabilityRoute({ page, children }: { page: UiNavTarget; children: Re
   }
 
   return <>{children}</>;
-}
-
-function UiRetiredOperationalSurface({ name }: { name: string }) {
-  return (
-    <section className="ui-page" role="alert">
-      <h2>Superfície operacional indisponível</h2>
-      <p>{name} was removed from delivery because it had no authoritative backend execution path.</p>
-      <p className="ui-notice ui-warning">No result, timing, row count or pass/fail state is generated here.</p>
-    </section>
-  );
 }
 
 function UiDefaultRedirect() {

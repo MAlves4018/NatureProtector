@@ -20,12 +20,6 @@ interface LocalTestSummary {
   Results: LocalTestResult[];
 }
 
-function suiteState(status: string) {
-  if (status === 'Passed') return 'ready' as const;
-  if (status.toLowerCase().includes('finding')) return 'partial' as const;
-  return 'unknown' as const;
-}
-
 export function QaTestSuitePage() {
   const { canExecuteFullQa } = useUiCapabilities();
   const { qaSuites, runningSuiteIds, executions, pushResults, pushResultsLoading, runAll, runSuites, clearExecutions } = useUiQaTests();
@@ -59,28 +53,6 @@ export function QaTestSuitePage() {
     }
   }, []);
 
-  const [runningLocally, setRunningLocally] = useState(false);
-
-  const [localError, setLocalError] = useState<string | null>(null);
-
-  const runLocalTests = useCallback(async () => {
-    setRunningLocally(true);
-    setLocalError(null);
-    try {
-      const res = await fetch('/__local-run-tests', { method: 'POST' });
-      if (res.ok) {
-        await loadLocalResults();
-      } else {
-        const err = await res.json();
-        setLocalError(err.details || err.error || 'Erro desconhecido');
-      }
-    } catch {
-      setLocalError('Falhou ao contactar o servidor');
-    } finally {
-      setRunningLocally(false);
-    }
-  }, [loadLocalResults]);
-
   useEffect(() => { void loadLocalResults(); }, [loadLocalResults]);
 
   const toggleSuite = (id: string) => {
@@ -100,7 +72,7 @@ export function QaTestSuitePage() {
 
   const subtitle = hasLocalResults
     ? 'Resultados locais da run-all-tests.ps1.'
-    : 'Executa as suites de teste QA, ve resultados e historico de execucoes.';
+    : 'Visualiza resultados de suites de teste QA e historico de execucoes.';
 
   return (
     <section className="ui-page">
@@ -114,25 +86,10 @@ export function QaTestSuitePage() {
         <>
           <p className="ui-notice" style={{ marginBottom: 16 }}>
             <RefreshCw size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-            Modo local — as opções de execução via API foram ocultadas.
+            Apenas leitura — os resultados locais são carregados a partir de ficheiros.
             <button type="button" className="ui-secondary" style={{ marginLeft: 8 }} disabled={localLoading} onClick={() => void loadLocalResults()}>
               Recarregar resultados locais
             </button>
-            <button
-              type="button"
-              className="ui-button"
-              style={{ marginLeft: 8 }}
-              disabled={runningLocally}
-              onClick={() => void runLocalTests()}
-            >
-              {runningLocally ? <RotateCw size={14} className="ui-spin" /> : <PlayCircle size={14} />}
-              {runningLocally ? 'A executar...' : 'Executar todas'}
-            </button>
-            {localError && (
-              <p className="ui-notice" style={{ marginTop: 8 }}>
-                {localError}
-              </p>
-            )}
           </p>
 
           <section className="ui-card">

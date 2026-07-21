@@ -155,7 +155,7 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
   {
     id: 'qa',
     labelKey: 'nav.qa',
-    requiredCapabilities: ['qa.read'],
+    requiredCapabilities: ['quality.read'],
     audience: 'qa',
     order: 65,
     group: 'technical',
@@ -164,7 +164,7 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
   {
     id: 'qa-tests',
     labelKey: 'nav.qa-tests',
-    requiredCapabilities: ['qa.read'],
+    requiredCapabilities: ['quality.read'],
     audience: 'qa',
     order: 67,
     group: 'technical',
