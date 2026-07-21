@@ -3,6 +3,14 @@ import { api } from '../services/api';
 import { buildUiQaSuites, type UiQaSuite } from '../technicalSurfaces';
 import type { EngineeringOperationResponse, OperationDefinitionResponse } from '../types';
 
+interface QaTestExecution {
+  executionId: string;
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  suites: UiQaSuite[];
+}
+
 interface UiQaTestContextValue {
   qaSuites: UiQaSuite[];
   suitesLoading: boolean;

@@ -205,7 +205,7 @@ export function buildSimulationRequest(
   const legacyDegradationProfile = requestedDegradationProfiles[0];
   const runLabel = form.runLabel.trim();
 
-  const timeoutSeconds = (form.timeoutSeconds * form.numberOfCycles) * 1.5;
+  const timeoutSeconds = (form.waitTimeoutSeconds * form.numberOfCycles) * 1.5;
 
   return {
     areaCode,
