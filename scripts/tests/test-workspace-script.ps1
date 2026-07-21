@@ -94,6 +94,7 @@ $envExampleHashBefore = Get-OptionalFileHash $envExamplePath
 
 @(
     $WorkspaceScript,
+    (Join-Path $RepoRoot "scripts\tests\Invoke-NP-TestMaxing.ps1"),
     (Join-Path $RepoRoot "scripts\tests\export-coverage-gaps.ps1"),
     (Join-Path $RepoRoot "scripts\tests\export-test-inventory.ps1"),
     (Join-Path $RepoRoot "scripts\tests\run-mutation.ps1"),
@@ -208,6 +209,15 @@ Assert-True ($mutationScript -match "NatureProtector\.MutationSmoke") "mutation 
 Assert-True ($mutationScript -match "Resolve-Reporters") "mutation wrapper validates reporter selection"
 Assert-True ($mutationScript -match "BLOCKED_AFTER_REMEDIATION_ATTEMPT") "mutation wrapper preserves post-remediation blocked classification"
 Assert-False ($mutationScript -match 'solution\s*=\s*"NatureProtector\.sln"') "mutation Smoke profile does not force the full repository solution"
+
+$testMaxingScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\tests\Invoke-NP-TestMaxing.ps1") -Raw
+Assert-True ($testMaxingScript -match 'ValidateSet\("Baseline", "Backend", "Frontend", "Functional", "Integration", "Routes", "Mutation", "Reliability", "Full", "Resume"\)') "testmaxing harness exposes required modes"
+Assert-True ($testMaxingScript -match "generate-coverage-report\.ps1" -and $testMaxingScript -match "test:coverage") "testmaxing harness delegates backend and frontend coverage to canonical commands"
+Assert-True ($testMaxingScript -match 'backendFocusedIsGlobal\s*=\s*\$false') "testmaxing harness prevents focused coverage from being reported as global"
+Assert-True ($testMaxingScript -match "TESTMAXING_STATE\.json" -and $testMaxingScript -match "TESTMAXING_ITERATION_LEDGER\.csv") "testmaxing harness writes resumable state and iteration ledger"
+Assert-True ($testMaxingScript -match "AuthorizationMatrixTests" -and $testMaxingScript -match "OpenApiSemanticTests") "testmaxing route mode targets existing route/API contract tests"
+Assert-True ($testMaxingScript -match "Invoke-LocalFunctionalValidation\.ps1") "testmaxing functional mode delegates live functional validation"
+Assert-True ($testMaxingScript -match "run-mutation\.ps1" -and $testMaxingScript -match "NoMutationRun") "testmaxing mutation mode delegates bounded mutation wrapper and supports dry run"
 
 $secretScanScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\ci\run-secret-scan.ps1") -Raw
 $secretCanaryScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\ci\check-secret-canaries.ps1") -Raw
