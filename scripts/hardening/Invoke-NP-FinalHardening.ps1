@@ -215,6 +215,29 @@ function Invoke-VerifyOnlyMode {
     Add-Gate "np-doctor" ($(if ($doctor.ExitCode -eq 0) { "PASS" } else { "FAIL" })) $doctor.Log
 }
 
+function Invoke-ResumeMode {
+    $phaseStates = @(Get-ChildItem -Path $OutputRoot -Recurse -Filter "PHASE_STATE.json" -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -ne $StatePath -and $_.FullName -notmatch '\\phase-a-package-staging-' } |
+        Sort-Object LastWriteTime -Descending)
+
+    $resumeRows = foreach ($phaseState in $phaseStates) {
+        $content = $null
+        try { $content = Get-Content -LiteralPath $phaseState.FullName -Raw | ConvertFrom-Json } catch {}
+        [pscustomobject]@{
+            path = [IO.Path]::GetRelativePath($OutputRoot, $phaseState.FullName).Replace("\", "/")
+            lastWriteTimeUtc = $phaseState.LastWriteTimeUtc.ToString("o")
+            mode = if ($content) { $content.mode } else { "" }
+            pass = if ($content) { $content.pass } else { "" }
+            outputRoot = if ($content) { $content.outputRoot } else { "" }
+        }
+    }
+    $resumeLedger = Join-Path $OutputRoot "RESUME_LEDGER.csv"
+    $resumeRows | Export-Csv -LiteralPath $resumeLedger -NoTypeInformation -Encoding utf8
+
+    Add-Gate "resume-ledger" ($(if ($phaseStates.Count -gt 0) { "PASS" } else { "WARN" })) $resumeLedger "Resume can continue without a root PHASE_STATE.json by inventorying phase-local state files."
+    Invoke-VerifyOnlyMode
+}
+
 $fingerprint = New-ReproducibilityFingerprint
 $fingerprint | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $OutputRoot "REPRODUCIBILITY_FINGERPRINT.json") -Encoding utf8
 
@@ -228,8 +251,7 @@ switch ($Mode) {
         Invoke-SetupMode
     }
     "Resume" {
-        if (-not (Test-Path -LiteralPath $StatePath)) { throw "No PHASE_STATE.json found at $StatePath" }
-        Invoke-VerifyOnlyMode
+        Invoke-ResumeMode
     }
     default {
         Add-Gate $Mode "NOT_IMPLEMENTED" "" "This mode is declared for resumable orchestration and must be backed by the existing authority before it can pass."

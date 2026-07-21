@@ -240,6 +240,9 @@ Assert-False ($finalFreezeScript -match "ReadToEnd") "final freeze wrapper avoid
 $finalHardeningScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\hardening\Invoke-NP-FinalHardening.ps1") -Raw
 Assert-True ($finalHardeningScript -match "REPRODUCIBILITY_FINGERPRINT\.json") "final hardening orchestrator writes a reproducibility fingerprint"
 Assert-True ($finalHardeningScript -match "PHASE_STATE\.json") "final hardening orchestrator writes resumable phase state"
+Assert-True ($finalHardeningScript -match "RESUME_LEDGER\.csv") "final hardening orchestrator records phase-local state during resume"
+Assert-True ($finalHardeningScript -match "Invoke-ResumeMode") "final hardening orchestrator has a dedicated resume implementation"
+Assert-False ($finalHardeningScript -match "No PHASE_STATE\.json found") "final hardening resume does not fail solely because root phase state is missing"
 Assert-True ($finalHardeningScript -match "Invoke-LocalFunctionalValidation\.ps1") "final hardening orchestrator delegates functional proof to the existing harness"
 Assert-True ($finalHardeningScript -match "NOT_IMPLEMENTED") "final hardening orchestrator refuses placeholder PASS for undelegated modes"
 Assert-True ($finalHardeningScript -match "RedirectStandardOutput" -and $finalHardeningScript -match "stdout\.tmp") "final hardening orchestrator redirects child output to files"

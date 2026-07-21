@@ -61,6 +61,8 @@ The orchestrator produces:
 
 Modes that are declared but not implemented as delegated authorities cannot pass in `-Enforce` mode. This prevents placeholder PASS states.
 
+`Resume` inventories phase-local `PHASE_STATE.json` files under the selected `-OutputRoot`, writes `RESUME_LEDGER.csv`, and then runs the same lightweight verification used by `VerifyOnly`. It does not require a root-level `PHASE_STATE.json`, because phase checkpoints may live under directories such as `03-clean-clone/run-10` or `14-pre-freeze/verify-*`.
+
 ## Freeze rehearsal
 
 Plan:
