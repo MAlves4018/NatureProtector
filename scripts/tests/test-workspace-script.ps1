@@ -178,6 +178,7 @@ $prepareScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\setup\In
 $dotnetEnvironmentScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\dotnet\Use-RepoDotnetEnvironment.ps1") -Raw
 Assert-True ($prepareScript -match "dotnet restore" -and $prepareScript -match "NuGet.Config") "prepare-local restores the locked .NET dependency graph"
 Assert-True ($prepareScript -match "--disable-parallel") "prepare-local uses deterministic non-parallel NuGet restore"
+Assert-True ($prepareScript -match "MSBUILDDISABLENODEREUSE") "prepare-local disables persistent MSBuild node reuse during restore"
 Assert-True ($dotnetEnvironmentScript -match "NP_NUGET_PACKAGES") "repo dotnet environment can use an explicit NuGet package cache"
 Assert-True ($prepareScript -match "npm ci") "prepare-local installs frontend dependencies from package-lock.json"
 Assert-False ($prepareScript -match "npm install") "prepare-local does not mutate the frontend lockfile through npm install"

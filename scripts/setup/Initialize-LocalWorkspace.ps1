@@ -77,6 +77,7 @@ Assert-CommandAvailable -Name 'npm' -Hint "Install the npm version accepted by w
 & (Join-Path $repoRoot 'scripts/dotnet/Use-RepoDotnetEnvironment.ps1') -Quiet | Out-Null
 
 if (-not $SkipDotnetRestore) {
+    $env:MSBUILDDISABLENODEREUSE = '1'
     Invoke-RequiredCommand -Name '.NET restore' -Action {
         & dotnet restore (Join-Path $repoRoot 'NatureProtector.sln') `
             --configfile (Join-Path $repoRoot 'NuGet.Config') `
