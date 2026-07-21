@@ -97,11 +97,11 @@
       "id": "runtime-operations-api",
       "file": "src/NatureProtector.Backoffice.Api/ControlPlane/Services/PostgresControlPlaneService.RuntimeOperations.cs",
       "original_lines": [
-        1092,
-        1611
+        25,
+        947
       ],
-      "sha256": "3e17bc4822a8c05e25ff15d3d12dbea7f51ca385a62744b355394ed8d0a7a7c5",
-      "line_count": 797
+      "sha256": "ffc99c7460ba8c852fd6569fceb9667806d5c41ba3dddef5bd803896620ce908",
+      "line_count": 922
     },
     {
       "id": "runtime-operations-evidence",
