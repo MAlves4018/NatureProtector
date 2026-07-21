@@ -80,6 +80,7 @@ if (-not $SkipDotnetRestore) {
     Invoke-RequiredCommand -Name '.NET restore' -Action {
         & dotnet restore (Join-Path $repoRoot 'NatureProtector.sln') `
             --configfile (Join-Path $repoRoot 'NuGet.Config') `
+            --disable-parallel `
             --nologo
     }
 }

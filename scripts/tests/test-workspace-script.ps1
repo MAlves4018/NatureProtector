@@ -176,6 +176,7 @@ Assert-False ($bootstrapScript -match 'Test-NetConnection\s+-ComputerName\s+["''
 
 $prepareScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\setup\Initialize-LocalWorkspace.ps1") -Raw
 Assert-True ($prepareScript -match "dotnet restore" -and $prepareScript -match "NuGet.Config") "prepare-local restores the locked .NET dependency graph"
+Assert-True ($prepareScript -match "--disable-parallel") "prepare-local uses deterministic non-parallel NuGet restore"
 Assert-True ($prepareScript -match "npm ci") "prepare-local installs frontend dependencies from package-lock.json"
 Assert-False ($prepareScript -match "npm install") "prepare-local does not mutate the frontend lockfile through npm install"
 
