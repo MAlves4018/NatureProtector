@@ -12,6 +12,7 @@ import type {
   RuntimeRunTimingSummaryResponse,
 } from '../types';
 import { elapsedMs, rowsToCsv, throughputPerSecond } from '../utils/operationalMetrics';
+import { directEvidenceAssociationLabel, formatRunProfiles } from '../utils/runEvidence';
 
 interface RunBundle {
   run: RuntimeRunSummaryResponse;
@@ -178,6 +179,10 @@ export function ScenarioComparisonPage() {
             </table>
           </div>
           <p className="ui-notice">
+            “Ligação direta a evidenceId” descreve apenas a associação estrutural guardada na operação. O catálogo de
+            evidência pode conter artefactos disponíveis sem que exista essa ligação direta à SimulationRunId.
+          </p>
+          <p className="ui-notice">
             A interface não classifica automaticamente “melhor” ou “pior”; essa interpretação depende do significado
             científico de cada métrica.
           </p>
@@ -235,19 +240,24 @@ function buildComparison(a: RunBundle, b: RunBundle): ComparisonRow[] {
     ['Sensores', a.run.runOverrides?.resolved?.sensorCount, b.run.runOverrides?.resolved?.sensorCount],
     ['Ciclos', a.run.numberOfCycles, b.run.numberOfCycles],
     ['Intervalo (s)', a.run.intervalSeconds, b.run.intervalSeconds],
-    ['Perfis de degradação', profiles(a), profiles(b)],
+    ['Perfis pedidos', formatRunProfiles(a.run, 'requested'), formatRunProfiles(b.run, 'requested')],
+    ['Perfis de degradação resolvidos', formatRunProfiles(a.run, 'resolved'), formatRunProfiles(b.run, 'resolved')],
     ['Criada', a.run.createdAt, b.run.createdAt],
     ['Iniciada', a.run.startedAt, b.run.startedAt],
     ['Concluída', a.run.endedAt, b.run.endedAt],
-    ['Expected', a.audit.expectedEvents, b.audit.expectedEvents],
-    ['Accepted', a.audit.acceptedReadings, b.audit.acceptedReadings],
-    ['Processed/evaluated', a.audit.riskAssessments, b.audit.riskAssessments],
-    ['Missing', a.audit.missingEvents, b.audit.missingEvents],
-    ['Rejected', a.audit.rejected, b.audit.rejected],
-    ['Pending', a.operation?.accounting.pendingInbox, b.operation?.accounting.pendingInbox],
-    ['Processing', a.operation?.accounting.processingInbox, b.operation?.accounting.processingInbox],
-    ['Retry pending', a.operation?.accounting.retryPendingInbox, b.operation?.accounting.retryPendingInbox],
-    ['Settled', a.operation?.accounting.settled ? 'Sim' : 'Não', b.operation?.accounting.settled ? 'Sim' : 'Não'],
+    ['Esperados', a.audit.expectedEvents, b.audit.expectedEvents],
+    ['Aceites', a.audit.acceptedReadings, b.audit.acceptedReadings],
+    ['Processados/avaliados', a.audit.riskAssessments, b.audit.riskAssessments],
+    ['Ausentes', a.audit.missingEvents, b.audit.missingEvents],
+    ['Rejeitados', a.audit.rejected, b.audit.rejected],
+    ['Pendentes', a.operation?.accounting.pendingInbox, b.operation?.accounting.pendingInbox],
+    ['Em processamento', a.operation?.accounting.processingInbox, b.operation?.accounting.processingInbox],
+    ['A aguardar retry', a.operation?.accounting.retryPendingInbox, b.operation?.accounting.retryPendingInbox],
+    [
+      'Fecho reconciliado',
+      a.operation?.accounting.settled ? 'Sim' : 'Não',
+      b.operation?.accounting.settled ? 'Sim' : 'Não',
+    ],
     ['NP Score', a.audit.scoreComponents?.npScore, b.audit.scoreComponents?.npScore],
     ['Base Risk', a.audit.scoreComponents?.baseRisk, b.audit.scoreComponents?.baseRisk],
     ['Adjusted Risk', a.audit.scoreComponents?.adjustedScore, b.audit.scoreComponents?.adjustedScore],
@@ -259,11 +269,11 @@ function buildComparison(a: RunBundle, b: RunBundle): ComparisonRow[] {
       a.audit.indexComparison?.portugueseContextRiskProxyLabel,
       b.audit.indexComparison?.portugueseContextRiskProxyLabel,
     ],
-    ['Confidence', a.audit.scoreComponents?.confidenceFactor, b.audit.scoreComponents?.confidenceFactor],
-    ['Integrity', a.audit.scoreComponents?.integrityFactor, b.audit.scoreComponents?.integrityFactor],
+    ['Confiança', a.audit.scoreComponents?.confidenceFactor, b.audit.scoreComponents?.confidenceFactor],
+    ['Integridade', a.audit.scoreComponents?.integrityFactor, b.audit.scoreComponents?.integrityFactor],
     ['Coverage (%)', coverage(a), coverage(b)],
-    ['Eligible', eligibility(a, 'eligible'), eligibility(b, 'eligible')],
-    ['Blocked', eligibility(a, 'blocked'), eligibility(b, 'blocked')],
+    ['Elegíveis', eligibility(a, 'eligible'), eligibility(b, 'eligible')],
+    ['Bloqueados', eligibility(a, 'blocked'), eligibility(b, 'blocked')],
     ['Risco', a.audit.scoreComponents?.npRiskClassLabel, b.audit.scoreComponents?.npRiskClassLabel],
     ['Duração total (ms)', a.timings.runDurationMs, b.timings.runDurationMs],
     ['Até primeira observação (ms)', a.timings.timeToFirstInboxMs, b.timings.timeToFirstInboxMs],
@@ -274,9 +284,13 @@ function buildComparison(a: RunBundle, b: RunBundle): ComparisonRow[] {
       throughputPerSecond(a.audit.acceptedReadings, a.timings.runDurationMs),
       throughputPerSecond(b.audit.acceptedReadings, b.timings.runDurationMs),
     ],
-    ['Retries', a.audit.retryAttempts, b.audit.retryAttempts],
-    ['Quarantine', a.audit.quarantined, b.audit.quarantined],
-    ['Evidence associada', a.operation?.evidenceId ? 'Sim' : 'Não', b.operation?.evidenceId ? 'Sim' : 'Não'],
+    ['Tentativas repetidas', a.audit.retryAttempts, b.audit.retryAttempts],
+    ['Quarentena', a.audit.quarantined, b.audit.quarantined],
+    [
+      'Ligação direta a evidenceId',
+      directEvidenceAssociationLabel(a.operation),
+      directEvidenceAssociationLabel(b.operation),
+    ],
   ];
   return valueRows.map(([metric, valueA, valueB]) => difference(metric, valueA ?? null, valueB ?? null));
 }
@@ -288,7 +302,8 @@ function comparabilityWarnings(a: RunBundle, b: RunBundle) {
     warnings.push('Duração ou cadência configurada diferente.');
   if (a.run.runOverrides?.resolved?.sensorCount !== b.run.runOverrides?.resolved?.sensorCount)
     warnings.push('Número de sensores diferente.');
-  if (profiles(a) !== profiles(b)) warnings.push('Perfis de degradação diferentes.');
+  if (formatRunProfiles(a.run, 'resolved') !== formatRunProfiles(b.run, 'resolved'))
+    warnings.push('Perfis de degradação resolvidos diferentes.');
   if (a.run.configurationVersionNumber !== b.run.configurationVersionNumber)
     warnings.push('Versões de configuração diferentes.');
   return warnings;
@@ -306,13 +321,6 @@ function difference(metric: string, a: string | number | null, b: string | numbe
   };
 }
 
-function profiles(bundle: RunBundle) {
-  return (
-    bundle.run.runOverrides?.resolved?.degradationProfiles?.join(', ') ||
-    bundle.run.runOverrides?.resolved?.degradationProfile ||
-    'Nenhum'
-  );
-}
 function coverage(bundle: RunBundle) {
   return bundle.audit.expectedEvents ? (bundle.audit.acceptedReadings / bundle.audit.expectedEvents) * 100 : null;
 }

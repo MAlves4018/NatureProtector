@@ -54,6 +54,40 @@ public static class SimulationRunMetadata
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
+    public static IReadOnlySet<string> ReadDegradationProfiles(string? metadataJson)
+    {
+        using var document = TryParse(metadataJson);
+        if (document is null ||
+            !TryGetProperty(document.RootElement, "run_overrides", "runOverrides", out var overrides) ||
+            overrides.ValueKind != JsonValueKind.Object ||
+            !TryGetProperty(overrides, "resolved", "resolved", out var resolved) ||
+            resolved.ValueKind != JsonValueKind.Object)
+        {
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var profiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (TryGetProperty(resolved, "degradation_profiles", "degradationProfiles", out var profileList) &&
+            profileList.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var element in profileList.EnumerateArray())
+            {
+                if (element.ValueKind == JsonValueKind.String)
+                {
+                    AddDegradationProfiles(profiles, element.GetString());
+                }
+            }
+        }
+
+        if (TryGetProperty(resolved, "degradation_profile", "degradationProfile", out var profile) &&
+            profile.ValueKind == JsonValueKind.String)
+        {
+            AddDegradationProfiles(profiles, profile.GetString());
+        }
+
+        return profiles;
+    }
+
     public static int? ReadExpectedSensorCount(string? metadataJson)
     {
         var ids = ReadExpectedSensorIds(metadataJson);
@@ -73,6 +107,26 @@ public static class SimulationRunMetadata
         }
 
         return resolvedCount;
+    }
+
+    private static void AddDegradationProfiles(ISet<string> profiles, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        foreach (var profile in value.Split(
+                     [',', ';', '|', '+'],
+                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            profiles.Add(profile.ToLowerInvariant() switch
+            {
+                "deterministic-missing-readings" => "missing-readings",
+                "missing" => "missing-readings",
+                _ => profile
+            });
+        }
     }
 
     private static JsonDocument? TryParse(string? metadataJson)

@@ -103,7 +103,7 @@ public sealed record RuntimeRunStartRequest(
     string? DegradationProfile,
     bool CollectEvidence = false,
     bool WaitForCompletion = false,
-    int TimeoutSeconds = 180,
+    int TimeoutSeconds = 300,
     bool AllowParallelRun = false,
     string? RunLabel = null,
     IReadOnlyList<string>? DegradationProfiles = null);

@@ -360,7 +360,11 @@ public sealed partial class PostgresControlPlaneService
         var finalizedCycles = await dbContext.CycleSettlements.AsNoTracking()
             .CountAsync(entity => entity.SimulationRunId == runId && entity.FinalizedAt != null, cancellationToken);
         var temporalSettled = finalizedCycles == run.NumberOfCycles;
-        var settled = run.Status == SimulationRunStatus.Completed && (accepted >= expected || temporalSettled) &&
+        var missingReadingsExpected = SimulationRunMetadata.ReadDegradationProfiles(run.MetadataJson)
+            .Contains("missing-readings");
+        var missingCoverageSettled = missingReadingsExpected && accepted <= expected;
+        var expectedCoverageSettled = accepted >= expected || (temporalSettled && missingReadingsExpected) || missingCoverageSettled;
+        var settled = run.Status == SimulationRunStatus.Completed && expectedCoverageSettled &&
             pending == 0 && processing == 0 && retry == 0 && processed + quarantined == accepted;
         return new RuntimeOperationAccountingResponse(expected, accepted, pending, processing, retry, processed, quarantined, settled);
     }

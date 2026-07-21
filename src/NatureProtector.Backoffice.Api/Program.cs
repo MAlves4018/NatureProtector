@@ -37,6 +37,7 @@ using NatureProtector.Shared.Observability;
  */
 
 var builder = WebApplication.CreateBuilder(args);
+AddInfluxEnvironmentAliases(builder.Configuration);
 builder.Logging.AddNatureProtectorActivityTracking();
 builder.Services.AddNatureProtectorOpenTelemetry(
     builder.Configuration,
@@ -268,4 +269,41 @@ static void EnsureOptionsAreValid<TOptions>(
             typeof(TOptions),
             result.Failures ?? ["Unknown configuration validation failure."]);
     }
+}
+
+static void AddInfluxEnvironmentAliases(IConfigurationManager configuration)
+{
+    var aliases = new Dictionary<string, string?>();
+    AddAliasIfMissing(aliases, configuration, "InfluxDb:Url", Environment.GetEnvironmentVariable("INFLUXDB_URL"));
+    var port = Environment.GetEnvironmentVariable("INFLUXDB_PORT");
+    if (string.IsNullOrWhiteSpace(configuration["InfluxDb:Url"]) &&
+        string.IsNullOrWhiteSpace(aliases.GetValueOrDefault("InfluxDb:Url")) &&
+        !string.IsNullOrWhiteSpace(port))
+    {
+        aliases["InfluxDb:Url"] = $"http://localhost:{port}";
+    }
+
+    AddAliasIfMissing(aliases, configuration, "InfluxDb:Token", Environment.GetEnvironmentVariable("INFLUXDB_TOKEN"));
+    AddAliasIfMissing(aliases, configuration, "InfluxDb:Bucket", Environment.GetEnvironmentVariable("INFLUXDB_BUCKET"));
+    AddAliasIfMissing(aliases, configuration, "InfluxDb:Bucket", Environment.GetEnvironmentVariable("INFLUXDB_DATABASE"));
+    if (aliases.Count > 0)
+    {
+        configuration.AddInMemoryCollection(aliases);
+    }
+}
+
+static void AddAliasIfMissing(
+    IDictionary<string, string?> aliases,
+    IConfiguration configuration,
+    string target,
+    string? value)
+{
+    if (!string.IsNullOrWhiteSpace(configuration[target]) ||
+        aliases.ContainsKey(target) ||
+        string.IsNullOrWhiteSpace(value))
+    {
+        return;
+    }
+
+    aliases[target] = value;
 }

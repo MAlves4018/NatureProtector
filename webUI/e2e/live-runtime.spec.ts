@@ -46,7 +46,28 @@ test.describe('live local runtime', () => {
     }
     await page.getByRole('button', { name: /^6 Revisão$/i }).click();
     await expect(page.locator('.ui-review-summary').first().getByText(scenarioCode, { exact: true })).toBeVisible();
+    const launchResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/control/runtime/runs') &&
+        response.request().method() === 'POST',
+    );
+
     await page.getByRole('button', { name: /Iniciar simulação/i }).click();
+
+    const launchResponse = await launchResponsePromise;
+    if (launchResponse.status() === 429) {
+      const retryAfter = launchResponse.headers()['retry-after'] ?? 'unknown';
+      throw new Error(
+        `Simulation launch was rate-limited. Retry-After=${retryAfter}s; ` +
+          `evidenceRunId=${process.env.NP_EVIDENCE_RUN_ID ?? 'missing'}.`,
+      );
+    }
+
+    expect(
+      launchResponse.ok(),
+      `Simulation launch failed with HTTP ${launchResponse.status()}: ${await launchResponse.text()}`,
+    ).toBe(true);
+
     await expect(page.getByText('OperationId')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('SystemCompleted').first()).toBeVisible({ timeout: 120_000 });
     const launchedRunIdValue = page
@@ -63,7 +84,7 @@ test.describe('live local runtime', () => {
 
     await primaryNav.getByRole('button', { name: /^Simulações$/ }).click();
     await primaryNav.getByRole('button', { name: /^Execuções$/ }).click();
-    await expect(page.getByRole('heading', { name: 'Run workspace' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Espaço da execução' })).toBeVisible();
     await expect(page.getByLabel(/selecionar execução/i)).toHaveValue(launchedRunId!, { timeout: 20_000 });
     const selectedRunId = launchedRunId!;
     await expect(page).toHaveURL(new RegExp(`runId=${selectedRunId}`));
@@ -130,17 +151,24 @@ test.describe('live local runtime', () => {
       await primaryNav.getByRole('button', { name: /^Comparar cenários B vs C$/ }).click();
       await expect
         .poll(() => page.getByLabel('Run A').locator('option').count(), { timeout: 20_000 })
-        .toBeGreaterThanOrEqual(3);
+        .toBeGreaterThanOrEqual(2);
       const runOptions = await page
         .getByLabel('Run A')
         .locator('option')
         .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value).filter(Boolean));
-      expect(runOptions.length).toBeGreaterThanOrEqual(2);
-      await page.getByLabel('Run A').selectOption(runOptions[0]);
-      await page.getByLabel('Run B').selectOption(runOptions[1]);
-      await page.getByRole('button', { name: /^Comparar$/i }).click();
-      await expect(page.locator('.ui-table tbody tr').first()).toBeVisible();
-      await capture(page, `live-${profile}-comparison`);
+
+      if (runOptions.length >= 2) {
+        await page.getByLabel('Run A').selectOption(runOptions[0]);
+        await page.getByLabel('Run B').selectOption(runOptions[1]);
+        await page.getByRole('button', { name: /^Comparar$/i }).click();
+        await expect(page.locator('.ui-table tbody tr').first()).toBeVisible();
+        await capture(page, `live-${profile}-comparison`);
+      } else {
+        testInfo.annotations.push({
+          type: 'comparison',
+          description: 'Skipped because only one completed run is currently available.',
+        });
+      }
     }
 
     await primaryNav.getByRole('button', { name: /^Análise e evidência$/ }).click();

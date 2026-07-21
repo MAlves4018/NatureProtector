@@ -9,7 +9,7 @@ on:
       validity_hours: {description: Requested authorization validity, required: true, default: '24', type: string}
       confirmation: {description: CREATE_G82_AUTHORIZATION_REQUEST, required: true, type: string}
 
-permissions: {contents: read, actions: read, attestations: read, attestations: write}
+permissions: {contents: read, actions: read, attestations: write}
 
 jobs:
   request:

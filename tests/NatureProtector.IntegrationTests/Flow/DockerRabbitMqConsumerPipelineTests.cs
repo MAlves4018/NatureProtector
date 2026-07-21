@@ -188,6 +188,7 @@ public sealed partial class DockerRabbitMqConsumerPipelineTests
             harness.ConnectionFactory,
             harness.RabbitMqOptions.IngestionReadingsQueueName,
             expectedReadyCount: 0);
+        await Task.Delay(TimeSpan.FromSeconds(1));
 
         await harness.StopWorkerAsync();
         AssertNoResidualIngestionMessage(harness.ConnectionFactory, harness.RabbitMqOptions.IngestionReadingsQueueName);

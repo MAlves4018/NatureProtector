@@ -299,7 +299,7 @@ export interface RuntimeAreaOperationalSummaryResponse {
   areaCode: string;
   configurationVersionNumber: number;
   snapshotTimestamp: string;
-  aggregateRiskScore: number;
+  aggregateRiskScore: number | null;
   aggregateRiskLevel: string;
   severity: string;
   summary: string | null;

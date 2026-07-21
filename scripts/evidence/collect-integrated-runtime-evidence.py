@@ -635,10 +635,20 @@ class RuntimeApi:
         self.token = token
         self.timeout = timeout
 
-    def request(self, method: str, path: str, body: Any = None, authenticated: bool = True) -> Any:
+    def request(
+        self,
+        method: str,
+        path: str,
+        body: Any = None,
+        authenticated: bool = True,
+        expect_json: bool = True,
+    ) -> Any:
         url = self.base_url + path
         data = None
         headers = {"Accept": "application/json", "User-Agent": "NatureProtector-Phase4-Evidence/1.0"}
+        evidence_run_id = os.getenv("NP_EVIDENCE_RUN_ID", "").strip()
+        if evidence_run_id:
+            headers["X-NP-Evidence-Run-Id"] = evidence_run_id
         if body is not None:
             data = json.dumps(body, ensure_ascii=False).encode("utf-8")
             headers["Content-Type"] = "application/json"
@@ -650,46 +660,77 @@ class RuntimeApi:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 payload = response.read()
                 elapsed = (time.perf_counter() - started) * 1000.0
-                result = json.loads(payload.decode("utf-8-sig")) if payload else None
-                return {"statusCode": response.status, "durationMs": round(elapsed, 3), "body": result}
+                content_type = response.headers.get("Content-Type", "")
+                text = payload.decode("utf-8-sig", errors="replace") if payload else ""
+                if not payload:
+                    result = None
+                else:
+                    try:
+                        result = json.loads(text)
+                    except json.JSONDecodeError as exc:
+                        if not expect_json:
+                            result = text
+                        else:
+                            raise ApiError(
+                                f"{method} {path} returned HTTP {response.status} after {elapsed:.1f} ms "
+                                f"with non-JSON content-type={content_type!r}, bytes={len(payload)}, "
+                                f"bodyPreview={text[:1000]!r}"
+                            ) from exc
+                return {
+                    "statusCode": response.status,
+                    "durationMs": round(elapsed, 3),
+                    "contentType": content_type,
+                    "bodyBytes": len(payload),
+                    "body": result,
+                }
         except urllib.error.HTTPError as exc:
             payload = exc.read()
             elapsed = (time.perf_counter() - started) * 1000.0
+            content_type = exc.headers.get("Content-Type", "") if exc.headers else ""
+            text = payload.decode("utf-8-sig", errors="replace") if payload else ""
             try:
-                result = json.loads(payload.decode("utf-8-sig")) if payload else None
-            except Exception:
-                result = payload.decode("utf-8", errors="replace")
-            raise ApiError(f"{method} {path} returned HTTP {exc.code} after {elapsed:.1f} ms: {result}") from exc
+                result = json.loads(text) if text else None
+            except json.JSONDecodeError:
+                result = text[:2000]
+            raise ApiError(
+                f"{method} {path} returned HTTP {exc.code} after {elapsed:.1f} ms "
+                f"content-type={content_type!r}, bytes={len(payload)}, body={result!r}"
+            ) from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             elapsed = (time.perf_counter() - started) * 1000.0
             raise ApiError(f"{method} {path} failed after {elapsed:.1f} ms: {exc}") from exc
 
 
 def resolve_token(args: argparse.Namespace, base_url: str) -> tuple[str | None, dict[str, Any]]:
+    username = os.getenv(args.username_env, "").strip() if args.username_env else ""
+    password = os.getenv(args.password_env, "") if args.password_env else ""
+    if username and password:
+        client = RuntimeApi(base_url, None, args.http_timeout)
+        response = client.request(
+            "POST",
+            "/api/users-roles/login",
+            {"usernameOrEmail": username, "password": password},
+            authenticated=False,
+        )
+        login = response["body"] or {}
+        token = ci_get(login, "token")
+        roles = ci_get(login, "roles") or []
+        if not token:
+            raise ApiError("Login succeeded but no token was returned.")
+        return str(token), {
+            "mode": "fresh_login_environment",
+            "status": "AVAILABLE",
+            "username": ci_get(login, "username"),
+            "roles": roles,
+            "loginDurationMs": response["durationMs"],
+            "tokenPersisted": False,
+        }
+
     token = os.getenv(args.bearer_token_env, "").strip() if args.bearer_token_env else ""
     if token:
         return token, {"mode": "bearer_environment", "status": "AVAILABLE", "tokenPersisted": False}
-    username = os.getenv(args.username_env, "").strip() if args.username_env else ""
-    password = os.getenv(args.password_env, "") if args.password_env else ""
-    if not username or not password:
-        return None, {"mode": "none", "status": "NOT_AVAILABLE", "tokenPersisted": False}
-    client = RuntimeApi(base_url, None, args.http_timeout)
-    response = client.request(
-        "POST", "/api/users-roles/login", {"usernameOrEmail": username, "password": password}, authenticated=False
-    )
-    login = response["body"] or {}
-    token = ci_get(login, "token")
-    roles = ci_get(login, "roles") or []
-    if not token:
-        raise ApiError("Login succeeded but no token was returned.")
-    return str(token), {
-        "mode": "login_environment",
-        "status": "AVAILABLE",
-        "username": ci_get(login, "username"),
-        "roles": roles,
-        "loginDurationMs": response["durationMs"],
-        "tokenPersisted": False,
-    }
+
+    return None, {"mode": "none", "status": "NOT_AVAILABLE", "tokenPersisted": False}
 
 
 def make_run_spec(args: argparse.Namespace, scenario: str) -> dict[str, Any]:
@@ -765,7 +806,7 @@ def live_collection(repo: Path, output: Path, args: argparse.Namespace) -> dict[
         calls_dir = ensure_dir(live_dir / "http")
         preflight = {}
         anonymous_api = RuntimeApi(args.api_base_url, None, args.http_timeout)
-        health = anonymous_api.request("GET", "/health", authenticated=False)
+        health = anonymous_api.request("GET", "/health", authenticated=False, expect_json=False)
         preflight["health"] = {"statusCode": health["statusCode"], "durationMs": health["durationMs"]}
         write_json(calls_dir / "health.json", health["body"])
 
@@ -865,6 +906,15 @@ def live_collection(repo: Path, output: Path, args: argparse.Namespace) -> dict[
         else:
             status["status"] = "FAILED"
         status["errors"].append(message)
+        write_json(
+            live_dir / "live-failure.json",
+            {
+                "type": type(exc).__name__,
+                "message": message,
+                "apiBaseUrl": args.api_base_url,
+                "generatedAtUtc": iso(),
+            },
+        )
     write_json(live_dir / "live-status.json", status)
     if status.get("runs"):
         write_json(live_dir / "live-runs.json", status["runs"])

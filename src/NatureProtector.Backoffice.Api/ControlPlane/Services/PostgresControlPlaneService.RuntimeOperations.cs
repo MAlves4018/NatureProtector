@@ -21,6 +21,8 @@ namespace NatureProtector.Backoffice.Api.ControlPlane.Services;
 
 public sealed partial class PostgresControlPlaneService : IControlPlaneService
 {
+    private const int SynchronousWaitMarginSeconds = 30;
+
     // <phase5-slice id="runtime-operations-api">
     public async Task<RuntimeRunStartResponse> StartRuntimeRunAsync(
         RuntimeRunStartRequest request,
@@ -101,10 +103,20 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
                 null);
         }
 
-        if (request.WaitForCompletion && request.NumberOfCycles.HasValue && request.IntervalSeconds.HasValue &&
-            request.TimeoutSeconds < request.NumberOfCycles.Value * request.IntervalSeconds.Value)
+        if (request.WaitForCompletion && request.NumberOfCycles.HasValue && request.IntervalSeconds.HasValue)
         {
-            return RuntimeRunResponse("Rejected", "timeoutSeconds is shorter than the predicted simulation duration.", null);
+            var nominalDurationSeconds = checked(
+                request.NumberOfCycles.Value * request.IntervalSeconds.Value);
+            var minimumTimeoutSeconds = checked(
+                nominalDurationSeconds + SynchronousWaitMarginSeconds);
+
+            if (request.TimeoutSeconds < minimumTimeoutSeconds)
+            {
+                return RuntimeRunResponse(
+                    "Rejected",
+                    $"timeoutSeconds must be at least {minimumTimeoutSeconds} seconds because synchronous waiting may cancel the runtime process.",
+                    null);
+            }
         }
 
         if (request.CollectEvidence)

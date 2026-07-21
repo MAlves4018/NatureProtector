@@ -206,6 +206,8 @@ $secretCanaryScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\ci\
 Assert-True ($secretScanScript -match "SkipGitBackedScans") "secret scan supports a no-Git validation mode"
 Assert-True ($secretScanScript -match "check-secret-canaries\.ps1") "secret scan still runs canary checks"
 Assert-True ($secretScanScript -match 'EndsWith\("/\.env"') "secret scan no-Git mode excludes local .env"
+Assert-True ($secretScanScript -match '\\.np_evidence_python') "secret scan excludes local evidence Python environments"
+Assert-True ($secretScanScript -match 'node_modules\|bin\|obj\|dist\|coverage\|TestResults\|artifacts\|graphify-out') "secret scan excludes generated working-tree roots"
 Assert-True ($secretCanaryScript -match "NoGit") "secret canary scan supports filesystem enumeration without Git"
 Assert-True ($secretCanaryScript -match 'EndsWith\("/\.env"') "secret canary no-Git mode excludes local .env"
 
@@ -259,7 +261,7 @@ Assert-True ($systemCapacityScript -match "Wait-QueueDrain") "system capacity wo
 Assert-True ($systemCapacityScript -match "observationWaitSeconds") "system capacity workload uses profile-specific observation windows"
 Assert-True ($systemCapacityScript -match "ConvertTo-Json -InputObject") "system capacity workload writes empty JSON collections deterministically"
 Assert-True ($systemCapacityScript -match "np\.ingestion\.readings") "system capacity workload reports pipeline queue depth separately from auxiliary queues"
-Assert-True ($systemCapacityScript -match "publisher_timestamp_not_persisted|PublishedAt is not persisted") "system capacity workload preserves latency limitation"
+Assert-True ($systemCapacityScript -match "PublishedAt|event-latency") "system capacity workload preserves timestamp latency contract"
 Assert-False ($systemCapacityScript -match '\bgit\b') "system capacity workload does not execute Git"
 
 $benchmarkScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\performance\run-benchmarks.ps1") -Raw

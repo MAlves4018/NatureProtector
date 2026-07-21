@@ -7,7 +7,7 @@ import { PageHeader } from '../components/PageHeader';
 import { RunProgressCockpit } from '../components/RunProgressCockpit';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
-import { toggleDegradationProfile, useUiSimulation } from '../state/SimulationContext';
+import { minimumSynchronousWaitSeconds, toggleDegradationProfile, useUiSimulation } from '../state/SimulationContext';
 import { useUiActivity } from '../state/ActivityContext';
 import { executionStatusState } from '../truthfulPresentation';
 import { HttpError } from '../services/httpError';
@@ -391,14 +391,24 @@ function ReviewFact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+function NumberField({
+  label,
+  value,
+  min = 1,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min?: number;
+  onChange: (value: number) => void;
+}) {
   return (
     <label className="ui-field">
       <span>{label}</span>
       <input
         className="ui-input"
         type="number"
-        min="1"
+        min={min}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
       />

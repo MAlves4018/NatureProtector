@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using NatureProtector.Core.Primitives;
 using NatureProtector.Core.Risk;
 using NatureProtector.Infrastructure.Postgres.Control;
 using NatureProtector.Infrastructure.Postgres.Persistence;
@@ -212,6 +213,12 @@ public sealed class PostgresCycleProjectionCoordinator(
             .Select(item => item.SensorId).ToHashSet();
         var eligible = observations.Where(item => item.Outcome == CycleObservationOutcome.Eligible.ToString() && item.RiskScore.HasValue)
             .Select(item => item.SensorId).ToHashSet();
+        var eligibleEventIds = observations
+            .Where(item => item.Outcome == CycleObservationOutcome.Eligible.ToString() && item.RiskScore.HasValue)
+            .Select(item => item.EventId)
+            .Distinct()
+            .Order()
+            .ToArray();
         var missing = sensors.Select(item => item.Id).Where(id => !observed.Contains(id)).ToHashSet();
 
         settlement.ObservedSensorIdsJson = SerializeIds(observed);
@@ -228,9 +235,13 @@ public sealed class PostgresCycleProjectionCoordinator(
         {
             var ids = cell.Select(sensor => sensor.Id).ToHashSet();
             var cellObservations = observations.Where(item => ids.Contains(item.SensorId)).ToArray();
-            var scores = cellObservations.Where(item => item.Outcome == "Eligible" && item.RiskScore.HasValue)
-                .Select(item => item.RiskScore!.Value).Order().ToArray();
+            var scores = cellObservations
+                .Where(item => item.Outcome == CycleObservationOutcome.Eligible.ToString() && item.RiskScore.HasValue)
+                .Select(item => item.RiskScore!.Value)
+                .Order()
+                .ToArray();
             var score = Aggregate(scores);
+            var cellHasEligibleAssessments = score.HasValue;
             var snapshot = new CellCycleSnapshotRecord
             {
                 Id = Guid.NewGuid(),
@@ -244,20 +255,37 @@ public sealed class PostgresCycleProjectionCoordinator(
                 BlockedCount = ids.Count(blocked.Contains),
                 EligibleCount = ids.Count(eligible.Contains),
                 AggregateRiskScore = score,
-                AggregateRiskLevel = new AreaRiskSnapshot(Guid.NewGuid(), now, score).AggregateRiskLevel.ToString(),
+                AggregateRiskLevel = cellHasEligibleAssessments
+                    ? new AreaRiskSnapshot(Guid.NewGuid(), now, score!.Value).AggregateRiskLevel.ToString()
+                    : RiskLevel.Unknown.ToString(),
+                AggregationStatus = cellHasEligibleAssessments ? "Available" : "Blocked",
+                AggregationReason = cellHasEligibleAssessments ? null : "NoEligibleAssessments",
                 SnapshotTimestamp = now
             };
             dbContext.CellCycleSnapshots.Add(snapshot);
             cellSnapshots.Add(snapshot);
         }
 
-        var areaScore = Aggregate(cellSnapshots.Where(item => item.EligibleCount > 0).Select(item => item.AggregateRiskScore).Order().ToArray());
-        var areaSnapshot = new AreaRiskSnapshot(
-            Guid.NewGuid(), now, areaScore,
-            $"Cycle {settlement.CycleIndex}: expected={sensors.Count}; observed={observed.Count}; missing={missing.Count}; blocked={blocked.Count}; eligible={eligible.Count}.");
+        var areaScores = cellSnapshots
+            .Where(item => item.AggregateRiskScore.HasValue)
+            .Select(item => item.AggregateRiskScore!.Value)
+            .Order()
+            .ToArray();
+
+        var areaScore = Aggregate(areaScores);
+        var hasEligibleAssessments = areaScore.HasValue;
+        var summary =
+            $"Cycle {settlement.CycleIndex}: expected={sensors.Count}; observed={observed.Count}; " +
+            $"missing={missing.Count}; blocked={blocked.Count}; eligible={eligible.Count}.";
+
+        AreaRiskSnapshot? areaSnapshot = hasEligibleAssessments
+            ? new AreaRiskSnapshot(Guid.NewGuid(), now, areaScore!.Value, summary)
+            : null;
+        var aggregationReason = hasEligibleAssessments ? null : "NoEligibleAssessments";
+
         dbContext.AreaCycleSnapshots.Add(new AreaCycleSnapshotRecord
         {
-            Id = areaSnapshot.Id,
+            Id = areaSnapshot?.Id ?? Guid.NewGuid(),
             SimulationRunId = settlement.SimulationRunId,
             CycleIndex = settlement.CycleIndex,
             AreaId = settlement.AreaId,
@@ -268,20 +296,35 @@ public sealed class PostgresCycleProjectionCoordinator(
             BlockedCount = blocked.Count,
             EligibleCount = eligible.Count,
             AggregateRiskScore = areaScore,
-            AggregateRiskLevel = areaSnapshot.AggregateRiskLevel.ToString(),
+            AggregateRiskLevel = areaSnapshot?.AggregateRiskLevel.ToString() ?? RiskLevel.Unknown.ToString(),
+            AggregationStatus = hasEligibleAssessments ? "Available" : "Blocked",
+            AggregationReason = aggregationReason,
             SnapshotTimestamp = now,
             AlertEvaluatedAt = now,
-            AlertOutcome = areaScore >= 0.75 ? "Alarm" : areaScore >= 0.60 ? "Warning" : "None",
+            AlertOutcome = hasEligibleAssessments
+                ? V1AlertPolicy.EvaluateTransition(V1AlertState.None, areaScore!.Value).ToString()
+                : "NotEvaluated",
             IsOperational = settlement.IsOperational
         });
+
         return new FinalizedCycleProjection(
-            settlement.SimulationRunId, settlement.CycleIndex, settlement.AreaId,
-            areaSnapshot, eligible.Count, settlement.IsOperational);
+            settlement.SimulationRunId,
+            settlement.CycleIndex,
+            settlement.AreaId,
+            areaSnapshot,
+            eligible.Count,
+            settlement.IsOperational,
+            eligibleEventIds,
+            aggregationReason);
     }
 
-    private static double Aggregate(IReadOnlyList<double> scores)
+    private static double? Aggregate(IReadOnlyList<double> scores)
     {
-        if (scores.Count == 0) return 0;
+        if (scores.Count == 0)
+        {
+            return null;
+        }
+
         var rank = Math.Clamp((int)Math.Ceiling(scores.Count * 0.8) - 1, 0, scores.Count - 1);
         return (0.7 * scores[rank]) + (0.3 * scores[^1]);
     }
