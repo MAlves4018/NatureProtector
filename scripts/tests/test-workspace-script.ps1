@@ -239,6 +239,8 @@ Assert-True ($finalHardeningScript -match "REPRODUCIBILITY_FINGERPRINT\.json") "
 Assert-True ($finalHardeningScript -match "PHASE_STATE\.json") "final hardening orchestrator writes resumable phase state"
 Assert-True ($finalHardeningScript -match "Invoke-LocalFunctionalValidation\.ps1") "final hardening orchestrator delegates functional proof to the existing harness"
 Assert-True ($finalHardeningScript -match "NOT_IMPLEMENTED") "final hardening orchestrator refuses placeholder PASS for undelegated modes"
+Assert-True ($finalHardeningScript -match "RedirectStandardOutput" -and $finalHardeningScript -match "stdout\.tmp") "final hardening orchestrator redirects child output to files"
+Assert-False ($finalHardeningScript -match "ReadToEnd") "final hardening orchestrator avoids pipe-drain deadlocks"
 
 $localFunctionalValidationScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\validation\Invoke-LocalFunctionalValidation.ps1") -Raw
 Assert-False ($localFunctionalValidationScript -match "C:\\Users\\Miguel") "local functional validation no longer defaults to a personal absolute evidence path"
@@ -247,6 +249,8 @@ Assert-True ($localFunctionalValidationScript -match "GetTempPath" -and $localFu
 Assert-True ($localFunctionalValidationScript -match "np-nuget-packages") "local functional validation CleanRoom records an explicit short NuGet cache"
 Assert-True ($localFunctionalValidationScript -match "clean-room-dotnet-restore") "local functional validation CleanRoom restores .NET dependencies as an explicit setup gate"
 Assert-True ($localFunctionalValidationScript -match '"np-prepare-local"' -and $localFunctionalValidationScript -match '"-SkipDotnetRestore"') "local functional validation CleanRoom runs prepare-local for frontend setup before runtime smoke"
+Assert-True ($localFunctionalValidationScript -match "RedirectStandardOutput" -and $localFunctionalValidationScript -match "stdout\.tmp") "local functional validation redirects command output to files"
+Assert-False ($localFunctionalValidationScript -match "ReadToEnd") "local functional validation avoids pipe-drain deadlocks"
 
 $functionalPackageSmokeScript = Get-Content -LiteralPath (Join-Path $RepoRoot "scripts\release\test-functional-package-smoke.ps1") -Raw
 Assert-True ($functionalPackageSmokeScript -match "GetTempPath") "functional package smoke expands outside the source tree"

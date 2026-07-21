@@ -236,27 +236,22 @@ function Invoke-LoggedCommand {
     $output = New-Object System.Collections.Generic.List[string]
     $exitCode = 1
     try {
-        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $processInfo.FileName = $Executable
-        $argumentListProperty = [System.Diagnostics.ProcessStartInfo].GetProperty("ArgumentList")
-        if ($argumentListProperty) {
-            foreach ($argument in $Arguments) { [void]$processInfo.ArgumentList.Add($argument) }
-        }
-        else {
-            $processInfo.Arguments = Join-ProcessArguments -Arguments $Arguments
-        }
-        $processInfo.WorkingDirectory = $RepoRoot
-        $processInfo.RedirectStandardOutput = $true
-        $processInfo.RedirectStandardError = $true
-        $processInfo.UseShellExecute = $false
-        $processInfo.CreateNoWindow = $true
-        $process = [System.Diagnostics.Process]::Start($processInfo)
+        $stdoutPath = Join-Path $LogsDir "$safeName.stdout.tmp"
+        $stderrPath = Join-Path $LogsDir "$safeName.stderr.tmp"
+        Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+        $process = Start-Process -FilePath $Executable `
+            -ArgumentList $Arguments `
+            -WorkingDirectory $RepoRoot `
+            -RedirectStandardOutput $stdoutPath `
+            -RedirectStandardError $stderrPath `
+            -PassThru `
+            -WindowStyle Hidden
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
             Stop-ProcessTree -ProcessId ([int]$process.Id)
             try { $process.Kill($true) } catch {}
             try { $process.WaitForExit(5000) | Out-Null } catch {}
-            $stdout = $process.StandardOutput.ReadToEnd()
-            $stderr = $process.StandardError.ReadToEnd()
+            $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
+            $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
             $output.Add("Command timed out after $TimeoutSeconds seconds.") | Out-Null
             if (-not [string]::IsNullOrWhiteSpace($stdout)) { $output.Add($stdout) | Out-Null }
             if (-not [string]::IsNullOrWhiteSpace($stderr)) { $output.Add($stderr) | Out-Null }
@@ -264,8 +259,8 @@ function Invoke-LoggedCommand {
             throw "Command timed out after $TimeoutSeconds seconds."
         }
 
-        $stdout = $process.StandardOutput.ReadToEnd()
-        $stderr = $process.StandardError.ReadToEnd()
+        $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
+        $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
         if (-not [string]::IsNullOrWhiteSpace($stdout)) { $output.Add($stdout) | Out-Null }
         if (-not [string]::IsNullOrWhiteSpace($stderr)) { $output.Add($stderr) | Out-Null }
         $exitCode = [int]$process.ExitCode
