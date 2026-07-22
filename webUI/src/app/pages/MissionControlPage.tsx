@@ -64,11 +64,15 @@ export function MissionControlPage() {
             <MissionNode icon={<Activity size={18} />} label="Quality" detail={`${counts.quality} operações`} />
             <MissionNode icon={<FileCheck2 size={18} />} label="Evidence" detail={`${counts.evidence} campanhas`} />
             <MissionNode icon={<ShieldCheck size={18} />} label="Release" detail={`${counts.deployment} ações`} />
-            <MissionNode icon={<Cloud size={18} />} label="Cloud" detail={`${environments.length} ambientes declarados`} />
+            <MissionNode
+              icon={<Cloud size={18} />}
+              label="Cloud"
+              detail={`${environments.length} ambientes declarados`}
+            />
           </ul>
           <div className="ui-notice">
-            A UI pede operações fechadas. O backend autoriza e audita. GitHub Actions e os runners executam. Credenciais não
-            chegam ao browser.
+            A UI pede operações fechadas. O backend autoriza e audita. GitHub Actions e os runners executam. Credenciais
+            não chegam ao browser.
           </div>
         </>
       )}

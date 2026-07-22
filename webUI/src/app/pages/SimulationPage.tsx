@@ -7,7 +7,7 @@ import { PageHeader } from '../components/PageHeader';
 import { RunProgressCockpit } from '../components/RunProgressCockpit';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiLocale } from '../state/LocaleContext';
-import { minimumSynchronousWaitSeconds, toggleDegradationProfile, useUiSimulation } from '../state/SimulationContext';
+import { toggleDegradationProfile, useUiSimulation } from '../state/SimulationContext';
 import { useUiActivity } from '../state/ActivityContext';
 import { executionStatusState } from '../truthfulPresentation';
 import { HttpError } from '../services/httpError';
@@ -247,8 +247,8 @@ export function SimulationPage() {
                   <ReviewFact label="Ciclos" value={String(simulationReview.requested.numberOfCycles ?? 'default')} />
                 </div>
                 <p className="ui-notice">
-                  O progresso seguinte usa apenas estado persistido da operação e da run. Etapas não instrumentadas não são
-                  inferidas pelo browser.
+                  O progresso seguinte usa apenas estado persistido da operação e da run. Etapas não instrumentadas não
+                  são inferidas pelo browser.
                 </p>
               </section>
               <div className="ui-launcher-footer">
@@ -278,8 +278,8 @@ export function SimulationPage() {
               </div>
               {!runtimeLaunchAvailable ? (
                 <p className="ui-notice">
-                  A execução de simulações não está disponível neste build. O endpoint atual está limitado ao ambiente de
-                  desenvolvimento.
+                  A execução de simulações não está disponível neste build. O endpoint atual está limitado ao ambiente
+                  de desenvolvimento.
                 </p>
               ) : (
                 !canExecuteSimulation && <p className="ui-notice">{copy('simulation.readOnly')}</p>
@@ -355,7 +355,11 @@ export function SimulationPage() {
                   <button type="button" className="ui-secondary" onClick={() => navigate(`/runs${runSearch}`)}>
                     Abrir resultados
                   </button>
-                  <button type="button" className="ui-secondary" onClick={() => navigate(`/scenario-compare${runSearch}`)}>
+                  <button
+                    type="button"
+                    className="ui-secondary"
+                    onClick={() => navigate(`/scenario-compare${runSearch}`)}
+                  >
                     Comparar cenários
                   </button>
                   <button type="button" className="ui-secondary" onClick={() => navigate(`/evidence${runSearch}`)}>
@@ -378,7 +382,7 @@ export function SimulationPage() {
       ) : (
         <EmptyState title={copy('area.selectPrompt')} />
       )}
-    </section >
+    </section>
   );
 }
 

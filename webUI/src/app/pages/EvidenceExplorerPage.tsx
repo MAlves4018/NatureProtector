@@ -1,4 +1,13 @@
-import { Download, FileCheck2, GitCompareArrows, ShieldCheck, FileText, TableProperties, Ratio, History } from 'lucide-react';
+import {
+  Download,
+  FileCheck2,
+  GitCompareArrows,
+  ShieldCheck,
+  FileText,
+  TableProperties,
+  Ratio,
+  History,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { OperationComparisonResponse } from '../types/operations';
 import { PageHeader } from '../components/PageHeader';
@@ -134,12 +143,7 @@ export function EvidenceExplorerPage() {
         </button>
       </div>
       {tab === 'claims' && (
-        <Claims 
-          selectedRunId={selectedRunId}
-          runAudit={runAudit}
-          runOperation={runOperation}
-          runTimings={runTimings}
-        />
+        <Claims selectedRunId={selectedRunId} runAudit={runAudit} runOperation={runOperation} runTimings={runTimings} />
       )}
       {tab === 'artefacts' && (
         <section className="ui-card">
@@ -151,8 +155,8 @@ export function EvidenceExplorerPage() {
             <ShieldCheck size={22} />
           </div>
           <p className="ui-notice">
-            O índice é filtrado pela run selecionada. Artefactos sem SimulationRunId ou EvidenceId correspondente não são
-            apresentados como prova desta execução.
+            O índice é filtrado pela run selecionada. Artefactos sem SimulationRunId ou EvidenceId correspondente não
+            são apresentados como prova desta execução.
           </p>
           {observabilityError && <p className="ui-notice ui-error">{observabilityError.message}</p>}
           <div className="ui-table-wrap">

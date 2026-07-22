@@ -1,4 +1,4 @@
-import { useOperations } from "../operations/OperationsContext";
+import { useOperations } from '../operations/OperationsContext';
 
 export interface ReadinessItem {
   label: string;

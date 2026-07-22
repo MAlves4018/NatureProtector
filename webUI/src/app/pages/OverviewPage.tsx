@@ -110,7 +110,8 @@ export function OverviewPage() {
                 <h3>Atenção operacional</h3>
                 <StatusBadge
                   label={`${activeAlerts.length} alertas`}
-                  state={activeAlerts.length > 0 ? 'partial' : 'ready'} />
+                  state={activeAlerts.length > 0 ? 'partial' : 'ready'}
+                />
               </div>
               {activeAlerts.length === 0 ? (
                 <div className="ui-empty-inline">
@@ -131,7 +132,8 @@ export function OverviewPage() {
                 </div>
               )}
             </section>
-          </div><section className="ui-panel">
+          </div>
+          <section className="ui-panel">
             <div className="ui-section-heading">
               <h3>{copy('readiness.title')}</h3>
               <span className="ui-section-note">Capacidade declarada e respetiva evidência</span>

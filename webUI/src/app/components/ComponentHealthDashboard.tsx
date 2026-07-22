@@ -48,9 +48,7 @@ export function ComponentHealthDashboard({ health }: Props) {
           <article key={comp.component} className="ui-card" style={{ padding: 12 }}>
             <div className="ui-section-heading" style={{ marginBottom: 8 }}>
               <strong>{comp.component}</strong>
-              <span className={`ui-badge ${statusClass(comp.status)}`}>
-                {comp.status}
-              </span>
+              <span className={`ui-badge ${statusClass(comp.status)}`}>{comp.status}</span>
             </div>
             <div className="ui-fact-list" style={{ gap: 4, margin: 0 }}>
               <span style={{ fontSize: '0.82rem' }}>
@@ -72,7 +70,11 @@ export function ComponentHealthDashboard({ health }: Props) {
                 </span>
               )}
             </div>
-            {comp.reason && <p className="ui-table-note" style={{ marginTop: 6 }}>{comp.reason}</p>}
+            {comp.reason && (
+              <p className="ui-table-note" style={{ marginTop: 6 }}>
+                {comp.reason}
+              </p>
+            )}
           </article>
         ))}
       </div>

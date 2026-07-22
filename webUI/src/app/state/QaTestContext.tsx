@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useRef, useContext, useMemo, useState, type ReactNode } from 'react';
 import { api } from '../services/api';
-import { buildUiQaSuites, type UiQaSuite } from '../technicalSurfaces';
+import type { UiQaSuite } from '../technicalSurfaces';
 import type { EngineeringOperationResponse, OperationDefinitionResponse } from '../types';
 
 interface QaTestExecution {
@@ -80,9 +80,10 @@ function opToUiSuite(op: EngineeringOperationResponse): UiQaSuite {
     failed,
     skipped: 0,
     blocked: 0,
-    duration: op.steps.length > 0
-      ? `${op.steps.filter((s) => s.status === 'completed' || s.status === 'Succeeded').length}/${op.steps.length} steps`
-      : '-',
+    duration:
+      op.steps.length > 0
+        ? `${op.steps.filter((s) => s.status === 'completed' || s.status === 'Succeeded').length}/${op.steps.length} steps`
+        : '-',
     coverage: 'Not applicable',
     reportReference: op.providerReference ?? '',
     evidenceReference: op.artifacts.map((a) => a.reference).join('; '),
@@ -91,7 +92,8 @@ function opToUiSuite(op: EngineeringOperationResponse): UiQaSuite {
 }
 
 function isOperationComplete(op: EngineeringOperationResponse): boolean {
-  if (op.status === 'Succeeded' || op.status === 'Failed' || op.status === 'Cancelled' || op.status === 'Skipped') return true;
+  if (op.status === 'Succeeded' || op.status === 'Failed' || op.status === 'Cancelled' || op.status === 'Skipped')
+    return true;
   if (op.provider === 'simulation') return true;
   return false;
 }
@@ -238,8 +240,28 @@ export function UiQaTestProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ qaSuites, suitesLoading, runningSuiteIds, executions, pushResults, pushResultsLoading, runAll, runSuites, clearExecutions }),
-    [qaSuites, suitesLoading, runningSuiteIds, executions, pushResults, pushResultsLoading, runAll, runSuites, clearExecutions],
+    () => ({
+      qaSuites,
+      suitesLoading,
+      runningSuiteIds,
+      executions,
+      pushResults,
+      pushResultsLoading,
+      runAll,
+      runSuites,
+      clearExecutions,
+    }),
+    [
+      qaSuites,
+      suitesLoading,
+      runningSuiteIds,
+      executions,
+      pushResults,
+      pushResultsLoading,
+      runAll,
+      runSuites,
+      clearExecutions,
+    ],
   );
 
   return <UiQaTestContext.Provider value={value}>{children}</UiQaTestContext.Provider>;

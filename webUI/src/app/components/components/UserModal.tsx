@@ -33,7 +33,14 @@ export function UserModal({ isDark, user, isOpen, onClose }: UserModalProps) {
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="ui-overlay" role="dialog" aria-modal="true" aria-label="User information" data-theme={isDark ? 'dark' : 'light'} style={{ zIndex: 1000 }}>
+    <div
+      className="ui-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="User information"
+      data-theme={isDark ? 'dark' : 'light'}
+      style={{ zIndex: 1000 }}
+    >
       <div className="ui-confirm-dialog" style={{ maxWidth: 'min(360px, 90vw)', width: '100%' }}>
         <div className="ui-section-heading">
           <h3>{user ? 'User Information' : 'Not signed in'}</h3>
@@ -43,9 +50,15 @@ export function UserModal({ isDark, user, isOpen, onClose }: UserModalProps) {
         </div>
         {user ? (
           <>
-            <p><strong>Welcome,</strong> {user.fullName}</p>
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Roles:</strong> {user.roles.join(', ')}</p>
+            <p>
+              <strong>Welcome,</strong> {user.fullName}
+            </p>
+            <p>
+              <strong>Email:</strong> {user.email}
+            </p>
+            <p>
+              <strong>Roles:</strong> {user.roles.join(', ')}
+            </p>
             <button type="button" className="ui-button ui-button-danger" onClick={handleLogout}>
               Logout
             </button>

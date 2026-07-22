@@ -3,7 +3,7 @@ import { ExternalLink, PlayCircle, RotateCw, RefreshCw, FileText } from 'lucide-
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUiQaTests } from '../state/QaTestContext';
-import {useUiCapabilities} from '../state';
+import { useUiCapabilities } from '../state';
 
 interface LocalTestResult {
   Slug: string;
@@ -22,7 +22,8 @@ interface LocalTestSummary {
 
 export function QaTestSuitePage() {
   const { canExecuteFullQa } = useUiCapabilities();
-  const { qaSuites, runningSuiteIds, executions, pushResults, pushResultsLoading, runAll, runSuites, clearExecutions } = useUiQaTests();
+  const { qaSuites, runningSuiteIds, executions, pushResults, pushResultsLoading, runAll, runSuites, clearExecutions } =
+    useUiQaTests();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(qaSuites.map((s) => s.suiteId)));
 
@@ -34,7 +35,10 @@ export function QaTestSuitePage() {
     setLocalLoading(true);
     try {
       const res = await fetch('/testSuiteResults/_summary.json');
-      if (!res.ok) { setLocalSummary(null); return; }
+      if (!res.ok) {
+        setLocalSummary(null);
+        return;
+      }
       const json: LocalTestSummary = await res.json();
       setLocalSummary(json);
       const logMap: Record<string, string> = {};
@@ -43,7 +47,9 @@ export function QaTestSuitePage() {
         try {
           const logRes = await fetch(`/testSuiteResults/${r.Slug}.log`);
           if (logRes.ok) logMap[r.Slug] = await logRes.text();
-        } catch { /* skip */ }
+        } catch {
+          /* skip */
+        }
       }
       setLocalLogs(logMap);
     } catch {
@@ -53,7 +59,9 @@ export function QaTestSuitePage() {
     }
   }, []);
 
-  useEffect(() => { void loadLocalResults(); }, [loadLocalResults]);
+  useEffect(() => {
+    void loadLocalResults();
+  }, [loadLocalResults]);
 
   const toggleSuite = (id: string) => {
     setSelectedIds((prev) => {
@@ -76,18 +84,20 @@ export function QaTestSuitePage() {
 
   return (
     <section className="ui-page">
-      <PageHeader
-        title="QA Test Suite"
-        subtitle={subtitle}
-        helpTopic="qa"
-      />
+      <PageHeader title="QA Test Suite" subtitle={subtitle} helpTopic="qa" />
 
       {isLocal ? (
         <>
           <p className="ui-notice" style={{ marginBottom: 16 }}>
             <RefreshCw size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
             Apenas leitura — os resultados locais são carregados a partir de ficheiros.
-            <button type="button" className="ui-secondary" style={{ marginLeft: 8 }} disabled={localLoading} onClick={() => void loadLocalResults()}>
+            <button
+              type="button"
+              className="ui-secondary"
+              style={{ marginLeft: 8 }}
+              disabled={localLoading}
+              onClick={() => void loadLocalResults()}
+            >
               Recarregar resultados locais
             </button>
           </p>
@@ -97,21 +107,37 @@ export function QaTestSuitePage() {
               <h3>Resultados Locais (run-all-tests.ps1)</h3>
             </div>
             <p className="ui-label" style={{ marginBottom: 8 }}>
-              Resultados da última execução local da script <em>run-all-tests.ps1</em> guardados em <em>webUI/testSuiteResults/</em>.
+              Resultados da última execução local da script <em>run-all-tests.ps1</em> guardados em{' '}
+              <em>webUI/testSuiteResults/</em>.
             </p>
             {localLoading ? (
               <p className="ui-notice">A carregar resultados locais...</p>
             ) : !localSummary ? (
               <p className="ui-notice">
-                Nenhum resultado local disponível. Executa <code>scripts/tests/run-all-tests.ps1</code> para gerar resultados.
+                Nenhum resultado local disponível. Executa <code>scripts/tests/run-all-tests.ps1</code> para gerar
+                resultados.
               </p>
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
                 <div className="ui-fact-list" style={{ margin: 0 }}>
-                  <span><strong>Overall</strong> <StatusBadge label={localSummary.Overall} state={localSummary.Overall === 'passed' ? 'ready' : 'partial'} /></span>
-                  <span><strong>Passed</strong> <span style={{ color: '#22c55e', fontWeight: 900 }}>{localSummary.Passed}</span></span>
-                  <span><strong>Failed</strong> <span style={{ color: '#ef4444', fontWeight: 900 }}>{localSummary.Failed}</span></span>
-                  <span><strong>Timestamp</strong> {new Date(localSummary.Timestamp).toLocaleString()}</span>
+                  <span>
+                    <strong>Overall</strong>{' '}
+                    <StatusBadge
+                      label={localSummary.Overall}
+                      state={localSummary.Overall === 'passed' ? 'ready' : 'partial'}
+                    />
+                  </span>
+                  <span>
+                    <strong>Passed</strong>{' '}
+                    <span style={{ color: '#22c55e', fontWeight: 900 }}>{localSummary.Passed}</span>
+                  </span>
+                  <span>
+                    <strong>Failed</strong>{' '}
+                    <span style={{ color: '#ef4444', fontWeight: 900 }}>{localSummary.Failed}</span>
+                  </span>
+                  <span>
+                    <strong>Timestamp</strong> {new Date(localSummary.Timestamp).toLocaleString()}
+                  </span>
                 </div>
 
                 <div style={{ display: 'grid', gap: 6 }}>
@@ -135,14 +161,22 @@ export function QaTestSuitePage() {
                             />
                             <span style={{ fontWeight: 700 }}>{r.Name}</span>
                             {r.ExitCode !== 0 && (
-                              <span className="ui-badge" style={{ fontSize: 11 }}>exit {r.ExitCode}</span>
+                              <span className="ui-badge" style={{ fontSize: 11 }}>
+                                exit {r.ExitCode}
+                              </span>
                             )}
                           </div>
                           {logContent && (
                             <button
                               type="button"
                               className="ui-secondary"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', fontSize: 12 }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '2px 8px',
+                                fontSize: 12,
+                              }}
                               onClick={() => {
                                 const el = document.getElementById(`log-${r.Slug}`);
                                 if (el) el.hidden = !el.hidden;
@@ -190,7 +224,8 @@ export function QaTestSuitePage() {
               {isRunning && <StatusBadge label="A executar..." state="partial" />}
             </div>
             <p>
-              Corre as {qaSuites.length} suites de teste QA sequencialmente: {qaSuites.map((s) => s.suiteName).join(', ')}.
+              Corre as {qaSuites.length} suites de teste QA sequencialmente:{' '}
+              {qaSuites.map((s) => s.suiteName).join(', ')}.
             </p>
             <button
               type="button"
@@ -315,7 +350,12 @@ export function QaTestSuitePage() {
                           <div
                             key={suite.suiteId}
                             className="ui-detail-row"
-                            style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr auto auto',
+                              gap: 8,
+                              alignItems: 'center',
+                            }}
                           >
                             <span style={{ fontWeight: 700 }}>{suite.suiteName}</span>
                             <span style={{ display: 'flex', gap: 8 }}>
@@ -328,7 +368,10 @@ export function QaTestSuitePage() {
                               )}
                             </span>
                             <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                              <StatusBadge label={suite.status} state={suite.status === 'Passed' ? 'ready' : 'partial'} />
+                              <StatusBadge
+                                label={suite.status}
+                                state={suite.status === 'Passed' ? 'ready' : 'partial'}
+                              />
                               {suite.coverage !== 'Not applicable' && suite.coverage !== 'N/A' && (
                                 <span className="ui-badge">{suite.coverage}</span>
                               )}
@@ -349,20 +392,28 @@ export function QaTestSuitePage() {
               {pushResultsLoading && <StatusBadge label="A carregar..." state="partial" />}
             </div>
             <p className="ui-label" style={{ marginBottom: 8 }}>
-              Resultados da última execução do workflow <em>engineering-foundations.yml</em> despoletada por push no branch master.
+              Resultados da última execução do workflow <em>engineering-foundations.yml</em> despoletada por push no
+              branch master.
             </p>
             {pushResults.length === 0 ? (
               <p className="ui-notice">
-                {pushResultsLoading ? 'A carregar resultados dos pushes...' : 'Nenhum resultado de push CI disponível. Os resultados aparecem após um push que complete o workflow.'}
+                {pushResultsLoading
+                  ? 'A carregar resultados dos pushes...'
+                  : 'Nenhum resultado de push CI disponível. Os resultados aparecem após um push que complete o workflow.'}
               </p>
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
                 {pushResults.slice(0, 5).map((run) => {
-                  let jobs: Record<string, { status: string; passed: number; failed: number; skipped: number; tests: number }> | null = null;
+                  let jobs: Record<
+                    string,
+                    { status: string; passed: number; failed: number; skipped: number; tests: number }
+                  > | null = null;
                   try {
                     const parsed = JSON.parse(run.detail ?? '{}');
                     if (parsed.jobs) jobs = parsed.jobs;
-                  } catch { /* detail is plain text */ }
+                  } catch {
+                    /* detail is plain text */
+                  }
 
                   return (
                     <article key={run.id} className="ui-operation-card" style={{ display: 'grid', gap: 8 }}>
@@ -403,23 +454,16 @@ export function QaTestSuitePage() {
                                   padding: '6px 8px',
                                 }}
                               >
-                                <span style={{ fontWeight: 700, fontSize: 13 }}>{name.replace(/-artifacts$/, '').replace(/-/g, ' ')}</span>
-                                <StatusBadge
-                                  label={j.status}
-                                  state={j.status === 'Succeeded' ? 'ready' : 'partial'}
-                                />
-                                <span style={{ color: '#22c55e', fontWeight: 900, fontSize: 13 }}>
-                                  P {j.passed}
+                                <span style={{ fontWeight: 700, fontSize: 13 }}>
+                                  {name.replace(/-artifacts$/, '').replace(/-/g, ' ')}
                                 </span>
+                                <StatusBadge label={j.status} state={j.status === 'Succeeded' ? 'ready' : 'partial'} />
+                                <span style={{ color: '#22c55e', fontWeight: 900, fontSize: 13 }}>P {j.passed}</span>
                                 {j.failed > 0 && (
-                                  <span style={{ color: '#ef4444', fontWeight: 900, fontSize: 13 }}>
-                                    F {j.failed}
-                                  </span>
+                                  <span style={{ color: '#ef4444', fontWeight: 900, fontSize: 13 }}>F {j.failed}</span>
                                 )}
                                 {j.skipped > 0 && (
-                                  <span style={{ color: '#eab308', fontWeight: 900, fontSize: 13 }}>
-                                    S {j.skipped}
-                                  </span>
+                                  <span style={{ color: '#eab308', fontWeight: 900, fontSize: 13 }}>S {j.skipped}</span>
                                 )}
                                 <span className="ui-label" style={{ fontSize: 12 }}>
                                   {j.tests} testes
@@ -437,15 +481,27 @@ export function QaTestSuitePage() {
                           </summary>
                           <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
                             {run.artifacts.map((a) => (
-                              <div key={a.artifactId} className="ui-detail-row" style={{ display: 'grid', gap: 4, padding: '6px 8px' }}>
+                              <div
+                                key={a.artifactId}
+                                className="ui-detail-row"
+                                style={{ display: 'grid', gap: 4, padding: '6px 8px' }}
+                              >
                                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                   <span style={{ fontWeight: 700, fontSize: 13 }}>{a.name}</span>
-                                  <span className="ui-badge" style={{ fontSize: 11 }}>{a.kind}</span>
-                                  {a.evidenceLevel && <span className="ui-badge" style={{ fontSize: 11 }}>{a.evidenceLevel}</span>}
+                                  <span className="ui-badge" style={{ fontSize: 11 }}>
+                                    {a.kind}
+                                  </span>
+                                  {a.evidenceLevel && (
+                                    <span className="ui-badge" style={{ fontSize: 11 }}>
+                                      {a.evidenceLevel}
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="ui-fact-list" style={{ margin: 0, fontSize: 12 }}>
                                   {a.sizeBytes != null && (
-                                    <span><strong>Tamanho</strong> {(a.sizeBytes / 1024).toFixed(1)} KB</span>
+                                    <span>
+                                      <strong>Tamanho</strong> {(a.sizeBytes / 1024).toFixed(1)} KB
+                                    </span>
                                   )}
                                   {a.reference?.startsWith('http') && (
                                     <a href={a.reference} target="_blank" rel="noreferrer">
@@ -466,15 +522,19 @@ export function QaTestSuitePage() {
                             target="_blank"
                             rel="noreferrer"
                             className="ui-secondary"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 13 }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '4px 10px',
+                              fontSize: 13,
+                            }}
                           >
                             <ExternalLink size={14} />
                             Abrir no GitHub
                           </a>
                         )}
-                        {run.evidenceLevel && (
-                          <span className="ui-badge">{run.evidenceLevel}</span>
-                        )}
+                        {run.evidenceLevel && <span className="ui-badge">{run.evidenceLevel}</span>}
                       </div>
                     </article>
                   );

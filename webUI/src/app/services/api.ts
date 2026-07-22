@@ -320,7 +320,10 @@ export const api = {
   },
 
   getTableColumnsPostgres: (tableName: string) => {
-    return httpClient.get<string[]>(`/control/runtime/getTableColumns/${encodeURIComponent(tableName)}`, api.getRequestOptions());
+    return httpClient.get<string[]>(
+      `/control/runtime/getTableColumns/${encodeURIComponent(tableName)}`,
+      api.getRequestOptions(),
+    );
   },
 
   withAuthToken(token: string) {

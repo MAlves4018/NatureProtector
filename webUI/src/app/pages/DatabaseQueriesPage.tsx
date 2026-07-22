@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode, type MouseEvent as ReactMouseEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  type ReactNode,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { api } from '../services/api';
 import { ROQueryResponse, ROQueryRequest } from '../types';
@@ -13,7 +21,6 @@ import {
   evidenceIdentityMatchesRun,
   throughputPerSecond,
 } from '../utils/operationalMetrics';
-
 
 interface PreparedQuery {
   id: string;
@@ -140,7 +147,11 @@ export function DatabaseQueriesPage() {
   const [errorWritten, setErrorWritten] = useState<string | null>(null);
   const [tab, setTab] = useState<'prepared' | 'written'>('prepared');
   const writtenColumns = resultWrittenQuery?.columns ?? [];
-  const { widths: widthsWritten, setThRef: setThRefWritten, startResize: startResizeWritten } = useColumnResize(writtenColumns);
+  const {
+    widths: widthsWritten,
+    setThRef: setThRefWritten,
+    startResize: startResizeWritten,
+  } = useColumnResize(writtenColumns);
   const requestGeneration = useRef(0);
   const previousRunId = useRef(selectedRunId);
   const selected = PREPARED_QUERIES.find((item) => item.id === selectedId) ?? PREPARED_QUERIES[0];
@@ -163,23 +174,29 @@ export function DatabaseQueriesPage() {
   }, [selectedRunId]);
 
   useEffect(() => {
-    api.getTablesPostgres().then((result) => {
-      setTables(result);
-      if (result.length > 0 && !selectedTable) {
-        setSelectedTable(result[0]);
-      }
-    }).catch(() => {});
-  }, []);
+    api
+      .getTablesPostgres()
+      .then((result) => {
+        setTables(result);
+        if (result.length > 0 && !selectedTable) {
+          setSelectedTable(result[0]);
+        }
+      })
+      .catch(() => {});
+  }, [selectedTable]);
 
   useEffect(() => {
     if (!selectedTable) return;
-    api.getTableColumnsPostgres(selectedTable).then((cols) => {
-      setTableColumns(cols);
-      setSelectedColumns(new Set(cols));
-    }).catch(() => {
-      setTableColumns([]);
-      setSelectedColumns(new Set());
-    });
+    api
+      .getTableColumnsPostgres(selectedTable)
+      .then((cols) => {
+        setTableColumns(cols);
+        setSelectedColumns(new Set(cols));
+      })
+      .catch(() => {
+        setTableColumns([]);
+        setSelectedColumns(new Set());
+      });
   }, [selectedTable]);
 
   const handleExecutePreparedQuery = async () => {
@@ -207,16 +224,15 @@ export function DatabaseQueriesPage() {
     setErrorWritten(null);
     setWrittenQueryResult(null);
     try {
-      const chosenColumns = selectedColumns.size > 0 && selectedColumns.size < tableColumns.length
-        ? [...selectedColumns]
-        : undefined;
+      const chosenColumns =
+        selectedColumns.size > 0 && selectedColumns.size < tableColumns.length ? [...selectedColumns] : undefined;
       const queryRequest: ROQueryRequest = {
         type: queryType,
         table: selectedTable,
         columns: chosenColumns,
         limit: queryType === 'count' ? undefined : queryLimit,
         offset: queryType === 'count' ? undefined : queryOffset,
-      }
+      };
       const res = await api.postgresQuery(queryRequest);
       setWrittenQueryResult(res);
     } catch (e) {
@@ -274,7 +290,11 @@ export function DatabaseQueriesPage() {
                 <span>Filtrar consultas</span>
                 <span className="ui-input-with-icon">
                   <Search size={15} />
-                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome ou grupo" />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Nome ou grupo"
+                  />
                 </span>
               </label>
               <div className="ui-query-list">
@@ -336,7 +356,10 @@ export function DatabaseQueriesPage() {
                   <h3>Resultado</h3>
                   {resultPremadeQuery && (
                     <div className="ui-button-row">
-                      <ExportActions filename={`${resultPremadeQuery.id}-${resultRunId}.csv`} content={diagnosticResultToCsv(resultPremadeQuery)} />
+                      <ExportActions
+                        filename={`${resultPremadeQuery.id}-${resultRunId}.csv`}
+                        content={diagnosticResultToCsv(resultPremadeQuery)}
+                      />
                       <ExportActions
                         filename={`${resultPremadeQuery.id}-${resultRunId}.json`}
                         content={JSON.stringify({ simulationRunId: resultRunId, ...resultPremadeQuery }, null, 2)}
@@ -345,7 +368,9 @@ export function DatabaseQueriesPage() {
                     </div>
                   )}
                 </div>
-                {!resultPremadeQuery && !errorPremade && <p className="ui-notice">Execute o preset para ler os endpoints live.</p>}
+                {!resultPremadeQuery && !errorPremade && (
+                  <p className="ui-notice">Execute o preset para ler os endpoints live.</p>
+                )}
                 {resultPremadeQuery && <QueryResult result={resultPremadeQuery} runId={resultRunId} />}
               </div>
             </div>
@@ -367,7 +392,9 @@ export function DatabaseQueriesPage() {
             >
               {tables.length === 0 && <option value="">A carregar tabelas...</option>}
               {tables.map((t) => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t} value={t}>
+                  {t}
+                </option>
               ))}
             </select>
           </div>
@@ -410,7 +437,9 @@ export function DatabaseQueriesPage() {
           )}
           {tableColumns.length > 0 && queryType === 'select' && (
             <div className="ui-field" style={{ marginTop: 8 }}>
-              <span>Colunas ({selectedColumns.size} de {tableColumns.length} selecionadas)</span>
+              <span>
+                Colunas ({selectedColumns.size} de {tableColumns.length} selecionadas)
+              </span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 13 }}>
                   <input
@@ -428,13 +457,17 @@ export function DatabaseQueriesPage() {
                   <strong>Todas</strong>
                 </label>
                 {tableColumns.map((col) => (
-                  <label key={col} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 13 }}>
+                  <label
+                    key={col}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 13 }}
+                  >
                     <input
                       type="checkbox"
                       checked={selectedColumns.has(col)}
                       onChange={() => {
                         const next = new Set(selectedColumns);
-                        if (next.has(col)) next.delete(col); else next.add(col);
+                        if (next.has(col)) next.delete(col);
+                        else next.add(col);
                         setSelectedColumns(next);
                       }}
                       disabled={executing}
@@ -476,7 +509,9 @@ export function DatabaseQueriesPage() {
               <p className="ui-section-note">
                 Tabela: {selectedTable}
                 {queryType === 'count' ? ' (contagem)' : ` (limite ${queryLimit}, offset ${queryOffset})`}
-                {selectedColumns.size > 0 && selectedColumns.size < tableColumns.length && ` (${selectedColumns.size} colunas selecionadas)`}
+                {selectedColumns.size > 0 &&
+                  selectedColumns.size < tableColumns.length &&
+                  ` (${selectedColumns.size} colunas selecionadas)`}
               </p>
               <div className="ui-table-wrap" style={{ overflowX: 'auto' }}>
                 <table className="ui-table" style={{ tableLayout: 'fixed', whiteSpace: 'nowrap' }}>
@@ -488,17 +523,28 @@ export function DatabaseQueriesPage() {
                   <thead>
                     <tr>
                       {resultWrittenQuery.columns.map((col, i) => (
-                        <th key={i} ref={(el) => setThRefWritten(col, el)} style={{ position: 'relative' }}>
+                        <th key={col} ref={(el) => setThRefWritten(col, el)} style={{ position: 'relative' }}>
                           {col}
-                          <div
+                          <button
+                            type="button"
+                            aria-label="Redimensionar coluna"
                             onMouseDown={(e: ReactMouseEvent) => {
                               e.preventDefault();
                               startResizeWritten(col, e.clientX);
                             }}
                             style={{
-                              display: 'inline-block', width: 6, height: '100%',
-                              cursor: 'col-resize', userSelect: 'none', position: 'absolute',
-                              top: 0, right: 0, bottom: 0,
+                              display: 'inline-block',
+                              width: 6,
+                              height: '100%',
+                              cursor: 'col-resize',
+                              userSelect: 'none',
+                              position: 'absolute',
+                              top: 0,
+                              right: 0,
+                              bottom: 0,
+                              padding: 0,
+                              border: 'none',
+                              background: 'none',
                             }}
                           />
                         </th>
@@ -511,10 +557,12 @@ export function DatabaseQueriesPage() {
                         <td colSpan={Math.max(1, resultWrittenQuery.columns.length)}>Sem resultados.</td>
                       </tr>
                     ) : (
-                      resultWrittenQuery.rows.map((row, ri) => (
-                        <tr key={ri}>
-                          {resultWrittenQuery.columns.map((col, ci) => (
-                            <td key={ci}><CollapsibleValue value={row[col]} /></td>
+                      resultWrittenQuery.rows.map((row) => (
+                        <tr key={JSON.stringify(row)}>
+                          {resultWrittenQuery.columns.map((col) => (
+                            <td key={col}>
+                              <CollapsibleValue value={row[col]} />
+                            </td>
                           ))}
                         </tr>
                       ))
@@ -539,7 +587,6 @@ export function DatabaseQueriesPage() {
     </section>
   );
 }
-
 
 async function executePreparedQuery(
   definition: PreparedQuery,
@@ -718,31 +765,34 @@ function useColumnResize(columns: string[]) {
     else thRefs.current.delete(col);
   }, []);
 
-  const startResize = useCallback((col: string, startX: number) => {
-    const currentWidths = getOrInitWidths();
-    const startWidth = currentWidths[col] ?? 120;
-    dragRef.current = { col, startX, startWidth };
+  const startResize = useCallback(
+    (col: string, startX: number) => {
+      const currentWidths = getOrInitWidths();
+      const startWidth = currentWidths[col] ?? 120;
+      dragRef.current = { col, startX, startWidth };
 
-    const onMouseMove = (e: MouseEvent) => {
-      if (!dragRef.current) return;
-      const { col, startX, startWidth } = dragRef.current;
-      const newWidth = Math.max(50, startWidth + e.clientX - startX);
-      setWidths(prev => ({ ...prev, [col]: newWidth }));
-    };
+      const onMouseMove = (e: MouseEvent) => {
+        if (!dragRef.current) return;
+        const { col, startX, startWidth } = dragRef.current;
+        const newWidth = Math.max(50, startWidth + e.clientX - startX);
+        setWidths((prev) => ({ ...prev, [col]: newWidth }));
+      };
 
-    const onMouseUp = () => {
-      dragRef.current = null;
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
+      const onMouseUp = () => {
+        dragRef.current = null;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
 
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }, [getOrInitWidths]);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    },
+    [getOrInitWidths],
+  );
 
   return { widths, setThRef, startResize };
 }
@@ -764,15 +814,26 @@ function QueryResult({ result, runId }: { result: RuntimeDiagnosticResultRespons
               {result.columns.map((column) => (
                 <th key={column} ref={(el) => setThRef(column, el)} style={{ position: 'relative' }}>
                   {column}
-                  <div
+                  <button
+                    type="button"
+                    aria-label="Redimensionar coluna"
                     onMouseDown={(e: ReactMouseEvent) => {
                       e.preventDefault();
                       startResize(column, e.clientX);
                     }}
                     style={{
-                      display: 'inline-block', width: 6, height: '100%',
-                      cursor: 'col-resize', userSelect: 'none', position: 'absolute',
-                      top: 0, right: 0, bottom: 0,
+                      display: 'inline-block',
+                      width: 6,
+                      height: '100%',
+                      cursor: 'col-resize',
+                      userSelect: 'none',
+                      position: 'absolute',
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      padding: 0,
+                      border: 'none',
+                      background: 'none',
                     }}
                   />
                 </th>
@@ -788,7 +849,9 @@ function QueryResult({ result, runId }: { result: RuntimeDiagnosticResultRespons
               result.rows.map((row) => (
                 <tr key={`${result.id}-${JSON.stringify(row)}`}>
                   {result.columns.map((column) => (
-                    <td key={column}><CollapsibleValue value={row[column]} /></td>
+                    <td key={column}>
+                      <CollapsibleValue value={row[column]} />
+                    </td>
                   ))}
                 </tr>
               ))
@@ -842,11 +905,25 @@ function CollapsibleValue({ value }: { value: string | null | undefined }): Reac
         type="button"
         onClick={() => setExpanded(!expanded)}
         style={{
-          background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 6,
-          verticalAlign: 'middle', fontSize: 'inherit', color: '#005fa3',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 0,
+          marginLeft: 6,
+          verticalAlign: 'middle',
+          fontSize: 'inherit',
+          color: '#005fa3',
         }}
       >
-        {expanded ? <><ChevronDown size={14} /> menos</> : <><ChevronRight size={14} /> {value.length - LONG_VALUE_THRESHOLD} mais</>}
+        {expanded ? (
+          <>
+            <ChevronDown size={14} /> menos
+          </>
+        ) : (
+          <>
+            <ChevronRight size={14} /> {value.length - LONG_VALUE_THRESHOLD} mais
+          </>
+        )}
       </button>
     </span>
   );

@@ -16,9 +16,7 @@ export function LoggedOutBlock({ isDark, message, mode = 'panel' }: LogInOutProp
             <AlertTriangle style={{ width: '100%', height: '100%' }} />
           </div>
           <div>
-            <div style={{ fontSize: '20px', fontWeight: 800 }}>
-              {signedIn ? 'Access granted' : 'Sign In Required'}
-            </div>
+            <div style={{ fontSize: '20px', fontWeight: 800 }}>{signedIn ? 'Access granted' : 'Sign In Required'}</div>
           </div>
         </div>
         <p style={{ textAlign: 'center', marginTop: '12px' }}>{message}</p>

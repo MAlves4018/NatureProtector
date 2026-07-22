@@ -56,15 +56,19 @@ export function LogInOut({ isDark, message, onAuthChange, mode = 'page' }: LogIn
             <img src="./images/NPIconNoBg.png" width={18} height={18} alt="" />
           </div>
           <div>
-            <div style={{ fontSize: '20px', fontWeight: 800 }}>
-              {signedIn ? 'Access granted' : 'Sign In Required'}
-            </div>
+            <div style={{ fontSize: '20px', fontWeight: 800 }}>{signedIn ? 'Access granted' : 'Sign In Required'}</div>
           </div>
         </div>
 
         {signedIn ? (
           <div style={{ marginTop: '18px', display: 'grid', gap: '12px' }}>
-            <button type="button" onClick={handleLogout} disabled={loading} className="ui-button ui-button-danger" style={{ width: '100%' }}>
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={loading}
+              className="ui-button ui-button-danger"
+              style={{ width: '100%' }}
+            >
               <LogOut size={16} /> Sign out
             </button>
           </div>
@@ -105,7 +109,11 @@ export function LogInOut({ isDark, message, onAuthChange, mode = 'page' }: LogIn
           </div>
         )}
 
-        {error && <div className="ui-notice ui-error" style={{ marginTop: '12px' }}>{error}</div>}
+        {error && (
+          <div className="ui-notice ui-error" style={{ marginTop: '12px' }}>
+            {error}
+          </div>
+        )}
       </section>
     </div>
   );

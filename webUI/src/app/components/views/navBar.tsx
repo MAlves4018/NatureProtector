@@ -6,8 +6,6 @@ import { useToken } from '../../context/TokenContext';
 import { UserModal } from '../components/UserModal';
 import npLogoUrl from '../../../../images/NPIconNoBg.png';
 import { useUiCapabilities, useUiLocale } from '../../state';
-import { useNavigate } from 'react-router-dom';
-
 export function NavBar({
   isDark,
   setIsDark,
@@ -15,19 +13,17 @@ export function NavBar({
   isDark: boolean;
   setIsDark: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
-  const { copy, locale, setLocale } = useUiLocale();
+  useUiLocale();
   const c = getColors(isDark);
   const { user, token, refreshToken } = useToken();
   const signedIn = Boolean(token);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const { isPublic, capabilityAuthority, capabilitiesLoading } =
-    useUiCapabilities();
+  useUiCapabilities();
   useEffect(() => {
     if (signedIn && !user) {
       refreshToken();
     }
   }, [signedIn, user, refreshToken]);
-  const navigate = useNavigate();
 
   return (
     <Flex

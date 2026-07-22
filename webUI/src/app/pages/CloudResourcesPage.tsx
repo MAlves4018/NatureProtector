@@ -51,9 +51,7 @@ export function CloudResourcesPage() {
           Histórico
         </button>
       </div>
-      {tab === 'environments' && (
-        <EnvironmetCardMap environments={environments}/>
-      )}
+      {tab === 'environments' && <EnvironmetCardMap environments={environments} />}
       {tab === 'operations' && (
         <section className="ui-panel">
           <h2>Operações cloud fechadas</h2>

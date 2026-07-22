@@ -72,7 +72,11 @@ export function RiskPage() {
                   value={riskModel.classDisplay ?? copy('value.notAvailable')}
                   state={riskModel.state}
                 />
-                <MetricCard label={copy('risk.timestampLabel')} value={riskModel.timestampDisplay} state={riskModel.state} />
+                <MetricCard
+                  label={copy('risk.timestampLabel')}
+                  value={riskModel.timestampDisplay}
+                  state={riskModel.state}
+                />
                 <MetricCard label={copy('risk.runLabel')} value={riskModel.run} state={riskModel.state} />
               </div>
               <section className="ui-notice">

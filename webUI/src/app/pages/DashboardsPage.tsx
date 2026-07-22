@@ -3,7 +3,6 @@ import { EmptyState } from '../components/EmptyState';
 import { useUiCapabilities } from '../state/CapabilityContext';
 import { useUiArea } from '../state/AreaContext';
 import { useUiLocale } from '../state/LocaleContext';
-import { Area } from 'recharts';
 import { AreaSelector } from '../components/AreaSelector';
 import { PageHeader } from '../components/PageHeader';
 

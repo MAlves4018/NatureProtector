@@ -47,7 +47,9 @@ export function QualityEvidencePage() {
         </button>
       </div>
       {tab === 'runtime' && <EvidenceSection title="Runtime evidence — current API session" items={runtimeEvidence} />}
-      {tab === 'historical' && <EvidenceSection title="Historical repository claims — not revalidated" items={historical} />}
+      {tab === 'historical' && (
+        <EvidenceSection title="Historical repository claims — not revalidated" items={historical} />
+      )}
     </section>
   );
 }
