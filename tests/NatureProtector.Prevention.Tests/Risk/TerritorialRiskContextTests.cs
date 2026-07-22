@@ -90,6 +90,96 @@ public sealed class TerritorialRiskContextTests
     }
 
     [Theory]
+    [InlineData(42, 0.42)]
+    [InlineData(-10, 0.0)]
+    [InlineData(150, 1.0)]
+    public void FromCellData_UsesTreeCoverDensityAsFallbackFuelWhenLabelsAreMissing(
+        double treeCoverDensity,
+        double expectedFuel)
+    {
+        var context = TerritorialRiskContext.FromCellData(
+            Guid.NewGuid(),
+            structuralHazard: "alta",
+            landCoverClass: null,
+            dominantForestType: null,
+            dominantFuelModel: null,
+            treeCoverDensity: treeCoverDensity,
+            slopeDegrees: 12,
+            aspectDegrees: 180,
+            altitudeMeters: 400,
+            source: "tree-cover-test");
+
+        Assert.Equal(expectedFuel, context.FuelComponent, precision: 3);
+        Assert.DoesNotContain("fuel_missing_candidate_default", context.Limitation ?? string.Empty);
+    }
+
+    [Theory]
+    [InlineData(null, 180.0, 400.0, "slope_missing_candidate_default")]
+    [InlineData(12.0, null, 400.0, "aspect_missing_candidate_default")]
+    [InlineData(12.0, 180.0, null, "altitude_missing_candidate_default")]
+    [InlineData(null, 180.0, null, "slope_missing_candidate_default")]
+    [InlineData(12.0, null, null, "aspect_missing_candidate_default")]
+    public void FromCellData_ReportsOnlyTheMissingGeomorphologyDimensions(
+        double? slopeDegrees,
+        double? aspectDegrees,
+        double? altitudeMeters,
+        string expectedLimitation)
+    {
+        var context = TerritorialRiskContext.FromCellData(
+            Guid.NewGuid(),
+            structuralHazard: "alta",
+            landCoverClass: "Matos",
+            dominantForestType: null,
+            dominantFuelModel: null,
+            treeCoverDensity: null,
+            slopeDegrees: slopeDegrees,
+            aspectDegrees: aspectDegrees,
+            altitudeMeters: altitudeMeters,
+            source: "geomorphology-partial-test");
+
+        Assert.Contains(expectedLimitation, context.Limitation);
+        Assert.DoesNotContain("geomorphology_missing_candidate_default", context.Limitation);
+    }
+
+    [Theory]
+    [InlineData(89.999, 0.06)]
+    [InlineData(90.0, 0.11)]
+    [InlineData(134.999, 0.11)]
+    [InlineData(135.0, 0.16)]
+    [InlineData(270.0, 0.16)]
+    [InlineData(270.001, 0.11)]
+    [InlineData(315.0, 0.11)]
+    [InlineData(315.001, 0.06)]
+    [InlineData(-90.0, 0.16)]
+    [InlineData(450.0, 0.11)]
+    public void FromCellData_MapsAspectBoundaryBuckets(double aspectDegrees, double expectedGeomorphology)
+    {
+        var context = TerritorialRiskContext.FromCellData(
+            Guid.NewGuid(),
+            structuralHazard: "alta",
+            landCoverClass: "Matos",
+            dominantForestType: null,
+            dominantFuelModel: null,
+            treeCoverDensity: null,
+            slopeDegrees: 0,
+            aspectDegrees: aspectDegrees,
+            altitudeMeters: 0,
+            source: "aspect-boundary-test");
+
+        Assert.Equal(expectedGeomorphology, context.GeomorphologyComponent, precision: 3);
+    }
+
+    [Theory]
+    [InlineData("", "territorial_context")]
+    [InlineData("  dataset-v1  ", "dataset-v1")]
+    public void FromCellData_NormalizesSource(string source, string expectedSource)
+    {
+        var context = CreateContext(source: source);
+
+        Assert.Equal(expectedSource, context.Source);
+    }
+
+    [Theory]
     [InlineData("muito_alta", 0.90)]
     [InlineData("MUITO-ALTA", 0.90)]
     [InlineData("Muito Alta", 0.90)]
@@ -245,7 +335,8 @@ public sealed class TerritorialRiskContextTests
         string structuralHazard = "alta",
         string? landCoverClass = "Matos",
         string? dominantForestType = null,
-        string? dominantFuelModel = null)
+        string? dominantFuelModel = null,
+        string source = "dataset-vocabulary-test")
     {
         return TerritorialRiskContext.FromCellData(
             Guid.NewGuid(),
@@ -257,7 +348,7 @@ public sealed class TerritorialRiskContextTests
             slopeDegrees: 12,
             aspectDegrees: 180,
             altitudeMeters: 400,
-            source: "dataset-vocabulary-test");
+            source: source);
     }
 
     private static double NormalizeFinite(double value, double min, double max)

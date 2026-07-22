@@ -20,6 +20,7 @@ param(
     [int]$Concurrency = 2,
     [int]$TimeoutSeconds = 900,
     [string]$Reporters = "Progress,ClearText,Json,Html",
+    [string]$MutateGlobs = "",
     [string]$OutputRoot = ".\artifacts\mutation",
     [switch]$NoRun
 )
@@ -405,6 +406,7 @@ $effectiveConfigRelativePath = "stryker-config.json"
 $requestedMutateGlobs = @("configured")
 $reporterList = Resolve-Reporters $Reporters
 $configuredReporters = @($reporterList | ForEach-Object { $_.ToLowerInvariant() })
+$requestedMutateOverride = @($MutateGlobs -split '[,;]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $isolationMode = "RepositorySolution"
 $isolatedSolutionPath = $null
 $isolationLogPath = $null
@@ -431,14 +433,19 @@ if ($Profile -eq "Smoke") {
         -LogPath $isolationLogPath
 
     $smokeConfigPath = Join-Path $runDirectory "stryker-smoke-config.json"
-    $requestedMutateGlobs = @("Risk/ReadingTemporalClassifier.cs")
+    $requestedMutateGlobs = if ($requestedMutateOverride.Count -gt 0) {
+        $requestedMutateOverride
+    }
+    else {
+        @("Risk/ReadingTemporalClassifier.cs")
+    }
     $smokeConfig = [ordered]@{
         '$schema' = "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/src/Stryker.CLI/Stryker.CLI/Resources/stryker.schema.json"
         'stryker-config' = [ordered]@{
             solution = $isolatedSolutionPath
             project = "src/NatureProtector.Prevention/NatureProtector.Prevention.csproj"
             'test-projects' = @("tests/NatureProtector.Prevention.Tests/NatureProtector.Prevention.Tests.csproj")
-            mutate = $requestedMutateGlobs
+            mutate = @($requestedMutateGlobs)
             'mutation-level' = $MutationLevel
             reporters = $configuredReporters
             thresholds = [ordered]@{

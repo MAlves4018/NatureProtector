@@ -4,6 +4,7 @@ import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { createUiRuntimeSummaryFixture } from '../fixtures';
 import type {
   RuntimeRunAuditResponse,
+  RuntimeOperationResponse,
   RuntimeRunSummaryResponse,
   RuntimeRunTimingSummaryResponse,
   ScenarioResponse,
@@ -149,6 +150,8 @@ function Probe() {
       <output data-testid="run-id">{value.selectedRunId}</output>
       <output data-testid="selected-run">{value.selectedRun?.id ?? ''}</output>
       <output data-testid="loading">{String(value.runDetailsLoading)}</output>
+      <output data-testid="run-error">{value.runDetailsError?.message ?? ''}</output>
+      <output data-testid="operation-settled">{String(value.runOperation?.accounting.settled ?? '')}</output>
       <output data-testid="search">{location.search}</output>
       <button type="button" onClick={() => value.setSelectedRunId('run-A')}>
         run A
@@ -288,4 +291,65 @@ describe('R1M-002 ActivityContext scope contract', () => {
 
     await waitFor(() => expect(screen.getByTestId('search')).toHaveTextContent('runId=run-A'));
   });
+
+  it('rejects run details that belong to a different resolved area', async () => {
+    harness.listSimulationRuns.mockResolvedValue([
+      run('run-A', 'area-a'),
+      run('run-B', 'area-a'),
+    ] as SimulationRunResponse[]);
+
+    renderProvider();
+    fireEvent.click(screen.getByRole('button', { name: 'run B' }));
+
+    await waitFor(() => expect(screen.getByTestId('run-error')).toHaveTextContent('does not belong to area area-a'));
+  });
+
+  it('polls unsettled runtime operations and refreshes details after settlement', async () => {
+    harness.getRuntimeOperationByRun
+      .mockResolvedValueOnce(operation('run-A', false))
+      .mockResolvedValueOnce(operation('run-A', true));
+
+    renderProvider();
+    fireEvent.click(screen.getByRole('button', { name: 'run A' }));
+    await waitFor(() => expect(screen.getByTestId('operation-settled')).toHaveTextContent('false'));
+
+    await waitFor(() => expect(screen.getByTestId('operation-settled')).toHaveTextContent('true'), { timeout: 4500 });
+    expect(harness.getRuntimeOperationByRun).toHaveBeenCalledWith('run-A');
+    expect(harness.getRuntimeRun).toHaveBeenCalledTimes(2);
+  }, 8000);
 });
+
+function operation(runId: string, settled: boolean): RuntimeOperationResponse {
+  return {
+    operationId: `op-${runId}`,
+    requestId: `request-${runId}`,
+    correlationId: `corr-${runId}`,
+    simulationRunId: runId,
+    requestedState: 'Accepted',
+    providerState: 'Running',
+    runState: 'Running',
+    processingState: settled ? 'Settled' : 'PipelineSettling',
+    state: settled ? 'SystemCompleted' : 'PipelineSettling',
+    terminalOutcome: settled ? 'Succeeded' : null,
+    acceptedAt: '2026-07-13T00:00:00Z',
+    updatedAt: '2026-07-13T00:00:01Z',
+    startedAt: '2026-07-13T00:00:00Z',
+    producerCompletedAt: '2026-07-13T00:00:01Z',
+    systemCompletedAt: settled ? '2026-07-13T00:00:02Z' : null,
+    finishedAt: settled ? '2026-07-13T00:00:02Z' : null,
+    failureCode: null,
+    failureDetail: null,
+    evidenceId: null,
+    evidenceLocation: null,
+    accounting: {
+      expectedObservations: 1,
+      acceptedObservations: 1,
+      pendingInbox: settled ? 0 : 1,
+      processingInbox: 0,
+      retryPendingInbox: 0,
+      processedInbox: settled ? 1 : 0,
+      quarantinedInbox: 0,
+      settled,
+    },
+  };
+}

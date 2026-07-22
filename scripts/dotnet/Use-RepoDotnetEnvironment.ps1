@@ -25,7 +25,12 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $paths = @{
     APPDATA = Join-Path $repoRoot ".config\AppData\Roaming"
     DOTNET_CLI_HOME = Join-Path $repoRoot ".config\dotnet"
-    NUGET_PACKAGES = Join-Path $repoRoot ".nuget\packages"
+    NUGET_PACKAGES = if ([string]::IsNullOrWhiteSpace($env:NP_NUGET_PACKAGES)) {
+        Join-Path $repoRoot ".nuget\packages"
+    }
+    else {
+        [IO.Path]::GetFullPath($env:NP_NUGET_PACKAGES)
+    }
 }
 
 # Garante que os diretórios existem antes de atualizar as variáveis de ambiente.

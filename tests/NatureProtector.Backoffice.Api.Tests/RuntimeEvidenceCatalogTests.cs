@@ -8,6 +8,31 @@ public sealed class RuntimeEvidenceCatalogTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"np-evidence-{Guid.NewGuid():N}");
 
     [Fact]
+    public void List_ReportsMissingEvidenceRootExplicitly()
+    {
+        var catalog = new RuntimeEvidenceCatalog(_root);
+
+        var listed = catalog.List(DateTimeOffset.UtcNow);
+
+        Assert.Empty(listed.Items);
+        var limitation = Assert.Single(listed.Limitations);
+        Assert.Equal("evidence_root_missing", limitation.Code);
+    }
+
+    [Fact]
+    public void List_ReportsEmptyEvidenceRootWithoutInventingItems()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "docs", "evidence"));
+        var catalog = new RuntimeEvidenceCatalog(_root);
+
+        var listed = catalog.List(DateTimeOffset.UtcNow);
+
+        Assert.Empty(listed.Items);
+        var limitation = Assert.Single(listed.Limitations);
+        Assert.Equal("evidence_catalog_empty", limitation.Code);
+    }
+
+    [Fact]
     public async Task GetContentAsync_ReturnsAllowlistedEvidenceWithoutExposingPath()
     {
         var evidenceRoot = Path.Combine(_root, "docs", "evidence");
@@ -24,6 +49,80 @@ public sealed class RuntimeEvidenceCatalogTests : IDisposable
         Assert.Equal("docs/evidence", content.Metadata.Scope);
         Assert.Equal("text/markdown; charset=utf-8", content.ContentType);
         Assert.Equal("# evidence", Encoding.UTF8.GetString(content.Content));
+    }
+
+    [Theory]
+    [InlineData("data.csv", "text/csv; charset=utf-8")]
+    [InlineData("payload.json", "application/json; charset=utf-8")]
+    [InlineData("notes.txt", "text/plain; charset=utf-8")]
+    public async Task GetContentAsync_UsesContentTypeForAllowlistedExtensions(string fileName, string contentType)
+    {
+        var evidenceRoot = Path.Combine(_root, "docs", "evidence", "run-1");
+        Directory.CreateDirectory(evidenceRoot);
+        await File.WriteAllTextAsync(Path.Combine(evidenceRoot, fileName), "content", new UTF8Encoding(false));
+        var catalog = new RuntimeEvidenceCatalog(_root);
+
+        var item = Assert.Single(catalog.List(DateTimeOffset.UtcNow).Items);
+        var content = await catalog.GetContentAsync(item.EvidenceId, DateTimeOffset.UtcNow, CancellationToken.None);
+
+        Assert.NotNull(content);
+        Assert.Equal(contentType, content.ContentType);
+        Assert.Equal("docs/evidence/run-1", content.Metadata.Scope);
+    }
+
+    [Fact]
+    public async Task List_MarksOversizedEvidenceAsUnavailableAndRejectsDownload()
+    {
+        var evidenceRoot = Path.Combine(_root, "docs", "evidence");
+        Directory.CreateDirectory(evidenceRoot);
+        var oversized = new string('x', 1_048_577);
+        await File.WriteAllTextAsync(Path.Combine(evidenceRoot, "oversized.txt"), oversized, new UTF8Encoding(false));
+        var catalog = new RuntimeEvidenceCatalog(_root);
+
+        var item = Assert.Single(catalog.List(DateTimeOffset.UtcNow).Items);
+        var content = await catalog.GetContentAsync(item.EvidenceId, DateTimeOffset.UtcNow, CancellationToken.None);
+
+        Assert.False(item.ContentAvailable);
+        Assert.False(item.DownloadAvailable);
+        Assert.Equal("TooLarge", item.Status);
+        Assert.Contains("1 MiB", item.Limitation, StringComparison.Ordinal);
+        Assert.Null(content);
+    }
+
+    [Fact]
+    public async Task List_TruncatesCatalogToMostRecentAllowlistedEvidence()
+    {
+        var evidenceRoot = Path.Combine(_root, "docs", "evidence");
+        Directory.CreateDirectory(evidenceRoot);
+        for (var index = 0; index < 251; index++)
+        {
+            var path = Path.Combine(evidenceRoot, $"item-{index:D3}.txt");
+            await File.WriteAllTextAsync(path, index.ToString("D3"), new UTF8Encoding(false));
+            File.SetLastWriteTimeUtc(path, new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc).AddSeconds(index));
+        }
+        var catalog = new RuntimeEvidenceCatalog(_root);
+
+        var listed = catalog.List(DateTimeOffset.UtcNow);
+
+        Assert.Equal(250, listed.Items.Count);
+        Assert.Equal("item-250", listed.Items[0].Title);
+        Assert.DoesNotContain(listed.Items, item => item.Title == "item-000");
+        Assert.Contains(listed.Limitations, limitation =>
+            limitation.Code == "evidence_catalog_truncated" &&
+            limitation.Message.Contains("251", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData("  ", false)]
+    [InlineData("CON", false)]
+    [InlineData("safe-id-123", true)]
+    [InlineData("unsafe_id", false)]
+    [InlineData("unsafe.id", false)]
+    public void IsValidEvidenceId_AcceptsOnlyPortableOpaqueIds(string? evidenceId, bool expected)
+    {
+        Assert.Equal(expected, RuntimeEvidenceCatalog.IsValidEvidenceId(evidenceId));
     }
 
     [Fact]
