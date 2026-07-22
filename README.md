@@ -274,7 +274,6 @@ O harness aguarda convergência assíncrona do audit antes de declarar PASS. Ist
 - [docs/setup/local-baseline-setup.md](docs/setup/local-baseline-setup.md)
 - [docs/freeze/FREEZE-CANDIDATE.md](docs/freeze/FREEZE-CANDIDATE.md)
 - [docs/runtime/local-runtime.md](docs/runtime/local-runtime.md)
-- [docs/runtime/simulation-runs.md](docs/runtime/simulation-runs.md)
 - [docs/testing/validation-gates.md](docs/testing/validation-gates.md)
 - [docs/scripts/script-inventory.md](docs/scripts/script-inventory.md)
 - [docs/README.md](docs/README.md)

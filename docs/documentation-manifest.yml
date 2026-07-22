@@ -1188,14 +1188,6 @@ documents:
   status: HISTORICAL
   kind: markdown
   authority: supporting
-- path: how-to/review-a-staging-deployment.md
-  status: CURRENT
-  kind: markdown
-  authority: supporting
-- path: how-to/run-quality-and-read-evidence.md
-  status: CURRENT
-  kind: markdown
-  authority: supporting
 - path: implementation/cloud/g1-container-readiness-orchestration-decoupling.md
   status: CURRENT
   kind: markdown
@@ -1396,24 +1388,8 @@ documents:
   status: PLANNED
   kind: markdown
   authority: supporting
-- path: planning/pesquisa-ii-vs-implementation-state.md
-  status: SUPERSEDED
-  kind: markdown
-  authority: supporting
-- path: planning/pipeline-gap-and-dependency-map.md
-  status: SUPERSEDED
-  kind: markdown
-  authority: supporting
-- path: planning/project-completion-roadmap.md
-  status: SUPERSEDED
-  kind: markdown
-  authority: supporting
 - path: planning/ui/natureprotector-ui-design-spec-v0.1.md
   status: PLANNED
-  kind: markdown
-  authority: supporting
-- path: planning/v1-implementation-map.md
-  status: HISTORICAL
   kind: markdown
   authority: supporting
 - path: presentation/NatureProtector-Defence-Quick-Reference.md
