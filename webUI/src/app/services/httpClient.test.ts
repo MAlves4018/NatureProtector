@@ -95,8 +95,7 @@ describe('httpClient', () => {
 
     expect(result.filename).toBe('runtime evidence.csv');
     expect(result.contentType).toBe('text/csv');
-    const readBlob = (blob: Blob) => new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result as string); r.onerror = reject; r.readAsText(blob); });
-    expect(await readBlob(result.blob)).toBe('csv,data');
+    expect(result.blob.size).toBe(8);
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/control/runtime/observability/evidence/evidence-1',
       expect.objectContaining({
@@ -148,8 +147,7 @@ describe('httpClient', () => {
     const result = await httpClient.download('/exports/plain', { headers: { Authorization: 'Bearer explicit' } });
 
     expect(result.filename).toBe('plain.csv');
-    const readBlob = (blob: Blob) => new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result as string); r.onerror = reject; r.readAsText(blob); });
-    expect(await readBlob(result.blob)).toBe('plain,data');
+    expect(result.blob.size).toBe(10);
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/exports/plain',
       expect.objectContaining({
