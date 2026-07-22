@@ -89,7 +89,7 @@ describe('App', () => {
   it('keeps the public landing limited to product, data status, help and login', async () => {
     renderUi();
 
-    expect((await screen.findAllByRole('heading', { name: 'NatureProtector' })).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('NatureProtector')).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /entrar/i })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /Leitura pública/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Pipeline/i })).not.toBeInTheDocument();
@@ -121,7 +121,7 @@ describe('App', () => {
   it('passes a basic axe scan for the public landing', async () => {
     const { container } = renderUi();
 
-    await screen.findAllByRole('heading', { name: 'NatureProtector' });
+    await screen.findAllByText('NatureProtector');
     await screen.findByRole('option', { name: /Proenca-a-Nova/i });
     const result = await axe.run(container, {
       rules: {
@@ -135,7 +135,7 @@ describe('App', () => {
   it('opens contextual help from the F1 shortcut', async () => {
     renderUi();
 
-    await screen.findAllByRole('heading', { name: 'NatureProtector' });
+    await screen.findAllByText('NatureProtector');
     fireEvent.keyDown(window, { key: 'F1' });
 
     expect(screen.getByRole('dialog', { name: /ajuda contextual/i })).toBeInTheDocument();

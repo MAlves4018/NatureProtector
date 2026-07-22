@@ -228,6 +228,7 @@ vi.mock('../services/api', () => ({
         { evidenceId: 'other', scope: 'other-run', path: 'evidence/other' },
       ],
     })),
+    getTablesPostgres: vi.fn(async () => []),
   },
 }));
 
@@ -240,7 +241,7 @@ describe('evidence diagnostic pages', () => {
   it('executes prepared diagnostic presets against the selected run and exports scoped results', async () => {
     render(<DatabaseQueriesPage />);
 
-    expect(screen.getByText('Consultas preparadas')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Consultas Preparadas' })).toBeInTheDocument();
     expect(screen.getByText('run-b')).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('Nome ou grupo'), { target: { value: 'evidence' } });
     fireEvent.click(screen.getByRole('button', { name: /Evidence Evidence disponível/i }));
