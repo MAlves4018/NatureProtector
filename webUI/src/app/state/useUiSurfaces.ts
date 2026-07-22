@@ -83,5 +83,3 @@ export function useAdminActions(): readonly UiAdminAction[] {
 
   return useMemo(() => buildUiAdminActions(user), [user]);
 }
-
-
