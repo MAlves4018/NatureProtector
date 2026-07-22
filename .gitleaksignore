@@ -24,3 +24,6 @@ b2ebc39db4afa4b20f8eb26a647fe8d375d025de:docs/implementation/maintainability/can
 
 # Historical synthetic JWT signing key used only by the Backoffice API test factory.
 b2ebc39db4afa4b20f8eb26a647fe8d375d025de:tests/NatureProtector.Backoffice.Api.Tests/ControlPlaneApiWebApplicationFactory.cs:generic-api-key:20
+
+# Historical JWT copied into the Backoffice API HTTP scratch file and later replaced by {{adminToken}}.
+b7c30b87bc422c7e1ef55810a637eb0b2e0eceba:src/NatureProtector.Backoffice.Api/NatureProtector.Backoffice.Api.http:jwt:16

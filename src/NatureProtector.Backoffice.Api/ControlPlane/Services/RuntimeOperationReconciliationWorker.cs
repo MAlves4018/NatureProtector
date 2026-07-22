@@ -52,13 +52,23 @@ public sealed class RuntimeOperationReconciliationWorker(
     private async Task ReconcileBatchAsync(int batchSize, CancellationToken cancellationToken)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var operationIds = await dbContext.RuntimeOperations
+        var nonTerminalOperations = dbContext.RuntimeOperations
             .AsNoTracking()
-            .Where(operation => operation.TerminalOutcome == null)
-            .OrderBy(operation => operation.UpdatedAt)
-            .Select(operation => operation.OperationId)
-            .Take(batchSize)
-            .ToListAsync(cancellationToken);
+            .Where(operation => operation.TerminalOutcome == null);
+
+        var operationIds = string.Equals(dbContext.Database.ProviderName, "Microsoft.EntityFrameworkCore.Sqlite", StringComparison.Ordinal)
+            ? (await nonTerminalOperations
+                .Select(operation => new { operation.OperationId, operation.UpdatedAt })
+                .ToListAsync(cancellationToken))
+                .OrderBy(operation => operation.UpdatedAt)
+                .Take(batchSize)
+                .Select(operation => operation.OperationId)
+                .ToList()
+            : await nonTerminalOperations
+                .OrderBy(operation => operation.UpdatedAt)
+                .Select(operation => operation.OperationId)
+                .Take(batchSize)
+                .ToListAsync(cancellationToken);
 
         if (operationIds.Count == 0)
         {

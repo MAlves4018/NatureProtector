@@ -59,7 +59,7 @@ export const api = {
   },
 
   getRoles: (userid: string) => {
-    const url = `/users-roles/${userid}/roles`;
+    const url = `/users-roles/users/${encodeURIComponent(userid)}/roles`;
     return httpClient.get<RoleResponse[]>(url, api.getRequestOptions());
   },
 

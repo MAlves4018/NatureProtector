@@ -69,6 +69,82 @@ public sealed class PostgresConnectionSettingsLoaderTests : IDisposable
     }
 
     [Fact]
+    public void LoadFromEnvironmentOrDotEnv_WhenDotEnvExistsInParent_LoadsConfiguredValues()
+    {
+        var childDirectory = Path.Combine(_temporaryDirectory, "nested", "runtime");
+        Directory.CreateDirectory(childDirectory);
+        File.WriteAllText(
+            Path.Combine(_temporaryDirectory, ".env"),
+            string.Join(
+                Environment.NewLine,
+                "POSTGRES_REQUIRE_EXPLICIT=true",
+                "POSTGRES_HOST=postgres.local",
+                "POSTGRES_PORT=15432",
+                "POSTGRES_DB=natureprotector_test",
+                "POSTGRES_USER=np_test",
+                "POSTGRES_PASSWORD=\"quoted-secret\"",
+                "POSTGRES_SSL_MODE=Disable"));
+
+        var settings = PostgresConnectionSettingsLoader.LoadFromEnvironmentOrDotEnv(childDirectory);
+
+        Assert.Equal("postgres.local", settings.Host);
+        Assert.Equal(15432, settings.Port);
+        Assert.Equal("natureprotector_test", settings.Database);
+        Assert.Equal("np_test", settings.Username);
+        Assert.Equal("quoted-secret", settings.Password);
+        Assert.Equal("Disable", settings.SslModeName);
+    }
+
+    [Fact]
+    public void LoadFromEnvironmentOrDotEnv_WhenEnvironmentOverridesDotEnv_UsesEnvironmentValue()
+    {
+        File.WriteAllText(
+            Path.Combine(_temporaryDirectory, ".env"),
+            string.Join(
+                Environment.NewLine,
+                "POSTGRES_HOST=postgres-from-dotenv",
+                "POSTGRES_PORT=15432",
+                "POSTGRES_DB=db_from_dotenv",
+                "POSTGRES_USER=user_from_dotenv",
+                "POSTGRES_PASSWORD=password-from-dotenv"));
+        Environment.SetEnvironmentVariable("POSTGRES_HOST", "postgres-from-env");
+        Environment.SetEnvironmentVariable("POSTGRES_PORT", "25432");
+
+        var settings = PostgresConnectionSettingsLoader.LoadFromEnvironmentOrDotEnv(_temporaryDirectory);
+
+        Assert.Equal("postgres-from-env", settings.Host);
+        Assert.Equal(25432, settings.Port);
+        Assert.Equal("db_from_dotenv", settings.Database);
+        Assert.Equal("user_from_dotenv", settings.Username);
+        Assert.Equal("password-from-dotenv", settings.Password);
+    }
+
+    [Fact]
+    public void LoadFromEnvironmentOrDotEnv_WhenDotEnvContainsCommentsAndInvalidLines_IgnoresThem()
+    {
+        File.WriteAllText(
+            Path.Combine(_temporaryDirectory, ".env"),
+            string.Join(
+                Environment.NewLine,
+                "# comment",
+                "not-a-pair",
+                " = missing-key",
+                "POSTGRES_HOST=postgres",
+                "POSTGRES_PORT=5433",
+                "POSTGRES_DB=natureprotector",
+                "POSTGRES_USER=np",
+                "POSTGRES_PASSWORD=np-secret"));
+
+        var settings = PostgresConnectionSettingsLoader.LoadFromEnvironmentOrDotEnv(_temporaryDirectory);
+
+        Assert.Equal("postgres", settings.Host);
+        Assert.Equal(5433, settings.Port);
+        Assert.Equal("natureprotector", settings.Database);
+        Assert.Equal("np", settings.Username);
+        Assert.Equal("np-secret", settings.Password);
+    }
+
+    [Fact]
     public void BuildDataSource_LoadsConfiguredRootCertificate()
     {
         var certificatePath = WriteTemporaryRootCertificate();

@@ -683,6 +683,172 @@ public sealed class ReadingRiskPipelineTests
         Assert.Equal(0, batch.AreaRiskSnapshotCount);
     }
 
+    [Fact]
+    public async Task ProcessAcceptedReadingAsync_TemporalEligibleCycle_ProjectsOnlyFinalizedCycleScope()
+    {
+        var areaId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var projectedAt = new DateTimeOffset(2026, 7, 21, 12, 0, 0, TimeSpan.Zero);
+        var alertedAt = projectedAt.AddMilliseconds(20);
+        var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
+        var riskAssessmentRepository = new RecordingRiskAssessmentRepository();
+        var projectionStore = new RecordingProjectionStore(new AreaProjectionWriteResult(projectedAt, alertedAt));
+        var influxWriteService = new FakeInfluxWriteService();
+        var coordinator = new RecordingCycleProjectionCoordinator((_, assessment) =>
+        [
+            new FinalizedCycleProjection(
+                runId,
+                CycleIndex: 3,
+                areaId,
+                new AreaRiskSnapshot(eventId, projectedAt, assessment!.RiskScore, "finalized temporal cycle"),
+                EligibleCount: 1,
+                IsOperational: true,
+                EligibleEventIds: [eventId])
+        ]);
+        var pipeline = CreatePipeline(
+            acceptedReadingRepository,
+            riskAssessmentRepository,
+            new InMemoryAreaRiskSnapshotRepository(),
+            projectionStore,
+            influxWriteService,
+            new RiskEligibilityService(),
+            cycleProjectionCoordinator: coordinator);
+        var envelope = EnvelopeFactory.Create(
+            areaId: areaId,
+            eventId: eventId,
+            simulationRunId: runId,
+            cycleIndex: 3,
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 37.0,
+            eventTime: projectedAt);
+
+        await pipeline.ProcessAcceptedReadingAsync(envelope, CancellationToken.None);
+
+        var record = Assert.Single(coordinator.Records);
+        Assert.Equal(runId, record.SimulationRunId);
+        Assert.Equal(3, record.CycleIndex);
+        Assert.Equal(CycleObservationOutcome.Eligible, record.Outcome);
+        Assert.NotNull(record.Assessment);
+        var save = Assert.Single(projectionStore.Saves);
+        Assert.Equal(areaId, save.AreaId);
+        Assert.Equal(runId, save.SimulationRunId);
+        Assert.Equal(3, save.CycleIndex);
+        Assert.Equal(1, save.AssessmentCount);
+        var projected = Assert.Single(riskAssessmentRepository.ProjectedCalls);
+        Assert.Equal(eventId, projected.SourceEventId);
+        Assert.Equal(projectedAt, projected.ProjectedAt);
+        Assert.Equal(alertedAt, projected.AlertedAt);
+        Assert.Empty(projectionStore.CellSaves);
+        Assert.Empty(projectionStore.UnavailableCalls);
+        Assert.Empty(influxWriteService.AreaSnapshots);
+        Assert.Single(influxWriteService.RiskAssessments);
+        Assert.Equal(2, Assert.Single(influxWriteService.Batches).PointCount);
+    }
+
+    [Fact]
+    public async Task ProcessAcceptedReadingAsync_TemporalBlockedCycle_MarksFinalizedCycleUnavailable()
+    {
+        var areaId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var observedAt = new DateTimeOffset(2026, 7, 21, 13, 0, 0, TimeSpan.Zero);
+        var acceptedReadingRepository = new InMemoryAcceptedReadingRepository();
+        var riskAssessmentRepository = new RecordingRiskAssessmentRepository();
+        var projectionStore = new RecordingProjectionStore(new AreaProjectionWriteResult(observedAt, null));
+        var scoringService = new ThrowingRiskScoringService();
+        var coordinator = new RecordingCycleProjectionCoordinator((_, _) =>
+        [
+            new FinalizedCycleProjection(
+                runId,
+                CycleIndex: 4,
+                areaId,
+                Snapshot: null,
+                EligibleCount: 0,
+                IsOperational: true,
+                EligibleEventIds: [],
+                AggregationReason: "all_readings_blocked")
+        ]);
+        var pipeline = CreatePipeline(
+            acceptedReadingRepository,
+            riskAssessmentRepository,
+            new InMemoryAreaRiskSnapshotRepository(),
+            projectionStore,
+            influxWriteService: new FakeInfluxWriteService(),
+            new BlockedRiskEligibilityService(),
+            scoringService,
+            coordinator);
+        var envelope = EnvelopeFactory.Create(
+            areaId: areaId,
+            eventId: eventId,
+            simulationRunId: runId,
+            cycleIndex: 4,
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 22.0,
+            eventTime: observedAt);
+
+        await pipeline.ProcessAcceptedReadingAsync(envelope, CancellationToken.None);
+
+        var record = Assert.Single(coordinator.Records);
+        Assert.Equal(CycleObservationOutcome.Blocked, record.Outcome);
+        Assert.Null(record.Assessment);
+        var unavailable = Assert.Single(projectionStore.UnavailableCalls);
+        Assert.Equal(areaId, unavailable.AreaId);
+        Assert.Equal(runId, unavailable.SimulationRunId);
+        Assert.Equal(4, unavailable.CycleIndex);
+        Assert.Equal("all_readings_blocked", unavailable.Reason);
+        Assert.Empty(projectionStore.Saves);
+        Assert.Empty(riskAssessmentRepository.AddedAssessments);
+        Assert.Empty(riskAssessmentRepository.ProjectedCalls);
+        Assert.Equal(0, scoringService.CallCount);
+    }
+
+    [Fact]
+    public async Task ProcessAcceptedReadingAsync_TemporalFinalization_IgnoresNonOperationalCycles()
+    {
+        var areaId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var observedAt = new DateTimeOffset(2026, 7, 21, 14, 0, 0, TimeSpan.Zero);
+        var projectionStore = new RecordingProjectionStore(new AreaProjectionWriteResult(observedAt, null));
+        var coordinator = new RecordingCycleProjectionCoordinator((_, assessment) =>
+        [
+            new FinalizedCycleProjection(
+                runId,
+                CycleIndex: 5,
+                areaId,
+                new AreaRiskSnapshot(eventId, observedAt, assessment!.RiskScore, "non-operational cycle"),
+                EligibleCount: 1,
+                IsOperational: false,
+                EligibleEventIds: [eventId])
+        ]);
+        var pipeline = CreatePipeline(
+            new InMemoryAcceptedReadingRepository(),
+            new RecordingRiskAssessmentRepository(),
+            new InMemoryAreaRiskSnapshotRepository(),
+            projectionStore,
+            influxWriteService: new FakeInfluxWriteService(),
+            new RiskEligibilityService(),
+            cycleProjectionCoordinator: coordinator);
+        var envelope = EnvelopeFactory.Create(
+            areaId: areaId,
+            eventId: eventId,
+            simulationRunId: runId,
+            cycleIndex: 5,
+            metricType: SensorMetricType.Temperature,
+            unit: MeasurementUnit.Celsius,
+            value: 35.0,
+            eventTime: observedAt);
+
+        await pipeline.ProcessAcceptedReadingAsync(envelope, CancellationToken.None);
+
+        Assert.Single(coordinator.Records);
+        Assert.Empty(projectionStore.Saves);
+        Assert.Empty(projectionStore.UnavailableCalls);
+    }
+
     private static ReadingRiskPipeline CreatePipeline(
         IAcceptedReadingRepository acceptedReadingRepository,
         IRiskAssessmentRepository riskAssessmentRepository,
@@ -690,7 +856,8 @@ public sealed class ReadingRiskPipelineTests
         IAreaOperationalProjectionStore projectionStore,
         IInfluxWriteService influxWriteService,
         IRiskEligibilityService riskEligibilityService,
-        IRiskScoringService? riskScoringService = null)
+        IRiskScoringService? riskScoringService = null,
+        ICycleProjectionCoordinator? cycleProjectionCoordinator = null)
     {
         return new ReadingRiskPipeline(
             acceptedReadingRepository,
@@ -702,7 +869,8 @@ public sealed class ReadingRiskPipelineTests
             areaRiskSnapshotRepository,
             projectionStore,
             influxWriteService,
-            NullLogger<ReadingRiskPipeline>.Instance);
+            NullLogger<ReadingRiskPipeline>.Instance,
+            cycleProjectionCoordinator);
     }
 
     private sealed class TrackingRiskEligibilityService(List<string> callSequence) : IRiskEligibilityService
@@ -806,4 +974,160 @@ public sealed class ReadingRiskPipelineTests
                 classifierResults: [classifierResult]));
         }
     }
+
+    private sealed class RecordingCycleProjectionCoordinator(
+        Func<CycleRecord, RiskAssessment?, IReadOnlyList<FinalizedCycleProjection>> finalizationsFactory)
+        : ICycleProjectionCoordinator
+    {
+        public List<CycleRecord> Records { get; } = [];
+
+        public Task<IReadOnlyList<FinalizedCycleProjection>> RecordAsync(
+            Guid simulationRunId,
+            int cycleIndex,
+            Guid areaId,
+            Guid sensorId,
+            Guid eventId,
+            DateTimeOffset eventTime,
+            MetricOrigin origin,
+            CycleObservationOutcome outcome,
+            RiskAssessment? assessment,
+            CancellationToken cancellationToken)
+        {
+            var record = new CycleRecord(
+                simulationRunId,
+                cycleIndex,
+                areaId,
+                sensorId,
+                eventId,
+                eventTime,
+                origin,
+                outcome,
+                assessment);
+            Records.Add(record);
+            return Task.FromResult(finalizationsFactory(record, assessment));
+        }
+    }
+
+    private sealed class RecordingProjectionStore(AreaProjectionWriteResult result) : IAreaOperationalProjectionStore
+    {
+        public List<CellSaveCall> CellSaves { get; } = [];
+        public List<ProjectionSaveCall> Saves { get; } = [];
+        public List<UnavailableCall> UnavailableCalls { get; } = [];
+
+        public Task SaveCellAsync(
+            Guid areaId,
+            Guid sensorId,
+            RiskAssessment assessment,
+            CancellationToken cancellationToken)
+        {
+            CellSaves.Add(new CellSaveCall(areaId, sensorId, assessment));
+            return Task.CompletedTask;
+        }
+
+        public Task<AreaProjectionWriteResult> SaveAsync(
+            Guid areaId,
+            AreaRiskSnapshot snapshot,
+            int assessmentCount,
+            CancellationToken cancellationToken,
+            Guid? simulationRunId = null,
+            int? cycleIndex = null)
+        {
+            Saves.Add(new ProjectionSaveCall(areaId, snapshot, assessmentCount, simulationRunId, cycleIndex));
+            return Task.FromResult(result);
+        }
+
+        public Task MarkUnavailableAsync(
+            Guid areaId,
+            DateTimeOffset snapshotTimestamp,
+            string reason,
+            CancellationToken cancellationToken,
+            Guid? simulationRunId = null,
+            int? cycleIndex = null)
+        {
+            UnavailableCalls.Add(new UnavailableCall(areaId, snapshotTimestamp, reason, simulationRunId, cycleIndex));
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingRiskAssessmentRepository : IRiskAssessmentRepository
+    {
+        public List<AssessmentAddCall> AddedAssessments { get; } = [];
+        public List<ProjectedCall> ProjectedCalls { get; } = [];
+
+        public Task<RiskAssessment> AddAsync(
+            Guid areaId,
+            Guid sensorId,
+            Guid sourceEventId,
+            RiskAssessment assessment,
+            CancellationToken cancellationToken,
+            Guid? simulationRunId = null)
+        {
+            AddedAssessments.Add(new AssessmentAddCall(areaId, sensorId, sourceEventId, assessment, simulationRunId));
+            return Task.FromResult(assessment);
+        }
+
+        public Task<IReadOnlyCollection<RiskAssessment>> GetByAreaAsync(
+            Guid areaId,
+            CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<RiskAssessment>>(
+                AddedAssessments
+                    .Where(item => item.AreaId == areaId)
+                    .Select(item => item.Assessment)
+                    .ToArray());
+
+        public Task<IReadOnlyCollection<RiskAssessment>> GetLatestByAreaAsync(
+            Guid areaId,
+            CancellationToken cancellationToken,
+            Guid? simulationRunId = null)
+            => GetByAreaAsync(areaId, cancellationToken);
+
+        public Task MarkProjectedAsync(
+            Guid sourceEventId,
+            DateTimeOffset projectedAt,
+            DateTimeOffset? alertedAt,
+            CancellationToken cancellationToken)
+        {
+            ProjectedCalls.Add(new ProjectedCall(sourceEventId, projectedAt, alertedAt));
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed record CycleRecord(
+        Guid SimulationRunId,
+        int CycleIndex,
+        Guid AreaId,
+        Guid SensorId,
+        Guid EventId,
+        DateTimeOffset EventTime,
+        MetricOrigin Origin,
+        CycleObservationOutcome Outcome,
+        RiskAssessment? Assessment);
+
+    private sealed record CellSaveCall(Guid AreaId, Guid SensorId, RiskAssessment Assessment);
+
+    private sealed record ProjectionSaveCall(
+        Guid AreaId,
+        AreaRiskSnapshot Snapshot,
+        int AssessmentCount,
+        Guid? SimulationRunId,
+        int? CycleIndex);
+
+    private sealed record UnavailableCall(
+        Guid AreaId,
+        DateTimeOffset SnapshotTimestamp,
+        string Reason,
+        Guid? SimulationRunId,
+        int? CycleIndex);
+
+    private sealed record AssessmentAddCall(
+        Guid AreaId,
+        Guid SensorId,
+        Guid SourceEventId,
+        RiskAssessment Assessment,
+        Guid? SimulationRunId);
+
+    private sealed record ProjectedCall(
+        Guid SourceEventId,
+        DateTimeOffset ProjectedAt,
+        DateTimeOffset? AlertedAt);
 }
