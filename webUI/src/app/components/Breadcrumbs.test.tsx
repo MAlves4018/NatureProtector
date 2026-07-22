@@ -14,7 +14,7 @@ describe('Breadcrumbs', () => {
     render(
       <Breadcrumbs
         items={[
-          { label: 'Operações', target: 'operations' },
+          { label: 'Operações', target: 'mission' },
           { label: 'Runtime', target: 'runs' },
           { label: 'Run 001', target: 'runs' },
         ]}
@@ -27,7 +27,7 @@ describe('Breadcrumbs', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Runtime' }));
 
     expect(onNavigate).toHaveBeenNthCalledWith(1, 'demo');
-    expect(onNavigate).toHaveBeenNthCalledWith(2, 'operations');
+    expect(onNavigate).toHaveBeenNthCalledWith(2, 'mission');
     expect(onNavigate).toHaveBeenNthCalledWith(3, 'runs');
     expect(screen.getByText('Run 001')).toHaveClass('ui-breadcrumb-current');
   });

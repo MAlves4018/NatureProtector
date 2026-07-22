@@ -9,7 +9,14 @@ import type {
 } from '../types/operations';
 import { OperationsProvider, useOperations } from './OperationsContext';
 
-const capabilityState = vi.hoisted(() => ({
+interface CapabilityMockState {
+  value: {
+    user: { id: string; username: string; fullName: string; email: string; roles: string[] } | null;
+    capabilities: Set<string>;
+  };
+}
+
+const capabilityState = vi.hoisted<CapabilityMockState>(() => ({
   value: {
     user: { id: 'user-1', username: 'miguel', fullName: 'Miguel Alves', email: 'miguel@example.test', roles: [] },
     capabilities: new Set(['cloud.read', 'approval.review']),

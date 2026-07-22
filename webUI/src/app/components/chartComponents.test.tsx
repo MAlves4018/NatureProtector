@@ -7,6 +7,14 @@ import { PipelineTimeline } from './PipelineTimeline';
 import { QueueMetricsChart } from './QueueMetricsChart';
 import { RiskTimelineChart } from './RiskTimelineChart';
 import { ThroughputDisplay } from './ThroughputDisplay';
+import type {
+  RabbitMqQueueMetricResponse,
+  RuntimeAttemptTimingSummaryResponse,
+  RuntimeOperationalHealthComponentResponse,
+  RuntimeRunAuditResponse,
+  RuntimeRunSummaryResponse,
+  RuntimeTimelinePointResponse,
+} from '../types';
 
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="responsive">{children}</div>,
@@ -58,6 +66,119 @@ vi.mock('../state/LocaleContext', () => ({
   useUiLocale: () => ({ copy: (key: string) => `copy:${key}`, locale: 'pt-PT' }),
 }));
 
+const observedAt = '2026-07-21T12:00:00Z';
+
+function healthComponent(
+  overrides: Partial<RuntimeOperationalHealthComponentResponse>,
+): RuntimeOperationalHealthComponentResponse {
+  return {
+    component: 'Component',
+    status: 'Unknown',
+    observedAt,
+    source: 'test',
+    reason: '',
+    lastSuccessAt: null,
+    lastFailureAt: null,
+    ageSeconds: null,
+    scope: 'test',
+    limitation: null,
+    ...overrides,
+  };
+}
+
+function queueMetric(overrides: Partial<RabbitMqQueueMetricResponse>): RabbitMqQueueMetricResponse {
+  return {
+    queueName: 'queue',
+    queueRole: 'PrimaryWorkQueue',
+    enabled: true,
+    consumerRequired: true,
+    blocksRuntimeHealth: true,
+    messagesReady: null,
+    messagesUnacknowledged: null,
+    messagesTotal: null,
+    consumers: null,
+    observedAt,
+    source: 'rabbit-management',
+    collectionStatus: 'Measured',
+    limitation: null,
+    ...overrides,
+  };
+}
+
+function runSummary(overrides: Partial<RuntimeRunSummaryResponse> = {}): RuntimeRunSummaryResponse {
+  return {
+    id: 'run-1',
+    areaCode: 'area-1',
+    scenarioCode: 'scenario_b',
+    scenarioName: 'Scenario B',
+    status: 'Completed',
+    configurationVersionNumber: 1,
+    createdAt: observedAt,
+    startedAt: observedAt,
+    endedAt: observedAt,
+    durationSeconds: 1,
+    logicalStartTimestamp: observedAt,
+    intervalSeconds: 60,
+    numberOfCycles: 1,
+    executionSeed: 42,
+    metadataJson: null,
+    metadataJsonStatus: 'NotProvided',
+    orchestratorCorrelationId: null,
+    runOverrides: null,
+    ...overrides,
+  };
+}
+
+function auditFixture(overrides: Partial<RuntimeRunAuditResponse>): RuntimeRunAuditResponse {
+  return {
+    run: runSummary(),
+    expectedEvents: null,
+    acceptedReadings: 0,
+    missingEvents: null,
+    rejected: 0,
+    quarantined: 0,
+    retryAttempts: 0,
+    riskAssessments: 0,
+    qualityFlagsSummary: [],
+    eligibilitySummary: [],
+    areaSnapshot: null,
+    limitations: [],
+    scoreComponents: null,
+    indexComparison: null,
+    ...overrides,
+  };
+}
+
+function attemptTimings(
+  overrides: Partial<RuntimeAttemptTimingSummaryResponse>,
+): RuntimeAttemptTimingSummaryResponse {
+  return {
+    attemptCount: 0,
+    successfulAttempts: 0,
+    failedAttempts: 0,
+    quarantinedAttempts: 0,
+    minDurationMs: null,
+    avgDurationMs: null,
+    maxDurationMs: null,
+    p50DurationMs: null,
+    p95DurationMs: null,
+    p99DurationMs: null,
+    ...overrides,
+  };
+}
+
+function timelinePoint(overrides: Partial<RuntimeTimelinePointResponse>): RuntimeTimelinePointResponse {
+  return {
+    stage: 'stage',
+    timestamp: observedAt,
+    source: 'test',
+    scope: 'test',
+    eventId: null,
+    status: null,
+    ...overrides,
+  };
+}
+
 describe('chart components', () => {
   it('renders empty states for missing runtime chart data', () => {
     render(
@@ -80,36 +201,38 @@ describe('chart components', () => {
     render(
       <ComponentHealthDashboard
         health={{
-          observedAt: '2026-07-21T12:00:00Z',
+          observedAt,
           components: [
-            {
+            healthComponent({
               component: 'Unknown source',
               status: 'Unknown',
               source: 'probe',
-              ageSeconds: null,
-              lastSuccessAt: null,
-              lastFailureAt: null,
-              reason: '',
-            },
-            {
+            }),
+            healthComponent({
               component: 'Backoffice API',
               status: 'Healthy',
               source: 'http',
               ageSeconds: 120,
               lastSuccessAt: '2026-07-21T11:59:00Z',
-              lastFailureAt: null,
               reason: 'ready',
-            },
-            {
+            }),
+            healthComponent({
               component: 'RabbitMQ',
               status: 'Unhealthy',
               source: 'management',
               ageSeconds: 300,
-              lastSuccessAt: null,
               lastFailureAt: '2026-07-21T11:58:00Z',
               reason: 'connection refused',
-            },
+            }),
           ],
+          rabbitMq: {
+            observedAt,
+            source: 'rabbit-management',
+            collectionStatus: 'Measured',
+            queues: [],
+            limitations: [],
+          },
+          limitations: [],
         }}
       />,
     );
@@ -129,17 +252,18 @@ describe('chart components', () => {
         <QueueMetricsChart
           rabbitMq={{
             collectionStatus: 'Measured',
-            observedAt: '2026-07-21T12:00:00Z',
+            observedAt,
             source: 'rabbit-management',
             queues: [
-              {
+              queueMetric({
                 queueName: 'natureprotector.pipeline.primary.queue.with.long.name',
-                queueRole: 'PrimaryWorkQueue',
                 messagesReady: 4,
                 messagesUnacknowledged: 2,
+                messagesTotal: 6,
                 consumers: 3,
-              },
+              }),
             ],
+            limitations: [],
           }}
         />
         <ComparisonBarChart
@@ -179,14 +303,21 @@ describe('chart components', () => {
         <PipelineTimeline
           timings={{
             runDurationMs: 4000,
+            simulationRunId: 'run-1',
+            startedAt: '2026-07-21T12:00:00Z',
+            endedAt: '2026-07-21T12:00:04Z',
             timeToFirstInboxMs: 100,
+            timeToFirstProcessingAttemptMs: 200,
+            timeToFirstRiskAssessmentMs: 300,
+            timeToFirstAlertMs: null,
             firstInboxReceivedAt: '2026-07-21T12:00:01Z',
             firstProcessingAttemptStartedAt: '2026-07-21T12:00:02Z',
             lastProcessingAttemptFinishedAt: null,
             firstRiskAssessmentCreatedAt: '2026-07-21T12:00:03Z',
             firstAlertTriggeredAt: null,
-            attempts: {},
+            attempts: attemptTimings({}),
             stages: [],
+            limitations: [],
             timeline: [],
           }}
         />
@@ -203,25 +334,40 @@ describe('chart components', () => {
   it('renders throughput metrics without substituting unavailable values', () => {
     render(
       <ThroughputDisplay
-        audit={{
+        audit={auditFixture({
           expectedEvents: 40,
           acceptedReadings: 36,
           rejected: 2,
           quarantined: 1,
           retryAttempts: 3,
           riskAssessments: 35,
-        }}
+        })}
         timings={{
+          simulationRunId: 'run-1',
+          runDurationMs: 4000,
+          startedAt: observedAt,
+          endedAt: observedAt,
+          firstInboxReceivedAt: null,
+          firstProcessingAttemptStartedAt: null,
+          lastProcessingAttemptFinishedAt: null,
+          firstRiskAssessmentCreatedAt: null,
+          firstAlertTriggeredAt: null,
+          timeToFirstInboxMs: null,
+          timeToFirstProcessingAttemptMs: null,
+          timeToFirstRiskAssessmentMs: null,
+          timeToFirstAlertMs: null,
           timeline: [
-            { stage: 'published', status: 'completed' },
-            { stage: 'assessed', status: 'completed' },
-            { stage: 'projected', status: 'pending' },
+            timelinePoint({ stage: 'published', status: 'completed' }),
+            timelinePoint({ stage: 'assessed', status: 'completed' }),
+            timelinePoint({ stage: 'projected', status: 'pending' }),
           ],
-          attempts: {
+          stages: [],
+          limitations: [],
+          attempts: attemptTimings({
             attemptCount: 40,
             successfulAttempts: 36,
             avgDurationMs: 1234,
-          },
+          }),
         }}
       />,
     );
@@ -246,20 +392,34 @@ describe('chart components', () => {
 
     rerender(
       <ThroughputDisplay
-        audit={{
+        audit={auditFixture({
           expectedEvents: null,
           acceptedReadings: 7,
           rejected: 0,
           quarantined: 0,
           retryAttempts: 0,
           riskAssessments: 7,
-        }}
+        })}
         timings={{
-          attempts: {
+          simulationRunId: 'run-1',
+          runDurationMs: null,
+          startedAt: null,
+          endedAt: null,
+          firstInboxReceivedAt: null,
+          firstProcessingAttemptStartedAt: null,
+          lastProcessingAttemptFinishedAt: null,
+          firstRiskAssessmentCreatedAt: null,
+          firstAlertTriggeredAt: null,
+          timeToFirstInboxMs: null,
+          timeToFirstProcessingAttemptMs: null,
+          timeToFirstRiskAssessmentMs: null,
+          timeToFirstAlertMs: null,
+          attempts: attemptTimings({
             attemptCount: 0,
             successfulAttempts: 0,
-            avgDurationMs: null,
-          },
+          }),
+          stages: [],
+          limitations: [],
         }}
       />,
     );

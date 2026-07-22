@@ -55,15 +55,29 @@ describe('UI state contexts', () => {
     vi.mocked(api.getAlerts).mockResolvedValue([
       {
         id: 'old',
+        areaCode: 'PT-11',
+        configurationVersionNumber: 1,
+        alertCode: 'warning-old',
         severity: 'Warning',
+        status: 'Open',
         message: 'old warning',
         triggeredAt: '2026-07-21T12:00:00Z',
+        updatedAt: '2026-07-21T12:00:00Z',
+        resolvedAt: null,
+        alertState: 'Warning',
       },
       {
         id: 'new',
+        areaCode: 'PT-11',
+        configurationVersionNumber: 1,
+        alertCode: 'alarm-new',
         severity: 'Alarm',
+        status: 'Open',
         message: 'new alarm',
         triggeredAt: '2026-07-21T12:01:00Z',
+        updatedAt: '2026-07-21T12:01:00Z',
+        resolvedAt: null,
+        alertState: 'Alarm',
       },
     ]);
 
