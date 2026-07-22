@@ -159,6 +159,7 @@ internal sealed class PostgresCloudRunExecutionStore(
                 provider_state = @provider_state,
                 updated_at = @updated_at,
                 started_at = COALESCE(started_at, @started_at),
+                finished_at = @finished_at,
                 failure_code = @failure_code,
                 failure_message = @failure_message,
                 launch_lease_token = NULL,
@@ -169,6 +170,7 @@ internal sealed class PostgresCloudRunExecutionStore(
         Add(command, "provider_state", record.State.ToString());
         Add(command, "updated_at", record.UpdatedAtUtc);
         Add(command, "started_at", record.StartedAtUtc);
+        Add(command, "finished_at", record.FinishedAtUtc);
         Add(command, "failure_code", record.FailureCode);
         Add(command, "failure_message", record.FailureMessage);
         Add(command, "execution_id", record.ExecutionId.Value);

@@ -14,6 +14,9 @@ param(
     [string]$AreaCode = "proenca-a-nova",
     [string]$AdminUsername = "admin",
     [string]$AdminPassword = "admin123",
+    [string]$PostgresContainer = "np-postgres",
+    [string]$PostgresUser = "np",
+    [string]$PostgresDatabase = "natureprotector",
     [string]$RabbitUser = "np",
     [string]$RabbitPassword = "np_dev_pass",
     [int]$SensorCount = 6,
@@ -649,13 +652,13 @@ function Export-PostgresCsv {
         [string]$Sql
     )
     $pathOut = Join-Path $ExportsDir $Name
-    $args = @("exec", "-i", "np-postgres", "psql", "-U", "np", "-d", "natureprotector", "--csv")
+    $args = @("exec", "-i", $PostgresContainer, "psql", "-U", $PostgresUser, "-d", $PostgresDatabase, "--csv")
     $output = $Sql | docker @args 2>&1
     $code = $LASTEXITCODE
     $output | Set-Content -LiteralPath $pathOut -Encoding utf8
     Add-Evidence -Path $pathOut -Kind "csv" -Status ($(if ($code -eq 0) { "created" } else { "failed" }))
     if ($code -ne 0) {
-        Add-Blocker -Severity "HIGH" -Area "db" -Command "docker $($args -join ' ') < sql" -RootCause ($output -join "`n") -EvidencePath $pathOut -NextStep "Verify np-postgres container and table/schema names."
+        Add-Blocker -Severity "HIGH" -Area "db" -Command "docker $($args -join ' ') < sql" -RootCause ($output -join "`n") -EvidencePath $pathOut -NextStep "Verify the configured PostgreSQL container and table/schema names."
     }
     return [pscustomobject]@{ Path = $pathOut; ExitCode = $code; Rows = [Math]::Max(0, (@($output).Count - 1)) }
 }

@@ -38,7 +38,7 @@ function definition(overrides: Partial<OperationDefinitionResponse> = {}): Opera
   };
 }
 
-function operation(): EngineeringOperationResponse {
+function operation(overrides: Partial<EngineeringOperationResponse> = {}): EngineeringOperationResponse {
   return {
     id: 'op-1',
     operationId: 'quality.freeze',
@@ -65,6 +65,7 @@ function operation(): EngineeringOperationResponse {
     artifacts: [],
     approvals: [],
     limitations: [],
+    ...overrides,
   };
 }
 
@@ -112,7 +113,6 @@ describe('OperationLauncher', () => {
   });
 
   it('uses the explicit unavailable limitation and reports start failures', async () => {
-    start.mockRejectedValue(new Error('provider refused the request'));
     render(
       <OperationLauncher
         definition={definition({
@@ -125,5 +125,53 @@ describe('OperationLauncher', () => {
 
     expect(screen.getByText('Freeze provider disabled for local rehearsal.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Registar pedido de operação/i })).toBeDisabled();
+  });
+
+  it('submits approval requests with selected environment, fallback ref and evidence opt-out', async () => {
+    start.mockResolvedValue(operation({ id: 'op-approval', status: 'AwaitingApproval', requiresApproval: true }));
+    render(
+      <OperationLauncher
+        showTruthWarning={false}
+        definition={definition({
+          requiresApproval: true,
+          inputs: [{ name: 'planHash', description: 'Hash do plano', required: true, defaultValue: null }],
+        })}
+      />,
+    );
+
+    expect(screen.queryByText(/Queued não significa sucesso/i)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Ambiente'), { target: { value: 'ci' } });
+    expect(screen.getByText('RUN ci <missing-plan-hash>')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/planHash/i), { target: { value: 'def456' } });
+    fireEvent.click(screen.getByLabelText(/Recolher evidence/i));
+    fireEvent.change(screen.getByLabelText(/Confirmação exata/i), { target: { value: 'RUN ci def456' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Registar pedido de aprovação/i }));
+
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(1));
+    expect(start).toHaveBeenCalledWith({
+      operationId: 'quality.freeze',
+      environment: 'ci',
+      ref: 'master',
+      inputs: { planHash: 'def456' },
+      collectEvidence: false,
+      confirmation: 'RUN ci def456',
+    });
+    expect(await screen.findByText(/Pedido op-approval registado com estado AwaitingApproval/i)).toBeInTheDocument();
+  });
+
+  it('reports non-error provider failures with the generic closed message', async () => {
+    start.mockRejectedValue('provider refused the request');
+    render(
+      <OperationLauncher
+        definition={definition({
+          requiresConfirmation: false,
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Registar pedido de operação/i }));
+
+    expect(await screen.findByText('Não foi possível registar o pedido de operação.')).toBeInTheDocument();
   });
 });

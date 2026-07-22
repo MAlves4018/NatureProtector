@@ -226,6 +226,125 @@ public sealed class SimpleRiskScoringServiceTests
     }
 
     [Fact]
+    public void CreateAssessment_BlendsUsableFwiWithMetricComponent()
+    {
+        var input = CreateRiskInput(SensorMetricType.Temperature, 30.0) with
+        {
+            FireWeatherIndexContext = new FireWeatherIndexContext(
+                FireWeatherIndex: 8.0,
+                KeetchByramDroughtIndex: null,
+                Provenance: "candidate-fwi",
+                NormalizedFireWeatherIndex: 0.10,
+                CalculationStatus: FireWeatherIndexCalculationStatus.Complete,
+                KbdiStatus: KbdiCalculationStatus.Missing)
+        };
+
+        var assessment = _service.CreateAssessment(input);
+
+        Assert.Equal(0.485, assessment.MeteorologyComponent, precision: 3);
+        Assert.Equal(0.493, assessment.BaseRisk, precision: 3);
+        Assert.Equal("CandidateFallback", assessment.CalculationStatus);
+    }
+
+    [Fact]
+    public void CreateAssessment_UsesDrynessSignalsAndPrecipitationReduction()
+    {
+        var dryAntecedent = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, 30.0) with
+        {
+            DailyCellState = CreateDailyState(antecedentState: "dry", droughtContext: "normal", precipitation: 0.0)
+        });
+        var dryContext = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, 30.0) with
+        {
+            DailyCellState = CreateDailyState(antecedentState: "normal", droughtContext: "dry", precipitation: 0.0)
+        });
+        var rainAfterDryness = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, 30.0) with
+        {
+            DailyCellState = CreateDailyState(antecedentState: "dry", droughtContext: "dry", precipitation: 10.0)
+        });
+
+        Assert.Equal(0.70, dryAntecedent.DroughtComponent, precision: 3);
+        Assert.Equal(0.70, dryContext.DroughtComponent, precision: 3);
+        Assert.Equal(0.40, rainAfterDryness.DroughtComponent, precision: 3);
+    }
+
+    [Fact]
+    public void CreateAssessment_ReportsMixedDominantDriverAtCandidateTieBoundary()
+    {
+        var assessment = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, 25.0) with
+        {
+            TerritorialContext = new TerritorialRiskContext(Guid.NewGuid(), "tie-boundary", 0.5666666667)
+        });
+
+        Assert.Equal("Mixed", assessment.DominantDriver);
+    }
+
+    [Fact]
+    public void CreateAssessment_DistinguishesPartialCandidateAndDefaultedCalculationStatuses()
+    {
+        var partial = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, 35.0) with
+        {
+            InputStatus = RiskInputStatus.PartialButUsable,
+            FireWeatherIndexContext = new FireWeatherIndexContext(
+                FireWeatherIndex: 40.0,
+                KeetchByramDroughtIndex: 400.0,
+                Provenance: "candidate-index",
+                CalculationStatus: FireWeatherIndexCalculationStatus.Complete,
+                KbdiStatus: KbdiCalculationStatus.Complete)
+        });
+        var oneMissingIndex = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, 35.0) with
+        {
+            FireWeatherIndexContext = new FireWeatherIndexContext(
+                FireWeatherIndex: 40.0,
+                KeetchByramDroughtIndex: null,
+                Provenance: "candidate-index",
+                CalculationStatus: FireWeatherIndexCalculationStatus.Complete,
+                KbdiStatus: KbdiCalculationStatus.Missing)
+        });
+        var defaulted = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, 35.0) with
+        {
+            FireWeatherIndexContext = new FireWeatherIndexContext(
+                FireWeatherIndex: 40.0,
+                KeetchByramDroughtIndex: 400.0,
+                Provenance: "candidate-index",
+                CalculationStatus: FireWeatherIndexCalculationStatus.Complete,
+                KbdiStatus: KbdiCalculationStatus.LimitedAntecedentHistory)
+        });
+
+        Assert.Equal("PartialButUsable", partial.CalculationStatus);
+        Assert.Equal("CandidateFallback", oneMissingIndex.CalculationStatus);
+        Assert.Equal("CompleteWithCandidateDefaults", defaulted.CalculationStatus);
+    }
+
+    [Fact]
+    public void CreateAssessment_PreservesTerritoryIndexAndMissingStatusLimitations()
+    {
+        var assessment = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, 35.0) with
+        {
+            TerritorialContext = new TerritorialRiskContext(
+                Guid.NewGuid(),
+                "test",
+                0.50)
+            {
+                Limitation = "territory_candidate_default"
+            },
+            FireWeatherIndexContext = new FireWeatherIndexContext(
+                FireWeatherIndex: null,
+                KeetchByramDroughtIndex: null,
+                Provenance: "candidate-index",
+                CalculationStatus: FireWeatherIndexCalculationStatus.Missing,
+                KbdiStatus: KbdiCalculationStatus.Missing,
+                Limitations: " fwi_missing ; kbdi_missing ")
+        });
+
+        Assert.Contains("territory_candidate_default", assessment.Limitations);
+        Assert.Contains("fwi_missing", assessment.Limitations);
+        Assert.Contains("kbdi_missing", assessment.Limitations);
+        Assert.Contains("FWI=Missing", assessment.Limitations);
+        Assert.Contains("KBDI=Missing", assessment.Limitations);
+        Assert.DoesNotContain(" ;", assessment.Limitations);
+    }
+
+    [Fact]
     public void CreateAssessment_MarksFwiAndKbdiAbsent_WhenNoIndexContextExists()
     {
         var assessment = _service.CreateAssessment(CreateRiskInput(SensorMetricType.Temperature, 35.0));
@@ -233,6 +352,10 @@ public sealed class SimpleRiskScoringServiceTests
         Assert.Contains("FWI=absent", assessment.ExplanationSummary);
         Assert.Contains("KBDI=absent", assessment.ExplanationSummary);
         Assert.Contains("FireIndexProvenance=absent", assessment.ExplanationSummary);
+        Assert.Contains("TerritoryLimitation=territorial_context_missing_candidate_defaults", assessment.ExplanationSummary);
+        Assert.Contains(
+            "Limitations=territorial_context_missing_candidate_defaults; FWI=Missing; KBDI=Missing",
+            assessment.ExplanationSummary);
     }
 
     [Fact]
@@ -357,6 +480,23 @@ public sealed class SimpleRiskScoringServiceTests
             Value: value,
             Unit: unit,
             EventTime: DateTimeOffset.UtcNow);
+    }
+
+    private static DailyCellState CreateDailyState(
+        string antecedentState,
+        string droughtContext,
+        double precipitation)
+    {
+        return new DailyCellState(
+            areaId: Guid.NewGuid(),
+            sensorId: Guid.NewGuid(),
+            day: DateTimeOffset.UtcNow,
+            antecedentState: antecedentState,
+            candidateParameterSetVersion: CandidateParameterSetV1.Version,
+            provenance: "scoring-test",
+            lastUpdatedAt: DateTimeOffset.UtcNow,
+            dailyPrecipitationMillimeters: precipitation,
+            droughtContext: droughtContext);
     }
 
     private static double NormalizeFinite(double value, double min, double max)

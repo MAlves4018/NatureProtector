@@ -202,6 +202,29 @@ public sealed class SimulationRunnerTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_LagDelayProfile_DelaysPublishAndMarksLogicalIngestTime()
+    {
+        var options = SimulatorOptionsMother.CreateValid();
+        options.NumberOfCycles = 1;
+        options.IntervalSeconds = 1;
+        options.LagDelaySeconds = 1;
+        options.DegradationProfile = SimulationDegradationProfiles.LagDelay;
+        options.StartTimestamp = new DateTimeOffset(2026, 4, 6, 17, 0, 0, TimeSpan.Zero);
+        options.Sensors = [SimulatorOptionsMother.CreateSensorDefinition(name: "Delayed-01")];
+        var publisher = new CollectingReadingPublisher();
+        var runner = CreateRunner(options, publisher);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        await SimulationRunnerInvoker.ExecuteAsync(runner, CancellationToken.None);
+
+        stopwatch.Stop();
+        var envelope = Assert.Single(publisher.Published);
+        Assert.True(stopwatch.Elapsed >= TimeSpan.FromMilliseconds(800));
+        Assert.Equal(options.StartTimestamp.Value, envelope.EventTime);
+        Assert.Equal(options.StartTimestamp.Value.AddSeconds(1), envelope.IngestTime);
+    }
+
 
     [Fact]
     public async Task ExecuteAsync_RunStartLogIncludesEffectiveScenarioAndDegradationContext()

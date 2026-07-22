@@ -342,6 +342,44 @@ public sealed class PostgresAreaOperationalProjectionStoreTests
     }
 
     [Fact]
+    public async Task SaveAsync_AfterResolvedAlert_EnforcesCooldownBeforeReopening()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await ControlPlaneSeedData.SeedAreaWithSensorAsync(scope);
+        var store = CreateStore(scope);
+        var openedAt = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+
+        await store.SaveAsync(seed.AreaId, new AreaRiskSnapshot(Guid.NewGuid(), openedAt, 0.85, "Alarm candidate"), 5, CancellationToken.None);
+        await store.SaveAsync(seed.AreaId, new AreaRiskSnapshot(Guid.NewGuid(), openedAt.AddMinutes(1), 0.85, "Alarm opens"), 5, CancellationToken.None);
+        await store.SaveAsync(seed.AreaId, new AreaRiskSnapshot(Guid.NewGuid(), openedAt.AddMinutes(2), 0.20, "Risk recovered"), 5, CancellationToken.None);
+        await store.SaveAsync(seed.AreaId, new AreaRiskSnapshot(Guid.NewGuid(), openedAt.AddMinutes(3), 0.85, "Spike during cooldown"), 5, CancellationToken.None);
+
+        await using (var duringCooldownContext = scope.CreateDbContext())
+        {
+            var state = Assert.Single(duringCooldownContext.AreaOperationalStates);
+            Assert.Equal("Alarm", state.PendingAlertState);
+            Assert.Equal(0, state.PendingAlertCycles);
+            Assert.True(state.AlertCooldownUntil > openedAt.AddMinutes(3));
+
+            var alert = Assert.Single(duringCooldownContext.AlertStates);
+            Assert.Equal(OperationalAlertStatus.Resolved.ToString(), alert.Status);
+            Assert.NotNull(alert.ResolvedAt);
+        }
+
+        await store.SaveAsync(seed.AreaId, new AreaRiskSnapshot(Guid.NewGuid(), openedAt.AddMinutes(6), 0.85, "Post-cooldown candidate"), 5, CancellationToken.None);
+        await store.SaveAsync(seed.AreaId, new AreaRiskSnapshot(Guid.NewGuid(), openedAt.AddMinutes(7), 0.85, "Post-cooldown persists"), 5, CancellationToken.None);
+
+        await using var afterCooldownContext = scope.CreateDbContext();
+        var alerts = (await afterCooldownContext.AlertStates.ToArrayAsync())
+            .OrderBy(alert => alert.TriggeredAt)
+            .ToArray();
+        Assert.Equal(2, alerts.Length);
+        Assert.Equal(OperationalAlertStatus.Resolved.ToString(), alerts[0].Status);
+        Assert.Equal(OperationalAlertStatus.Open.ToString(), alerts[1].Status);
+        Assert.Contains("AlertState=Alarm", alerts[1].Message);
+    }
+
+    [Fact]
     public async Task SaveAsync_ConcurrentUniqueViolation_RetriesAsUpdate()
     {
         var databasePath = Path.Combine(

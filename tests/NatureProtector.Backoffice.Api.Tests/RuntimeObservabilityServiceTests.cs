@@ -9,6 +9,8 @@ using NatureProtector.Backoffice.Api.Configuration;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 using NatureProtector.Backoffice.Api.Tests.TestInfrastructure;
+using NatureProtector.Core.Scenarios;
+using NatureProtector.Infrastructure.Postgres.Control;
 using NatureProtector.Shared.Configuration;
 using NatureProtector.Shared.Messaging;
 
@@ -179,6 +181,27 @@ public sealed class RuntimeObservabilityServiceTests
     }
 
     [Fact]
+    public async Task GetRabbitMqMetricsAsync_ReturnsUnavailableOnlyForEnabledQueues_WhenManagementApiFails()
+    {
+        await using var db = new SqliteControlDbContextScope();
+        var handler = new CapturingHandler(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        using var client = new HttpClient(handler);
+        var service = CreateService(db, client, rawEnabled: false);
+
+        var metrics = await service.GetRabbitMqMetricsAsync(CancellationToken.None);
+
+        Assert.Equal(RuntimeMetricCollectionStatus.Unavailable, metrics.CollectionStatus);
+        var primary = Assert.Single(metrics.Queues, queue => queue.Enabled);
+        Assert.Equal(RuntimeMetricCollectionStatus.Unavailable, primary.CollectionStatus);
+        Assert.Contains("HTTP 503", primary.Limitation, StringComparison.Ordinal);
+        var raw = Assert.Single(metrics.Queues, queue => !queue.Enabled);
+        Assert.Equal(RuntimeMetricCollectionStatus.NotApplicable, raw.CollectionStatus);
+        Assert.Contains(metrics.Limitations, limitation =>
+            limitation.Code == "rabbitmq_metrics_unavailable" &&
+            limitation.Message.Contains("HTTP 503", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task GetOperationalHealthAsync_UsesPrimaryRoleForCustomQueueName()
     {
         await using var db = new SqliteControlDbContextScope();
@@ -217,6 +240,33 @@ public sealed class RuntimeObservabilityServiceTests
         Assert.Equal(RuntimeOperationalHealthStatus.Degraded, components["Prevention.Host"].Status);
         Assert.Contains("np.custom.ingestion", components["Prevention.Host"].Source, StringComparison.Ordinal);
         Assert.Equal(RuntimeMetricCollectionStatus.Measured, health.RabbitMq.CollectionStatus);
+    }
+
+    [Fact]
+    public async Task GetOperationalHealthAsync_ReportsUnknownRabbitMqAndPrevention_WhenPrimaryQueueIsMissing()
+    {
+        await using var db = new SqliteControlDbContextScope();
+        var handler = new CapturingHandler(request =>
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            if (string.Equals(path, "/api/queues", StringComparison.Ordinal))
+            {
+                return JsonResponse(BuildQueueMetricsJson([NatureProtectorRabbitMqTopology.ObservabilityRawQueue]));
+            }
+
+            return JsonResponse("""{ "status": "ok", "database": "ok" }""");
+        });
+        using var client = new HttpClient(handler);
+        var service = CreateService(db, client, rawEnabled: true);
+
+        var health = await service.GetOperationalHealthAsync(CancellationToken.None);
+
+        var components = health.Components.ToDictionary(component => component.Component, StringComparer.Ordinal);
+        Assert.Equal(RuntimeMetricCollectionStatus.Unavailable, health.RabbitMq.CollectionStatus);
+        Assert.Equal(RuntimeOperationalHealthStatus.Unknown, components["RabbitMQ"].Status);
+        Assert.Equal(RuntimeOperationalHealthStatus.Unknown, components["Prevention.Host"].Status);
+        Assert.Contains("positive signal", components["RabbitMQ"].Limitation, StringComparison.Ordinal);
+        Assert.Contains(health.Limitations, limitation => limitation.Code == "health_unknown_is_explicit");
     }
 
     [Fact]
@@ -318,6 +368,109 @@ public sealed class RuntimeObservabilityServiceTests
         Assert.Null(components["InfluxDB"].LastFailureAt);
         Assert.Contains("requires authentication", components["InfluxDB"].Limitation, StringComparison.Ordinal);
         Assert.Contains(health.Limitations, limitation => limitation.Code == "health_auth_required_is_explicit");
+    }
+
+    [Fact]
+    public async Task GetOperationalHealthAsync_ReportsUnknown_WhenGrafanaHealthPayloadIsMalformed()
+    {
+        await using var db = new SqliteControlDbContextScope();
+        var handler = new CapturingHandler(request =>
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            if (string.Equals(path, "/api/queues", StringComparison.Ordinal))
+            {
+                return JsonResponse(BuildQueueMetricsJson([NatureProtectorRabbitMqTopology.IngestionReadingsQueue]));
+            }
+
+            if (string.Equals(path, "/api/health", StringComparison.Ordinal))
+            {
+                return JsonResponse("{ malformed");
+            }
+
+            return JsonResponse("""{ "status": "ok" }""");
+        });
+        using var client = new HttpClient(handler);
+        var service = CreateService(db, client);
+
+        var health = await service.GetOperationalHealthAsync(CancellationToken.None);
+
+        var grafana = Assert.Single(health.Components, component => component.Component == "Grafana");
+        Assert.Equal(RuntimeOperationalHealthStatus.Unknown, grafana.Status);
+        Assert.Contains("JsonReaderException", grafana.Reason, StringComparison.Ordinal);
+        Assert.Contains(health.Limitations, limitation => limitation.Code == "health_unknown_is_explicit");
+    }
+
+    [Fact]
+    public async Task GetOperationalHealthAsync_ReportsUnknownSimulatorLifecycle_WhenLatestRunStatusIsUnmapped()
+    {
+        await using var db = new SqliteControlDbContextScope();
+        var observedRunTime = new DateTimeOffset(2026, 7, 21, 12, 0, 0, TimeSpan.Zero);
+        var areaId = Guid.Parse("10000000-0000-0000-0000-000000000001");
+        var scenarioId = Guid.Parse("20000000-0000-0000-0000-000000000001");
+        var configurationVersionId = Guid.Parse("30000000-0000-0000-0000-000000000001");
+        await db.SeedAsync(context =>
+        {
+            context.ConfigurationVersions.Add(new ConfigurationVersionRecord
+            {
+                Id = configurationVersionId,
+                VersionNumber = 1,
+                Description = "test",
+                IsActive = true,
+                CreatedAt = observedRunTime,
+                CreatedBy = "tests"
+            });
+            context.Areas.Add(new AreaRecord
+            {
+                Id = areaId,
+                ConfigurationVersionId = configurationVersionId,
+                Code = "PT-11",
+                Name = "Test Area",
+                CountryCode = "PT"
+            });
+            context.ScenarioDefinitions.Add(new ScenarioDefinitionRecord
+            {
+                Id = scenarioId,
+                AreaId = areaId,
+                ConfigurationVersionId = configurationVersionId,
+                Code = "scenario_unknown",
+                Name = "Unknown",
+                ScenarioKind = ScenarioCategory.Exercise
+            });
+            context.SimulationRuns.Add(new SimulationRunRecord
+            {
+                Id = Guid.NewGuid(),
+                AreaId = areaId,
+                ScenarioId = scenarioId,
+                ConfigurationVersionId = configurationVersionId,
+                ScenarioCode = "scenario_unknown",
+                ScenarioName = "Unknown",
+                CreatedAt = observedRunTime,
+                LogicalStartTimestamp = observedRunTime,
+                IntervalSeconds = 1,
+                NumberOfCycles = 1,
+                Status = (SimulationRunStatus)999
+            });
+            return Task.CompletedTask;
+        });
+        var handler = new CapturingHandler(request =>
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            if (string.Equals(path, "/api/queues", StringComparison.Ordinal))
+            {
+                return JsonResponse(BuildQueueMetricsJson([NatureProtectorRabbitMqTopology.IngestionReadingsQueue]));
+            }
+
+            return JsonResponse("""{ "status": "ok", "database": "ok" }""");
+        });
+        using var client = new HttpClient(handler);
+        var service = CreateService(db, client);
+
+        var health = await service.GetOperationalHealthAsync(CancellationToken.None);
+
+        var simulator = Assert.Single(health.Components, component => component.Component == "Simulator.Host");
+        Assert.Equal(RuntimeOperationalHealthStatus.Unknown, simulator.Status);
+        Assert.Contains("999", simulator.Reason, StringComparison.Ordinal);
+        Assert.Contains("not mapped", simulator.Limitation, StringComparison.Ordinal);
     }
 
     private static RuntimeObservabilityService CreateService(

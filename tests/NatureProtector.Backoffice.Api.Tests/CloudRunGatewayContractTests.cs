@@ -44,10 +44,39 @@ public sealed class CloudRunGatewayContractTests
     [InlineData(HttpStatusCode.RequestTimeout, true)]
     [InlineData(HttpStatusCode.TooManyRequests, true)]
     [InlineData(HttpStatusCode.ServiceUnavailable, true)]
+    [InlineData(HttpStatusCode.InternalServerError, true)]
     [InlineData(HttpStatusCode.BadRequest, false)]
     [InlineData(HttpStatusCode.Forbidden, false)]
+    [InlineData(HttpStatusCode.NotFound, false)]
     public void ErrorPolicy_ClassifiesRetryability(HttpStatusCode status, bool expected)
         => Assert.Equal(expected, CloudRunGatewayErrorPolicy.IsRetryable(status));
+
+    [Fact]
+    public void ErrorPolicy_BuildsHttpFailureWithSanitizedProviderSummary()
+    {
+        var body = """
+            {
+              "error": {
+                "code": 503,
+                "status": "UNAVAILABLE",
+                "message": "provider temporarily unavailable password=secret"
+              }
+            }
+            """;
+
+        var error = CloudRunGatewayErrorPolicy.FromHttpFailure(
+            CloudRunGatewayOperation.StartJob,
+            HttpStatusCode.ServiceUnavailable,
+            body);
+
+        Assert.Equal(CloudRunGatewayOperation.StartJob, error.Operation);
+        Assert.Equal("cloud_run_http_503", error.Code);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, error.StatusCode);
+        Assert.True(error.IsRetryable);
+        Assert.Contains("status=UNAVAILABLE", error.Message, StringComparison.Ordinal);
+        Assert.Contains("password=[REDACTED]", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("password=secret", error.Message, StringComparison.Ordinal);
+    }
 
     [Fact]
     public void ErrorPolicy_RedactsAndBoundsProviderBody()
@@ -60,4 +89,11 @@ public sealed class CloudRunGatewayContractTests
         Assert.DoesNotContain("hunter2", summary, StringComparison.Ordinal);
         Assert.True(summary.Length <= CloudRunGatewayErrorPolicy.MaximumSafeProviderMessageCharacters + 3);
     }
+
+    [Theory]
+    [InlineData("", "<empty>")]
+    [InlineData("   ", "<empty>")]
+    [InlineData("malformed token=abc123 more", "malformed token=[REDACTED] more")]
+    public void ErrorPolicy_SummarizesEmptyAndMalformedProviderBodies(string body, string expected)
+        => Assert.Equal(expected, CloudRunGatewayErrorPolicy.ExtractSafeProviderSummary(body));
 }
