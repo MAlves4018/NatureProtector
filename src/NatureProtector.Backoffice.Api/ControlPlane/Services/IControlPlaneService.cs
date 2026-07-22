@@ -78,4 +78,14 @@ public interface IControlPlaneService
     Task<RuntimeResetResponse> ResetRuntimeStateAsync(
         RuntimeResetRequest request,
         CancellationToken cancellationToken);
+
+    Task<IEnumerable<string?>> GetDBTablesList(CancellationToken cancellationToken);
+
+    Task<IEnumerable<string?>> GetDBTableColumnsList(
+        string tableName,
+        CancellationToken cancellationToken);
+
+    Task<ROQueryResponse> QueryDBAsync(
+        ROQueryRequest request,
+        CancellationToken cancellationToken);
 }

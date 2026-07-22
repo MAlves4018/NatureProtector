@@ -1,12 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using NatureProtector.Backoffice.Api.ControlPlane.Contracts;
-using NatureProtector.Core.Scenarios;
 using NatureProtector.Infrastructure.Postgres.Persistence;
 using NatureProtector.Infrastructure.Postgres.Pipeline;
 using NatureProtector.Infrastructure.Postgres.Projection;
-using NatureProtector.Shared.Observability;
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 

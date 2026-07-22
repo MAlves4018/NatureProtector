@@ -5,7 +5,7 @@ import { getColors } from '../../utils/utils';
 import { useToken } from '../../context/TokenContext';
 import { UserModal } from '../components/UserModal';
 import npLogoUrl from '../../../../images/NPIconNoBg.png';
-
+import { useUiCapabilities, useUiLocale } from '../../state';
 export function NavBar({
   isDark,
   setIsDark,
@@ -13,11 +13,12 @@ export function NavBar({
   isDark: boolean;
   setIsDark: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
+  useUiLocale();
   const c = getColors(isDark);
   const { user, token, refreshToken } = useToken();
   const signedIn = Boolean(token);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-
+  useUiCapabilities();
   useEffect(() => {
     if (signedIn && !user) {
       refreshToken();

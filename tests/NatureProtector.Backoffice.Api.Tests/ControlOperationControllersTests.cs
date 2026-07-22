@@ -203,7 +203,8 @@ public sealed class ControlOperationControllersTests
         [],
         [],
         [],
-        []);
+        [],
+        Detail: null);
 
     private sealed class RecordingOperationsService : IEngineeringOperationsService
     {

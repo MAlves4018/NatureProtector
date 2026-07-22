@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
+import { MemoryRouter } from 'react-router-dom';
 import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NavBar } from './navBar';
@@ -7,6 +8,19 @@ import { NavBar } from './navBar';
 const refreshTokenMock = vi.fn();
 const userModalMock = vi.fn();
 let tokenState: { token: string | null; user: { fullName?: string; username?: string } | null };
+
+vi.mock('../../state', () => ({
+  useUiLocale: () => ({
+    copy: (key: string) => key,
+    locale: 'pt-PT',
+    setLocale: vi.fn(),
+  }),
+  useUiCapabilities: () => ({
+    isPublic: true,
+    capabilityAuthority: 'test',
+    capabilitiesLoading: false,
+  }),
+}));
 
 vi.mock('../../context/TokenContext', () => ({
   useToken: () => ({
@@ -80,8 +94,10 @@ describe('NavBar', () => {
 
 function renderNavBar(props: { isDark: boolean; setIsDark: React.Dispatch<React.SetStateAction<boolean>> }) {
   return render(
-    <ChakraProvider value={defaultSystem}>
-      <NavBar {...props} />
-    </ChakraProvider>,
+    <MemoryRouter>
+      <ChakraProvider value={defaultSystem}>
+        <NavBar {...props} />
+      </ChakraProvider>
+    </MemoryRouter>,
   );
 }

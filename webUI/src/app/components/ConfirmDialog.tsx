@@ -46,23 +46,22 @@ export function ConfirmDialog({
       <div className="ui-confirm-dialog">
         <div className="ui-section-heading">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {variant === 'danger' && <AlertTriangle size={18} style={{ color: 'var(--ui-error)' }} />}
+            {variant === 'danger' && <AlertTriangle size={18} />}
             {title}
           </h3>
           <button type="button" className="ui-alert-dismiss" onClick={onCancel} aria-label="Fechar">
             <X size={16} />
           </button>
         </div>
-        <p style={{ color: 'var(--ui-muted)', marginBottom: 16 }}>{message}</p>
+        <p style={{ marginBottom: 16 }}>{message}</p>
         <div className="ui-button-row" style={{ justifyContent: 'flex-end' }}>
           <button type="button" className="ui-secondary" onClick={onCancel}>
             {cancelLabel}
           </button>
           <button
             type="button"
-            className="ui-button"
+            className={variant === 'danger' ? 'ui-button ui-button-danger' : 'ui-button'}
             ref={confirmRef}
-            style={variant === 'danger' ? { background: 'var(--ui-error)', color: 'white' } : undefined}
             onClick={onConfirm}
           >
             {confirmLabel}

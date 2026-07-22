@@ -1,6 +1,6 @@
 from __future__ import annotations
 import unittest
-from _loader import load
+from tests.evidence._loader import load
 
 MODULE = load("scripts/evidence/collect-report-integration-evidence.py", "phase7_claims")
 

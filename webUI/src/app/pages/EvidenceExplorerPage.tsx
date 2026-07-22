@@ -1,4 +1,13 @@
-import { Download, FileCheck2, GitCompareArrows, ShieldCheck } from 'lucide-react';
+import {
+  Download,
+  FileCheck2,
+  GitCompareArrows,
+  ShieldCheck,
+  FileText,
+  TableProperties,
+  Ratio,
+  History,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { OperationComparisonResponse } from '../types/operations';
 import { PageHeader } from '../components/PageHeader';
@@ -11,6 +20,7 @@ import { useUiCapabilities } from '../state/CapabilityContext';
 import { useUiObservability } from '../state/ObservabilityContext';
 import { useUiActivity } from '../state/ActivityContext';
 import { evidenceIdentityMatchesRun, normalizeEvidenceCatalog } from '../utils/operationalMetrics';
+import { Claims, EvidenceMetric } from '../components/Claims';
 
 export function EvidenceExplorerPage() {
   const { catalog, operations, compare } = useOperations();
@@ -40,6 +50,7 @@ export function EvidenceExplorerPage() {
   const [error, setError] = useState<string | null>(null);
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
   const selectedCampaign = campaigns.find((campaign) => campaign.operationId === selectedCampaignId) ?? null;
+  const [tab, setTab] = useState<'claims' | 'artefacts' | 'campaigns' | 'comparison' | 'history'>('claims');
 
   const runComparison = async () => {
     setError(null);
@@ -79,267 +90,220 @@ export function EvidenceExplorerPage() {
         <EvidenceMetric label="Artefactos da run" value={scopedEvidence.length} />
         <EvidenceMetric label="Transferíveis" value={scopedEvidence.filter((item) => item.downloadable).length} />
       </section>
-      <section className="ui-card">
-        <div className="ui-section-heading">
-          <div>
-            <span className="ui-eyebrow">SimulationRunId</span>
-            <h3>{selectedRunId || 'Selecione uma execução'}</h3>
+      <div className="ui-segment-group" role="tablist" style={{ marginBottom: 16 }}>
+        <button
+          type="button"
+          className={tab === 'claims' ? 'ui-segment-active' : 'ui-segment'}
+          role="tab"
+          aria-selected={tab === 'claims'}
+          onClick={() => setTab('claims')}
+        >
+          <FileText size={16} />
+          Claims
+        </button>
+        <button
+          type="button"
+          className={tab === 'artefacts' ? 'ui-segment-active' : 'ui-segment'}
+          role="tab"
+          aria-selected={tab === 'artefacts'}
+          onClick={() => setTab('artefacts')}
+        >
+          <TableProperties size={16} />
+          Artefactos
+        </button>
+        <button
+          type="button"
+          className={tab === 'campaigns' ? 'ui-segment-active' : 'ui-segment'}
+          role="tab"
+          aria-selected={tab === 'campaigns'}
+          onClick={() => setTab('campaigns')}
+        >
+          <ShieldCheck size={16} />
+          Campanhas
+        </button>
+        <button
+          type="button"
+          className={tab === 'comparison' ? 'ui-segment-active' : 'ui-segment'}
+          role="tab"
+          aria-selected={tab === 'comparison'}
+          onClick={() => setTab('comparison')}
+        >
+          <Ratio size={16} />
+          Comparar
+        </button>
+        <button
+          type="button"
+          className={tab === 'history' ? 'ui-segment-active' : 'ui-segment'}
+          role="tab"
+          aria-selected={tab === 'history'}
+          onClick={() => setTab('history')}
+        >
+          <History size={16} />
+          Histórico
+        </button>
+      </div>
+      {tab === 'claims' && (
+        <Claims selectedRunId={selectedRunId} runAudit={runAudit} runOperation={runOperation} runTimings={runTimings} />
+      )}
+      {tab === 'artefacts' && (
+        <section className="ui-card">
+          <div className="ui-section-heading">
+            <div>
+              <span className="ui-eyebrow">Índice normalizado</span>
+              <h3>Artefactos runtime disponíveis</h3>
+            </div>
+            <ShieldCheck size={22} />
           </div>
-          <ShieldCheck size={22} />
-        </div>
-        <div className="ui-table-wrap">
-          <table className="ui-table">
-            <thead>
-              <tr>
-                <th>Claim</th>
-                <th>Resultado</th>
-                <th>Fonte</th>
-                <th>Timestamp</th>
-                <th>Artefacto</th>
-                <th>Classe</th>
-                <th>Verificação</th>
-              </tr>
-            </thead>
-            <tbody>
-              <ClaimRow
-                claim="Accounting run-scoped"
-                result={
-                  runAudit
-                    ? `${runAudit.acceptedReadings}/${runAudit.expectedEvents ?? '—'} aceites; ${runAudit.riskAssessments} avaliados`
-                    : null
-                }
-                source="GET /runtime/runs/{id}/audit"
-                timestamp={runAudit?.dataScope?.observedAt}
-                artifact={runAudit ? `run-${selectedRunId}-audit.json` : null}
-                verified={Boolean(runAudit)}
-              />
-              <ClaimRow
-                claim="Lifecycle e settlement"
-                result={runOperation ? `${runOperation.state}; settled=${runOperation.accounting.settled}` : null}
-                source="GET /runtime/runs/{id}/operation"
-                timestamp={runOperation?.updatedAt}
-                artifact={runOperation?.evidenceId}
-                verified={Boolean(runOperation)}
-              />
-              <ClaimRow
-                claim="Timings persistidos"
-                result={
-                  runTimings?.runDurationMs == null
-                    ? null
-                    : `${runTimings.runDurationMs.toFixed(1)} ms; ${runTimings.attempts.attemptCount} tentativas`
-                }
-                source="GET /runtime/runs/{id}/timings"
-                timestamp={runTimings?.dataScope?.observedAt}
-                artifact={runTimings ? `run-${selectedRunId}-timings.json` : null}
-                verified={Boolean(runTimings)}
-              />
-              <ClaimRow
-                claim="Índices científicos persistidos"
-                result={
-                  runAudit?.scoreComponents
-                    ? `NP=${runAudit.scoreComponents.npScore}; FWI=${runAudit.indexComparison?.fireWeatherIndex}; KBDI=${runAudit.indexComparison?.keetchByramDroughtIndex}`
-                    : null
-                }
-                source="GET /runtime/runs/{id}/audit"
-                timestamp={runAudit?.scoreComponents?.latestAssessmentTimestamp}
-                artifact={runOperation?.evidenceId}
-                verified={Boolean(runAudit?.scoreComponents)}
-              />
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <section className="ui-card">
-        <div className="ui-section-heading">
-          <div>
-            <span className="ui-eyebrow">Índice normalizado</span>
-            <h3>Artefactos runtime disponíveis</h3>
-          </div>
-          <ShieldCheck size={22} />
-        </div>
-        <p className="ui-notice">
-          O índice é filtrado pela run selecionada. Artefactos sem SimulationRunId ou EvidenceId correspondente não são
-          apresentados como prova desta execução.
-        </p>
-        {observabilityError && <p className="ui-notice ui-error">{observabilityError.message}</p>}
-        <div className="ui-table-wrap">
-          <table className="ui-table">
-            <thead>
-              <tr>
-                <th>Artefacto</th>
-                <th>Classe</th>
-                <th>Ambiente / scope</th>
-                <th>Versão</th>
-                <th>Estado</th>
-                <th>Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {scopedEvidence.length === 0 ? (
-                <tr>
-                  <td colSpan={6}>O runtime não publicou artefactos consultáveis.</td>
-                </tr>
-              ) : (
-                scopedEvidence.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <strong>{item.title}</strong>
-                      <small className="ui-table-note">{item.generatedAt ?? 'Data não registada'}</small>
-                    </td>
-                    <td>{item.evidenceClass}</td>
-                    <td>
-                      {item.environment}
-                      <small className="ui-table-note">{item.scope}</small>
-                    </td>
-                    <td>{item.version ?? 'Não registada'}</td>
-                    <td>
-                      {item.status}
-                      {item.limitation && <small className="ui-table-note">{item.limitation}</small>}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="ui-secondary"
-                        disabled={!item.downloadable || !capabilities.has('evidence.download')}
-                        onClick={() => void download(item.id)}
-                      >
-                        <Download size={14} /> Transferir
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        {downloadMessage && (
-          <p className="ui-notice" role="status">
-            {downloadMessage}
+          <p className="ui-notice">
+            O índice é filtrado pela run selecionada. Artefactos sem SimulationRunId ou EvidenceId correspondente não
+            são apresentados como prova desta execução.
           </p>
-        )}
-      </section>
-      <section className="ui-card">
-        <div className="ui-section-heading">
-          <div>
-            <span className="ui-eyebrow">Campanhas governadas</span>
-            <h3>Catálogo e execução</h3>
+          {observabilityError && <p className="ui-notice ui-error">{observabilityError.message}</p>}
+          <div className="ui-table-wrap">
+            <table className="ui-table">
+              <thead>
+                <tr>
+                  <th>Artefacto</th>
+                  <th>Classe</th>
+                  <th>Ambiente / scope</th>
+                  <th>Versão</th>
+                  <th>Estado</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scopedEvidence.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>O runtime não publicou artefactos consultáveis.</td>
+                  </tr>
+                ) : (
+                  scopedEvidence.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <strong>{item.title}</strong>
+                        <small className="ui-table-note">{item.generatedAt ?? 'Data não registada'}</small>
+                      </td>
+                      <td>{item.evidenceClass}</td>
+                      <td>
+                        {item.environment}
+                        <small className="ui-table-note">{item.scope}</small>
+                      </td>
+                      <td>{item.version ?? 'Não registada'}</td>
+                      <td>
+                        {item.status}
+                        {item.limitation && <small className="ui-table-note">{item.limitation}</small>}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="ui-secondary"
+                          disabled={!item.downloadable || !capabilities.has('evidence.download')}
+                          onClick={() => void download(item.id)}
+                        >
+                          <Download size={14} /> Transferir
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-          <FileCheck2 size={22} />
-        </div>
-        <div className="ui-compact-list">
-          {campaigns.length === 0 ? (
-            <p className="ui-notice">Sem campanhas autorizadas para este perfil.</p>
-          ) : (
-            campaigns.map((campaign) => (
-              <button
-                type="button"
-                key={campaign.operationId}
-                className={
-                  selectedCampaignId === campaign.operationId
-                    ? 'ui-compact-row ui-compact-row-active'
-                    : 'ui-compact-row'
-                }
-                onClick={() => setSelectedCampaignId(campaign.operationId)}
-              >
-                <span>
-                  <strong>{campaign.displayName}</strong>
-                  <small>{campaign.description}</small>
-                </span>
-                <span>{campaign.authorized ? campaign.availability : `Requer ${campaign.requiredCapability}`}</span>
-              </button>
-            ))
+          {downloadMessage && (
+            <p className="ui-notice" role="status">
+              {downloadMessage}
+            </p>
           )}
-        </div>
-        {selectedCampaign && (
-          <details className="ui-details" open>
-            <summary>Preparar {selectedCampaign.displayName}</summary>
-            <OperationLauncher definition={selectedCampaign} showTruthWarning={false} />
-          </details>
-        )}
-      </section>
-      <section className="ui-card">
-        <h3>Comparar execuções de evidence</h3>
-        <div className="ui-compare-row">
-          <select value={left} onChange={(event) => setLeft(event.target.value)}>
-            <option value="">Esquerda</option>
-            {evidenceRuns.map((operation) => (
-              <option key={`l-${operation.id}`} value={operation.id}>
-                {operation.displayName} · {operation.status}
-              </option>
-            ))}
-          </select>
-          <select value={right} onChange={(event) => setRight(event.target.value)}>
-            <option value="">Direita</option>
-            {evidenceRuns.map((operation) => (
-              <option key={`r-${operation.id}`} value={operation.id}>
-                {operation.displayName} · {operation.status}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="ui-button"
-            disabled={!left || !right || left === right}
-            onClick={() => void runComparison()}
-          >
-            <GitCompareArrows size={16} /> Comparar
-          </button>
-        </div>
-        {error && <p className="ui-notice ui-error">{error}</p>}
-        <ComparisonBarChart comparison={comparison} />
-      </section>
-      <section className="ui-card">
-        <h3>Histórico auditável</h3>
-        {evidenceRuns.length === 0 ? (
-          <p className="ui-notice">Sem execuções de evidence registadas.</p>
-        ) : (
-          <div className="ui-grid">
-            {evidenceRuns.map((operation) => (
-              <OperationStatus key={operation.id} operation={operation} compact />
-            ))}
+        </section>
+      )}
+      {tab === 'campaigns' && (
+        <section className="ui-card">
+          <div className="ui-section-heading">
+            <div>
+              <span className="ui-eyebrow">Campanhas governadas</span>
+              <h3>Catálogo e execução</h3>
+            </div>
+            <FileCheck2 size={22} />
           </div>
-        )}
-      </section>
+          <div className="ui-compact-list">
+            {campaigns.length === 0 ? (
+              <p className="ui-notice">Sem campanhas autorizadas para este perfil.</p>
+            ) : (
+              campaigns.map((campaign) => (
+                <button
+                  type="button"
+                  key={campaign.operationId}
+                  className={
+                    selectedCampaignId === campaign.operationId
+                      ? 'ui-compact-row ui-compact-row-active'
+                      : 'ui-compact-row'
+                  }
+                  onClick={() => setSelectedCampaignId(campaign.operationId)}
+                >
+                  <span>
+                    <strong>{campaign.displayName}</strong>
+                    <small>{campaign.description}</small>
+                  </span>
+                  <span>{campaign.authorized ? campaign.availability : `Requer ${campaign.requiredCapability}`}</span>
+                </button>
+              ))
+            )}
+          </div>
+          {selectedCampaign && (
+            <details className="ui-details" open>
+              <summary>Preparar {selectedCampaign.displayName}</summary>
+              <OperationLauncher definition={selectedCampaign} showTruthWarning={false} />
+            </details>
+          )}
+        </section>
+      )}
+      {tab === 'comparison' && (
+        <section className="ui-card">
+          <h3>Comparar execuções de evidence</h3>
+          <div className="ui-compare-row">
+            <select value={left} onChange={(event) => setLeft(event.target.value)}>
+              <option value="">Esquerda</option>
+              {evidenceRuns.map((operation) => (
+                <option key={`l-${operation.id}`} value={operation.id}>
+                  {operation.displayName} · {operation.status}
+                </option>
+              ))}
+            </select>
+            <select value={right} onChange={(event) => setRight(event.target.value)}>
+              <option value="">Direita</option>
+              {evidenceRuns.map((operation) => (
+                <option key={`r-${operation.id}`} value={operation.id}>
+                  {operation.displayName} · {operation.status}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="ui-button"
+              disabled={!left || !right || left === right}
+              onClick={() => void runComparison()}
+            >
+              <GitCompareArrows size={16} /> Comparar
+            </button>
+          </div>
+          {error && <p className="ui-notice ui-error">{error}</p>}
+          <ComparisonBarChart comparison={comparison} />
+        </section>
+      )}
+      {tab === 'history' && (
+        <section className="ui-card">
+          <h3>Histórico auditável</h3>
+          {evidenceRuns.length === 0 ? (
+            <p className="ui-notice">Sem execuções de evidence registadas.</p>
+          ) : (
+            <div className="ui-grid">
+              {evidenceRuns.map((operation) => (
+                <OperationStatus key={operation.id} operation={operation} compact />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </section>
-  );
-}
-
-function EvidenceMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <article className="ui-metric-card">
-      <span className="ui-metric-icon">
-        <FileCheck2 size={17} />
-      </span>
-      <strong>{value}</strong>
-      <small>{label}</small>
-    </article>
-  );
-}
-
-function ClaimRow({
-  claim,
-  result,
-  source,
-  timestamp,
-  artifact,
-  verified,
-}: {
-  claim: string;
-  result: string | null;
-  source: string;
-  timestamp?: string | null;
-  artifact?: string | null;
-  verified: boolean;
-}) {
-  return (
-    <tr>
-      <td>{claim}</td>
-      <td>{result ?? 'Indisponível para esta run'}</td>
-      <td>{source}</td>
-      <td>{timestamp ? new Date(timestamp).toLocaleString('pt-PT') : 'Indisponível'}</td>
-      <td>{artifact ?? 'Sem artefacto associado'}</td>
-      <td>Live local</td>
-      <td>{verified ? 'Verificado pela resposta API' : 'Não verificado'}</td>
-    </tr>
   );
 }

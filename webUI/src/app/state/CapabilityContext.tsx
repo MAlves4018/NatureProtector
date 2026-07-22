@@ -46,8 +46,10 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
   const publicCapabilities = useMemo(() => new Set<UiCapability>(FAIL_CLOSED_CAPABILITIES), []);
   const capabilities = useMemo(() => {
     if (!user) return publicCapabilities;
-    return serverCapabilities ?? publicCapabilities;
-  }, [publicCapabilities, serverCapabilities, user]);
+    if (serverCapabilities) return serverCapabilities;
+    if (capabilitiesError) return publicCapabilities;
+    return getUiCapabilities(user);
+  }, [publicCapabilities, serverCapabilities, user, capabilitiesError]);
   const pages = useMemo(() => getUiPages(capabilities), [capabilities]);
   const isPublic = !user;
   const capabilityProfilePending =

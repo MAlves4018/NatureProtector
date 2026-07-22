@@ -569,3 +569,17 @@ export interface AlertStateResponse {
   resolvedAt: string | null;
   alertState: string | null;
 }
+
+export interface ROQueryRequest {
+  type?: string;
+  table: string;
+  columns?: string[];
+  limit?: number;
+  offset?: number;
+}
+
+export interface ROQueryResponse {
+  columns: string[];
+  rows: Record<string, string | null>[];
+  limitations: string[];
+}

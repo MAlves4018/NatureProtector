@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, ShieldAlert } from 'lucide-react';
+import { Download, ShieldAlert, Server, Archive } from 'lucide-react';
 import { api } from '../services/api';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
@@ -12,19 +12,44 @@ export function QualityEvidencePage() {
   const evidenceItems = useEvidenceItems();
   const historical = evidenceItems.filter((item) => item.environment !== 'Current UI/API session');
   const runtimeEvidence = evidenceItems.filter((item) => item.environment === 'Current UI/API session');
+  const [tab, setTab] = useState<'runtime' | 'historical'>('runtime');
 
   return (
     <section className="ui-page">
       <PageHeader title={copy('qa.title')} subtitle={copy('qa.subtitle')} helpTopic="qa" />
-      <div className="ui-notice ui-warning" role="status">
+      <div className="ui-notice ui-warning" role="status" style={{ marginBottom: 16 }}>
         <ShieldAlert size={16} />
         <span>
           Only items loaded from the current runtime evidence API are current observations. Repository history is an
           unverified historical claim and is not revalidated by this page.
         </span>
       </div>
-      <EvidenceSection title="Runtime evidence — current API session" items={runtimeEvidence} />
-      <EvidenceSection title="Historical repository claims — not revalidated" items={historical} />
+      <div className="ui-segment-group" role="tablist" style={{ marginBottom: 16 }}>
+        <button
+          type="button"
+          className={tab === 'runtime' ? 'ui-segment-active' : 'ui-segment'}
+          role="tab"
+          aria-selected={tab === 'runtime'}
+          onClick={() => setTab('runtime')}
+        >
+          <Server size={16} />
+          Runtime evidence
+        </button>
+        <button
+          type="button"
+          className={tab === 'historical' ? 'ui-segment-active' : 'ui-segment'}
+          role="tab"
+          aria-selected={tab === 'historical'}
+          onClick={() => setTab('historical')}
+        >
+          <Archive size={16} />
+          Historical claims
+        </button>
+      </div>
+      {tab === 'runtime' && <EvidenceSection title="Runtime evidence — current API session" items={runtimeEvidence} />}
+      {tab === 'historical' && (
+        <EvidenceSection title="Historical repository claims — not revalidated" items={historical} />
+      )}
     </section>
   );
 }

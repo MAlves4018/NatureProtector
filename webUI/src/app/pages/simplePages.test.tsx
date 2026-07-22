@@ -24,7 +24,19 @@ vi.mock('../state/CapabilityContext', () => ({
 }));
 
 vi.mock('../state/AreaContext', () => ({
-  useUiArea: () => ({ selectedAreaCode: 'PT-11' }),
+  useUiArea: () => ({ selectedAreaCode: 'PT-11', resolvedAreaCode: 'PT-11' }),
+}));
+
+vi.mock('../state', () => ({
+  useUiCapabilities: () => ({
+    isDark: true,
+    canExecuteFullQa: true,
+  }),
+  useUiLocale: () => ({
+    copy: (key: string) => key,
+    locale: 'pt-PT' as const,
+    setLocale: () => undefined,
+  }),
 }));
 
 vi.mock('../components/AreaSelector', () => ({
@@ -154,6 +166,14 @@ vi.mock('../state/QaTestContext', () => ({
         environment: 'local',
         evidenceReference: 'evidence/smoke',
         limitations: [],
+        passed: 1,
+        failed: 0,
+        skipped: 0,
+        blocked: 0,
+        duration: '-',
+        coverage: 'Not applicable',
+        reportReference: '',
+        testExecution: 'Authorized — click Run to execute',
       },
       {
         suiteId: 'qa-finding',
@@ -165,6 +185,14 @@ vi.mock('../state/QaTestContext', () => ({
         environment: 'local',
         evidenceReference: 'evidence/audit',
         limitations: ['requires live runtime'],
+        passed: null,
+        failed: null,
+        skipped: null,
+        blocked: null,
+        duration: '-',
+        coverage: 'Not applicable',
+        reportReference: '',
+        testExecution: 'Authorized — click Run to execute',
       },
       {
         suiteId: 'qa-unknown',
@@ -176,8 +204,24 @@ vi.mock('../state/QaTestContext', () => ({
         environment: 'local',
         evidenceReference: 'evidence/mutation',
         limitations: [],
+        passed: null,
+        failed: null,
+        skipped: null,
+        blocked: null,
+        duration: '-',
+        coverage: 'Not applicable',
+        reportReference: '',
+        testExecution: 'Authorized — click Run to execute',
       },
     ],
+    runningSuiteIds: new Set(),
+    executions: [],
+    pushResults: [],
+    pushResultsLoading: false,
+    suitesLoading: false,
+    runAll: vi.fn(),
+    runSuites: vi.fn(),
+    clearExecutions: vi.fn(),
   }),
 }));
 
@@ -228,20 +272,24 @@ describe('simple page wrappers', () => {
 
     expect(screen.getByText('np-local')).toBeInTheDocument();
     expect(screen.getByText('postgres')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Operações/i }));
     expect(screen.getByRole('button', { name: /launch:cloud-plan/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /quality-run/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Histórico/i }));
     expect(screen.getByRole('article', { name: 'cloud-op-1' })).toHaveTextContent('Cloud dry run:Completed');
     expect(screen.queryByRole('article', { name: 'quality-op-1' })).not.toBeInTheDocument();
   });
 
-  it('renders QA suites with passed, finding and unknown states plus limitations', () => {
+  it('renders QA suites with passed, finding and unknown states', () => {
+    vi.stubEnv('DEV', false);
+
     render(<QaTestSuitePage />);
 
-    expect(screen.getByText('Suites documentadas (3)')).toBeInTheDocument();
+    expect(screen.getByText('Executar todas (3 suites)')).toBeInTheDocument();
     expect(screen.getByText('Functional smoke')).toBeInTheDocument();
     expect(screen.getByText('Evidence audit')).toBeInTheDocument();
     expect(screen.getByText('Mutation')).toBeInTheDocument();
-    expect(screen.getByText('requires live runtime')).toBeInTheDocument();
-    expect(screen.getByText('scripts/tests/run-mutation.ps1')).toBeInTheDocument();
   });
 });

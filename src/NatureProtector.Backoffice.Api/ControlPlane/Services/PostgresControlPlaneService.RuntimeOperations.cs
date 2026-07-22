@@ -10,6 +10,10 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Linq.Dynamic.Core;
+using System.Reflection;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.AspNetCore.Mvc;
 
 namespace NatureProtector.Backoffice.Api.ControlPlane.Services;
 
@@ -827,6 +831,145 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         await dbContext.SimulationRuns.ExecuteDeleteAsync(cancellationToken);
     }
 
+
+    public async Task<IEnumerable<string?>> GetDBTablesList(
+        CancellationToken cancellationToken
+    )
+    {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return dbContext.Model.GetEntityTypes()
+            .Select(t =>
+            {
+                var schema = t.GetSchema();
+                var table = t.GetTableName();
+                return string.IsNullOrEmpty(schema) ? table : $"{schema}.{table}";
+            })
+            .Where(name => name != null)
+            .ToList();
+    }
+
+    public async Task<IEnumerable<string?>> GetDBTableColumnsList(
+        string tableName,
+        CancellationToken cancellationToken
+    )
+    {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var entityType = dbContext.Model.GetEntityTypes()
+            .FirstOrDefault(t =>
+            {
+                var schema = t.GetSchema();
+                var fullName = string.IsNullOrEmpty(schema) ? t.GetTableName() : $"{schema}.{t.GetTableName()}";
+                return string.Equals(fullName, tableName, StringComparison.OrdinalIgnoreCase);
+            });
+
+        if (entityType is null)
+        {
+            return [];
+        }
+
+        return entityType.GetProperties().Select(p => p.GetColumnName()).Where(name => name != null).ToList();
+    }
+
+    public async Task<ROQueryResponse> QueryDBAsync(
+        ROQueryRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var entityType = dbContext.Model.GetEntityTypes()
+            .FirstOrDefault(t =>
+            {
+                var s = t.GetSchema();
+                var n = t.GetTableName();
+                var key = string.IsNullOrEmpty(s) ? n : $"{s}.{n}";
+                return string.Equals(key, request.Table, StringComparison.OrdinalIgnoreCase);
+            });
+
+        if (entityType is null)
+        {
+            return new ROQueryResponse([], [], [$"Table '{request.Table}' is not allowed."]);
+        }
+
+        var schema = entityType.GetSchema();
+        var table = entityType.GetTableName();
+        var qualifiedTable = string.IsNullOrEmpty(schema)
+            ? $"\"{table}\""
+            : $"\"{schema}\".\"{table}\"";
+
+        var columnLookup = entityType.GetProperties()
+            .Select(p => p.GetColumnName())
+            .Where(name => name != null)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(c => c, c => $"\"{c}\"", StringComparer.OrdinalIgnoreCase);
+
+        await using var connection = dbContext.Database.GetDbConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+
+        var queryType = request.Type?.Trim().ToLowerInvariant() ?? "select";
+
+        var limitations = new List<string>();
+        if (queryType == "count")
+        {
+            command.CommandText = $"SELECT COUNT(*) AS count FROM {qualifiedTable}";
+        }
+        else
+        {
+            var limit = Math.Clamp(request.Limit ?? 100, 1, 1000);
+            var offset = Math.Clamp(request.Offset ?? 0, 0, 10000);
+
+            if (request.Limit > 1000)
+                limitations.Add("Limit clamped to maximum allowed value (1000).");
+            if (request.Offset > 10000)
+                limitations.Add("Offset clamped to maximum allowed value (10000).");
+
+            var selectColumns = "*";
+            if (request.Columns is { Length: > 0 })
+            {
+                var quotedColumns = request.Columns
+                    .Select(c => columnLookup.TryGetValue(c, out var safe) ? safe : null)
+                    .Where(c => c != null)
+                    .ToList();
+                if (quotedColumns.Count > 0)
+                    selectColumns = string.Join(", ", quotedColumns);
+            }
+
+            command.CommandText = $"SELECT {selectColumns} FROM {qualifiedTable} LIMIT @limit OFFSET @offset";
+
+            var limitParam = command.CreateParameter();
+            limitParam.ParameterName = "@limit";
+            limitParam.Value = limit;
+            command.Parameters.Add(limitParam);
+
+            var offsetParam = command.CreateParameter();
+            offsetParam.ParameterName = "@offset";
+            offsetParam.Value = offset;
+            command.Parameters.Add(offsetParam);
+        }
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        var columns = Enumerable.Range(0, reader.FieldCount)
+            .Select(i => reader.GetName(i))
+            .ToList();
+
+        var rows = new List<Dictionary<string, string?>>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var row = new Dictionary<string, string?>();
+            foreach (var col in columns)
+            {
+                var ordinal = reader.GetOrdinal(col);
+                row[col] = reader.IsDBNull(ordinal) ? null : reader[ordinal]?.ToString();
+            }
+            rows.Add(row);
+        }
+
+        return new ROQueryResponse(columns, rows, limitations);
+    }
     // </phase5-slice>
 
     // <phase5-slice id="runtime-operations-evidence">
@@ -1215,4 +1358,10 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
 
     // </phase5-slice>
 
+    private static IQueryable Set(DbContext context, Type entityType)
+    {
+        var method = typeof(DbContext).GetMethod("Set", Type.EmptyTypes)
+            ?? throw new InvalidOperationException("Set method not found.");
+        return (IQueryable)method.MakeGenericMethod(entityType).Invoke(context, null);
+    }
 }

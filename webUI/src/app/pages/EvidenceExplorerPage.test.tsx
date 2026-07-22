@@ -95,13 +95,18 @@ describe('EvidenceExplorerPage', () => {
     expect(screen.getByText('14000.0 ms; 30 tentativas')).toBeInTheDocument();
     expect(screen.getByText('Índices científicos persistidos')).toBeInTheDocument();
     expect(screen.getByText('NP=82; FWI=31.2; KBDI=420')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Artefactos/i }));
     expect(screen.getByText('Run evidence package')).toBeInTheDocument();
     expect(screen.getByText('Direct operation evidence')).toBeInTheDocument();
     expect(screen.queryByText('Other run evidence')).not.toBeInTheDocument();
     expect(screen.getByText('observability delayed')).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('tab', { name: /Campanhas/i }));
     fireEvent.click(screen.getByRole('button', { name: /Evidence campaign/i }));
     expect(screen.getByRole('button', { name: 'launch:evidence-campaign' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Histórico/i }));
     expect(screen.getByRole('article', { name: 'evidence-op-1' })).toHaveTextContent(
       'status:Evidence campaign:Succeeded:compact',
     );
@@ -127,6 +132,7 @@ describe('EvidenceExplorerPage', () => {
 
     render(<EvidenceExplorerPage />);
 
+    fireEvent.click(screen.getByRole('tab', { name: /Artefactos/i }));
     fireEvent.click(screen.getAllByRole('button', { name: /Transferir/i })[0]);
     expect(await screen.findByRole('status')).toHaveTextContent('Artefacto evidence-run-b transferido.');
     expect(downloadRuntimeEvidenceMock).toHaveBeenCalledWith('evidence-run-b');
@@ -154,7 +160,9 @@ describe('EvidenceExplorerPage', () => {
 
     render(<EvidenceExplorerPage />);
 
+    fireEvent.click(screen.getByRole('tab', { name: /Artefactos/i }));
     expect(screen.getAllByRole('button', { name: /Transferir/i })[0]).toBeDisabled();
+    fireEvent.click(screen.getByRole('tab', { name: /Comparar/i }));
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'evidence-op-1' } });
     fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: 'runtime-op-1' } });
     fireEvent.click(screen.getByRole('button', { name: /Comparar/i }));
@@ -187,10 +195,13 @@ describe('EvidenceExplorerPage', () => {
     render(<EvidenceExplorerPage />);
 
     expect(screen.getByText('Selecione uma execução')).toBeInTheDocument();
-    expect(screen.getByText('O runtime não publicou artefactos consultáveis.')).toBeInTheDocument();
-    expect(screen.getByText('Sem campanhas autorizadas para este perfil.')).toBeInTheDocument();
-    expect(screen.getByText('Sem execuções de evidence registadas.')).toBeInTheDocument();
     expect(screen.getAllByText('Não verificado').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('tab', { name: /Artefactos/i }));
+    expect(screen.getByText('O runtime não publicou artefactos consultáveis.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /Campanhas/i }));
+    expect(screen.getByText('Sem campanhas autorizadas para este perfil.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /Histórico/i }));
+    expect(screen.getByText('Sem execuções de evidence registadas.')).toBeInTheDocument();
   });
 });
 

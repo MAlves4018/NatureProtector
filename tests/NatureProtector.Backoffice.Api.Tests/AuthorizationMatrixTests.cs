@@ -48,6 +48,10 @@ public sealed class AuthorizationMatrixTests
         Capability("GET", "/api/control/runtime/runs/{runId:guid}/timings", "/api/control/runtime/runs/90000000-0000-0000-0000-000000000001/timings", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
         Capability("POST", "/api/control/runtime/reset", "/api/control/runtime/reset", OperationCapabilities.SimulationExecute, AccessPolicy.Authenticated),
 
+        Capability("GET", "/api/control/runtime/getTables", "/api/control/runtime/getTables", OperationCapabilities.DBRead, AccessPolicy.Admin),
+        Capability("GET", "/api/control/runtime/getTableColumns/{tableName}", "/api/control/runtime/getTableColumns/proenca-a-nova", OperationCapabilities.DBRead, AccessPolicy.Admin),
+        Capability("POST", "/api/control/runtime/query", "/api/control/runtime/query", OperationCapabilities.DBRead, AccessPolicy.Admin),
+
         Capability("GET", "/api/control/runtime/observability/health", "/api/control/runtime/observability/health", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
         Capability("GET", "/api/control/runtime/observability/rabbitmq", "/api/control/runtime/observability/rabbitmq", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
         Capability("GET", "/api/control/runtime/observability/evidence", "/api/control/runtime/observability/evidence", OperationCapabilities.RunRead, AccessPolicy.Authenticated),
@@ -66,6 +70,9 @@ public sealed class AuthorizationMatrixTests
         Authenticated("POST", "/api/control/operations", "/api/control/operations"),
         Authenticated("POST", "/api/control/operations/{id:guid}/cancel", "/api/control/operations/00000000-0000-0000-0000-000000000001/cancel"),
         Anonymous("POST", "/api/control/operations/callback", "/api/control/operations/callback"),
+
+        Capability("GET", "/api/control/data-explorer/datasets", "/api/control/data-explorer/datasets", OperationCapabilities.DBRead, AccessPolicy.Admin),
+        Capability("POST", "/api/control/data-explorer/query", "/api/control/data-explorer/query", OperationCapabilities.DBRead, AccessPolicy.Admin),
 
         Capability("GET", "/api/control/quality/suites", "/api/control/quality/suites", OperationCapabilities.QualityRead, AccessPolicy.QualityRead),
         Capability("GET", "/api/control/quality/runs", "/api/control/quality/runs", OperationCapabilities.QualityRead, AccessPolicy.QualityRead),
@@ -378,6 +385,16 @@ public sealed class AuthorizationMatrixTests
         if (path.EndsWith("/roles", StringComparison.Ordinal))
         {
             return JsonContent.Create(new { name = "Reviewer" });
+        }
+
+        if (path.EndsWith("/data-explorer/query", StringComparison.Ordinal))
+        {
+            return JsonContent.Create(new { datasetId = "simulation-runs", limit = 1 });
+        }
+
+        if (path.EndsWith("/runtime/query", StringComparison.Ordinal))
+        {
+            return JsonContent.Create(new { table = "simulation_runs", limit = 1, offset = 0, columns = (string?)null });
         }
 
         return null;

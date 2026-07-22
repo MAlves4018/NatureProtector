@@ -32,12 +32,13 @@ public sealed class EngineeringOperationRecord
     public List<OperationArtifactResponse> Artifacts { get; init; } = [];
     public List<OperationApprovalResponse> Approvals { get; init; } = [];
     public List<string> Limitations { get; init; } = [];
+    public string? Detail { get; set; }
 
     public EngineeringOperationResponse ToResponse() => new(
         Id, OperationId, Category, DisplayName, Status, Environment, Ref, RequestedBy,
         RequestedByRoles, RequestedByCapabilities, RequestedAt, UpdatedAt, CollectEvidence,
         RiskLevel, RequiresApproval, Provider, ProviderReference, Workflow, PlanHash,
-        EvidenceLevel, Inputs, Steps, Artifacts, Approvals, Limitations);
+        EvidenceLevel, Inputs, Steps, Artifacts, Approvals, Limitations, Detail);
 }
 
 public interface IOperationStore

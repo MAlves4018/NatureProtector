@@ -13,16 +13,16 @@ const STATUS_ORDER: Record<string, number> = {
   NotApplicable: 5,
 };
 
-function statusColor(status: string): string {
+function statusClass(status: string): string {
   switch (status) {
     case 'Healthy':
-      return '#166534';
+      return 'ui-badge-ready';
     case 'Degraded':
-      return '#a16207';
+      return 'ui-badge-warning';
     case 'Unhealthy':
-      return '#b91c1c';
+      return 'ui-badge-error';
     default:
-      return 'var(--ui-muted)';
+      return 'ui-badge';
   }
 }
 
@@ -48,9 +48,7 @@ export function ComponentHealthDashboard({ health }: Props) {
           <article key={comp.component} className="ui-card" style={{ padding: 12 }}>
             <div className="ui-section-heading" style={{ marginBottom: 8 }}>
               <strong>{comp.component}</strong>
-              <span className="ui-badge" style={{ background: statusColor(comp.status), color: '#fff' }}>
-                {comp.status}
-              </span>
+              <span className={`ui-badge ${statusClass(comp.status)}`}>{comp.status}</span>
             </div>
             <div className="ui-fact-list" style={{ gap: 4, margin: 0 }}>
               <span style={{ fontSize: '0.82rem' }}>
@@ -72,7 +70,11 @@ export function ComponentHealthDashboard({ health }: Props) {
                 </span>
               )}
             </div>
-            {comp.reason && <p style={{ fontSize: '0.8rem', marginTop: 6, color: 'var(--ui-muted)' }}>{comp.reason}</p>}
+            {comp.reason && (
+              <p className="ui-table-note" style={{ marginTop: 6 }}>
+                {comp.reason}
+              </p>
+            )}
           </article>
         ))}
       </div>

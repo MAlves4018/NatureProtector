@@ -10,6 +10,7 @@ public sealed class OperationsOptions
     public string GitHubRepository { get; init; } = string.Empty;
     public string GitHubToken { get; init; } = string.Empty;
     public string DefaultRef { get; init; } = "master";
+    public bool CallbackEnabled { get; init; }
     public string CallbackSecret { get; init; } = string.Empty;
     public bool AllowSelfApproval { get; init; }
 }

@@ -106,13 +106,15 @@ describe('QualityEvidencePage', () => {
     expect(screen.getByRole('heading', { name: 'Evidência QA' })).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Only items loaded from the current runtime evidence API');
     expect(screen.getByRole('heading', { name: 'Runtime evidence — current API session' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Historical repository claims — not revalidated' })).toBeInTheDocument();
     expect(screen.getByText('Runtime JSON evidence')).toBeInTheDocument();
     expect(screen.getByText('Runtime pending evidence')).toBeInTheDocument();
-    expect(screen.getByText('Historical repository evidence')).toBeInTheDocument();
     expect(screen.getByText('live accounting')).toBeInTheDocument();
     expect(screen.getByText('production performance')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /Download evidence/i })).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('tab', { name: /Historical claims/i }));
+    expect(screen.getByRole('heading', { name: 'Historical repository claims — not revalidated' })).toBeInTheDocument();
+    expect(screen.getByText('Historical repository evidence')).toBeInTheDocument();
   });
 
   it('downloads runtime evidence with explicit and default filenames', async () => {

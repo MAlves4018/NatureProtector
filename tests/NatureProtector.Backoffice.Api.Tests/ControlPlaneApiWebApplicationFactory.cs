@@ -811,5 +811,19 @@ public sealed class ControlPlaneApiWebApplicationFactory : WebApplicationFactory
                 "Fake reset response.",
                 [],
                 []));
+
+        public Task<IEnumerable<string?>> GetDBTablesList(CancellationToken cancellationToken)
+            => Task.FromResult<IEnumerable<string?>>([]);
+
+        public Task<IEnumerable<string?>> GetDBTableColumnsList(string tableName, CancellationToken cancellationToken)
+            => Task.FromResult<IEnumerable<string?>>([]);
+
+        public Task<ROQueryResponse> QueryDBAsync(ROQueryRequest request, CancellationToken cancellationToken)
+            => Task.FromResult(new ROQueryResponse(
+            [],
+            [],
+            []
+        ));
+
     }
 }

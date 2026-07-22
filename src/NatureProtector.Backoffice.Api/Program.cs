@@ -11,6 +11,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using NatureProtector.Backoffice.Api.Bootstrap;
 using NatureProtector.Backoffice.Api.Configuration;
+using NatureProtector.Backoffice.Api.ControlPlane.DataExplorer.Services;
 using NatureProtector.Backoffice.Api.ControlPlane.Services;
 using NatureProtector.Backoffice.Api.Health;
 using NatureProtector.Backoffice.Api.OpenApi;
@@ -137,6 +138,7 @@ if (backofficeOptions.ControlPlaneEnabled)
             environmentName: builder.Environment.EnvironmentName));
     builder.Services.AddScoped<IRuntimeObservabilityService, RuntimeObservabilityService>();
     builder.Services.AddSingleton<IPasswordHasher<UserRecord>, PasswordHasher<UserRecord>>();
+    builder.Services.AddSingleton<IReadOnlyDataExplorerService, EfReadOnlyDataExplorerService>();
     builder.Services.AddScoped<IUserRolePlaneService, PostgresUserRolePlaneService>();
 }
 else
@@ -204,9 +206,10 @@ app.UseExceptionHandler(errorApp =>
             Title = isPostgresUnavailable
                 ? "Control plane database unavailable"
                 : "Backoffice API error",
-            Detail = isPostgresUnavailable
+            Detail = feature?.Error?.Message
+                ?? (isPostgresUnavailable
                 ? "Backoffice API could not reach PostgreSQL. Check POSTGRES_HOST, POSTGRES_PORT and the local runtime launcher configuration."
-                : "An unexpected Backoffice API error occurred."
+                : "An unexpected Backoffice API error occurred.")
         };
 
         await context.Response.WriteAsJsonAsync(problem);

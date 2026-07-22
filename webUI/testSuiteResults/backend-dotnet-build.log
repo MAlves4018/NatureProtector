@@ -1,0 +1,28 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  NatureProtector.Shared -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\src\NatureProtector.Shared\bin\Release\net9.0\NatureProtector.Shared.dll
+  NatureProtector.Core -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\src\NatureProtector.Core\bin\Release\net9.0\NatureProtector.Core.dll
+  NatureProtector.Shared.Observability -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\src\NatureProtector.Shared.Observability\bin\Release\net9.0\NatureProtector.Shared.Observability.dll
+  NatureProtector.Prevention -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\src\NatureProtector.Prevention\bin\Release\net9.0\NatureProtector.Prevention.dll
+  NatureProtector.Core.Tests -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\tests\NatureProtector.Core.Tests\bin\Release\net9.0\NatureProtector.Core.Tests.dll
+  NatureProtector.Infrastructure.Influx -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\src\NatureProtector.Infrastructure.Influx\bin\Release\net9.0\NatureProtector.Infrastructure.Influx.dll
+  NatureProtector.Infrastructure.Postgres -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\src\NatureProtector.Infrastructure.Postgres\bin\Release\net9.0\NatureProtector.Infrastructure.Postgres.dll
+  NatureProtector.Shared.Tests -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\tests\NatureProtector.Shared.Tests\bin\Release\net9.0\NatureProtector.Shared.Tests.dll
+  NatureProtector.Prevention.Tests -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\tests\NatureProtector.Prevention.Tests\bin\Release\net9.0\NatureProtector.Prevention.Tests.dll
+  NatureProtector.Infrastructure.Influx.Tests -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\tests\NatureProtector.Infrastructure.Influx.Tests\bin\Release\net9.0\NatureProtector.Infrastructure.Influx.Tests.dll
+  NatureProtector.Benchmarks -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\benchmarks\NatureProtector.Benchmarks\bin\Release\net9.0\NatureProtector.Benchmarks.dll
+  NatureProtector.Postgres.Bootstrap -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\src\NatureProtector.Postgres.Bootstrap\bin\Release\net9.0\NatureProtector.Postgres.Bootstrap.dll
+  NatureProtector.Simulator.Host -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\src\NatureProtector.Simulator.Host\bin\Release\net9.0\NatureProtector.Simulator.Host.dll
+  NatureProtector.Prevention.Host -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\src\NatureProtector.Prevention.Host\bin\Release\net9.0\NatureProtector.Prevention.Host.dll
+  NatureProtector.Backoffice.Api -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\src\NatureProtector.Backoffice.Api\bin\Release\net9.0\NatureProtector.Backoffice.Api.dll
+  NatureProtector.Simulator.Host.Tests -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\tests\NatureProtector.Simulator.Host.Tests\bin\Release\net9.0\NatureProtector.Simulator.Host.Tests.dll
+  NatureProtector.Backoffice.Api.Tests -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\tests\NatureProtector.Backoffice.Api.Tests\bin\Release\net9.0\NatureProtector.Backoffice.Api.Tests.dll
+  NatureProtector.Postgres.Migrations -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\src\NatureProtector.Postgres.Migrations\bin\Debug\net9.0\NatureProtector.Postgres.Migrations.dll
+  NatureProtector.Prevention.Host.Tests -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\tests\NatureProtector.Prevention.Host.Tests\bin\Release\net9.0\NatureProtector.Prevention.Host.Tests.dll
+  NatureProtector.IntegrationTests -> C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\tests\NatureProtector.IntegrationTests\bin\Release\net9.0\NatureProtector.IntegrationTests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:10.94

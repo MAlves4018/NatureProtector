@@ -77,9 +77,9 @@ export function AdminPage() {
       </div>
 
       {isResetAvailable && (
-        <section className="ui-card" style={{ borderLeft: '4px solid var(--ui-error)' }}>
+        <section className="ui-card">
           <div className="ui-section-heading">
-            <h3 style={{ color: 'var(--ui-error)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <AlertTriangle size={20} />
               Runtime reset
             </h3>
@@ -107,8 +107,7 @@ export function AdminPage() {
           <div className="ui-button-row">
             <button
               type="button"
-              className="ui-button"
-              style={{ background: 'var(--ui-error)', color: 'white' }}
+              className="ui-button ui-button-danger"
               disabled={confirmText !== 'RESET_RUNTIME_STATE' || executing}
               onClick={() => void handleReset()}
             >

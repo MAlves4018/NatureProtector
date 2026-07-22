@@ -444,10 +444,10 @@ describe('chart components', () => {
     expect(screen.getByText('blocked: 2')).toBeInTheDocument();
     expect(screen.getByText('unknown: 1')).toBeInTheDocument();
     expect(screen.getAllByTestId('pie-cell').map((cell) => cell.getAttribute('data-fill'))).toEqual([
-      '#166534',
-      '#a16207',
-      '#b91c1c',
-      '#d7e1da',
+      '#22c55e',
+      '#eab308',
+      '#ef4444',
+      '#9ca3af',
     ]);
   });
 });

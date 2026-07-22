@@ -208,7 +208,7 @@ describe('simulation context degradation profiles', () => {
       waitTimeoutSeconds: 420,
     });
 
-    expect(request.timeoutSeconds).toBe(420);
+    expect(request.timeoutSeconds).toBe(1890);
     expect(minimumSynchronousWaitSeconds(initialSimulationForm)).toBe(210);
   });
 });

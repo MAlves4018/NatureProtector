@@ -13,14 +13,14 @@ const STATUS_ICONS: Record<string, typeof CheckCircle2> = {
   NotInstrumented: Activity,
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  Healthy: '#166534',
-  Degraded: '#a16207',
-  Unhealthy: '#b91c1c',
-  Unknown: 'var(--ui-muted)',
-  AuthRequired: 'var(--ui-muted)',
-  NotApplicable: 'var(--ui-muted)',
-  NotInstrumented: 'var(--ui-muted)',
+const STATUS_CLASSES: Record<string, string> = {
+  Healthy: 'ui-badge-ready',
+  Degraded: 'ui-badge-warning',
+  Unhealthy: 'ui-badge-error',
+  Unknown: 'ui-badge',
+  AuthRequired: 'ui-badge',
+  NotApplicable: 'ui-badge',
+  NotInstrumented: 'ui-badge',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -67,10 +67,10 @@ export function DeploymentHealthPage() {
         helpTopic="pipeline"
       />
 
-      <div className="ui-card" style={{ marginBottom: 16 }}>
+      <div className="ui-card">
         <div className="ui-section-heading">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <GlobalIcon size={20} style={{ color: STATUS_COLORS[status] }} />
+            <GlobalIcon size={20} />
             {GLOBAL_LABELS[status]}
           </h3>
           <span className="ui-badge">
@@ -82,12 +82,12 @@ export function DeploymentHealthPage() {
             Overall health requires a non-empty set in which every observed component is explicitly Healthy.
           </p>
         )}
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
+        <div className="ui-label" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
           {Object.keys(STATUS_LABELS).map((key) => {
             const count = components.filter((c) => c.status === key).length;
             if (count === 0) return null;
             return (
-              <span key={key} style={{ fontSize: '0.85rem', color: STATUS_COLORS[key], fontWeight: 600 }}>
+              <span key={key} className={STATUS_CLASSES[key]} style={{ fontWeight: 600 }}>
                 {STATUS_LABELS[key]}: {count}
               </span>
             );
@@ -135,27 +135,21 @@ export function DeploymentHealthPage() {
                   ) : (
                     components.map((comp) => {
                       const Icon = STATUS_ICONS[comp.status] ?? Activity;
+                      const cls = STATUS_CLASSES[comp.status] ?? 'ui-badge';
                       return (
                         <tr key={comp.component}>
                           <td style={{ fontWeight: 700 }}>{comp.component}</td>
                           <td>
-                            <span
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                color: STATUS_COLORS[comp.status] ?? 'var(--ui-muted)',
-                              }}
-                            >
+                            <span className={cls} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <Icon size={14} />
                               {STATUS_LABELS[comp.status] ?? comp.status}
                             </span>
                           </td>
-                          <td style={{ fontSize: '0.85rem' }}>{comp.source}</td>
-                          <td style={{ fontSize: '0.85rem' }}>{formatAge(comp.ageSeconds)}</td>
-                          <td style={{ fontSize: '0.85rem' }}>{formatTimestamp(comp.lastSuccessAt)}</td>
-                          <td style={{ fontSize: '0.85rem' }}>{formatTimestamp(comp.lastFailureAt)}</td>
-                          <td style={{ fontSize: '0.85rem', color: 'var(--ui-muted)' }}>{comp.reason}</td>
+                          <td className="ui-table-note">{comp.source}</td>
+                          <td className="ui-table-note">{formatAge(comp.ageSeconds)}</td>
+                          <td className="ui-table-note">{formatTimestamp(comp.lastSuccessAt)}</td>
+                          <td className="ui-table-note">{formatTimestamp(comp.lastFailureAt)}</td>
+                          <td className="ui-table-note">{comp.reason}</td>
                         </tr>
                       );
                     })

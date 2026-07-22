@@ -19,6 +19,7 @@ import {
   GitCompareArrows,
   ChevronRight,
 } from 'lucide-react';
+import { Image } from '@chakra-ui/react';
 import type { UiMessageKey } from '../i18n';
 import type { Copy } from '../types';
 import type { UiNavTarget } from '../capabilities';
@@ -43,7 +44,13 @@ export function UiNavigation({
   return (
     <nav className="ui-nav" aria-label="Navegação principal">
       <div className="ui-nav-brand">
-        <span className="ui-nav-brand-mark">NP</span>
+        <Image
+          src="/images/NPIconNoBg.png"
+          boxSize="40px"
+          borderRadius="full"
+          fit="scale-down"
+          alt="Nature Protector Logo"
+        />
         <span>
           <strong>NatureProtector</strong>
           <small>Cockpit operacional</small>
@@ -138,6 +145,7 @@ function navIcon(target: UiNavTarget) {
       return <Database size={16} />;
     case 'quality':
     case 'qa':
+    case 'qa-tests':
       return <ListChecks size={16} />;
     case 'evidence':
       return <FileSearch size={16} />;

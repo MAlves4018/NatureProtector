@@ -151,7 +151,7 @@ public sealed class EngineeringOperationsServiceTests
         var service = CreateService(
             store,
             new RecordingDispatcher(new AutomationDispatchResult("Queued", "simulation", null, "IMPLEMENTED_NOT_PROVED", null)),
-            new OperationsOptions { CallbackSecret = "callback-secret" });
+            new OperationsOptions { CallbackEnabled = true, CallbackSecret = "callback-secret" });
         var operation = new EngineeringOperationRecord
         {
             Id = Guid.Parse("55555555-5555-5555-5555-555555555555"),

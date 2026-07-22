@@ -1,0 +1,69 @@
+
+> webui@0.0.0 test
+> vitest run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.9 [39m[90mC:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI[39m
+
+ [32mÔ£ô[39m src/app/components/ui/utils.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m src/app/capabilities.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m src/app/coreContext.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m src/app/services/api.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32mÔ£ô[39m src/app/technicalSurfaces.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 62[2mms[22m[39m
+ [32mÔ£ô[39m src/app/outputContext.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 71[2mms[22m[39m
+ [32mÔ£ô[39m src/app/components/EmptyState.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 137[2mms[22m[39m
+ [32mÔ£ô[39m src/app/components/ContextualHelp.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 154[2mms[22m[39m
+ [32mÔ£ô[39m src/app/components/components/LoggedOutBlock.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 156[2mms[22m[39m
+[90mstdout[2m | src/app/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mkeeps simulation hidden and exposes separate mission, quality and evidence pages for Pipeline profiles
+[22m[39mFetched operations data: { catalog: [], operations: [], environments: [] }
+
+[90mstdout[2m | src/app/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mshows executable simulation with controlled degradation for Sim profiles
+[22m[39mFetched operations data: { catalog: [], operations: [], environments: [] }
+
+stderr | src/app/App.test.tsx > App > submits a runtime run from the frontend when the Admin capability profile is active
+Warning: Cannot update a component (`UiSimulationProvider`) while rendering a different component (`SimulationPage`). To locate the bad setState() call inside `SimulationPage`, follow the stack trace as described in https://reactjs.org/link/setstate-in-render
+    at SimulationPage (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/pages/SimulationPage.tsx:14:57)
+    at RenderedRoute (file:///C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6218:26)
+    at Outlet (file:///C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:7027:26)
+    at Suspense
+    at ErrorBoundary (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/components/ErrorBoundary.tsx:8:5)
+    at main
+    at div
+    at UiShell (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/App.tsx:247:20)
+    at RenderedRoute (file:///C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6218:26)
+    at RenderErrorBoundary (file:///C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6130:5)
+    at DataRoutes2 (file:///C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6936:3)
+    at Router (file:///C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:7036:13)
+    at RouterProvider (file:///C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6703:3)
+    at RouterProvider2
+    at UiRouter (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/App.tsx:84:3)
+    at UiToastProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/state/ToastContext.tsx:19:28)
+    at UiAlertProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/state/AlertContext.tsx:8:28)
+    at UiQaTestProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/state/QaTestContext.tsx:72:29)
+    at OperationsProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/operations/OperationsContext.tsx:8:31)
+    at UiObservabilityProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/state/ObservabilityContext.tsx:9:36)
+    at UiSimulationProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/state/SimulationContext.tsx:32:33)
+    at UiActivityProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/state/ActivityContext.tsx:17:31)
+    at UiRiskProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/state/RiskContext.tsx:11:27)
+    at UiAreaProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/state/AreaContext.tsx:11:27)
+    at UiCapabilityProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/state/CapabilityContext.tsx:10:33)
+    at UiLocaleProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/state/LocaleContext.tsx:7:29)
+    at UiProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/state/Provider.tsx:14:23)
+    at App (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/App.tsx:72:65)
+    at AuthenticatedUi (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/App.test.tsx:76:28)
+    at TokenProvider (C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/src/app/context/TokenContext.tsx:7:26)
+    at ChakraProvider (file:///C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/node_modules/@chakra-ui/react/dist/esm/styled-system/provider.js:13:18)
+
+[90mstdout[2m | src/app/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mshows an error state when the runtime summary request fails
+[22m[39mFetched operations data: { catalog: [], operations: [], environments: [] }
+
+ [32mÔ£ô[39m src/app/App.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 2918[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m keeps the public landing limited to product, data status, help and login [33m 494[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m keeps simulation hidden and exposes separate mission, quality and evidence pages for Pipeline profiles [33m 1215[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m10 passed[39m[22m[90m (10)[39m
+[2m      Tests [22m [1m[32m40 passed[39m[22m[90m (40)[39m
+[2m   Start at [22m 17:34:53
+[2m   Duration [22m 11.61s[2m (transform 2.75s, setup 7.19s, import 8.02s, tests 3.59s, environment 27.78s)[22m
+
+JUNIT report written to C:/pessoal/school/disciplinas/6osem/PS/proj/NatureProtector/webUI/test-results/vitest-junit.xml

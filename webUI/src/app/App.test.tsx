@@ -89,7 +89,7 @@ describe('App', () => {
   it('keeps the public landing limited to product, data status, help and login', async () => {
     renderUi();
 
-    expect((await screen.findAllByRole('heading', { name: 'NatureProtector' })).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('NatureProtector')).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /entrar/i })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /Leitura pública/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Pipeline/i })).not.toBeInTheDocument();
@@ -121,7 +121,7 @@ describe('App', () => {
   it('passes a basic axe scan for the public landing', async () => {
     const { container } = renderUi();
 
-    await screen.findAllByRole('heading', { name: 'NatureProtector' });
+    await screen.findAllByText('NatureProtector');
     await screen.findByRole('option', { name: /Proenca-a-Nova/i });
     const result = await axe.run(container, {
       rules: {
@@ -135,7 +135,7 @@ describe('App', () => {
   it('opens contextual help from the F1 shortcut', async () => {
     renderUi();
 
-    await screen.findAllByRole('heading', { name: 'NatureProtector' });
+    await screen.findAllByText('NatureProtector');
     fireEvent.keyDown(window, { key: 'F1' });
 
     expect(screen.getByRole('dialog', { name: /ajuda contextual/i })).toBeInTheDocument();
@@ -216,6 +216,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Qualidade e evidencia/i }));
     expect(await screen.findByRole('heading', { name: /Qualidade e evidência/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /Historical claims/i }));
     expect(screen.getByText(/Historical repository claims/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Evidence Explorer/i }));
@@ -251,7 +252,7 @@ describe('App', () => {
   it('retires browser-generated QA and protects prepared diagnostics with backend capabilities', async () => {
     window.history.replaceState(null, '', '/qa-tests');
     const { unmount } = renderUi();
-    expect(await screen.findByRole('heading', { name: /Superfície operacional indisponível/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Acesso negado/i })).toBeInTheDocument();
 
     unmount();
     window.history.replaceState(null, '', '/db-queries');
@@ -334,8 +335,10 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Risco e dados/i }));
     fireEvent.change(await screen.findByLabelText(/selecionar área/i), { target: { value: 'proenca-a-nova' } });
 
-    await waitFor(() => expect(screen.getByText('summary unavailable')).toBeInTheDocument());
-    expect(screen.getByText(/Sem score apresent/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Sem score apresent/i)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('tab', { name: /Avisos/i }));
+    expect(screen.getByText('summary unavailable')).toBeInTheDocument();
   });
 });
 
@@ -391,6 +394,14 @@ function createFetchMock(
     }
 
     if (path === '/api/control/operations/catalog' || path === '/api/control/operations') {
+      return jsonResponse([]);
+    }
+
+    if (path === '/api/control/quality/runs') {
+      return jsonResponse([]);
+    }
+
+    if (path === '/api/control/quality/suites') {
       return jsonResponse([]);
     }
 

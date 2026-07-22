@@ -44,7 +44,10 @@
       "scripts/runtime/verify-long-run-proof.py",
       "scripts/testing/Invoke-AutoscalingExperimentMatrix.ps1",
       "scripts/testing/Invoke-MultiReplicaTemporalMatrix.ps1",
-      "scripts/testing/Invoke-SystemResetRecoveryMatrix.ps1"
+      "scripts/testing/Invoke-SystemResetRecoveryMatrix.ps1",
+      "scripts/__init__.py",
+      "scripts/operations/__init__.py",
+      "scripts/operations/consolidate_test_results.py"
     ],
     "deployment_authority_wrappers": [
       "scripts/cloud/probes/capacity.ps1",

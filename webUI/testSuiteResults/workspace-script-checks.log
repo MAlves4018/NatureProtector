@@ -1,0 +1,161 @@
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\workspace.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\tests\export-coverage-gaps.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\tests\export-test-inventory.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\tests\run-mutation.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\ci\run-secret-scan.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\ci\check-secret-canaries.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\release\build-release-candidate.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\release\test-clean-install.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\release\test-functional-package-smoke.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\release\test-package-tamper-detection.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\release\test-postgres-backup-restore.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\release\test-postgres-real-data-backup-restore.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\dev\start-local-runtime.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\performance\run-system-capacity-workload.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\docs\export-documentation-quality.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\observability\export-telemetry-catalog.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\observability\test-otlp-collector-smoke.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\validation\export-artifact-inventory.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\infra\scripts\up.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\infra\scripts\down.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\postgres\bootstrap-control-plane.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\setup\Setup-LocalEnvironment.ps1 parses
+[OK] C:\pessoal\school\disciplinas\6osem\PS\proj\NatureProtector\scripts\setup\Test-LocalPrerequisites.ps1 parses
+[OK] help exits successfully
+[OK] help lists workspace commands
+[OK] help documents Git-safe behavior
+[OK] workspace script avoids Path.GetRelativePath for PowerShell 5.1 compatibility
+[OK] workspace Security profile uses audited package policy scripts
+[OK] workspace Security profile executes canary and security-focused tests
+[OK] workspace PerformanceSmoke profile uses bounded benchmark wrapper
+[OK] setup -PlanOnly exits successfully
+[OK] setup plan reports Git without executing it
+[OK] validate Quick -PlanOnly exits successfully
+[OK] validate Quick reports selected profile
+[OK] validate Quick plans expected commands
+[OK] validate Security -PlanOnly exits successfully
+[OK] validate Security plans package audit policy commands
+[OK] validate Security plans canary and authorization security tests
+[OK] validate Security plans security artifacts
+[OK] validate PerformanceSmoke -PlanOnly exits successfully
+[OK] validate PerformanceSmoke plans bounded benchmark wrapper
+[OK] validate PerformanceSmoke plans timeout and artifact output
+[OK] reset without confirmation is blocked
+[OK] reset failure mentions confirmation token
+[OK] reset -PlanOnly with confirmation exits successfully
+[OK] reset plan targets the local infra reset script
+[OK] up.ps1 does not copy .env.example to .env
+[OK] up.ps1 documents no .env mutation
+[OK] bootstrap defaults to Release configuration
+[OK] bootstrap blocks execution after build failure
+[OK] bootstrap no longer warns and continues after build failure
+[OK] local prerequisite check does not execute git --version
+[OK] local prerequisite check records Git-safe behavior
+[OK] local prerequisite check does not claim scripts create .env
+[OK] local prerequisite check documents no .env mutation
+[OK] setup orchestrator does not copy .env.example to .env
+[OK] setup orchestrator documents no .env mutation
+[OK] mutation wrapper uses an isolated temporary solution for Smoke profile
+[OK] mutation wrapper names the isolated smoke solution
+[OK] mutation wrapper validates reporter selection
+[OK] mutation wrapper preserves post-remediation blocked classification
+[OK] mutation Smoke profile does not force the full repository solution
+[OK] secret scan supports a no-Git validation mode
+[OK] secret scan still runs canary checks
+[OK] secret scan no-Git mode excludes local .env
+[OK] secret canary scan supports filesystem enumeration without Git
+[OK] secret canary no-Git mode excludes local .env
+[OK] release candidate builder does not execute Git for default version metadata
+[OK] release candidate builder can use CI-provided revision metadata
+[OK] release candidate builder propagates SkipRestore to dotnet publish
+[OK] release candidate builder captures dotnet inventory before writing
+[OK] release candidate builder captures npm inventory before writing
+[OK] release candidate builder writes local SBOM evidence
+[OK] release candidate builder packages bootstrap data inputs
+[OK] release candidate builder checks dependency inventory exit codes
+[OK] functional package smoke expands outside the source tree
+[OK] functional package smoke starts API package with control plane disabled
+[OK] functional package smoke probes Backoffice API health
+[OK] functional package smoke uses an isolated bootstrap database
+[OK] functional package smoke validates idempotent package bootstrap
+[OK] functional package smoke does not invoke Git
+[OK] clean install requires packaged SBOM
+[OK] clean install requires packaged bootstrap data manifest
+[OK] real-data restore validation writes under artifacts/release
+[OK] real-data restore validation checks canonical control tables
+[OK] real-data restore validation cleans temporary restore database
+[OK] real-data restore validation preserves live database scope
+[OK] real-data restore validation does not invoke Git
+[OK] local runtime launcher builds API and Prevention sequentially
+[OK] local runtime launcher uses Release no-restore builds
+[OK] local runtime launcher starts dotnet services without rebuilding
+[OK] local runtime launcher no longer uses concurrent Debug dotnet run builds
+[OK] system capacity workload defines Calibration/B0/B1/B2 profiles
+[OK] system capacity workload writes under artifacts/performance by default
+[OK] system capacity workload writes environment artifact
+[OK] system capacity workload writes workload artifact
+[OK] system capacity workload writes CSV measurements
+[OK] system capacity workload writes JSON measurements
+[OK] system capacity workload writes failure classification artifact
+[OK] system capacity workload writes summary markdown
+[OK] system capacity workload blocks B profiles without calibration evidence
+[OK] system capacity workload waits for persisted run evidence before measuring
+[OK] system capacity workload measures ingestion backlog drain time
+[OK] system capacity workload uses profile-specific observation windows
+[OK] system capacity workload writes empty JSON collections deterministically
+[OK] system capacity workload reports pipeline queue depth separately from auxiliary queues
+[OK] system capacity workload preserves latency limitation
+[OK] system capacity workload does not execute Git
+[OK] benchmark wrapper defines B0/B1/B2 profiles
+[OK] benchmark wrapper supports bounded timeout
+[OK] benchmark wrapper can regenerate summaries without rerunning benchmarks
+[OK] benchmark wrapper writes JSON summary
+[OK] benchmark wrapper writes Markdown summary
+[OK] benchmark wrapper preserves engineering measurement scope
+[OK] benchmark wrapper preserves BenchmarkDotNet standard error
+[OK] benchmark wrapper preserves BenchmarkDotNet standard deviation
+[OK] benchmark wrapper preserves normalized GC metrics
+[OK] benchmark wrapper classifies valid reports as ready
+[OK] benchmark wrapper does not execute Git
+[OK] documentation quality inventory writes under artifacts/validation
+[OK] documentation quality inventory detects encoding artifacts
+[OK] documentation quality inventory detects claim-scope review terms
+[OK] documentation quality inventory classifies document scope
+[OK] documentation quality inventory classifies findings
+[OK] documentation quality inventory detects invalid UTF-8
+[OK] documentation quality inventory supports opt-in canonical mojibake failure
+[OK] documentation quality inventory supports opt-in canonical defect failure
+[OK] documentation quality inventory writes JSON findings
+[OK] documentation quality inventory writes CSV findings
+[OK] documentation quality inventory writes Markdown summary
+[OK] documentation quality inventory writes corrected files summary
+[OK] documentation quality inventory writes remaining review summary
+[OK] documentation quality inventory documents Git-safe behavior
+[OK] documentation quality inventory does not invoke Git
+[OK] telemetry catalog is derived from HostTelemetry
+[OK] telemetry catalog writes JSON output
+[OK] telemetry catalog writes metrics CSV
+[OK] telemetry catalog classifies high-cardinality tags
+[OK] telemetry catalog does not invoke Git
+[OK] OTLP collector smoke pins collector image
+[OK] OTLP collector smoke exports traces to file
+[OK] OTLP collector smoke exports metrics to file
+[OK] OTLP collector smoke configures OTLP endpoint
+[OK] OTLP collector smoke verifies service name
+[OK] OTLP collector smoke does not invoke Git
+[OK] artifact inventory writes under artifacts/validation
+[OK] artifact inventory writes JSON inventory
+[OK] artifact inventory writes CSV inventory
+[OK] artifact inventory writes Markdown summary
+[OK] artifact inventory classifies large outputs without deleting
+[OK] artifact inventory records filename-only secret candidate counts
+[OK] artifact inventory documents Git-safe behavior
+[OK] artifact inventory does not invoke Git
+[OK] engineering workflow runs workspace regression checks
+[OK] engineering workflow exports the test inventory
+[OK] engineering workflow exports coverage gaps
+[OK] engineering workflow uploads validation artifacts
+[OK] .env hash is unchanged
+[OK] .env.example hash is unchanged
+
+Workspace regression checks passed.

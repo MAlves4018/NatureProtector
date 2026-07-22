@@ -150,6 +150,7 @@ function operation(overrides: Partial<EngineeringOperationResponse> = {}): Engin
     artifacts: [],
     approvals: [],
     limitations: [],
+    detail: null,
     ...overrides,
   };
 }

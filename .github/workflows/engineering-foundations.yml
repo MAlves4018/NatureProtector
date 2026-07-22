@@ -207,6 +207,7 @@ jobs:
           path: |
             webUI/coverage/
             webUI/npm-audit.json
+            webUI/test-results/vitest-junit.xml
 
   frontend-node22:
     name: Frontend Node 22 compatibility
@@ -247,3 +248,101 @@ jobs:
           retention-days: 14
           path: |
             webUI/test-results/vitest-junit.xml
+
+  report:
+    name: Report push results to operations API
+    if: github.event_name == 'push' && always()
+    needs: [backend, backend-docker-integration, frontend, frontend-node22]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Generate deterministic operation ID
+        id: op-id
+        shell: bash
+        run: |
+          OP_ID=$(python3 -c "import uuid; print(uuid.uuid5(uuid.NAMESPACE_DNS, 'push-ci-${{ github.sha }}'))")
+          echo "operation-id=$OP_ID" >> $GITHUB_OUTPUT
+
+      - name: Determine consolidated status
+        id: status
+        shell: bash
+        run: |
+          STATUS="Succeeded"
+          if [ "${{ needs.backend.result }}" = "failure" ] || \
+             [ "${{ needs.backend-docker-integration.result }}" = "failure" ] || \
+             [ "${{ needs.frontend.result }}" = "failure" ] || \
+             [ "${{ needs.frontend-node22.result }}" = "failure" ]; then
+            STATUS="Failed"
+          fi
+          if [ "${{ needs.backend.result }}" = "cancelled" ] || \
+             [ "${{ needs.backend-docker-integration.result }}" = "cancelled" ] || \
+             [ "${{ needs.frontend.result }}" = "cancelled" ] || \
+             [ "${{ needs.frontend-node22.result }}" = "cancelled" ]; then
+            STATUS="Cancelled"
+          fi
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+      - name: Download all test artifacts
+        uses: actions/download-artifact@95815c38cf0ffb484c70ad26a4a34a4fc1175f64 # v4
+        with:
+          path: artifacts/all
+
+      - name: Consolidate test results
+        id: consolidate
+        shell: bash
+        run: |
+          python3 scripts/operations/consolidate-test-results.py \
+            --artifact-root artifacts/all \
+            --output artifacts/consolidated.json
+          python3 -c "
+            import json
+
+            with open('artifacts/consolidated.json') as f:
+                counts = json.load(f)
+
+            job_status_map = {
+                'backend-test-artifacts': '${{ needs.backend.result }}',
+                'backend-docker-integration-artifacts': '${{ needs.backend-docker-integration.result }}',
+                'frontend-test-artifacts': '${{ needs.frontend.result }}',
+                'frontend-node22-test-artifacts': '${{ needs.frontend-node22.result }}',
+            }
+
+            summary = {
+                'push': '${{ github.ref_name }}',
+                'sha': '${{ github.sha }}',
+                'jobs': {},
+            }
+
+            for name, v in sorted(counts.items()):
+                summary['jobs'][name] = {
+                    'status': job_status_map.get(name, 'unknown'),
+                    'passed': v['passed'],
+                    'failed': v['failed'],
+                    'skipped': v['skipped'],
+                    'tests': v['tests'],
+                }
+
+            with open('artifacts/detail.json', 'w') as f:
+                json.dump(summary, f)
+
+            print('Saved detail to artifacts/detail.json')
+          "
+
+      - name: Report to operations API
+        shell: bash
+        env:
+          NP_OPERATIONS_CALLBACK_URL: ${{ vars.OPERATIONS_CALLBACK_URL }}
+          NP_OPERATIONS_CALLBACK_SECRET: ${{ secrets.OPERATIONS_CALLBACK_SECRET }}
+        run: |
+          python3 scripts/operations/report-operation-callback.py \
+            --operation-id "${{ steps.op-id.outputs.operation-id }}" \
+            --status "${{ steps.status.outputs.status }}" \
+            --provider-reference "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --detail "$(cat artifacts/detail.json)" \
+            --artifact-root artifacts/all \
+            --artifact-name "push-ci-evidence" \
+            --artifact-kind "test-results" \
+            --artifact-reference "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

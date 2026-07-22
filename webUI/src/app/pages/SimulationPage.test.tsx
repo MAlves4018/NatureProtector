@@ -79,6 +79,10 @@ vi.mock('../state/LocaleContext', () => ({
   }),
 }));
 
+vi.mock('../state/AreaContext', () => ({
+  useUiArea: () => ({ resolvedAreaCode: 'PT-11' }),
+}));
+
 vi.mock('../state/ActivityContext', () => ({
   useUiActivity: () => activityState,
 }));
@@ -149,9 +153,6 @@ describe('SimulationPage', () => {
     fireEvent.click(screen.getByLabelText('Esperar conclusão'));
     updater = setSimulationFormMock.mock.calls.at(-1)?.[0] as (form: any) => any;
     expect(updater(simulationState.simulationForm).waitForCompletion).toBe(false);
-    fireEvent.change(screen.getByLabelText('Timeout'), { target: { value: '120' } });
-    updater = setSimulationFormMock.mock.calls.at(-1)?.[0] as (form: any) => any;
-    expect(updater(simulationState.simulationForm).waitTimeoutSeconds).toBe(120);
     fireEvent.click(screen.getByLabelText('Recolher evidence'));
     updater = setSimulationFormMock.mock.calls.at(-1)?.[0] as (form: any) => any;
     expect(updater(simulationState.simulationForm).collectEvidence).toBe(true);
@@ -204,8 +205,6 @@ describe('SimulationPage', () => {
 
     expect(screen.getByText(/não está disponível neste build/i)).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Tente novamente em 12s');
-    fireEvent.click(screen.getByRole('button', { name: /Execução/i }));
-    expect(screen.getByText('Execução assíncrona.')).toBeInTheDocument();
   });
 });
 

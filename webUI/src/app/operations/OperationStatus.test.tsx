@@ -43,6 +43,7 @@ function operation(overrides: Partial<EngineeringOperationResponse> = {}): Engin
     ],
     approvals: [],
     limitations: [],
+    detail: null,
     ...overrides,
   };
 }

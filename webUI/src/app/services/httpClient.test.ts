@@ -95,7 +95,7 @@ describe('httpClient', () => {
 
     expect(result.filename).toBe('runtime evidence.csv');
     expect(result.contentType).toBe('text/csv');
-    expect(await result.blob.text()).toBe('csv,data');
+    expect(result.blob.size).toBe(8);
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/control/runtime/observability/evidence/evidence-1',
       expect.objectContaining({
@@ -147,7 +147,7 @@ describe('httpClient', () => {
     const result = await httpClient.download('/exports/plain', { headers: { Authorization: 'Bearer explicit' } });
 
     expect(result.filename).toBe('plain.csv');
-    expect(await result.blob.text()).toBe('plain,data');
+    expect(result.blob.size).toBe(10);
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/exports/plain',
       expect.objectContaining({

@@ -1,0 +1,28 @@
+
+> webui@0.0.0 lint
+> biome lint --diagnostic-level=error .
+
+vite.config.ts:10:16 lint/correctness/noUnusedImports  FIXABLE  ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ├ù Several of these imports are unused.
+  
+     8 Ôöé import { execFile } from 'node:child_process';
+     9 Ôöé import { existsSync, readFileSync } from 'node:fs';
+  > 10 Ôöé import { join, dirname } from 'node:path';
+       Ôöé                ^^^^^^^
+    11 Ôöé 
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    10 Ôöé import┬À{┬Àjoin,┬Àdirname┬À}┬Àfrom┬À'node:path';
+       Ôöé                --------                   
+
+Checked 11 files in 68ms. No fixes applied.
+Found 1 error.
+lint ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ├ù Some errors were emitted while running checks.
+  
+

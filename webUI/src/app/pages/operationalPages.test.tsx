@@ -92,6 +92,10 @@ vi.mock('../state/RiskContext', () => ({
   }),
 }));
 
+vi.mock('../state/AreaContext', () => ({
+  useUiArea: () => ({ resolvedAreaCode: 'PT-11' }),
+}));
+
 vi.mock('../state/ActivityContext', () => ({
   useUiActivity: () => ({
     runContext: {
@@ -301,6 +305,8 @@ describe('operational pages', () => {
     expect(screen.getByRole('heading', { name: 'Qualidade' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'launch:quality-smoke' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'launch:deploy-staging' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Histórico/i }));
     expect(screen.getByRole('article', { name: 'quality-op-1' })).toHaveTextContent(
       'status:Quality smoke:Completed:full',
     );
@@ -369,9 +375,13 @@ describe('operational pages', () => {
     expect(screen.getByText('Mission Control')).toBeInTheDocument();
     expect(screen.getAllByText('Quality').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Evidence').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('tab', { name: /Readiness/i }));
     expect(screen.getByText('np-staging · declared; não equivale a deployment observado.')).toBeInTheDocument();
     expect(screen.getByText('requires owner approval')).toBeInTheDocument();
     expect(screen.getByText('1 PENDING')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Operações/i }));
     expect(screen.getByRole('article', { name: 'evidence-op-1' })).toHaveTextContent(
       'status:Evidence campaign:Completed:compact',
     );

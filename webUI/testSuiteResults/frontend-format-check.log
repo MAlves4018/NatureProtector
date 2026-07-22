@@ -1,0 +1,5 @@
+
+> webui@0.0.0 format:check
+> biome format --diagnostic-level=error biome.jsonc package.json tsconfig.json
+
+Checked 3 files in 9ms. No fixes applied.
