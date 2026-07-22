@@ -31,6 +31,72 @@ public sealed class RabbitMqManagementHttpClientTests : IDisposable
     }
 
     [Fact]
+    public void BuildQueuesUri_falls_back_to_amqp_host_when_management_host_is_absent()
+    {
+        var uri = RabbitMqManagementHttpClient.BuildQueuesUri(new RabbitMqOptions
+        {
+            HostName = "amqp.internal",
+            ManagementScheme = "http",
+            ManagementHost = " ",
+            ManagementPort = 15672
+        });
+
+        Assert.Equal(new Uri("http://amqp.internal:15672/api/queues"), uri);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("amqp")]
+    [InlineData("ftp")]
+    public void BuildQueuesUri_rejects_unvalidated_management_schemes(string? scheme)
+    {
+        var options = new RabbitMqOptions
+        {
+            ManagementScheme = scheme!,
+            HostName = "amqp.internal",
+            ManagementPort = 15672
+        };
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => RabbitMqManagementHttpClient.BuildQueuesUri(options));
+        Assert.Contains("ManagementScheme", exception.Message);
+    }
+
+    [Fact]
+    public void BuildQueuesUri_rejects_null_options()
+    {
+        Assert.Throws<ArgumentNullException>(() => RabbitMqManagementHttpClient.BuildQueuesUri(null!));
+    }
+
+    [Fact]
+    public void CreatePrimaryHandler_uses_default_validation_for_plain_http_even_when_ca_is_configured()
+    {
+        using var certificates = CertificateBundle.Create("localhost");
+        var caPath = WriteCertificate("ignored-http-root.pem", certificates.Root);
+        var options = new RabbitMqOptions
+        {
+            ManagementScheme = "http",
+            ManagementCertificateAuthorityPath = caPath,
+            ManagementCheckCertificateRevocation = true
+        };
+
+        using var handler = Assert.IsType<HttpClientHandler>(
+            RabbitMqManagementHttpClient.CreatePrimaryHandler(options));
+
+        Assert.False(handler.AllowAutoRedirect);
+        Assert.False(handler.UseCookies);
+        Assert.True(handler.CheckCertificateRevocationList);
+        Assert.Null(handler.ServerCertificateCustomValidationCallback);
+    }
+
+    [Fact]
+    public void CreatePrimaryHandler_rejects_null_options()
+    {
+        Assert.Throws<ArgumentNullException>(() => RabbitMqManagementHttpClient.CreatePrimaryHandler(null!));
+    }
+
+    [Fact]
     public async Task Dedicated_handler_accepts_private_ca_and_matching_hostname()
     {
         using var certificates = CertificateBundle.Create("localhost");

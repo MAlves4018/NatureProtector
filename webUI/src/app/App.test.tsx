@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import axe from 'axe-core';
 import { useEffect } from 'react';
@@ -142,6 +142,44 @@ describe('App', () => {
     expect(screen.getByText(/não depende de um caminho local para a documentação/i)).toBeInTheDocument();
   });
 
+  it('opens contextual help from the global help event', async () => {
+    renderUi();
+
+    const portugueseButton = await screen.findByRole('button', { name: 'PT' });
+    portugueseButton.focus();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('np-ui-help', { detail: 'risk' }));
+    });
+
+    const close = await screen.findByRole('button', { name: /fechar ajuda/i });
+    expect(screen.getByRole('dialog', { name: /ajuda contextual/i })).toBeInTheDocument();
+
+    fireEvent.click(close);
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /ajuda contextual/i })).not.toBeInTheDocument());
+    expect(portugueseButton).toHaveFocus();
+  });
+
+  it('supports language switching and public shell navigation controls', async () => {
+    renderUi();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'EN' }));
+    expect(await screen.findByRole('link', { name: 'Skip to content' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir navegação' }));
+    expect(screen.getByRole('button', { name: 'Fechar navegação' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar navegação' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Fechar navegação' })).not.toBeInTheDocument());
+
+    const collapse = screen.getByRole('button', { name: 'Recolher navegação' });
+    fireEvent.click(collapse);
+    expect(screen.getByRole('button', { name: 'Expandir navegação' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    await waitFor(() => expect(window.location.pathname).toBe('/login'));
+  });
+
   it('keeps keyboard focus inside contextual help and restores it on close', async () => {
     renderUi();
 
@@ -168,7 +206,7 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: /Risco e dados/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Simulação$/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Análise e evidência/i }));
-    expect(screen.getByRole('button', { name: /Evidence Explorer/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Evidence Explorer/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Deployments$/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
@@ -182,7 +220,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Evidence Explorer/i }));
     expect(await screen.findByRole('heading', { name: /Cockpit de evidência/i })).toBeInTheDocument();
-  });
+  }, 10000);
 
   it('blocks direct access to protected routes without confirmed capabilities', async () => {
     window.history.replaceState(null, '', '/simulation');

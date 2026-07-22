@@ -25,9 +25,34 @@ public sealed class ReadingTemporalClassifierTests
 
         var result = Assert.Single(ReadingTemporalClassifier.Classify(reading, TimeSpan.FromSeconds(60)));
 
+        Assert.Equal(ReadingTemporalClassifier.ClassifierName, result.ClassifierName);
+        Assert.Equal(ReadingTemporalClassifier.RuleSetVersion, result.RuleSetVersion);
+        Assert.Equal(ClassifierStatus.Warning, result.Status);
+        Assert.Equal(ClassifierAction.MarkPartial, result.Action);
+        Assert.Equal(ClassifierSeverity.High, result.Severity);
         Assert.Contains("Delayed", result.QualityFlags);
         Assert.Contains("Stale", result.QualityFlags);
         Assert.Contains("stale_threshold_exceeded", result.Reasons);
+    }
+
+    [Fact]
+    public void Classify_AssignsMediumWarningSeverity_ForDuplicateOnlyReadings()
+    {
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(
+            eventTime,
+            eventTime.AddSeconds(5),
+            SensorOperationalState.Retransmitted);
+
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(reading, TimeSpan.FromSeconds(60)));
+
+        Assert.Equal(ReadingTemporalClassifier.ClassifierName, result.ClassifierName);
+        Assert.Equal(ReadingTemporalClassifier.RuleSetVersion, result.RuleSetVersion);
+        Assert.Equal(ClassifierStatus.Warning, result.Status);
+        Assert.Equal(ClassifierAction.MarkPartial, result.Action);
+        Assert.Equal(ClassifierSeverity.Medium, result.Severity);
+        Assert.Equal(["Duplicate"], result.QualityFlags);
+        Assert.Equal(["operational_state_retransmitted"], result.Reasons);
     }
 
     [Fact]
@@ -46,6 +71,39 @@ public sealed class ReadingTemporalClassifierTests
     }
 
     [Fact]
+    public void Classify_AllowsEarlierEventExactlyAtReorderWindow()
+    {
+        var interval = TimeSpan.FromSeconds(60);
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(eventTime, eventTime.AddSeconds(5));
+
+        var result = ReadingTemporalClassifier.Classify(
+            reading,
+            interval,
+            latestObservedEventTime: eventTime.Add(ReadingTemporalClassifier.ResolveReorderWindow(interval)));
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void Classify_FlagsOutOfOrderJustBeyondReorderWindow()
+    {
+        var interval = TimeSpan.FromSeconds(60);
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(eventTime, eventTime.AddSeconds(5));
+
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(
+            reading,
+            interval,
+            latestObservedEventTime: eventTime
+                .Add(ReadingTemporalClassifier.ResolveReorderWindow(interval))
+                .AddTicks(1)));
+
+        Assert.Contains("OutOfOrder", result.QualityFlags);
+        Assert.Contains("event_time_before_latest_observed_outside_reorder_window", result.Reasons);
+    }
+
+    [Fact]
     public void Classify_AllowsEarlierEventInsideReorderWindow()
     {
         var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
@@ -57,6 +115,69 @@ public sealed class ReadingTemporalClassifierTests
             latestObservedEventTime: eventTime.AddMinutes(2));
 
         Assert.Empty(result);
+    }
+
+    [Fact]
+    public void Classify_DoesNotFlagDelayedAtExactLatenessThreshold()
+    {
+        var interval = TimeSpan.FromSeconds(60);
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(
+            eventTime,
+            eventTime.Add(ReadingTemporalClassifier.ResolveLatenessThreshold(interval)));
+
+        var result = ReadingTemporalClassifier.Classify(reading, interval);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void Classify_FlagsDelayedJustBeyondLatenessThreshold()
+    {
+        var interval = TimeSpan.FromSeconds(60);
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(
+            eventTime,
+            eventTime.Add(ReadingTemporalClassifier.ResolveLatenessThreshold(interval)).AddTicks(1));
+
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(reading, interval));
+
+        Assert.Contains("Delayed", result.QualityFlags);
+        Assert.Contains("lateness_threshold_exceeded", result.Reasons);
+        Assert.DoesNotContain("Stale", result.QualityFlags);
+    }
+
+    [Fact]
+    public void Classify_AtExactStaleThresholdIsDelayedButNotStale()
+    {
+        var interval = TimeSpan.FromSeconds(60);
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(
+            eventTime,
+            eventTime.Add(ReadingTemporalClassifier.ResolveStaleThreshold(interval)));
+
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(reading, interval));
+
+        Assert.Contains("Delayed", result.QualityFlags);
+        Assert.Contains("lateness_threshold_exceeded", result.Reasons);
+        Assert.DoesNotContain("Stale", result.QualityFlags);
+        Assert.DoesNotContain("stale_threshold_exceeded", result.Reasons);
+    }
+
+    [Fact]
+    public void Classify_FlagsStaleJustBeyondStaleThreshold()
+    {
+        var interval = TimeSpan.FromSeconds(60);
+        var eventTime = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero);
+        var reading = CreateReading(
+            eventTime,
+            eventTime.Add(ReadingTemporalClassifier.ResolveStaleThreshold(interval)).AddTicks(1));
+
+        var result = Assert.Single(ReadingTemporalClassifier.Classify(reading, interval));
+
+        Assert.Contains("Delayed", result.QualityFlags);
+        Assert.Contains("Stale", result.QualityFlags);
+        Assert.Contains("stale_threshold_exceeded", result.Reasons);
     }
 
     [Fact]

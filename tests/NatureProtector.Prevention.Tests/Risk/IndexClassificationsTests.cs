@@ -218,6 +218,56 @@ public sealed class IndexClassificationsTests
         Assert.Contains("does_not_use_official_icnf_rural_hazard", highProxy.Limitations);
     }
 
+    [Theory]
+    [InlineData(4.0, 0.1, "Low", "Baixo")]
+    [InlineData(17.2, 0.5, "Moderate", "Moderado")]
+    [InlineData(17.2, 0.6, "VeryHigh", "Muito elevado")]
+    [InlineData(24.6, 0.7, "VeryHigh", "Muito elevado")]
+    [InlineData(38.3, 0.7, "Extreme", "Extremo")]
+    [InlineData(50.1, 0.6, "Extreme", "Extremo")]
+    [InlineData(64.0, 0.6, "Extreme", "Extremo")]
+    public void PortugueseContextProxy_CoversCandidateCombinationMatrix(
+        double rawFwi,
+        double territoryComponent,
+        string expectedProxyClass,
+        string expectedLabel)
+    {
+        var fwi = FireWeatherIndexClassification.From(
+            rawFwi,
+            CanadianFireWeatherIndexCalculator.NormalizeFireWeatherIndex(rawFwi),
+            FireWeatherIndexCalculationStatus.Complete);
+
+        var proxy = PortugueseContextRiskProxy.From(fwi, territoryComponent);
+
+        Assert.Equal("Complete", proxy.Status);
+        Assert.Equal(expectedProxyClass, proxy.ProxyClass);
+        Assert.Equal(expectedLabel, proxy.ProxyClassLabel);
+        Assert.Equal(CandidateParameterSetV1.Version, proxy.MatrixVersion);
+        Assert.Equal("candidate_portuguese_context_proxy", proxy.Provenance);
+    }
+
+    [Fact]
+    public void PortugueseContextProxy_UnknownFwiClass_ReturnsPartialWithoutOverclaiming()
+    {
+        var fwi = new FireWeatherIndexClassification(
+            RawValue: 12.0,
+            NormalizedValue: 0.15,
+            Status: "Complete",
+            IpmaClass: "UnknownExternalClass",
+            IpmaClassLabel: "Unknown",
+            EffisClass: null,
+            ThresholdDistanceToNextClass: null,
+            NextIpmaClass: null,
+            Limitations: []);
+
+        var proxy = PortugueseContextRiskProxy.From(fwi, 0.4);
+
+        Assert.Equal("Complete", proxy.Status);
+        Assert.Equal("Partial", proxy.ProxyClass);
+        Assert.Equal("Partial", proxy.ProxyClassLabel);
+        Assert.Contains("not_official_rcm", proxy.Limitations);
+    }
+
     [Fact]
     public void PortugueseContextProxy_MissingTerritory_ReturnsExplicitMissing()
     {

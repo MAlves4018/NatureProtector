@@ -157,7 +157,7 @@ internal sealed class TemporaryInfluxDatabase : IAsyncDisposable
     {
         return Environment.GetEnvironmentVariable("NP_TEST_INFLUXDB_CONTAINER") is { Length: > 0 } configured
             ? configured
-            : "np-influxdb";
+            : "np-influxdb-it";
     }
 
     private static async Task<ProcessResult> RunInfluxDb3Async(

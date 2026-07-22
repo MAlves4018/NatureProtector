@@ -37,13 +37,24 @@ public sealed class RiskInputTests
         Assert.Equal(RiskEligibilityReason.Eligible, input.EligibilityReason);
         var source = Assert.Single(input.SourceReadings);
         Assert.Equal(reading.EventId, source.EventId);
+        Assert.Equal(reading.SensorId, source.SensorId);
+        Assert.Equal(reading.MetricType, source.MetricType);
         Assert.Equal(reading.Value, source.Value);
+        Assert.Equal(reading.Unit, source.Unit);
+        Assert.Equal(reading.EventTime, source.EventTime);
         Assert.Equal(33.4, input.Metrics.TemperatureCelsius);
         Assert.Null(input.Metrics.RelativeHumidityPercent);
         Assert.Equal(input.EventTime, input.ValidFrom);
         Assert.Equal(input.EventTime, input.ValidTo);
         Assert.Empty(input.QualityFlags);
         Assert.Empty(input.ClassifierResults);
+    }
+
+    [Fact]
+    public void SourceReading_FromNormalizedReading_RejectsNullReading()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            RiskInputSourceReading.FromNormalizedReading(null!));
     }
 
     [Fact]
