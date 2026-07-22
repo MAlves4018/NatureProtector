@@ -32,7 +32,6 @@ export type UiCapability =
   | 'limitations.read'
   | 'admin.read'
   | 'admin.execute'
-  | 'p3.read'
   | 'data_context.read'
   | 'help.read';
 
@@ -54,7 +53,6 @@ export type UiNavTarget =
   | 'approvals'
   | 'users'
   | 'admin'
-  | 'p3'
   | 'context'
   | 'deployment-health'
   | 'queries'
@@ -83,14 +81,13 @@ export interface UiNavigationItem {
     | 'nav.approvals'
     | 'nav.users'
     | 'nav.admin'
-    | 'nav.p3'
     | 'nav.context'
     | 'nav.scenario-compare'
     | 'nav.about';
   requiredCapability: UiCapability;
 }
 
-export const UI_V3_COMMON_AUTH_CAPABILITIES: readonly UiCapability[] = [
+export const COMMON_AUTH_CAPABILITIES: readonly UiCapability[] = [
   'demo.read',
   'area.read',
   'risk.read',
@@ -99,7 +96,7 @@ export const UI_V3_COMMON_AUTH_CAPABILITIES: readonly UiCapability[] = [
   'help.read',
 ];
 
-export const UI_V3_PUBLIC_CAPABILITIES: readonly UiCapability[] = [
+export const PUBLIC_CAPABILITIES: readonly UiCapability[] = [
   'demo.read',
   'area.read',
   'data_context.read',
@@ -116,7 +113,7 @@ const READ_ENGINEERING: readonly UiCapability[] = [
 export function getUiCapabilities(user: Pick<User, 'roles'> | null | undefined): Set<UiCapability> {
   const roles = user?.roles ?? [];
   if (roles.length === 0) {
-    return new Set(UI_V3_PUBLIC_CAPABILITIES);
+    return new Set(PUBLIC_CAPABILITIES);
   }
 
   const recognizedRoles = new Set(['Pipeline', 'Sim', 'QA', 'Operations', 'ReleaseApprover', 'Admin']);
@@ -124,7 +121,7 @@ export function getUiCapabilities(user: Pick<User, 'roles'> | null | undefined):
     return new Set(['demo.read', 'help.read']);
   }
 
-  const capabilities = new Set<UiCapability>(UI_V3_COMMON_AUTH_CAPABILITIES);
+  const capabilities = new Set<UiCapability>(COMMON_AUTH_CAPABILITIES);
   const add = (items: readonly UiCapability[]) => {
     for (const item of items) {
       capabilities.add(item);
@@ -197,7 +194,6 @@ export function getUiCapabilities(user: Pick<User, 'roles'> | null | undefined):
       'roles.manage',
       'admin.read',
       'admin.execute',
-      'p3.read',
     ]);
   }
 

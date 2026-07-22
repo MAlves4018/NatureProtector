@@ -118,15 +118,6 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     'Os caminhos internos ficam nos detalhes técnicos.',
     'Internal paths stay in technical details.',
   ),
-  topic(
-    'p3',
-    'P3 experimental',
-    'Experimental P3',
-    'Contexto experimental separado do runtime principal.',
-    'Experimental context separated from the main runtime.',
-    'Não integrado em scoring, alertas, schema ou runtime.',
-    'Not integrated into scoring, alerts, schema or runtime.',
-  ),
 ];
 
 function topic(

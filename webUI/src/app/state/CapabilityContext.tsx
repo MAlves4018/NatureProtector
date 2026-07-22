@@ -4,7 +4,7 @@ import { useToken } from '../context/TokenContext';
 import {
   getUiCapabilities,
   hasUiCapability,
-  UI_V3_PUBLIC_CAPABILITIES,
+  PUBLIC_CAPABILITIES,
   type UiCapability,
   type UiNavTarget,
 } from '../capabilities';
@@ -28,12 +28,11 @@ interface UiCapabilityContextValue {
   canExecuteSimulation: boolean;
   canReadPipeline: boolean;
   canReadEvidence: boolean;
-  canReadProtectedP3: boolean;
   canExecuteFullQa: boolean;
 }
 
 const UiCapabilityContext = createContext<UiCapabilityContextValue | null>(null);
-const FAIL_CLOSED_CAPABILITIES = new Set<UiCapability>(UI_V3_PUBLIC_CAPABILITIES);
+const FAIL_CLOSED_CAPABILITIES = new Set<UiCapability>(PUBLIC_CAPABILITIES);
 
 export function UiCapabilityProvider({ children, isDark = false }: { children: ReactNode; isDark?: boolean }) {
   const { user } = useToken();
@@ -62,7 +61,6 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
   const canExecuteSimulation = hasUiCapability(capabilities, 'simulation.execute');
   const canReadPipeline = hasUiCapability(capabilities, 'pipeline.read');
   const canReadEvidence = hasUiCapability(capabilities, 'evidence.read');
-  const canReadProtectedP3 = hasUiCapability(capabilities, 'p3.read');
   const canExecuteFullQa = hasUiCapability(capabilities, 'quality.execute.full');
 
   const capabilityFlags = useMemo(
@@ -74,7 +72,6 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
       canExecuteSimulation,
       canReadPipeline,
       canReadEvidence,
-      canReadProtectedP3,
       canExecuteFullQa,
     }),
     [
@@ -85,7 +82,6 @@ export function UiCapabilityProvider({ children, isDark = false }: { children: R
       canExecuteSimulation,
       canReadPipeline,
       canReadEvidence,
-      canReadProtectedP3,
       canExecuteFullQa,
     ],
   );

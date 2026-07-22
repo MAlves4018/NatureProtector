@@ -16,7 +16,6 @@ describe('capabilities', () => {
     expect(capabilities.has('scenario.read')).toBe(false);
     expect(capabilities.has('qa.read')).toBe(false);
     expect(capabilities.has('evidence.read')).toBe(false);
-    expect(capabilities.has('p3.read')).toBe(false);
     expect(capabilities.has('simulation.execute')).toBe(false);
     expect(capabilities.has('admin.read')).toBe(false);
   });
@@ -50,7 +49,6 @@ describe('capabilities', () => {
     expect(sim.has('admin.execute')).toBe(false);
     expect(pipeline.has('admin.read')).toBe(false);
     expect(pipeline.has('pipeline.read')).toBe(true);
-    expect(pipeline.has('p3.read')).toBe(false);
     expect(sim.has('pipeline.read')).toBe(false);
     expect(sim.has('scenario.read')).toBe(true);
   });

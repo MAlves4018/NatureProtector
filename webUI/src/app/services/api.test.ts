@@ -364,33 +364,6 @@ describe('api client', () => {
       'POST',
       { scope: 'runtime', confirm: 'CONFIRM', dryRun: true },
     ],
-    [
-      'getControlledValidationP3Availability',
-      () => api.getControlledValidationP3Availability(),
-      '/api/dev/controlled-validation/p3',
-      'GET',
-      undefined,
-    ],
-    [
-      'startControlledValidationP3',
-      () =>
-        api.startControlledValidationP3({
-          runLabel: 'p3-smoke',
-          waitForCompletion: false,
-          collectEvidence: false,
-          runAuditAfterCompletion: false,
-          timeoutSeconds: 300,
-        }),
-      '/api/dev/controlled-validation/p3/run',
-      'POST',
-      {
-        runLabel: 'p3-smoke',
-        waitForCompletion: false,
-        collectEvidence: false,
-        runAuditAfterCompletion: false,
-        timeoutSeconds: 300,
-      },
-    ],
     ['getAlerts', () => api.getAlerts('area/1'), '/api/control/areas/area%2F1/alerts/active', 'GET', undefined],
   ])('requests %s through the documented API route', async (_, call, expectedUrl, expectedMethod, expectedBody) => {
     const fetchMock = vi.fn().mockResolvedValue(

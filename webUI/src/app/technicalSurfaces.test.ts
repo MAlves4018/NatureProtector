@@ -3,7 +3,6 @@ import { createUiRuntimeSummaryFixture } from './fixtures';
 import {
   buildUiAdminActions,
   buildUiEvidenceItems,
-  buildUiP3Surface,
   buildUiPipelineSurface,
   buildUiQaSuites,
   buildUiReadinessItems,
@@ -284,35 +283,6 @@ describe('technical surfaces', () => {
     expect(suites.find((suite) => suite.suiteId === 'm05-final-gates')?.status).toBe(
       'Passed with dependency findings recorded',
     );
-  });
-
-  it('keeps P3 experimental and not integrated when availability was not queried', () => {
-    const p3 = buildUiP3Surface(null, null, 'en');
-
-    expect(p3.status).toContain('Experimental');
-    expect(p3.integrationStatus).toContain('Not integrated');
-    expect(p3.fields.find((field) => field.label === 'Runtime availability')?.state).toBe('not-confirmed');
-  });
-
-  it('reports P3 availability and query errors distinctly', () => {
-    const available = buildUiP3Surface(
-      {
-        phase: 'P3NegativePipeline',
-        available: false,
-        environment: 'Production',
-        message: 'Evidence mode disabled',
-        messageCount: 12,
-        executableCases: 0,
-        blockedCases: 12,
-      },
-      null,
-      'en',
-    );
-    const errored = buildUiP3Surface(null, new Error('403 Forbidden'), 'en');
-
-    expect(available.readiness).toContain('Not available in Production');
-    expect(available.fields.find((field) => field.label === 'Runtime availability')?.state).toBe('blocked');
-    expect(errored.readiness).toBe('Not confirmed: 403 Forbidden');
   });
 
   it('exposes the guarded runtime reset only to an authorized runtime writer', () => {

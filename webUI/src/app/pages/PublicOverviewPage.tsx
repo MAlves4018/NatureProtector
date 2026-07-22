@@ -39,7 +39,7 @@ export function PublicOverviewPage() {
       </div>
       <PageHeader
         title="Leitura pública"
-        subtitle="A página pública apresenta o produto, os limites e o estado dos dados sem expor superfícies internas de pipeline, QA, simulação ou P3."
+        subtitle="A página pública apresenta o produto, os limites e o estado dos dados sem expor superfícies internas de pipeline, QA ou simulação."
         helpTopic="overview"
       />
       <div className="ui-grid">

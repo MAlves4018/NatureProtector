@@ -212,7 +212,6 @@ async function installApiFixture(
       'limitations.read',
       'admin.read',
       'admin.execute',
-      'p3.read',
       'data_context.read',
       'help.read',
     ];

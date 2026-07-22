@@ -1,5 +1,4 @@
 import type {
-  ControlledValidationP3AvailabilityResponse,
   RabbitMqMetricsResponse,
   RabbitMqQueueMetricResponse,
   RuntimeEvidenceCatalogResponse,
@@ -84,19 +83,6 @@ export interface UiAdminAction {
   confirmationRequired: string;
   auditAvailable: string;
   availability: UiTechnicalState;
-  limitations: string[];
-}
-
-export interface UiP3Surface {
-  objective: string;
-  status: string;
-  integrationStatus: string;
-  expectedInputs: string;
-  expectedOutputs: string;
-  existingEvidence: string;
-  readiness: string;
-  nextGate: string;
-  fields: UiTechnicalField[];
   limitations: string[];
 }
 
@@ -609,21 +595,6 @@ export function buildUiEvidenceItems(
       reference: 'src/NatureProtector.Backoffice.Api/Controllers/ControlRuntimeController.cs',
       limitations: ['Timing summary exposes selected persisted stages only.'],
     },
-    {
-      evidenceId: 'p3-experimental-context',
-      title: 'P3 controlled-validation context',
-      type: 'Experimental documentation/API context',
-      source: 'Dev controlled-validation controller and P3 evidence docs',
-      createdAt: '2026-06-14',
-      executedAt: null,
-      environment: 'Development/Evidence only when authorized',
-      scope: 'P3 negative-pipeline controlled-validation candidate',
-      supportsClaims: ['P3 is defined as a separate experimental context.'],
-      doesNotSupportClaims: ['P3 integrated into scoring', 'P3 runtime executed by M05', 'P3 externally validated'],
-      availability: 'partial',
-      reference: 'src/NatureProtector.Backoffice.Api/Controllers/DevControlledValidationController.cs',
-      limitations: ['M05 does not execute or integrate P3.'],
-    },
   ];
 }
 
@@ -667,16 +638,6 @@ export function buildUiAdminActions(user: Pick<User, 'roles'> | null | undefined
       limitations: ['M05 displays diagnostic source availability but does not add a diagnostic execution UI.'],
     },
     {
-      capability: 'p3.run',
-      action: 'Start P3 controlled validation',
-      riskLevel: 'Medium',
-      authorizationState: 'Backend requires Sim/Admin and Development/Evidence environment',
-      confirmationRequired: 'P3 run request contract exists; M05 does not expose execution',
-      auditAvailable: 'Evidence/query pack paths when backend run is executed outside M05',
-      availability: 'blocked',
-      limitations: ['P3 remains experimental and not integrated.'],
-    },
-    {
       capability: 'admin.read',
       action: 'User/role administration',
       riskLevel: 'High',
@@ -687,75 +648,6 @@ export function buildUiAdminActions(user: Pick<User, 'roles'> | null | undefined
       limitations: ['M05 does not redesign auth, roles, or user management.'],
     },
   ];
-}
-
-export function buildUiP3Surface(
-  availability: ControlledValidationP3AvailabilityResponse | null,
-  availabilityError: Error | null,
-  locale: UiLocale,
-): UiP3Surface {
-  const counts = availability
-    ? `${availability.messageCount} messages, ${availability.executableCases} executable cases, ${availability.blockedCases} blocked cases`
-    : notConfirmed(locale);
-  const readiness = availability
-    ? `${availability.available ? 'Available' : 'Not available'} in ${availability.environment}: ${availability.message}`
-    : availabilityError
-      ? `Not confirmed: ${availabilityError.message}`
-      : 'Not confirmed for this profile/session';
-
-  return {
-    objective: 'Controlled validation P3 negative-pipeline candidate context.',
-    status: 'Experimental / not externally validated',
-    integrationStatus: 'Not integrated into scoring, alert semantics, or the main simulator runtime by M05.',
-    expectedInputs: counts,
-    expectedOutputs: 'Evidence path, query pack path and run audit requirement when executed outside M05.',
-    existingEvidence: 'P3 controller/tests and controlled-validation evidence references in repository documentation.',
-    readiness,
-    nextGate: 'Dedicated evidence review before any integration decision.',
-    fields: [
-      field(
-        'Phase',
-        availability?.phase ?? 'P3NegativePipeline',
-        availability ? 'ready' : 'partial',
-        'DevControlledValidationController',
-        notAvailable(locale),
-        'P3 availability contract',
-        '',
-      ),
-      field(
-        'Runtime availability',
-        availability?.available == null ? null : String(availability.available),
-        availability ? (availability.available ? 'partial' : 'blocked') : 'not-confirmed',
-        'GET /api/dev/controlled-validation/p3',
-        notAvailable(locale),
-        'Authorized Sim/Admin profiles only',
-        availability ? availability.message : 'Endpoint is backend-protected and was not queried for this profile.',
-      ),
-      field(
-        'Integration status',
-        'Not integrated',
-        'blocked',
-        'M05 scope guardrail',
-        '2026-06-14',
-        'Main runtime/scoring/alerts',
-        'No P3 runtime/scoring integration was added.',
-      ),
-      field(
-        'Validation status',
-        'Not externally validated',
-        'no-evidence',
-        'Project stance',
-        '2026-06-14',
-        'Scientific/operational validation',
-        'P3 remains candidate evidence only.',
-      ),
-    ],
-    limitations: [
-      'M05 does not start P3 controlled validation.',
-      'M05 does not integrate P3 into scoring, alert semantics, RabbitMQ events, schema, or simulator runtime.',
-      'Availability endpoint is backend-protected and environment-gated.',
-    ],
-  };
 }
 
 export function buildUiReadinessItems(input: {
