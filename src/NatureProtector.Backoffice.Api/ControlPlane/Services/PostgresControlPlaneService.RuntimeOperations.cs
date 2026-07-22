@@ -878,24 +878,31 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
     {
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var entityTable = dbContext.Model.GetEntityTypes()
+        var entityType = dbContext.Model.GetEntityTypes()
             .FirstOrDefault(t =>
             {
-                var schema = t.GetSchema();
-                var fullName = string.IsNullOrEmpty(schema) ? t.GetTableName() : $"{schema}.{t.GetTableName()}";
-                return string.Equals(fullName, request.Table, StringComparison.OrdinalIgnoreCase);
+                var s = t.GetSchema();
+                var n = t.GetTableName();
+                var key = string.IsNullOrEmpty(s) ? n : $"{s}.{n}";
+                return string.Equals(key, request.Table, StringComparison.OrdinalIgnoreCase);
             });
 
-        if (string.IsNullOrWhiteSpace(request.Table) || entityTable is null)
+        if (entityType is null)
         {
             return new ROQueryResponse([], [], [$"Table '{request.Table}' is not allowed."]);
         }
 
-        var tableSchema = entityTable.GetSchema();
-        var tableName = entityTable.GetTableName();
-        var qualifiedTable = string.IsNullOrEmpty(tableSchema)
-            ? $"\"{tableName}\""
-            : $"\"{tableSchema}\".\"{tableName}\"";
+        var schema = entityType.GetSchema();
+        var table = entityType.GetTableName();
+        var qualifiedTable = string.IsNullOrEmpty(schema)
+            ? $"\"{table}\""
+            : $"\"{schema}\".\"{table}\"";
+
+        var columnLookup = entityType.GetProperties()
+            .Select(p => p.GetColumnName())
+            .Where(name => name != null)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(c => c, c => $"\"{c}\"", StringComparer.OrdinalIgnoreCase);
 
         await using var connection = dbContext.Database.GetDbConnection();
         await connection.OpenAsync(cancellationToken);
@@ -903,8 +910,6 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         await using var command = connection.CreateCommand();
 
         var queryType = request.Type?.Trim().ToLowerInvariant() ?? "select";
-
-        var tableColumns = entityTable.GetProperties().Select(p => p.GetColumnName()).Where(name => name != null).ToList();
 
         var limitations = new List<string>();
         if (queryType == "count")
@@ -921,11 +926,16 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             if (request.Offset > 10000)
                 limitations.Add("Offset clamped to maximum allowed value (10000).");
 
-
-            var validColumns = request.Columns?.Where(c => tableColumns.Contains(c)).ToArray() ?? [];
-            var selectColumns = validColumns.Length > 0
-                ? string.Join(", ", validColumns.Select(c => $"\"{c}\""))
-                : "*";
+            var selectColumns = "*";
+            if (request.Columns is { Length: > 0 })
+            {
+                var quotedColumns = request.Columns
+                    .Select(c => columnLookup.TryGetValue(c, out var safe) ? safe : null)
+                    .Where(c => c != null)
+                    .ToList();
+                if (quotedColumns.Count > 0)
+                    selectColumns = string.Join(", ", quotedColumns);
+            }
 
             command.CommandText = $"SELECT {selectColumns} FROM {qualifiedTable} LIMIT @limit OFFSET @offset";
 
