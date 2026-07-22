@@ -29,13 +29,7 @@ vi.mock('recharts', () => ({
     </div>
   ),
   PieChart: ({ children }: { children: React.ReactNode }) => <div data-testid="pie-chart">{children}</div>,
-  Pie: ({
-    children,
-    data,
-  }: {
-    children: React.ReactNode;
-    data?: Array<Record<string, unknown>>;
-  }) => (
+  Pie: ({ children, data }: { children: React.ReactNode; data?: Array<Record<string, unknown>> }) => (
     <div data-testid="pie" data-rows={data?.length ?? 0}>
       {children}
     </div>
@@ -149,9 +143,7 @@ function auditFixture(overrides: Partial<RuntimeRunAuditResponse>): RuntimeRunAu
   };
 }
 
-function attemptTimings(
-  overrides: Partial<RuntimeAttemptTimingSummaryResponse>,
-): RuntimeAttemptTimingSummaryResponse {
+function attemptTimings(overrides: Partial<RuntimeAttemptTimingSummaryResponse>): RuntimeAttemptTimingSummaryResponse {
   return {
     attemptCount: 0,
     successfulAttempts: 0,

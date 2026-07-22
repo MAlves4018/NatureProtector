@@ -152,7 +152,10 @@ describe('AreaMap', () => {
   });
 
   it('reports dashboard configuration limitations when Grafana links cannot be loaded', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('offline'))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Promise.reject(new Error('offline'))),
+    );
 
     render(
       <AreaMap
@@ -319,11 +322,7 @@ function domProps(props: Record<string, unknown>) {
   const allowed = new Set(['className', 'style', 'onClick', 'type', 'title', 'src', 'width', 'height', 'loading']);
   return Object.fromEntries(
     Object.entries(props).filter(
-      ([key]) =>
-        allowed.has(key) ||
-        key.startsWith('aria-') ||
-        key.startsWith('data-') ||
-        key.startsWith('on'),
+      ([key]) => allowed.has(key) || key.startsWith('aria-') || key.startsWith('data-') || key.startsWith('on'),
     ),
   );
 }

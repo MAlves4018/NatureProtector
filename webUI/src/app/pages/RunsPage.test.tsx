@@ -160,7 +160,9 @@ describe('RunsPage', () => {
     render(<RunsPage />);
 
     expect(screen.getByText('Selecione uma run')).toBeInTheDocument();
-    expect(screen.getByText('O workspace mantém todos os indicadores associados à mesma SimulationRunId.')).toBeInTheDocument();
+    expect(
+      screen.getByText('O workspace mantém todos os indicadores associados à mesma SimulationRunId.'),
+    ).toBeInTheDocument();
   });
 });
 

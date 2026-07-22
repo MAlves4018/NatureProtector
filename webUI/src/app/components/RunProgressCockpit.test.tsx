@@ -8,7 +8,15 @@ describe('RunProgressCockpit', () => {
   it('renders selected-run fallback, unavailable metrics and refresh action', () => {
     const onRefresh = vi.fn();
 
-    render(<RunProgressCockpit operation={null} audit={null} timings={null} selectedRunId="run-selected" onRefresh={onRefresh} />);
+    render(
+      <RunProgressCockpit
+        operation={null}
+        audit={null}
+        timings={null}
+        selectedRunId="run-selected"
+        onRefresh={onRefresh}
+      />,
+    );
 
     expect(screen.getByRole('heading', { name: 'run-selected' })).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Progresso observado' })).toHaveAttribute('aria-valuenow', '0');
@@ -24,7 +32,10 @@ describe('RunProgressCockpit', () => {
 
     render(
       <RunProgressCockpit
-        operation={operationFixture({ accounting: { ...baseAccounting(), settled: true }, finishedAt: '2026-06-13T21:04:05Z' })}
+        operation={operationFixture({
+          accounting: { ...baseAccounting(), settled: true },
+          finishedAt: '2026-06-13T21:04:05Z',
+        })}
         audit={auditFixture()}
         timings={timingFixture()}
         selectedRunId="ignored-run"
@@ -47,7 +58,13 @@ describe('RunProgressCockpit', () => {
     render(
       <RunProgressCockpit
         operation={operationFixture({
-          accounting: { ...baseAccounting(), settled: false, pendingInbox: 2, processingInbox: 1, retryPendingInbox: 1 },
+          accounting: {
+            ...baseAccounting(),
+            settled: false,
+            pendingInbox: 2,
+            processingInbox: 1,
+            retryPendingInbox: 1,
+          },
           failureDetail: 'provider exited with code 1',
           systemCompletedAt: '2026-06-13T21:04:00Z',
         })}

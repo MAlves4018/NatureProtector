@@ -220,9 +220,7 @@ vi.mock('../services/api', () => ({
     getRuntimeRunTimings: vi.fn(async (runId: 'run-b' | 'run-c') => timingsByRun[runId]),
     getRuntimeOperationByRun: vi.fn(async (runId: 'run-b' | 'run-c') => operationByRun[runId]),
     getRuntimeRabbitMqMetrics: vi.fn(async () => ({
-      queues: [
-        { queue: 'natureprotector.readings', queueRole: 'PrimaryWorkQueue', messagesTotal: 4, consumers: 2 },
-      ],
+      queues: [{ queue: 'natureprotector.readings', queueRole: 'PrimaryWorkQueue', messagesTotal: 4, consumers: 2 }],
     })),
     listRuntimeEvidence: vi.fn(async () => ({
       items: [

@@ -22,7 +22,9 @@ vi.mock('../components/PageHeader', () => ({
 vi.mock('../components/ComparisonBarChart', () => ({
   ComparisonBarChart: ({ comparison }: { comparison: any }) => (
     <div data-testid="comparison-chart">
-      {comparison ? `${comparison.leftStatus}:${comparison.rightStatus}:${comparison.sharedArtifacts.length}` : 'no-comparison'}
+      {comparison
+        ? `${comparison.leftStatus}:${comparison.rightStatus}:${comparison.sharedArtifacts.length}`
+        : 'no-comparison'}
     </div>
   ),
 }));

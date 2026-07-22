@@ -127,7 +127,9 @@ vi.mock('../operations/OperationsContext', () => ({
 
 vi.mock('../operations/OperationLauncher', () => ({
   OperationLauncher: ({ definition }: { definition: { operationId: string; title: string } }) => (
-    <button type="button">launch:{definition.operationId}:{definition.title}</button>
+    <button type="button">
+      launch:{definition.operationId}:{definition.title}
+    </button>
   ),
 }));
 

@@ -119,11 +119,23 @@ describe('useUiSurfaces', () => {
 
     expect(result.current).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ item: 'Prevention.Host', status: 'ready', evidence: expect.stringContaining('ready') }),
+        expect.objectContaining({
+          item: 'Prevention.Host',
+          status: 'ready',
+          evidence: expect.stringContaining('ready'),
+        }),
         expect.objectContaining({ item: 'InfluxDB', status: 'partial', limitation: 'lag observed' }),
-        expect.objectContaining({ item: 'RabbitMQ backlog', status: 'ready', evidence: expect.stringContaining('7 mensagens') }),
+        expect.objectContaining({
+          item: 'RabbitMQ backlog',
+          status: 'ready',
+          evidence: expect.stringContaining('7 mensagens'),
+        }),
         expect.objectContaining({ item: 'Runtime API e projections', status: 'ready' }),
-        expect.objectContaining({ item: 'Execução selecionada', status: 'ready', evidence: expect.stringContaining('run-1') }),
+        expect.objectContaining({
+          item: 'Execução selecionada',
+          status: 'ready',
+          evidence: expect.stringContaining('run-1'),
+        }),
         expect.objectContaining({ item: 'Profiles', status: 'ready', evidence: expect.stringContaining('Admin, Sim') }),
         expect.objectContaining({ item: 'Evidence HTTP', status: 'ready', limitation: 'allowlist only' }),
         expect.objectContaining({ item: 'Reset / rebaseline', status: 'partial' }),
@@ -140,7 +152,10 @@ describe('useUiSurfaces', () => {
     mocks.token.user = { roles: ['Sim'] };
     const sim = renderHook(() => useAdminActions());
     expect(sim.result.current.find((item) => item.action === 'Runtime reset')).toEqual(
-      expect.objectContaining({ availability: 'partial', authorizationState: 'Backend allows Sim/Admin in Development' }),
+      expect.objectContaining({
+        availability: 'partial',
+        authorizationState: 'Backend allows Sim/Admin in Development',
+      }),
     );
   });
 

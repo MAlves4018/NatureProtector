@@ -199,32 +199,28 @@ describe('App', () => {
     expect(englishButton).toHaveFocus();
   });
 
-  it(
-    'keeps simulation hidden and exposes separate mission, quality and evidence pages for Pipeline profiles',
-    async () => {
-      vi.stubGlobal('fetch', createFetchMock({ roles: ['Pipeline'] }));
-      renderAuthenticatedUi(['Pipeline']);
+  it('keeps simulation hidden and exposes separate mission, quality and evidence pages for Pipeline profiles', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ roles: ['Pipeline'] }));
+    renderAuthenticatedUi(['Pipeline']);
 
-      expect(await screen.findByRole('button', { name: /Risco e dados/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /^Simulação$/i })).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: /Análise e evidência/i }));
-      expect(await screen.findByRole('button', { name: /Evidence Explorer/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /^Deployments$/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Risco e dados/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Simulação$/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Análise e evidência/i }));
+    expect(await screen.findByRole('button', { name: /Evidence Explorer/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Deployments$/i })).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
-      expect(
-        await screen.findByRole('heading', { name: /Pipeline e observabilidade/i }, { timeout: 5000 }),
-      ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
+    expect(
+      await screen.findByRole('heading', { name: /Pipeline e observabilidade/i }, { timeout: 5000 }),
+    ).toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: /Qualidade e evidencia/i }));
-      expect(await screen.findByRole('heading', { name: /Qualidade e evidência/i })).toBeInTheDocument();
-      expect(screen.getByText(/Historical repository claims/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Qualidade e evidencia/i }));
+    expect(await screen.findByRole('heading', { name: /Qualidade e evidência/i })).toBeInTheDocument();
+    expect(screen.getByText(/Historical repository claims/i)).toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: /Evidence Explorer/i }));
-      expect(await screen.findByRole('heading', { name: /Cockpit de evidência/i })).toBeInTheDocument();
-    },
-    10000,
-  );
+    fireEvent.click(screen.getByRole('button', { name: /Evidence Explorer/i }));
+    expect(await screen.findByRole('heading', { name: /Cockpit de evidência/i })).toBeInTheDocument();
+  }, 10000);
 
   it('blocks direct access to protected routes without confirmed capabilities', async () => {
     window.history.replaceState(null, '', '/simulation');

@@ -40,8 +40,19 @@ vi.mock('../services/api', () => ({
 }));
 
 function OperationsProbe() {
-  const { catalog, operations, environments, pendingApprovals, loading, error, refresh, start, cancel, decide, compare } =
-    useOperations();
+  const {
+    catalog,
+    operations,
+    environments,
+    pendingApprovals,
+    loading,
+    error,
+    refresh,
+    start,
+    cancel,
+    decide,
+    compare,
+  } = useOperations();
 
   return (
     <div>
