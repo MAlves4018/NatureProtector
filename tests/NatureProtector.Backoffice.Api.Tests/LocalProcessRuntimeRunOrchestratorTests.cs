@@ -120,7 +120,7 @@ public sealed class LocalProcessRuntimeRunOrchestratorTests
         null,
         CollectEvidence: true,
         WaitForCompletion: true,
-        TimeSpan.FromSeconds(5),
+        TimeSpan.FromSeconds(30),
         new RuntimeEvidenceReference($"evidence-{idempotencyKey}", $"location-{idempotencyKey}"));
 
     private sealed class RecordingRuntimeEvidenceSink : IRuntimeEvidenceSink

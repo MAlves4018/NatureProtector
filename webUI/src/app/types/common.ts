@@ -13,8 +13,7 @@ export type HelpTopicId =
   | 'runState'
   | 'pipeline'
   | 'qa'
-  | 'evidence'
-  | 'p3';
+  | 'evidence';
 
 export interface HelpTopic {
   id: HelpTopicId;

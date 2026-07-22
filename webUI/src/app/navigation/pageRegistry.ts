@@ -23,7 +23,6 @@ export interface UiPageDefinition {
     | 'nav.approvals'
     | 'nav.users'
     | 'nav.admin'
-    | 'nav.p3'
     | 'nav.context'
     | 'nav.scenario-compare'
     | 'nav.about';
@@ -232,15 +231,6 @@ export const UI_PAGE_REGISTRY: readonly UiPageDefinition[] = [
     order: 95,
     group: 'admin',
     helpTopic: 'requestedResolved',
-  },
-  {
-    id: 'p3',
-    labelKey: 'nav.p3',
-    requiredCapabilities: ['p3.read'],
-    audience: 'admin',
-    order: 100,
-    group: 'admin',
-    helpTopic: 'p3',
   },
 ];
 

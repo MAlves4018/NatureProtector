@@ -3,7 +3,6 @@ import {
   Beaker,
   ClipboardList,
   Database,
-  FlaskConical,
   Home,
   Info,
   LayoutDashboard,
@@ -161,8 +160,6 @@ function navIcon(target: UiNavTarget) {
       return <Users size={16} />;
     case 'admin':
       return <ShieldCheck size={16} />;
-    case 'p3':
-      return <FlaskConical size={16} />;
     case 'about':
       return <Info size={16} />;
     case 'context':

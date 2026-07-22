@@ -43,9 +43,6 @@ const DeploymentHealthPage = lazy(() =>
   import('./pages/DeploymentHealthPage').then((module) => ({ default: module.DeploymentHealthPage })),
 );
 const AdminPage = lazy(() => import('./pages/AdminPage').then((module) => ({ default: module.AdminPage })));
-const ExperimentalPage = lazy(() =>
-  import('./pages/ExperimentalPage').then((module) => ({ default: module.ExperimentalPage })),
-);
 const MissionControlPage = lazy(() =>
   import('./pages/MissionControlPage').then((module) => ({ default: module.MissionControlPage })),
 );
@@ -131,7 +128,6 @@ function UiRouter({
                 { path: 'approvals', element: protect('approvals', <ApprovalsPage />) },
                 { path: 'users', element: protect('users', <UserRoleAdministrationPage />) },
                 { path: 'admin', element: protect('admin', <AdminPage />) },
-                { path: 'p3', element: protect('p3', <ExperimentalPage />) },
                 { path: '*', element: <UiDefaultRedirect /> },
               ],
             },

@@ -309,25 +309,6 @@ describe('App', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/control/runtime/operations/operation-001', expect.anything());
   });
 
-  it('shows proportional administration and experimental P3 only for Admin profiles', async () => {
-    const fetchMock = createFetchMock({ roles: ['Admin'] });
-    vi.stubGlobal('fetch', fetchMock);
-
-    renderAuthenticatedUi(['Admin'], true);
-
-    expect(await screen.findByText('Dark')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /^Admin$/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /^Administração$/i }));
-    expect(await screen.findByRole('heading', { name: /Administração proporcional/i })).toBeInTheDocument();
-    expect(screen.getAllByText('Runtime reset')).not.toHaveLength(0);
-    expect(screen.getAllByText('partial').length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByRole('button', { name: /P3 experimental/i }));
-    expect(await screen.findByRole('heading', { name: /P3 experimental/i })).toBeInTheDocument();
-    expect(screen.getByText(/Not integrated into scoring/i)).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith('/api/dev/controlled-validation/p3', expect.anything());
-  });
-
   it('shows an error state when the runtime summary request fails', async () => {
     vi.stubGlobal('fetch', createFetchMock({ failSummary: true, roles: ['Pipeline'] }));
 
@@ -522,18 +503,6 @@ function createFetchMock(
           quarantinedInbox: 0,
           settled: true,
         },
-      });
-    }
-
-    if (path === '/api/dev/controlled-validation/p3') {
-      return jsonResponse({
-        phase: 'P3NegativePipeline',
-        environment: 'Development',
-        available: true,
-        message: 'Controlled validation P3 execution is available in this environment.',
-        messageCount: 11,
-        executableCases: 10,
-        blockedCases: 2,
       });
     }
 
