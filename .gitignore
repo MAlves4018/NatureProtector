@@ -56,6 +56,7 @@ docs/RepositorioDocumental/
 docs/docs.zip
 
 .env
+.env.deploy.local
 node_modules/.package-lock.json
 node_modules/@types/react/canary.d.ts
 node_modules/@types/react/compiler-runtime.d.ts
