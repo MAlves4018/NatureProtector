@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-22",
+  "runtime": {
+    "apiBaseUrl": "http://127.0.0.1:5254",
+    "webBaseUrl": "http://127.0.0.1:5173",
+    "areaCode": "proenca-a-nova",
+    "adminUsernameEnvironmentVariable": "NP_BOOTSTRAP_ADMIN_USERNAME",
+    "adminPasswordEnvironmentVariable": "NP_BOOTSTRAP_ADMIN_PASSWORD",
+    "defaultAdminUsername": "admin",
+    "defaultAdminPassword": "admin123",
+    "temporaryPassword": "NpUiAcceptance!2026",
+    "temporaryUsernamePrefix": "np-ui-acceptance",
+    "temporaryEmailDomain": "acceptance.invalid",
+    "temporaryOrganization": "NatureProtector UI Acceptance",
+    "serviceStartTimeoutSeconds": 300
+  },
+  "playwright": {
+    "fixtureProjects": ["desktop", "narrow"],
+    "liveProject": "desktop",
+    "fixtureSpec": "e2e/cockpit.spec.ts",
+    "liveSpec": "e2e/live-role-journeys.spec.ts",
+    "workers": 1,
+    "accessibilityBlockedImpacts": ["critical"],
+    "roles": [
+      {
+        "role": "Admin",
+        "useExistingAdministrator": true,
+        "allowedRoute": "/users",
+        "allowedHeading": "Users & Roles",
+        "requiredCapabilities": ["users.manage", "roles.manage", "admin.read", "p3.read"],
+        "forbiddenCapabilities": [],
+        "deniedRoute": null
+      },
+      {
+        "role": "Sim",
+        "useExistingAdministrator": false,
+        "allowedRoute": "/simulation",
+        "allowedHeading": "Simulação",
+        "requiredCapabilities": ["simulation.read", "simulation.execute", "run.read"],
+        "forbiddenCapabilities": ["pipeline.read", "users.manage"],
+        "deniedRoute": "/pipeline"
+      },
+      {
+        "role": "Pipeline",
+        "useExistingAdministrator": false,
+        "allowedRoute": "/pipeline",
+        "allowedHeading": "Pipeline e observabilidade",
+        "requiredCapabilities": ["pipeline.read", "run.read", "quality.read"],
+        "forbiddenCapabilities": ["simulation.execute", "users.manage"],
+        "deniedRoute": "/simulation"
+      },
+      {
+        "role": "QA",
+        "useExistingAdministrator": false,
+        "allowedRoute": "/quality",
+        "allowedHeading": "Execuções de qualidade",
+        "requiredCapabilities": ["quality.read", "quality.execute.static", "quality.execute.full"],
+        "forbiddenCapabilities": ["deployment.read", "users.manage"],
+        "deniedRoute": "/deployments"
+      },
+      {
+        "role": "Operations",
+        "useExistingAdministrator": false,
+        "allowedRoute": "/deployments",
+        "allowedHeading": "Deployments",
+        "requiredCapabilities": ["deployment.read", "cloud.read", "pipeline.read"],
+        "forbiddenCapabilities": ["simulation.execute", "users.manage"],
+        "deniedRoute": "/simulation"
+      },
+      {
+        "role": "ReleaseApprover",
+        "useExistingAdministrator": false,
+        "allowedRoute": "/approvals",
+        "allowedHeading": "Approvals",
+        "requiredCapabilities": ["approval.review", "deployment.deploy.production", "cloud.destroy"],
+        "forbiddenCapabilities": ["simulation.execute", "users.manage"],
+        "deniedRoute": "/users"
+      }
+    ]
+  },
+  "rateLimiting": {
+    "probePath": "/api/users-roles/login",
+    "maximumAttempts": 20,
+    "expectedPreLimitStatus": 401,
+    "expectedLimitStatus": 429,
+    "expectedPolicy": "authentication",
+    "requiredHeaders": ["Retry-After", "X-RateLimit-Policy"],
+    "healthPathsAfterLimit": ["/health/live", "/health/ready"]
+  },
+  "performance": {
+    "http": {
+      "profiles": [
+        {
+          "profile": "Calibration",
+          "minimumMeasuredAttempts": 24,
+          "maximumP95Milliseconds": 5000
+        },
+        {
+          "profile": "B0",
+          "minimumMeasuredAttempts": 160,
+          "maximumP95Milliseconds": 5000
+        }
+      ],
+      "includeWeb": true,
+      "requireAuthentication": true
+    },
+    "system": {
+      "profiles": [
+        {
+          "profile": "Calibration",
+          "minimumSuccessfulRuns": 1,
+          "maximumElapsedP95Milliseconds": 120000,
+          "maximumBacklogDrainP95Milliseconds": 60000
+        },
+        {
+          "profile": "B0",
+          "minimumSuccessfulRuns": 2,
+          "maximumElapsedP95Milliseconds": 120000,
+          "maximumBacklogDrainP95Milliseconds": 60000
+        }
+      ],
+      "requiredZeroFields": ["failedRuns", "rejectedTotal", "quarantinedTotal", "lostEventsTotal"],
+      "requireAcceptedEqualsExpected": true,
+      "requireRiskEqualsExpected": true,
+      "requireFinalQueueEmpty": true
+    },
+    "claimBoundary": "Bounded local acceptance only. These thresholds detect regressions in this workstation-scale campaign and do not establish production capacity, production SLOs, scalability or scientific validity."
+  }
+}

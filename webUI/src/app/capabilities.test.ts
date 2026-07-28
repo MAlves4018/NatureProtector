@@ -59,6 +59,12 @@ describe('capabilities', () => {
     expect(navigation.map((item) => item.id)).toEqual(['demo', 'about', 'context']);
   });
 
+  it('registers the quality route for roles with quality.read', () => {
+    expect(getUiPages(getUiCapabilities({ roles: ['QA'] })).some((page) => page.id === 'quality')).toBe(true);
+    expect(getUiPages(getUiCapabilities({ roles: ['Pipeline'] })).some((page) => page.id === 'quality')).toBe(true);
+    expect(getUiPages(getUiCapabilities({ roles: ['Sim'] })).some((page) => page.id === 'quality')).toBe(false);
+  });
+
   it('exposes mission, quality and evidence as separate read-only Pipeline tasks', () => {
     const navigation = getUiPages(getUiCapabilities({ roles: ['Pipeline'] }));
 

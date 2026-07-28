@@ -340,6 +340,26 @@ public sealed class RuntimeOperationsServiceTests
     }
 
     [Fact]
+    public async Task ResetRuntimeState_ExpiredActiveRun_IsReconciledThenReset()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        await SeedRuntimeAsync(scope, activeRun: true);
+        await SeedOperationAsync(scope, DateTimeOffset.UtcNow.AddMinutes(-1));
+        var service = new PostgresControlPlaneService(scope.Factory);
+
+        var result = await service.ResetRuntimeStateAsync(
+            new RuntimeResetRequest("runtime-only", "RESET_RUNTIME_STATE", DryRun: false, RequireExternalStores: false),
+            CancellationToken.None);
+
+        Assert.Equal("Completed", result.Status);
+        Assert.Equal(1, result.ReconciledOrphans);
+
+        await using var dbContext = scope.CreateDbContext();
+        Assert.Equal(0, await dbContext.SimulationRuns.CountAsync());
+        Assert.Equal(0, await dbContext.RuntimeOperations.CountAsync());
+    }
+
+    [Fact]
     public async Task ResetRuntimeState_ValidReset_ClearsRuntimeAndKeepsControlPlane()
     {
         await using var scope = new SqliteControlDbContextScope();

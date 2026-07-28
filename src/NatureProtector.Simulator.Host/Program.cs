@@ -6,6 +6,7 @@ using NatureProtector.Simulator.Host.Configuration;
 using NatureProtector.Simulator.Host.ControlledValidation;
 using NatureProtector.Simulator.Host.Publishing;
 using NatureProtector.Simulator.Host.Services;
+using NatureProtector.Simulator.Host.TemporalLoad;
 
 /*
  * Este ponto de entrada compõe o runtime do simulador.
@@ -37,10 +38,13 @@ builder.Services.Configure<RabbitMqOptions>(
     builder.Configuration.GetSection(RabbitMqOptions.SectionName));
 builder.Services.Configure<ControlledValidationOptions>(
     builder.Configuration.GetSection(ControlledValidationOptions.SectionName));
-
 builder.Services.AddSingleton<IValidateOptions<SimulatorOptions>, SimulatorOptionsValidator>();
+builder.Services.AddSingleton<IValidateOptions<TemporalLoadOptions>, SimulatorOptionsValidator>();
 builder.Services.AddOptions<SimulatorOptions>()
     .Bind(builder.Configuration.GetSection(SimulatorOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddOptions<TemporalLoadOptions>()
+    .Bind(builder.Configuration.GetSection(TemporalLoadOptions.SectionName))
     .ValidateOnStart();
 
 builder.Services.PostConfigure<SimulatorOptions>(
@@ -89,8 +93,15 @@ builder.Services.AddSingleton<ControlledValidationOrchestrator>();
 var controlledValidationEnabled = builder.Configuration
     .GetSection(ControlledValidationOptions.SectionName)
     .GetValue<bool>(nameof(ControlledValidationOptions.Enabled));
+var temporalLoadEnabled = builder.Configuration
+    .GetSection(TemporalLoadOptions.SectionName)
+    .GetValue<bool>(nameof(TemporalLoadOptions.Enabled));
 
-if (controlledValidationEnabled)
+if (temporalLoadEnabled)
+{
+    builder.Services.AddHostedService<TemporalLoadRunner>();
+}
+else if (controlledValidationEnabled)
 {
     builder.Services.AddHostedService<ControlledValidationRunner>();
 }

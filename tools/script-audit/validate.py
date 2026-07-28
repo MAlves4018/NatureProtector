@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -127,6 +128,25 @@ def is_local_scan_excluded(path: Path, repo: Path) -> bool:
     return rel.startswith(LOCAL_SCAN_EXCLUDED_PREFIXES) or bool(LOCAL_SCAN_EXCLUDED_PARTS.intersection(path.parts))
 
 
+def iter_local_scripts(repo: Path):
+    for current, dirnames, filenames in os.walk(repo, followlinks=False):
+        current_path = Path(current)
+        rel = current_path.relative_to(repo).as_posix()
+        parts = current_path.relative_to(repo).parts
+        dirnames[:] = [
+            name for name in dirnames
+            if not (
+                (name if rel == "." else f"{rel}/{name}").startswith(LOCAL_SCAN_EXCLUDED_PREFIXES)
+                or name in LOCAL_SCAN_EXCLUDED_PARTS
+                or name in {".git", ".config", ".idea", ".np_evidence_python_win", ".nuget", ".pytest_cache", "__pycache__"}
+                or ".ruff_cache" in parts
+            )
+        ]
+        for filename in filenames:
+            if filename.endswith((".ps1", ".psm1")):
+                yield current_path / filename
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--repo", default=".")
@@ -218,7 +238,7 @@ def main() -> int:
     exact = set(contract["canonical_deployment_exclusions"]["exact"])
     counts = Counter()
     locations = defaultdict(list)
-    for script in list(repo.rglob("*.ps1")) + list(repo.rglob("*.psm1")):
+    for script in sorted(iter_local_scripts(repo)):
         if is_local_scan_excluded(script, repo):
             continue
         rel = script.relative_to(repo).as_posix()

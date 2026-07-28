@@ -530,7 +530,7 @@ function Invoke-WorkspaceValidate {
         }
         "Full" {
             Invoke-External "dotnet" @("build", ".\NatureProtector.sln", "-c", "Release", "--no-restore", "--nologo", "-v", "minimal", "-m:1") $RepoRoot -Required | Out-Null
-            Invoke-External "dotnet" @("test", ".\NatureProtector.sln", "-c", "Release", "--no-build", "--no-restore", "--filter", "Category!=Docker", "--logger", "trx", "--results-directory", ".\artifacts\test-results") $RepoRoot -Required | Out-Null
+            Invoke-External "dotnet" @("test", ".\NatureProtector.sln", "-c", "Release", "--no-build", "--no-restore", "--filter", "Category!=DockerIntegration", "--logger", "trx", "--results-directory", ".\artifacts\test-results") $RepoRoot -Required | Out-Null
             Invoke-External "npm" @("run", "typecheck") (Join-Path $RepoRoot "webUI") -Required | Out-Null
             Invoke-External "npm" @("run", "lint") (Join-Path $RepoRoot "webUI") -Required | Out-Null
             Invoke-External "npm" @("run", "format:check") (Join-Path $RepoRoot "webUI") -Required | Out-Null

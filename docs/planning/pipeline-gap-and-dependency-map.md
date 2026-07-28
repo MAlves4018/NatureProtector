@@ -11,4 +11,4 @@ review_triggers: code, workflow, role, environment or evidence changes
 
 # Pipeline Gap and Dependency Map - Superseded
 
-Use [Limitations and open gates](../current-state/limitations-and-open-gates.md) and [Architecture and runtime](../current-state/architecture-and-runtime.md).
+Use [Final delivery status](../current-state/final-delivery-status.md) and the [functional traceability matrix](../reference/functional-traceability-matrix.csv).

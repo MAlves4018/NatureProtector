@@ -32,11 +32,17 @@ const TOAST_COLORS: Record<ToastSeverity, string> = {
   info: '#3b82f6',
 };
 
+function createToastId() {
+  const bytes = new Uint32Array(2);
+  crypto.getRandomValues(bytes);
+  return `toast-${Date.now()}-${bytes[0].toString(36)}${bytes[1].toString(36)}`;
+}
+
 export function UiToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const id = createToastId();
     setToasts((prev) => [...prev, { ...toast, id }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));

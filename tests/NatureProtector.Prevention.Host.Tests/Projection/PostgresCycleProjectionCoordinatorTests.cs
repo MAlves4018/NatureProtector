@@ -64,6 +64,49 @@ public sealed class PostgresCycleProjectionCoordinatorTests
     }
 
     [Fact]
+    public async Task LateObservationForFinalizedCycle_IsRecordedWithoutDuplicatingSnapshot()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await SeedAsync(scope);
+        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory, NullLogger<PostgresCycleProjectionCoordinator>.Instance);
+
+        await RecordAsync(coordinator, seed, seed.SensorIds[0], 0, MetricOrigin.Observed, 0.7);
+        await RecordAsync(coordinator, seed, seed.SensorIds[0], 1, MetricOrigin.Observed, 0.6);
+        await RecordAsync(coordinator, seed, seed.SensorIds[1], 0, MetricOrigin.Observed, 0.8);
+
+        await using var dbContext = scope.CreateDbContext();
+        var cycleZero = await dbContext.CycleSettlements.SingleAsync(entity => entity.CycleIndex == 0);
+        Assert.NotNull(cycleZero.FinalizedAt);
+        Assert.Equal("LogicalTimeout", cycleZero.FinalizationReason);
+        Assert.Equal(2, dbContext.CycleObservations.Count(entity => entity.CycleIndex == 0));
+        Assert.Single(dbContext.AreaCycleSnapshots);
+    }
+
+    [Fact]
+    public async Task OperationalTemporalCycle_MaterializesCurrentCellOperationalStates()
+    {
+        await using var scope = new SqliteControlDbContextScope();
+        var seed = await SeedAsync(scope);
+        var coordinator = new PostgresCycleProjectionCoordinator(scope.Factory, NullLogger<PostgresCycleProjectionCoordinator>.Instance);
+
+        await RecordAsync(coordinator, seed, seed.SensorIds[0], 0, MetricOrigin.Observed, 0.7);
+        await RecordAsync(coordinator, seed, seed.SensorIds[1], 0, MetricOrigin.Observed, 0.8);
+
+        await using var dbContext = scope.CreateDbContext();
+        var states = await dbContext.CellOperationalStates.OrderBy(entity => entity.SensorId).ToListAsync();
+        Assert.Equal(2, states.Count);
+        Assert.All(states, state =>
+        {
+            Assert.Contains(state.SensorId!.Value, seed.SensorIds);
+            Assert.Null(state.LatestAssessmentId);
+            Assert.Equal(OperationalProjectionStatus.LowCoverage, state.CoverageStatus);
+            Assert.Equal(OperationalProjectionStatus.Fresh, state.FreshnessStatus);
+            Assert.Equal(OperationalProjectionStatus.Current, state.CarryForwardStatus);
+            Assert.Contains("eligible=1", state.Summary);
+        });
+    }
+
+    [Fact]
     public async Task ProducerCompletion_FinalizesLastIncompleteCycle_WithMissingAndBlockedMembership()
     {
         await using var scope = new SqliteControlDbContextScope();
@@ -166,6 +209,7 @@ public sealed class PostgresCycleProjectionCoordinatorTests
         var scenarioId = Guid.NewGuid();
         var runId = Guid.NewGuid();
         var secondRunId = includeSecondRun ? Guid.NewGuid() : (Guid?)null;
+        var now = DateTimeOffset.UtcNow;
         await scope.SeedAsync(dbContext =>
         {
             dbContext.GridCells.Add(new GridCellRecord
@@ -202,6 +246,8 @@ public sealed class PostgresCycleProjectionCoordinatorTests
             });
             AddRun(runId);
             if (secondRunId.HasValue) AddRun(secondRunId.Value);
+            AddOperation(runId, isOperational: true);
+            if (secondRunId.HasValue) AddOperation(secondRunId.Value, isOperational: false);
             return Task.CompletedTask;
 
             void AddRun(Guid id) => dbContext.SimulationRuns.Add(new SimulationRunRecord
@@ -212,14 +258,28 @@ public sealed class PostgresCycleProjectionCoordinatorTests
                 ConfigurationVersionId = seed.ConfigurationVersionId,
                 ScenarioCode = "temporal-test",
                 ScenarioName = "Temporal test",
-                CreatedAt = DateTimeOffset.UtcNow,
-                StartedAt = DateTimeOffset.UtcNow,
-                LogicalStartTimestamp = DateTimeOffset.UtcNow,
+                CreatedAt = now,
+                StartedAt = now,
+                LogicalStartTimestamp = now,
                 IntervalSeconds = 1,
                 NumberOfCycles = 3,
                 Status = SimulationRunStatus.Running,
                 MetadataJson = "{}"
             });
+            void AddOperation(Guid id, bool isOperational) => dbContext.RuntimeOperations.Add(new RuntimeOperationRecord
+            {
+                OperationId = Guid.NewGuid(),
+                RequestId = Guid.NewGuid(),
+                IdempotencyKey = Guid.NewGuid().ToString("N"),
+                SimulationRunId = id,
+                CorrelationId = Guid.NewGuid().ToString("N"),
+                State = "Running",
+                IsOperational = isOperational,
+                AcceptedAt = now,
+                UpdatedAt = now,
+                DeadlineAt = now.AddMinutes(5)
+            });
+
         });
         return new TemporalSeed(seed.AreaId, runId, secondRunId, [seed.SensorId, secondSensorId]);
     }

@@ -5,8 +5,8 @@ backend-unit,quality,Backend unit,implemented,IMPLEMENTED_NOT_PROVED
 backend-integration,quality,Backend integration,implemented,IMPLEMENTED_NOT_PROVED
 architecture,quality,Architecture,implemented,IMPLEMENTED_NOT_PROVED
 security,quality,Security,implemented,IMPLEMENTED_NOT_PROVED
-playwright-fixture,quality,Playwright fixture,implemented,IMPLEMENTED_NOT_PROVED
-playwright-full-stack,quality,Playwright full stack,implemented,IMPLEMENTED_NOT_PROVED
+playwright-fixture,quality,Playwright fixture,blocked-workflow-suite-not-mapped,NOT_PROVED
+playwright-full-stack,quality,Playwright full stack,blocked-workflow-suite-not-mapped,NOT_PROVED
 accessibility,quality,Accessibility,implemented,IMPLEMENTED_NOT_PROVED
 mutation,quality,Mutation,implemented,IMPLEMENTED_NOT_PROVED
 terraform-static,quality,Terraform static,implemented,IMPLEMENTED_NOT_PROVED
@@ -29,5 +29,3 @@ cloud-open-staging,cloud,Open staging,implemented,IMPLEMENTED_NOT_PROVED
 cloud-close-staging,cloud,Close staging,implemented,IMPLEMENTED_NOT_PROVED
 cloud-destroy-plan,cloud,Prepare destroy plan,blocked-no-destroy-plan-workflow,NOT_PROVED
 cloud-destroy-execute,cloud,Execute approved destroy plan,blocked-until-approved-plan,NOT_PROVED
-implemented,deployment,IMPLEMENTED_NOT_PROVED,implemented,IMPLEMENTED_NOT_PROVED
-implemented,cloud,IMPLEMENTED_NOT_PROVED,implemented,IMPLEMENTED_NOT_PROVED

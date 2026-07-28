@@ -11,15 +11,23 @@ from pathlib import Path
 from typing import Any
 
 
+def as_float(value: Any) -> float:
+    return float(str(value).replace(",", "."))
+
+
+def as_int(value: Any) -> int:
+    return int(as_float(value))
+
+
 def read_rows(path: Path) -> list[dict[str, Any]]:
     with path.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
     for row in rows:
-        row["publisher_rate"] = float(row["publisher_rate"])
-        row["replicas"] = int(row["replicas"])
-        row["processed_rate"] = float(row["processed_rate"])
-        row["p95_ms"] = float(row["p95_ms"])
-        row["backlog_end"] = int(row["backlog_end"])
+        row["publisher_rate"] = as_float(row["publisher_rate"])
+        row["replicas"] = as_int(row["replicas"])
+        row["processed_rate"] = as_float(row["processed_rate"])
+        row["p95_ms"] = as_float(row["p95_ms"])
+        row["backlog_end"] = as_int(row["backlog_end"])
         row["correctness_pass"] = row["correctness_pass"].lower() == "true"
     return rows
 
@@ -33,6 +41,11 @@ def recommendation(rows: list[dict[str, Any]], acceptable_delay: float, min_repl
     queue_target = max(1, math.floor(per_replica_rate * acceptable_delay))
     activation = max(1, math.floor(queue_target * 0.1))
     correctness = all(row["correctness_pass"] for row in rows)
+    drained = all(row["backlog_end"] == 0 for row in rows)
+    positive_rates = all(row["processed_rate"] > 0 and row["p95_ms"] > 0 for row in rows)
+    required_experiments = {f"S{number}" for number in range(1, 9)}
+    complete = {row["experiment"] for row in rows} == required_experiments
+    scaled = any(row["experiment"] in {"S2", "S3", "S5", "S6", "S7", "S8"} and row["replicas"] > 1 for row in rows)
     return {
         "schemaVersion": 1,
         "baselineSamples": len(baseline),
@@ -43,7 +56,11 @@ def recommendation(rows: list[dict[str, Any]], acceptable_delay: float, min_repl
         "minReplicaCount": min_replicas,
         "maxReplicaCount": max_replicas,
         "allExperimentRowsCorrect": correctness,
-        "readyForScalingExperiment": correctness and {row["experiment"] for row in rows} == {f"S{number}" for number in range(1, 9)},
+        "allExperimentRowsDrained": drained,
+        "allExperimentRowsHavePositiveRates": positive_rates,
+        "requiredExperimentSetComplete": complete,
+        "scaleUpObservedInRequiredRows": scaled,
+        "readyForScalingExperiment": correctness and drained and positive_rates and complete and scaled,
     }
 
 

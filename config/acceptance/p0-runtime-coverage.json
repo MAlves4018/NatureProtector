@@ -1,0 +1,305 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-22",
+  "runtime": {
+    "apiRoot": "http://127.0.0.1:5254",
+    "apiBaseUrl": "http://127.0.0.1:5254/api",
+    "preventionBaseUrl": "http://127.0.0.1:5260",
+    "webUrl": "http://127.0.0.1:5173",
+    "rabbitManagementUrl": "http://127.0.0.1:15672",
+    "influxHealthUrl": "http://127.0.0.1:8181/health",
+    "grafanaHealthUrl": "http://127.0.0.1:3000/api/health",
+    "areaCode": "proenca-a-nova",
+    "adminUsernameEnvironmentVariable": "NP_BOOTSTRAP_ADMIN_USERNAME",
+    "adminPasswordEnvironmentVariable": "NP_BOOTSTRAP_ADMIN_PASSWORD",
+    "defaultAdminUsername": "admin",
+    "defaultAdminPassword": "admin123",
+    "postgresContainer": "np-postgres",
+    "postgresUser": "np",
+    "postgresDatabase": "natureprotector",
+    "rabbitUsernameEnvironmentVariable": "RABBITMQ_DEFAULT_USER",
+    "rabbitPasswordEnvironmentVariable": "RABBITMQ_DEFAULT_PASS",
+    "defaultRabbitUsername": "np",
+    "defaultRabbitPassword": "np_dev_pass",
+    "sensorCount": 6,
+    "numberOfCycles": 6,
+    "intervalSeconds": 1,
+    "runTimeoutSeconds": 360,
+    "settlementTimeoutSeconds": 240,
+    "serviceStartTimeoutSeconds": 300,
+    "influxTokenEnvironmentVariable": "INFLUXDB_TOKEN",
+    "influxDatabaseEnvironmentVariable": "INFLUXDB_DATABASE",
+    "defaultInfluxDatabase": "np_telemetry"
+  },
+  "scenarioMatrix": {
+    "scenarioCode": "scenario_b",
+    "baselineProfile": "none",
+    "seed": 2026072201,
+    "profiles": [
+      "none",
+      "missing-readings",
+      "noise",
+      "bias",
+      "drift",
+      "stuck-value",
+      "outlier",
+      "clipping/range",
+      "lag/delay",
+      "duplicate",
+      "out-of-order",
+      "retry-transient"
+    ],
+    "effectThresholds": {
+      "noiseMinimumChangedRatio": 0.5,
+      "biasTemperatureMinimumMeanDelta": 0.75,
+      "biasHumidityMaximumMeanDelta": -2.0,
+      "biasWindMinimumMeanDelta": 0.35,
+      "driftMinimumAbsoluteSlope": 0.03,
+      "outlierTemperatureMinimumDelta": 8.0,
+      "outlierHumidityMinimumAbsoluteDelta": 20.0,
+      "outlierWindMinimumDelta": 6.0,
+      "lagMinimumSeconds": 10.0,
+      "clippingCaps": {
+        "Temperature": {
+          "maximum": 42.0
+        },
+        "Humidity": {
+          "minimum": 8.0
+        },
+        "WindSpeed": {
+          "maximum": 18.0
+        }
+      }
+    },
+    "repeatProfiles": [
+      "missing-readings"
+    ],
+    "supplementalRuns": [
+      {
+        "id": "clipping-saturation",
+        "primaryProfile": "clipping/range",
+        "profiles": [
+          "outlier",
+          "clipping/range"
+        ],
+        "purpose": "Force deterministic saturation events so clipping is proven even when the isolated scenario stays inside the caps."
+      }
+    ]
+  },
+  "rbac": {
+    "temporaryUsernamePrefix": "np-acceptance",
+    "temporaryPassword": "NpAcceptance!2026",
+    "temporaryEmailDomain": "acceptance.invalid",
+    "temporaryOrganization": "NatureProtector Acceptance",
+    "roles": [
+      {
+        "role": "Sim",
+        "requiredCapabilities": [
+          "run.read",
+          "simulation.read",
+          "simulation.execute"
+        ],
+        "forbiddenCapabilities": [
+          "users.manage",
+          "deployment.read"
+        ],
+        "allowedProbe": {
+          "method": "GET",
+          "path": "/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30",
+          "expectedStatus": 200
+        },
+        "deniedProbe": {
+          "method": "GET",
+          "path": "/users-roles/users",
+          "expectedStatus": 403
+        }
+      },
+      {
+        "role": "Pipeline",
+        "requiredCapabilities": [
+          "pipeline.read",
+          "run.read"
+        ],
+        "forbiddenCapabilities": [
+          "simulation.execute",
+          "users.manage"
+        ],
+        "allowedProbe": {
+          "method": "GET",
+          "path": "/control/runtime/summary?areaCode=proenca-a-nova&recentMinutes=30",
+          "expectedStatus": 200
+        },
+        "deniedProbe": {
+          "method": "POST",
+          "path": "/control/runtime/runs",
+          "expectedStatus": 403
+        }
+      },
+      {
+        "role": "QA",
+        "requiredCapabilities": [
+          "quality.read",
+          "quality.execute.static",
+          "simulation.execute"
+        ],
+        "forbiddenCapabilities": [
+          "deployment.read",
+          "users.manage"
+        ],
+        "allowedProbe": {
+          "method": "GET",
+          "path": "/control/quality/suites",
+          "expectedStatus": 200
+        },
+        "deniedProbe": {
+          "method": "GET",
+          "path": "/control/deployments",
+          "expectedStatus": 403
+        }
+      },
+      {
+        "role": "Operations",
+        "requiredCapabilities": [
+          "deployment.read",
+          "cloud.read",
+          "run.read"
+        ],
+        "forbiddenCapabilities": [
+          "simulation.execute",
+          "users.manage"
+        ],
+        "allowedProbe": {
+          "method": "GET",
+          "path": "/control/deployments/catalog",
+          "expectedStatus": 200
+        },
+        "deniedProbe": {
+          "method": "POST",
+          "path": "/control/runtime/runs",
+          "expectedStatus": 403
+        }
+      },
+      {
+        "role": "ReleaseApprover",
+        "requiredCapabilities": [
+          "approval.review",
+          "deployment.read",
+          "cloud.read"
+        ],
+        "forbiddenCapabilities": [
+          "area.read",
+          "simulation.execute",
+          "users.manage"
+        ],
+        "allowedProbe": {
+          "method": "GET",
+          "path": "/control/approvals",
+          "expectedStatus": 200
+        },
+        "deniedProbe": {
+          "method": "GET",
+          "path": "/control/areas/proenca-a-nova/operational-state",
+          "expectedStatus": 403
+        }
+      }
+    ]
+  },
+  "diagnostics": {
+    "generatedCatalog": "docs/reference/generated/runtime-diagnostic-catalog.csv",
+    "requireExactCatalogMatch": true,
+    "semanticRequirements": {
+      "runtime-table-counts": {
+        "minimumRows": 1
+      },
+      "latest-run-expected-vs-observed": {
+        "requiredMetrics": [
+          "simulationRunId",
+          "expected",
+          "observed",
+          "missing"
+        ]
+      },
+      "latest-run-events-by-cycle": {
+        "minimumRows": 1
+      },
+      "latest-run-risk-by-metric": {
+        "minimumRows": 1
+      },
+      "latest-run-coverage-freshness": {
+        "minimumRows": 1
+      },
+      "area-operational-state": {
+        "minimumRows": 1
+      },
+      "cell-operational-states": {
+        "minimumRows": 1
+      },
+      "scenario-definition-details": {
+        "minimumRows": 1
+      },
+      "compare-latest-b-vs-c": {
+        "minimumRows": 1,
+        "requiredScenarios": [
+          "scenario_b",
+          "scenario_c"
+        ]
+      }
+    },
+    "prepareScenarioC": {
+      "caseId": "diagnostic-scenario-c",
+      "scenarioCode": "scenario_c",
+      "primaryProfile": "missing-readings",
+      "profiles": [
+        "missing-readings"
+      ],
+      "seed": 2026072288,
+      "sensorCount": 6,
+      "numberOfCycles": 6,
+      "intervalSeconds": 1
+    }
+  },
+  "observability": {
+    "requiredOperationalComponents": [
+      "PostgreSQL",
+      "RabbitMQ",
+      "InfluxDB",
+      "Grafana"
+    ],
+    "requireRabbitQueueCollection": true,
+    "requireEvidenceCatalog": true,
+    "minimumEvidenceItems": 1,
+    "downloadFirstHttpEvidence": true,
+    "requireInfluxHealthPass": true,
+    "requireGrafanaHealthPass": true,
+    "allowedOperationalStatuses": [
+      "Healthy",
+      "Degraded",
+      "AuthRequired"
+    ]
+  },
+  "alerts": {
+    "requireHighRiskAlertTransition": true,
+    "scenarioCode": "scenario_b",
+    "seed": 2026072291,
+    "sensorCount": 6,
+    "numberOfCycles": 8,
+    "intervalSeconds": 1,
+    "expectedAlertCode": "area-risk-high",
+    "allowedStatuses": [
+      "Open",
+      "Resolved"
+    ]
+  },
+  "shutdown": {
+    "containerNamePrefix": "np-",
+    "processNamePatterns": [
+      "NatureProtector.Simulator.Host",
+      "NatureProtector.Backoffice.Api",
+      "NatureProtector.Prevention.Host",
+      "vite"
+    ],
+    "requireNoSimulatorBeforeStop": true,
+    "requireNoTrackedRuntimeProcessesAfterStop": true,
+    "requireNoRunningProjectContainersAfterDown": true
+  }
+}

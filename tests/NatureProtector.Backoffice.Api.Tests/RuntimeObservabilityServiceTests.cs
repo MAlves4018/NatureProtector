@@ -401,6 +401,33 @@ public sealed class RuntimeObservabilityServiceTests
     }
 
     [Fact]
+    public async Task GetOperationalHealthAsync_UsesGrafanaPortConfiguration_WhenGrafanaUrlIsMissing()
+    {
+        await using var db = new SqliteControlDbContextScope();
+        var handler = new CapturingHandler(request =>
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            if (string.Equals(path, "/api/queues", StringComparison.Ordinal))
+            {
+                return JsonResponse(BuildQueueMetricsJson([NatureProtectorRabbitMqTopology.IngestionReadingsQueue]));
+            }
+
+            return JsonResponse("""{ "status": "ok", "database": "ok" }""");
+        });
+        using var client = new HttpClient(handler);
+        var service = CreateService(
+            db,
+            client,
+            configurationValues: new Dictionary<string, string?> { ["GRAFANA_PORT"] = "3311" });
+
+        var health = await service.GetOperationalHealthAsync(CancellationToken.None);
+
+        var grafana = Assert.Single(health.Components, component => component.Component == "Grafana");
+        Assert.Equal(RuntimeOperationalHealthStatus.Healthy, grafana.Status);
+        Assert.Equal(new Uri("http://localhost:3311/api/health"), handler.RequestUri);
+    }
+
+    [Fact]
     public async Task GetOperationalHealthAsync_ReportsUnknownSimulatorLifecycle_WhenLatestRunStatusIsUnmapped()
     {
         await using var db = new SqliteControlDbContextScope();
@@ -478,10 +505,11 @@ public sealed class RuntimeObservabilityServiceTests
         HttpClient client,
         string? ingestionQueueName = null,
         string? rawQueueName = null,
-        bool rawEnabled = false)
+        bool rawEnabled = false,
+        IReadOnlyDictionary<string, string?>? configurationValues = null)
     {
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>())
+            .AddInMemoryCollection(configurationValues ?? new Dictionary<string, string?>())
             .Build();
         var rabbitMqOptions = new RabbitMqOptions
         {

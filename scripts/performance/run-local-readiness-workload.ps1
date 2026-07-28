@@ -88,7 +88,7 @@ $webProbes = @()
 if (-not $SkipWeb) {
     $webProbes = @(
         (New-Probe -Surface "web" -Name "web-root" -Method "GET" -Url (Join-Url $WebBaseUrl "/") -ExpectedStatusCodes @(200) -Purpose "Measured webUI root availability."),
-        (New-Probe -Surface "web" -Name "web-ui-v2" -Method "GET" -Url (Join-Url $WebBaseUrl "/ui-v2") -ExpectedStatusCodes @(200) -Purpose "Measured UI v2 route availability through the frontend dev server.")
+        (New-Probe -Surface "web" -Name "web-demo" -Method "GET" -Url (Join-Url $WebBaseUrl "/demo") -ExpectedStatusCodes @(200) -Purpose "Measured current public product route availability through the frontend dev server.")
     )
 }
 

@@ -291,7 +291,7 @@ public sealed partial class PostgresControlPlaneService
 
         if (operation.SimulationRunId is Guid runId)
         {
-            var run = await dbContext.SimulationRuns.AsNoTracking().SingleAsync(entity => entity.Id == runId, cancellationToken);
+            var run = await dbContext.SimulationRuns.SingleAsync(entity => entity.Id == runId, cancellationToken);
             operation.RunState = run.Status.ToString();
             if (run.Status == SimulationRunStatus.Failed)
             {
@@ -326,6 +326,20 @@ public sealed partial class PostgresControlPlaneService
                     operation.FinishedAt = DateTimeOffset.UtcNow;
                     operation.IsOperational = false;
                 }
+            }
+            else if (run.Status == SimulationRunStatus.Running && DateTimeOffset.UtcNow >= operation.DeadlineAt)
+            {
+                var timedOutAt = DateTimeOffset.UtcNow;
+                run.Status = SimulationRunStatus.Failed;
+                run.EndedAt = timedOutAt;
+                operation.State = "TimedOut";
+                operation.RunState = run.Status.ToString();
+                operation.ProcessingState = "TimedOut";
+                operation.TerminalOutcome = "TimedOut";
+                operation.FailureCode = "runtime_operation_deadline_exceeded";
+                operation.FailureMessage = "The correlated producer run was still Running after the operation deadline.";
+                operation.FinishedAt = timedOutAt;
+                operation.IsOperational = false;
             }
         }
 

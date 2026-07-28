@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using NatureProtector.Core.Sensors;
+using NatureProtector.Simulator.Host.TemporalLoad;
 
 namespace NatureProtector.Simulator.Host.Configuration;
 
@@ -22,7 +23,7 @@ namespace NatureProtector.Simulator.Host.Configuration;
  *   suportados.
  */
 
-public sealed class SimulatorOptionsValidator : IValidateOptions<SimulatorOptions>
+public sealed class SimulatorOptionsValidator : IValidateOptions<SimulatorOptions>, IValidateOptions<TemporalLoadOptions>
 {
     /// <summary>
     /// Valida as opções do simulador antes do arranque do host.
@@ -116,6 +117,51 @@ public sealed class SimulatorOptionsValidator : IValidateOptions<SimulatorOption
         if (options.LagDelaySeconds is < 0 or > 3600)
         {
             failures.Add("Simulator:LagDelaySeconds must be between 0 and 3600.");
+        }
+
+        return failures.Count == 0
+            ? ValidateOptionsResult.Success
+            : ValidateOptionsResult.Fail(failures);
+    }
+
+    public ValidateOptionsResult Validate(string? name, TemporalLoadOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (!options.Enabled)
+        {
+            return ValidateOptionsResult.Success;
+        }
+
+        var failures = new List<string>();
+        if (string.IsNullOrWhiteSpace(options.WorkloadPath))
+        {
+            failures.Add("TemporalLoad:WorkloadPath is required when TemporalLoad:Enabled=true.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.WorkloadId))
+        {
+            failures.Add("TemporalLoad:WorkloadId is required when TemporalLoad:Enabled=true.");
+        }
+
+        if (options.Repetition <= 0)
+        {
+            failures.Add("TemporalLoad:Repetition must be greater than zero.");
+        }
+
+        if (options.MaxCatchUpBurst <= 0)
+        {
+            failures.Add("TemporalLoad:MaxCatchUpBurst must be greater than zero.");
+        }
+
+        if (options.MaxNominalGenerationAttempts <= 0)
+        {
+            failures.Add("TemporalLoad:MaxNominalGenerationAttempts must be greater than zero.");
+        }
+
+        if (options.PublisherTimeoutSeconds <= 0)
+        {
+            failures.Add("TemporalLoad:PublisherTimeoutSeconds must be greater than zero.");
         }
 
         return failures.Count == 0

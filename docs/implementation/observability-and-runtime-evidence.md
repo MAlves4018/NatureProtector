@@ -74,7 +74,7 @@ O endpoint usa um cliente dedicado da RabbitMQ Management API. Em cloud usa HTTP
 
 Métricas indisponíveis são nullable e marcadas com `CollectionStatus`. Não são convertidas para zero. Um valor zero significa que RabbitMQ reportou zero.
 
-O backlog é reportado explicitamente como contagens ready, unacknowledged e total. A UI v2 não colapsa estes valores num único número ambíguo de backlog.
+O backlog é reportado explicitamente como contagens ready, unacknowledged e total. A UI atual não colapsa estes valores num único número ambíguo de backlog.
 
 ## Timestamps e correlação
 
@@ -166,11 +166,11 @@ Regras:
 - respostas usam `no-store`;
 - a pasta Brain, `.env`, `.git`, paths arbitrários e ficheiros binários não são expostos.
 
-A UI v2 descarrega runtime evidence allowlisted através do cliente API autenticado existente, por isso o mesmo caminho bearer/session usado pelo resto da app é aplicado a `GET /api/control/runtime/observability/evidence/{evidenceId}`. Não usa um anchor simples e não autenticado para `/api`.
+A UI atual descarrega runtime evidence allowlisted através do cliente API autenticado existente, por isso o mesmo caminho bearer/session usado pelo resto da app é aplicado a `GET /api/control/runtime/observability/evidence/{evidenceId}`. Não usa um anchor simples e não autenticado para `/api`.
 
 ## UI Pipeline
 
-A UI v2 Pipeline consome os novos contratos de observabilidade de forma proporcional:
+A página Pipeline da UI atual consome os novos contratos de observabilidade de forma proporcional:
 
 - service health aparece como campos técnicos;
 - métricas RabbitMQ ready/unacknowledged/consumer aparecem apenas quando medidas;
@@ -208,9 +208,9 @@ Comandos de validação anteriores executados na passagem de 2026-06-16:
 dotnet test tests\NatureProtector.Backoffice.Api.Tests\NatureProtector.Backoffice.Api.Tests.csproj --no-restore
 dotnet test NatureProtector.sln --no-build --no-restore -m:1
 npm run typecheck
-npm test -- src/app/ui-v2/technicalSurfaces.test.ts
-npm test -- src/app/ui-v2 src/app/services/api.test.ts
-npm run test:coverage -- src/app/ui-v2 src/app/services/api.test.ts
+npm test -- src/app/technicalSurfaces.test.ts
+npm test -- src/app src/app/services/api.test.ts
+npm run test:coverage -- src/app src/app/services/api.test.ts
 ```
 
 Runtime smoke evidence foi capturada em:

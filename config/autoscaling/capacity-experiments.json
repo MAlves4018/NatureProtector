@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "acceptableQueueDelaySeconds": 3,
+  "minReplicaCount": 1,
+  "maxReplicaCount": 4,
+  "scaleUpUtilizationThreshold": 0.8,
+  "scaleDownUtilizationThreshold": 0.3,
+  "scaleUpConsecutiveSamples": 3,
+  "scaleDownStableSeconds": 30,
+  "cooldownSeconds": 60,
+  "samplingIntervalMilliseconds": 1000,
+  "claimBoundary": "Local observed capacity only; not production capacity."
+}

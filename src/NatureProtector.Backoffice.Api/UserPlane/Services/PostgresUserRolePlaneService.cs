@@ -117,17 +117,17 @@ public sealed class PostgresUserRolePlaneService : IUserRolePlaneService
 
         var lastId = await dbContext.Roles
             .AsNoTracking()
-            .Select(entity => (int)entity.Id)
-            .DefaultIfEmpty(0)
+            .Select(entity => (int?)entity.Id)
             .MaxAsync(cancellationToken);
-        if (lastId >= short.MaxValue)
+        var nextId = (lastId ?? 0) + 1;
+        if (nextId > short.MaxValue)
         {
             return null;
         }
 
         var role = new RoleRecord
         {
-            Id = (short)(lastId + 1),
+            Id = (short)nextId,
             Name = normalizedName
         };
 

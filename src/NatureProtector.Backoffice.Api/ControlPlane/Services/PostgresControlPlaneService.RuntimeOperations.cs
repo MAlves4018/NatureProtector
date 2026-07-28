@@ -762,9 +762,15 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
         var expiredOperations = pendingOperations
             .Where(entity => entity.DeadlineAt <= now)
             .ToList();
+        var reconciledExpiredOperations = 0;
         foreach (var operation in expiredOperations)
         {
-            await ReconcileRuntimeOperationAsync(dbContext, operation, cancellationToken);
+            var hadTerminalOutcome = operation.TerminalOutcome is not null;
+            var reconciledOperation = await ReconcileRuntimeOperationAsync(dbContext, operation, cancellationToken);
+            if (!hadTerminalOutcome && reconciledOperation.TerminalOutcome is not null)
+            {
+                reconciledExpiredOperations++;
+            }
         }
 
         var activeRuns = await dbContext.SimulationRuns
@@ -772,7 +778,7 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             .ToListAsync(cancellationToken);
         if (activeRuns.Count == 0)
         {
-            return 0;
+            return reconciledExpiredOperations;
         }
 
         var runIds = activeRuns.Select(run => run.Id).ToArray();
@@ -803,7 +809,7 @@ public sealed partial class PostgresControlPlaneService : IControlPlaneService
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        return reconciled;
+        return reconciledExpiredOperations + reconciled;
     }
 
     private static async Task DeleteRuntimeRowsAsync(
