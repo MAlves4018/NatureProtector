@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import os
 import re
 import sys
 import urllib.parse
@@ -21,7 +22,20 @@ def is_excluded(md):
     return excluded_dirs.intersection(parts) or any(parts[:len(path)] == path for path in excluded_paths)
 
 
-mds = [md for md in root.rglob('*.md') if not is_excluded(md)]
+def iter_markdown_files():
+    for current, dirnames, filenames in os.walk(root, followlinks=False):
+        current_path = Path(current)
+        rel_parts = current_path.relative_to(root).parts
+        dirnames[:] = [
+            name for name in dirnames
+            if name not in excluded_dirs and not any((rel_parts + (name,))[:len(path)] == path for path in excluded_paths)
+        ]
+        for filename in filenames:
+            if filename.endswith('.md'):
+                yield current_path / filename
+
+
+mds = sorted(iter_markdown_files())
 pat = re.compile(r'(?<!!)\[[^\]]*\]\(([^)]+)\)|!\[[^\]]*\]\(([^)]+)\)')
 for md in mds:
     txt = md.read_text(errors='ignore')

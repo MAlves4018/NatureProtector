@@ -4,8 +4,8 @@ status: CURRENT
 owner: Miguel Alves
 audience: engineering, report, presentation
 source_of_truth: OperationCapabilities.cs and OperationRoleCatalog
-last_verified_against: NatureProtector Unified Operations Control Plane 2026-06-28
-last_verified_at: 2026-06-28
+last_verified_against: NatureProtector repository snapshot 2026-07-22
+last_verified_at: 2026-07-22
 review_triggers: code, workflow, role, environment or evidence changes
 ---
 

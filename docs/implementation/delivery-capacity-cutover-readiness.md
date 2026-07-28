@@ -1,5 +1,8 @@
 # M06 - Capacidade de entrega, simulação e readiness de cutover
 
+> **Evidence histórica:** este documento regista uma passagem M06 de 2026-06-14. Os paths, métricas e resultados não devem ser usados como afirmação do snapshot atual sem nova execução.
+
+
 Data: 2026-06-14
 
 Este documento regista a passagem local de readiness técnica executada na M06. É um handoff de entrega para o protótipo atual do NatureProtector, não uma decisão de cutover de produção e não validação científica de previsão de incêndio.

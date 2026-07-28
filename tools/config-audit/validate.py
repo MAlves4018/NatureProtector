@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,30 @@ PROJECT_REFERENCE_EXCLUDED_PARTS = {
     "obj",
     "node_modules",
 }
+
+
+def is_project_reference_excluded(path: Path, root: Path) -> bool:
+    rel = path.relative_to(root).as_posix()
+    return rel.startswith(PROJECT_REFERENCE_EXCLUDED_PREFIXES) or bool(PROJECT_REFERENCE_EXCLUDED_PARTS.intersection(path.parts))
+
+
+def iter_repo_files(root: Path, pattern_suffix: str):
+    for current, dirnames, filenames in os.walk(root, followlinks=False):
+        current_path = Path(current)
+        rel = current_path.relative_to(root).as_posix()
+        parts = current_path.relative_to(root).parts
+        dirnames[:] = [
+            name for name in dirnames
+            if not (
+                (name if rel == "." else f"{rel}/{name}").startswith(PROJECT_REFERENCE_EXCLUDED_PREFIXES)
+                or name in PROJECT_REFERENCE_EXCLUDED_PARTS
+                or name in {".git", ".config", ".idea", ".np_evidence_python_win", ".pytest_cache", "__pycache__"}
+                or ".ruff_cache" in parts
+            )
+        ]
+        for filename in filenames:
+            if filename.endswith(pattern_suffix):
+                yield current_path / filename
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -65,9 +90,9 @@ def package_versions(root: Path) -> tuple[dict[str, str], list[str]]:
 def project_package_references(root: Path) -> tuple[set[str], list[str]]:
     refs = set()
     errors = []
-    for path in sorted(root.rglob("*.csproj")):
+    for path in sorted(iter_repo_files(root, ".csproj")):
         rel = path.relative_to(root).as_posix()
-        if rel.startswith(PROJECT_REFERENCE_EXCLUDED_PREFIXES) or PROJECT_REFERENCE_EXCLUDED_PARTS.intersection(path.parts):
+        if is_project_reference_excluded(path, root):
             continue
         try:
             doc = ET.parse(path)

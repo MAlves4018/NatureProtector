@@ -24,7 +24,7 @@ Use este percurso para um clone local em `Development`, sem cloud e sem produç�
 .\scripts\np.ps1 health
 ```
 
-Depois abra a webUI local, entre com as credenciais de desenvolvimento e execute `scenario_b` no Run Orchestrator. O sucesso mínimo é: runtime saudável, run terminada, dados persistidos no PostgreSQL e ausência de um processo persistente `NatureProtector.Simulator.Host` após a run.
+Depois abra a webUI local, entre com as credenciais de desenvolvimento, navegue para `/simulation` e execute `scenario_b` no Run Orchestrator. O sucesso mínimo é: runtime saudável, run terminada, dados persistidos no PostgreSQL e ausência de um processo persistente `NatureProtector.Simulator.Host` após a run.
 
 Para parar:
 
@@ -308,11 +308,13 @@ Password: admin123
 
 Estas credenciais são apenas para baseline local/Development. Não usar fora de desenvolvimento.
 
-Depois do login:
+Depois do login, use a rota canónica atual:
 
 ```text
-Scenario Lab -> Run Orchestrator
+/simulation
 ```
+
+A rota `/runs` permite acompanhar o histórico e abrir o detalhe persistido. As antigas superfícies `/dev/runtime` e `/ui-v2` não fazem parte do router atual.
 
 ### Identidades locais Pipeline/Sim
 

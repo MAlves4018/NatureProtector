@@ -28,13 +28,7 @@ A baseline atual é uma implementação técnica e metodológica candidata. Não
 - Rejeição e quarentena persistidas para falhas de pipeline.
 - Normalização, elegibilidade e scoring operacional.
 - Projeções em `projection.*`.
-- WebUI local com:
-  - Monitoring;
-  - Scenario Lab;
-  - Run Orchestrator;
-  - Evidence & Comparison;
-  - Flow Explorer;
-  - Model & Provenance.
+- webUI local capability-driven com superfícies públicas, risco, runs, simulação, comparação, pipeline, diagnósticos, QA/evidence, deployment/cloud e administração.
 - Comparação técnica entre:
   - NatureProtector Score;
   - Fire Weather Index candidate calculation;
@@ -133,10 +127,10 @@ Estas credenciais são apenas para baseline local/development. Não devem ser us
 
 ## Run Orchestrator
 
-O fluxo suportado para executar simulações é através da webUI:
+O fluxo suportado para executar simulações é através da webUI atual:
 
 ```text
-Scenario Lab → Run Orchestrator
+http://127.0.0.1:5173/simulation
 ```
 
 Para uma validação nominal rápida:
@@ -145,7 +139,7 @@ Para uma validação nominal rápida:
 scenarioCode: scenario_b
 sensorCount: 6
 numberOfCycles: 5
-intervalSeconds: 5
+intervalSeconds: 1
 seed: 12345
 degradationProfile: none
 ```
@@ -249,15 +243,36 @@ Se o build .NET falhar por ficheiros bloqueados, confirmar que `Backoffice.Api`,
 
 ---
 
-## Evidência operacional recente
+## Aceitação final automatizada
 
-A baseline local do freeze candidate foi validada com `scenario_b` e `scenario_c` pelo harness:
+O entrypoint de aceitação agrega os gates estáticos e os harnesses runtime sem duplicar a sua lógica:
+
+```powershell
+.\scripts\acceptance\Invoke-NP-FinalAcceptance.ps1 -Profile Static
+.\scripts\acceptance\Invoke-NP-FinalAcceptance.ps1 -Profile Smoke
+.\scripts\acceptance\Invoke-NP-FinalAcceptance.ps1 -Profile Full -PlanOnly
+```
+
+Os resultados são gravados em `artifacts/final-acceptance/<run-id>/` com `summary.json`, `tests.csv`, blockers, logs e hashes. Consultar `docs/testing/final-acceptance-runner.md` para os requisitos de P3 e os códigos de saída. O perfil `Full` inclui ainda jornadas Playwright fixture/live por papel, acessibilidade crítica, rate limiting e workloads locais bounded `Calibration+B0`; consultar também `docs/testing/ui-bounded-performance-coverage.md`.
+
+Fecho de entrega a partir de um commit limpo:
+
+```powershell
+$env:NP_RELIABILITY_AUTH_TOKEN = '<runtime token>'
+.\scripts\release\Invoke-NP-FinalDelivery.ps1 -Mode Execute
+```
+
+Este comando só constrói o pacote depois de verificar uma campanha atual `Full / PASS` produzida pelo mesmo commit e fingerprint. Em seguida executa instalação limpa, deteção de adulteração e smoke funcional do pacote. O contrato e os outputs estão em `docs/testing/final-delivery-execution.md`.
+
+## Evidência operacional histórica da baseline
+
+Uma baseline local anterior foi validada com `scenario_b` e `scenario_c` pelo harness:
 
 ```powershell
 .\scripts\validation\Invoke-LocalFunctionalValidation.ps1 -Full -Evidence -Ui
 ```
 
-Resultado aceito da validação funcional local:
+Resultado registado nessa execução histórica:
 
 - `scenario_b`: `30` eventos aceites, `30` risk assessments, `0` missing, `0` rejected, `0` quarantined;
 - `scenario_c` com `missing-readings`: `24` eventos aceites, `24` risk assessments, `6` missing, `0` rejected, `0` quarantined;
@@ -265,12 +280,14 @@ Resultado aceito da validação funcional local:
 - validações DB, RabbitMQ, Prevention Host e UI smoke concluídas;
 - ausência de processo `Simulator.Host` persistente após as runs.
 
-O harness aguarda convergência assíncrona do audit antes de declarar PASS. Isto evita tratar uma leitura parcial de auditoria como regressão funcional.
+O harness aguarda convergência assíncrona do audit antes de declarar PASS. Estes números não provam o snapshot atual até a campanha ser repetida; a nova matriz de aceitação está documentada em `docs/reference/functional-capability-catalog.md`.
 
 ---
 
 ## Documentação relacionada
 
+- [docs/reference/functional-capability-catalog.md](docs/reference/functional-capability-catalog.md)
+- [docs/reference/scenario-acceptance-invariants.md](docs/reference/scenario-acceptance-invariants.md)
 - [docs/setup/local-baseline-setup.md](docs/setup/local-baseline-setup.md)
 - [docs/freeze/FREEZE-CANDIDATE.md](docs/freeze/FREEZE-CANDIDATE.md)
 - [docs/runtime/local-runtime.md](docs/runtime/local-runtime.md)
@@ -282,7 +299,7 @@ O harness aguarda convergência assíncrona do audit antes de declarar PASS. Ist
 - [docs/architecture/implementation.md](docs/architecture/implementation.md)
 - [docs/contracts/v1-vocabulary-map.md](docs/contracts/v1-vocabulary-map.md)
 - [docs/architecture/scenario-run-orchestrator.md](docs/architecture/scenario-run-orchestrator.md)
-- [docs/current-state/data-risk-and-scientific-boundaries.md](docs/current-state/data-risk-and-scientific-boundaries.md)
+- [docs/reference/scenario-acceptance-invariants.md](docs/reference/scenario-acceptance-invariants.md)
 - [tests/README.md](tests/README.md)
 
 ---
@@ -309,3 +326,8 @@ Documentation:
 - `docs/implementation/operations/open-gates.md`
 
 Success criteria are machine-readable in `config/operations/success-criteria.json`.
+
+
+## Operator kit V10
+
+Serializes Influx environment-variable tests to eliminate process-global race conditions.

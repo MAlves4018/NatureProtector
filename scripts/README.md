@@ -4,6 +4,8 @@ Scripts are grouped by operational responsibility. A script that is not called b
 
 ## Canonical entrypoints
 
+- `scripts/acceptance/Invoke-NP-FinalAcceptance.ps1`: single local acceptance orchestrator for static, smoke, functional and full profiles. It delegates to maintained harnesses and writes a normalized verdict below `artifacts/final-acceptance/`.
+- `scripts/acceptance/Invoke-NP-ControlledValidationP3.ps1`: guarded P3 acceptance stage. It executes the bounded negative pipeline, audits PostgreSQL using the exact `runLabel`, verifies the 10 executable and 2 fixture-blocked cases, and never logs the token or unredacted connection string.
 - `scripts/np.ps1`: standard validation, release, deployment and qualification entrypoint.
 - `scripts/workspace.ps1`: local workspace lifecycle and developer runtime entrypoint.
 - `scripts/dotnet/Use-RepoDotnetEnvironment.ps1`: configure the repository-local .NET environment in the current PowerShell session.
@@ -46,15 +48,14 @@ Os resultados são escritos em `artifacts/report-evidence/` e não são versiona
 
 ## Documentação e referências geradas
 
-- `scripts/docs/generate_reference_catalogs.py`: regenera as matrizes de roles/capabilities e o catálogo fechado de operações a partir das autoridades C# atuais. É um entrypoint manual e pode ser usado antes de validar ou publicar documentação.
+- `scripts/docs/generate_reference_catalogs.py`: regenera, a partir das autoridades C#/TypeScript atuais, as matrizes de roles/capabilities, o catálogo fechado de operações, o catálogo de endpoints API, a matriz de rotas UI e o catálogo de diagnósticos runtime. É um entrypoint manual e deve ser executado antes de validar ou publicar documentação funcional.
 - `scripts/docs/build_offline_portal.py`: gera o portal HTML pesquisável a partir da camada documental canónica. Requer as dependências opcionais `mistune` e `jinja2`; não altera o repositório nem executa operações cloud.
 - `scripts/docs/validate_documentation.py`: gate estático de links, autoridade e integridade source/render/sidecar, chamado pelo workflow de documentação.
 
 ## Runtime validation matrices
 
 The following PowerShell entrypoints are maintained manual harnesses for local
-runtime validation. They use real local services and write evidence outside the
-versioned repository tree.
+runtime validation. They use real local services and write evidence below the ignored repository `artifacts/` tree.
 
 - `scripts/testing/Invoke-MultiReplicaTemporalMatrix.ps1` validates temporal
   correctness with 1, 2, and 3 separate Prevention processes.
@@ -70,5 +71,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/testing/Invoke-MultiReplic
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/testing/Invoke-SystemResetRecoveryMatrix.ps1 -SkipBuild
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/testing/Invoke-AutoscalingExperimentMatrix.ps1 -SkipBuild
 ```
+
+Their default output is run-scoped below `artifacts/acceptance/matrices/`; any explicit output outside `artifacts` is rejected.
 
 These scripts are not production or cloud deployment entrypoints.

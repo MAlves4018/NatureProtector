@@ -2,6 +2,7 @@ using NatureProtector.Infrastructure.Influx.Configuration;
 
 namespace NatureProtector.Infrastructure.Influx.Tests.Configuration;
 
+[Collection("InfluxEnvironmentVariables")]
 public sealed class InfluxDbSettingsLoaderTests
 {
     private static readonly string[] InfluxEnvironmentKeys =

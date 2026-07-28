@@ -385,6 +385,7 @@ $commonEnvironment = @{
     ControlledValidation__ProcessingFaults__Enabled                    = 'true'
     ControlledValidation__ProcessingFaults__EnableBuiltInP3Cases       = 'true'
     ControlledValidation__ProcessingFaults__AllowedRunLabelPrefixes__0 = 'controlled-validation-p3-negative-pipeline-'
+    ControlledValidation__ProcessingFaults__AllowedRunLabelPrefixes__1 = 'multi-replica-runtime'
     NP_BOOTSTRAP_ADMIN_USERNAME                                        = $bootstrapAdminUsername
     NP_BOOTSTRAP_ADMIN_PASSWORD                                        = $bootstrapAdminPassword
 }

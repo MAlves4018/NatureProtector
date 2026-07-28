@@ -1,5 +1,8 @@
 # Guia de manutenção da UI v2 para o owner
 
+> **Estado histórico:** a estrutura `webUI/src/app/ui-v2` e a rota `/ui-v2` já não são a superfície atual. Consultar [`../current-state/roles-capabilities-and-ui.md`](../current-state/roles-capabilities-and-ui.md) e [`../reference/functional-capability-catalog.md`](../reference/functional-capability-catalog.md).
+
+
 Última atualização: 2026-06-16
 
 ## Âmbito

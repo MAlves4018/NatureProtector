@@ -45,7 +45,14 @@ public sealed class PostgresCycleProjectionCoordinator(
                     var observations = await dbContext.CycleObservations.AsNoTracking()
                         .Where(entity => entity.SimulationRunId == group.Key && entity.CycleIndex == settlement.CycleIndex)
                         .ToListAsync(cancellationToken);
-                    finalizations.Add(FinalizeCycle(dbContext, settlement, sensors, observations, true, DateTimeOffset.UtcNow));
+                    finalizations.Add(await FinalizeCycleAsync(
+                        dbContext,
+                        settlement,
+                        sensors,
+                        observations,
+                        true,
+                        DateTimeOffset.UtcNow,
+                        cancellationToken));
                 }
             }
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -147,7 +154,10 @@ public sealed class PostgresCycleProjectionCoordinator(
             }
 
             if (settlement.FinalizedAt is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
                 return Array.Empty<FinalizedCycleProjection>();
+            }
 
             var finalizations = new List<FinalizedCycleProjection>();
             var open = await dbContext.CycleSettlements
@@ -164,7 +174,14 @@ public sealed class PostgresCycleProjectionCoordinator(
                 if (!timedOut && observations.Select(item => item.SensorId).Distinct().Count() < candidateSensors.Count)
                     continue;
 
-                finalizations.Add(FinalizeCycle(dbContext, candidate, candidateSensors, observations, timedOut, now));
+                finalizations.Add(await FinalizeCycleAsync(
+                    dbContext,
+                    candidate,
+                    candidateSensors,
+                    observations,
+                    timedOut,
+                    now,
+                    cancellationToken));
             }
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -199,13 +216,14 @@ public sealed class PostgresCycleProjectionCoordinator(
             .ToListAsync(cancellationToken);
     }
 
-    private static FinalizedCycleProjection FinalizeCycle(
+    private static async Task<FinalizedCycleProjection> FinalizeCycleAsync(
         NatureProtectorControlDbContext dbContext,
         CycleSettlementRecord settlement,
         IReadOnlyList<SensorNodeRecord> sensors,
         IReadOnlyList<CycleObservationRecord> observations,
         bool timedOut,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
     {
         var observed = observations.Where(item => item.MetricOrigin == MetricOrigin.Observed.ToString())
             .Select(item => item.SensorId).ToHashSet();
@@ -264,6 +282,10 @@ public sealed class PostgresCycleProjectionCoordinator(
             };
             dbContext.CellCycleSnapshots.Add(snapshot);
             cellSnapshots.Add(snapshot);
+            if (settlement.IsOperational && snapshot.AggregateRiskScore.HasValue)
+            {
+                await UpsertCellOperationalStateAsync(dbContext, snapshot, cellObservations, now, cancellationToken);
+            }
         }
 
         var areaScores = cellSnapshots
@@ -316,6 +338,51 @@ public sealed class PostgresCycleProjectionCoordinator(
             settlement.IsOperational,
             eligibleEventIds,
             aggregationReason);
+    }
+
+    private static async Task UpsertCellOperationalStateAsync(
+        NatureProtectorControlDbContext dbContext,
+        CellCycleSnapshotRecord snapshot,
+        IReadOnlyList<CycleObservationRecord> observations,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existingState = await dbContext.CellOperationalStates
+            .SingleOrDefaultAsync(entity => entity.GridCellId == snapshot.GridCellId, cancellationToken);
+        if (existingState is null)
+        {
+            existingState = new CellOperationalStateRecord
+            {
+                Id = Guid.NewGuid(),
+                AreaId = snapshot.AreaId,
+                GridCellId = snapshot.GridCellId
+            };
+            dbContext.CellOperationalStates.Add(existingState);
+        }
+
+        var latestEligibleObservation = observations
+            .Where(item => item.Outcome == CycleObservationOutcome.Eligible.ToString() && item.RiskScore.HasValue)
+            .OrderByDescending(item => item.EventTime)
+            .ThenByDescending(item => item.CreatedAt)
+            .FirstOrDefault();
+        var riskLevel = Enum.TryParse<RiskLevel>(snapshot.AggregateRiskLevel, out var parsedRiskLevel)
+            ? parsedRiskLevel
+            : RiskLevel.Unknown;
+        var freshness = OperationalProjectionStatus.ResolveFreshness(snapshot.SnapshotTimestamp, now);
+
+        existingState.SensorId = latestEligibleObservation?.SensorId;
+        existingState.LatestAssessmentId = null;
+        existingState.SnapshotTimestamp = snapshot.SnapshotTimestamp;
+        existingState.RiskScore = snapshot.AggregateRiskScore!.Value;
+        existingState.RiskLevel = snapshot.AggregateRiskLevel;
+        existingState.Severity = SeverityExtensions.FromRiskLevel(riskLevel).ToString();
+        existingState.CoverageStatus = OperationalProjectionStatus.ResolveCoverage(snapshot.EligibleCount);
+        existingState.FreshnessStatus = freshness;
+        existingState.CarryForwardStatus = OperationalProjectionStatus.ResolveCarryForward(freshness);
+        existingState.Summary =
+            $"Cycle {snapshot.CycleIndex}: expected={snapshot.ExpectedCount}; observed={snapshot.ObservedCount}; " +
+            $"missing={snapshot.MissingCount}; blocked={snapshot.BlockedCount}; eligible={snapshot.EligibleCount}.";
+        existingState.UpdatedAt = now;
     }
 
     private static double? Aggregate(IReadOnlyList<double> scores)

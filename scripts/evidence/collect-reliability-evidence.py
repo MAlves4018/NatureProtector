@@ -759,6 +759,11 @@ def main() -> int:
     parser.add_argument("--audit-directory", type=Path)
     parser.add_argument("--require-p3", action="store_true")
     parser.add_argument("--require-audit", action="store_true")
+    parser.add_argument(
+        "--no-latest-pointer",
+        action="store_true",
+        help="Do not update artifacts/report-evidence/<baseline>/06-reliability/LATEST.txt.",
+    )
     args = parser.parse_args()
 
     repo = args.repo.resolve()
@@ -1050,9 +1055,10 @@ def main() -> int:
     write_json(output / "phase6-summary.json", summary)
     hashed = write_hash_manifest(output)
 
-    latest_dir = repo / "artifacts/report-evidence" / args.baseline_id / "06-reliability"
-    latest_dir.mkdir(parents=True, exist_ok=True)
-    (latest_dir / "LATEST.txt").write_text(str(output) + "\n", encoding="utf-8")
+    if not args.no_latest_pointer:
+        latest_dir = repo / "artifacts/report-evidence" / args.baseline_id / "06-reliability"
+        latest_dir.mkdir(parents=True, exist_ok=True)
+        (latest_dir / "LATEST.txt").write_text(str(output) + "\n", encoding="utf-8")
 
     print(f"PHASE_6_STATUS={phase_status}")
     print(f"STATIC_RELIABILITY_CONTRACT_STATUS={summary['staticContractStatus']}")

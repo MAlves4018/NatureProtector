@@ -395,6 +395,37 @@ function Invoke-StartRuntimeCommand {
     }
 }
 
+function Ensure-Phase3RuntimeReady {
+    if (Test-Phase3RuntimeReady) {
+        Add-Test -Name "runtime-auto-start" -Status "PASS" -Detail "Runtime endpoints were already healthy before functional validation."
+        return
+    }
+
+    foreach ($step in @(
+        @{ name = "np-up-runtime"; args = @("up"); timeout = 900 },
+        @{ name = "np-start-runtime"; args = @("start", "-NoBrowser"); timeout = 420 },
+        @{ name = "np-health-runtime"; args = @("health"); timeout = 300 }
+    )) {
+        $result = if ($step.name -eq "np-start-runtime") {
+            Invoke-StartRuntimeCommand
+        }
+        else {
+            Invoke-LoggedCommand -Name $step.name -Executable "pwsh" -Arguments (@("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\np.ps1")) + $step.args) -TimeoutSeconds $step.timeout
+        }
+
+        Add-Test -Name $step.name -Status ($(if ($result.ExitCode -eq 0) { "PASS" } else { "FAIL" })) -Detail "exit=$($result.ExitCode)" -EvidencePath $result.LogPath
+        if ($result.ExitCode -ne 0) {
+            Add-Blocker -Severity "BLOCKER" -Area "runtime" -Command "scripts\np.ps1 $($step.args -join ' ')" -RootCause "Automatic runtime startup failed. $($result.Output)" -EvidencePath $result.LogPath -NextStep "Inspect the np up/start/health logs produced by the functional harness."
+            throw "Automatic runtime startup failed at $($step.name)."
+        }
+    }
+
+    if (-not (Test-Phase3RuntimeReady)) {
+        Add-Blocker -Severity "BLOCKER" -Area "runtime" -Command "GET health endpoints after automatic startup" -RootCause "np up/start/health returned success but API, Prevention Host or webUI was still unavailable." -EvidencePath (Join-Path $LogsDir "np-health-runtime.log") -NextStep "Inspect the runtime startup logs and child process state."
+        throw "Runtime endpoints did not become healthy after automatic startup."
+    }
+}
+
 function Invoke-ApiJson {
     param(
         [Parameter(Mandatory)][ValidateSet("GET", "POST")][string]$Method,
@@ -921,6 +952,24 @@ function Complete-Reports {
     )
     Save-TextFile -Path (Join-Path $RunRoot "FUNCTIONAL-VALIDATION-SUMMARY.md") -Lines $summary
 
+    $normalizedStatus = switch ($Verdict) {
+        "PHASE_3_LOCAL_FUNCTIONAL_VALIDATION_PASS" { "PASS" }
+        "PHASE_3_LOCAL_FUNCTIONAL_VALIDATION_BLOCKED" { "BLOCKED_PREREQUISITE" }
+        default { "FAIL" }
+    }
+    Write-JsonFile -Path (Join-Path $RunRoot "acceptance-result.json") -Value ([ordered]@{
+        schemaVersion = 1
+        component = "local-functional-validation"
+        status = $normalizedStatus
+        nativeStatus = $Verdict
+        startedAtUtc = $RunStartedAtUtc.ToString("o")
+        completedAtUtc = $completedAt.ToString("o")
+        durationSeconds = $durationSeconds
+        testCount = $TestRows.Count
+        blockerCount = $blockingCount
+        outputRoot = $RunRoot
+    })
+
     $dbLines = @(
         "# DB Validation",
         "",
@@ -1031,6 +1080,10 @@ try {
                 throw "Clean-room startup failed at $($step.name)."
             }
         }
+    }
+
+    if (-not $CleanRoom) {
+        Ensure-Phase3RuntimeReady
     }
 
     Test-HttpStatus -Name "Backoffice API /health" -Uri "$ApiRoot/health" | Out-Null
@@ -1219,5 +1272,6 @@ finally {
     Write-Host $Verdict
     Write-Host "RunRoot=$RunRoot"
     if ($Verdict -eq "PHASE_3_LOCAL_FUNCTIONAL_VALIDATION_PASS") { exit 0 }
+    if ($Verdict -eq "PHASE_3_LOCAL_FUNCTIONAL_VALIDATION_BLOCKED") { exit 2 }
     exit 1
 }

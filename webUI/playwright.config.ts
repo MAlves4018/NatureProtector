@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 import path from 'node:path';
 
 const externalRoot = process.env.UI_REVISION_RUNS;
+const sensitiveAcceptance = process.env.NP_UI_SENSITIVE_ACCEPTANCE === '1';
 
 export default defineConfig({
   testDir: './e2e',
@@ -25,9 +26,9 @@ export default defineConfig({
     extraHTTPHeaders: process.env.NP_EVIDENCE_RUN_ID
       ? { 'X-NP-Evidence-Run-Id': process.env.NP_EVIDENCE_RUN_ID }
       : undefined,
-    trace: 'retain-on-failure',
+    trace: sensitiveAcceptance ? 'off' : 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: sensitiveAcceptance ? 'off' : 'retain-on-failure',
   },
   webServer:
     process.env.LIVE_RUNTIME === '1'

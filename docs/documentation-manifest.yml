@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-06-28'
-baseline: NatureProtector Unified Operations Control Plane 2026-06-28
+generated_at: '2026-07-22'
+baseline: NatureProtector functional acceptance documentation 2026-07-22
 authority_order:
 - repository code and configuration
 - current-state canonical documents
@@ -27,6 +27,14 @@ canonical_topics:
   limitations-open-gates: current-state/limitations-and-open-gates.md
   diagram-portfolio: architecture/diagrams/current/README.md
   study-compendium: study/NatureProtector-Complete-Study-Compendium.md
+  functional-capability-catalog: reference/functional-capability-catalog.md
+  functional-traceability-matrix: reference/functional-traceability-matrix.csv
+  scenario-acceptance-invariants: reference/scenario-acceptance-invariants.md
+  api-endpoint-catalog: reference/generated/api-endpoint-catalog.csv
+  ui-route-capability-matrix: reference/generated/ui-route-capability-matrix.csv
+  phase-1-functional-audit: current-state/phase-1-functional-audit-2026-07-22.md
+  phase-4-ui-performance-coverage: current-state/phase-4-ui-performance-coverage-2026-07-22.md
+  ui-bounded-performance-coverage: testing/ui-bounded-performance-coverage.md
 documents:
 - path: NatureProtector-V1-overview.md
   status: HISTORICAL
@@ -840,6 +848,10 @@ documents:
   status: CURRENT
   kind: markdown
   authority: canonical
+- path: current-state/phase-1-functional-audit-2026-07-22.md
+  status: EVIDENCE
+  kind: markdown
+  authority: supporting
 - path: current-state/quality-evidence-and-testing.md
   status: CURRENT
   kind: markdown
@@ -1213,7 +1225,7 @@ documents:
   kind: markdown
   authority: supporting
 - path: implementation/delivery-capacity-cutover-readiness.md
-  status: CURRENT
+  status: HISTORICAL
   kind: markdown
   authority: supporting
 - path: implementation/engineering-foundations.md
@@ -1301,11 +1313,11 @@ documents:
   kind: markdown
   authority: supporting
 - path: implementation/ui-v2-foundation.md
-  status: CURRENT
+  status: HISTORICAL
   kind: markdown
   authority: supporting
 - path: implementation/ui-v2-owner-maintenance-guide.md
-  status: CURRENT
+  status: HISTORICAL
   kind: markdown
   authority: supporting
 - path: implementation/v1/degradation-profiles-plan.md
@@ -1431,6 +1443,30 @@ documents:
 - path: presentation/exports/NatureProtector-Defence-Quick-Reference.pdf
   status: CURRENT
   kind: pdf
+  authority: supporting
+- path: reference/functional-capability-catalog.md
+  status: CURRENT
+  kind: markdown
+  authority: supporting
+- path: reference/functional-traceability-matrix.csv
+  status: CURRENT
+  kind: structured
+  authority: supporting
+- path: reference/scenario-acceptance-invariants.md
+  status: CURRENT
+  kind: markdown
+  authority: supporting
+- path: reference/generated/api-endpoint-catalog.csv
+  status: GENERATED
+  kind: structured
+  authority: supporting
+- path: reference/generated/ui-route-capability-matrix.csv
+  status: GENERATED
+  kind: structured
+  authority: supporting
+- path: reference/generated/runtime-diagnostic-catalog.csv
+  status: GENERATED
+  kind: structured
   authority: supporting
 - path: reference/generated/operation-catalog.csv
   status: GENERATED
@@ -1853,6 +1889,14 @@ documents:
   kind: pdf
   authority: supporting
 - path: tutorials/first-guided-run.md
+  status: CURRENT
+  kind: markdown
+  authority: supporting
+- path: current-state/phase-4-ui-performance-coverage-2026-07-22.md
+  status: EVIDENCE
+  kind: markdown
+  authority: supporting
+- path: testing/ui-bounded-performance-coverage.md
   status: CURRENT
   kind: markdown
   authority: supporting

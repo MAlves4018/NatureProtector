@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "requiredAcceptanceProfile": "Full",
+  "statuses": [
+    "PASS",
+    "FAIL",
+    "BLOCKED_PREREQUISITE",
+    "HARNESS_ERROR",
+    "PLAN_ONLY"
+  ],
+  "exitCodes": {
+    "PASS": 0,
+    "FAIL": 1,
+    "BLOCKED_PREREQUISITE": 2,
+    "HARNESS_ERROR": 3,
+    "PLAN_ONLY": 0
+  },
+  "sourcePolicy": {
+    "requireGitRepository": true,
+    "requireCleanWorkingTree": true,
+    "allowDetachedHead": true
+  },
+  "requiredCommands": [
+    "pwsh",
+    "python",
+    "dotnet",
+    "node",
+    "npm",
+    "docker",
+    "git",
+    "psql"
+  ],
+  "acceptance": {
+    "configPath": "config/acceptance/final-acceptance.json",
+    "runner": "scripts/acceptance/Invoke-NP-FinalAcceptance.ps1",
+    "verifier": "scripts/acceptance/verify_final_acceptance_evidence.py",
+    "requiredSwitches": [
+      "-ExecuteControlledValidationP3",
+      "-AcknowledgeNonProduction"
+    ]
+  },
+  "release": {
+    "builder": "scripts/release/build-release-candidate.ps1",
+    "cleanInstall": "scripts/release/test-clean-install.ps1",
+    "tamperDetection": "scripts/release/test-package-tamper-detection.ps1",
+    "functionalSmoke": "scripts/release/test-functional-package-smoke.ps1"
+  },
+  "requiredReleaseGates": [
+    "acceptance-full",
+    "acceptance-evidence-verification",
+    "release-candidate-build",
+    "clean-install",
+    "tamper-detection",
+    "functional-package-smoke"
+  ],
+  "secretScanExtensions": [
+    ".json",
+    ".csv",
+    ".md",
+    ".txt",
+    ".log"
+  ]
+}

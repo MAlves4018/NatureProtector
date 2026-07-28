@@ -1,7 +1,8 @@
 param(
-    [string]$OutputRoot = "..\NatureProtector.brain\post-beta\Fixes\ExecutionResults\remediated-integration\reset-recovery-runtime",
+    [string]$OutputRoot = "",
     [string]$ApiBaseUrl = "http://127.0.0.1:5254",
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$PreserveOutput
 )
 
 Set-StrictMode -Version Latest
@@ -10,11 +11,26 @@ $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot '..\common\NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
 
 $RepoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln')
-$OutputRoot = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $OutputRoot))
-if (-not $OutputRoot.EndsWith('NatureProtector.brain\post-beta\Fixes\ExecutionResults\remediated-integration\reset-recovery-runtime', [StringComparison]::OrdinalIgnoreCase)) {
-    throw "Refusing to clear unexpected output root: $OutputRoot"
+$ArtifactsRoot = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot 'artifacts'))
+$MatrixOutputBase = [System.IO.Path]::GetFullPath((Join-Path $ArtifactsRoot 'acceptance\matrices\reset-recovery-runtime'))
+$FinalAcceptanceBase = [System.IO.Path]::GetFullPath((Join-Path $ArtifactsRoot 'final-acceptance'))
+if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
+    $runId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+    $OutputRoot = Join-Path $MatrixOutputBase $runId
 }
-if (Test-Path -LiteralPath $OutputRoot) {
+elseif (-not [System.IO.Path]::IsPathRooted($OutputRoot)) {
+    $OutputRoot = Join-Path $RepoRoot $OutputRoot
+}
+$OutputRoot = [System.IO.Path]::GetFullPath($OutputRoot)
+$matrixPrefix = $MatrixOutputBase.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+$finalAcceptancePrefix = $FinalAcceptanceBase.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+$isStandaloneRun = -not $OutputRoot.Equals($MatrixOutputBase, [StringComparison]::OrdinalIgnoreCase) -and
+    ($OutputRoot + [System.IO.Path]::DirectorySeparatorChar).StartsWith($matrixPrefix, [StringComparison]::OrdinalIgnoreCase)
+$isOrchestratedRun = ($OutputRoot + [System.IO.Path]::DirectorySeparatorChar).StartsWith($finalAcceptancePrefix, [StringComparison]::OrdinalIgnoreCase)
+if (-not $isStandaloneRun -and -not $isOrchestratedRun) {
+    throw "OutputRoot must be a run-scoped child of $MatrixOutputBase or an orchestrated final-acceptance component."
+}
+if ((Test-Path -LiteralPath $OutputRoot) -and -not $PreserveOutput) {
     Get-ChildItem -LiteralPath $OutputRoot -Force | Remove-Item -Recurse -Force
 }
 
@@ -123,12 +139,38 @@ function Invoke-Api {
         $parameters.Body = ($Body | ConvertTo-Json -Depth 30)
     }
     Add-CommandLog "$Method $BaseUrl$Path"
-    try {
-        $response = Invoke-WebRequest @parameters
+    $response = $null
+    for ($attempt = 1; $attempt -le 8; $attempt++) {
+        try {
+            $response = Invoke-WebRequest @parameters
+        }
+        catch {
+            throw "$Method $BaseUrl$Path failed: $($_.Exception.Message)"
+        }
+
+        if ($response.StatusCode -ne 429 -or $attempt -eq 8) {
+            break
+        }
+
+        $retryAfter = 0
+        if ($response.Headers.ContainsKey('Retry-After')) {
+            [int]::TryParse([string]$response.Headers['Retry-After'], [ref]$retryAfter) | Out-Null
+        }
+
+        $delaySeconds = if ($retryAfter -gt 0) {
+            [Math]::Min($retryAfter, 300)
+        }
+        elseif ($Method -eq 'POST' -and $Path -eq '/api/control/runtime/runs') {
+            60
+        }
+        else {
+            10
+        }
+
+        Add-CommandLog "HTTP 429 $Method $BaseUrl$Path; retry $attempt/7 after ${delaySeconds}s"
+        Start-Sleep -Seconds $delaySeconds
     }
-    catch {
-        throw "$Method $BaseUrl$Path failed: $($_.Exception.Message)"
-    }
+
     if ($response.StatusCode -ge 400) {
         $safePath = ($Path -replace '[^A-Za-z0-9._-]', '_').Trim('_')
         $errorPath = Join-Path $LogsRoot ("http-error-{0}-{1}-{2}.json" -f (Get-Date -Format 'yyyyMMdd-HHmmss-fff'), $Method, $safePath)
@@ -139,7 +181,23 @@ function Invoke-Api {
     if ([string]::IsNullOrWhiteSpace($response.Content)) {
         return [pscustomobject]@{ statusCode = $response.StatusCode; content = $null }
     }
-    try { return $response.Content | ConvertFrom-Json } catch { return [pscustomobject]@{ statusCode = $response.StatusCode; content = $response.Content } }
+    try {
+        $parsed = $response.Content | ConvertFrom-Json
+        if ($parsed.PSObject.Properties.Name -notcontains 'statusCode') {
+            $parsed | Add-Member -NotePropertyName statusCode -NotePropertyValue ([int]$response.StatusCode)
+        }
+        return $parsed
+    } catch {
+        return [pscustomobject]@{ statusCode = $response.StatusCode; content = $response.Content }
+    }
+}
+
+function Get-ResponseField {
+    param([object]$Response, [string]$Name)
+    if ($null -ne $Response -and $Response.PSObject.Properties.Name -contains $Name) {
+        return [string]$Response.$Name
+    }
+    return ''
 }
 
 function Invoke-PsqlCsv {
@@ -190,10 +248,10 @@ function Get-RabbitCounts {
     $path = Join-Path $EvidencePath "rabbitmq-$Label.json"
     $response.Content | Set-Content -LiteralPath $path -Encoding UTF8
     if ($response.StatusCode -ge 400 -or [string]::IsNullOrWhiteSpace($response.Content)) {
-        return [pscustomobject]@{ messages = $null; unacknowledged = $null; total = $null }
+        return [pscustomobject]@{ messages = $null; unacknowledged = $null; total = $null; consumers = $null }
     }
     $json = $response.Content | ConvertFrom-Json
-    return [pscustomobject]@{ messages = [int]$json.messages; unacknowledged = [int]$json.messages_unacknowledged; total = [int]$json.messages + [int]$json.messages_unacknowledged }
+    return [pscustomobject]@{ messages = [int]$json.messages; unacknowledged = [int]$json.messages_unacknowledged; total = [int]$json.messages + [int]$json.messages_unacknowledged; consumers = [int]$json.consumers }
 }
 
 function Wait-RabbitUnacknowledged {
@@ -205,6 +263,17 @@ function Wait-RabbitUnacknowledged {
         Start-Sleep -Milliseconds 500
     } while ([DateTimeOffset]::UtcNow -lt $deadline)
     throw "RabbitMQ did not expose an unacknowledged delivery within $TimeoutSeconds second(s)."
+}
+
+function Wait-RabbitConsumerCount {
+    param([string]$EvidencePath, [int]$MinimumConsumers, [int]$TimeoutSeconds = 30)
+    $deadline = [DateTimeOffset]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        $counts = Get-RabbitCounts -EvidencePath $EvidencePath -Label 'consumer-wait'
+        if ($counts.consumers -ge $MinimumConsumers) { return $counts }
+        Start-Sleep -Milliseconds 500
+    } while ([DateTimeOffset]::UtcNow -lt $deadline)
+    throw "RabbitMQ did not expose $MinimumConsumers consumer(s) within $TimeoutSeconds second(s)."
 }
 
 function Wait-RabbitQuiescent {
@@ -321,7 +390,11 @@ function Start-SmallRun {
     Add-CommandLog "POST $BaseUrl/api/control/runtime/runs label=$Label"
     $response = Invoke-Api -Method POST -BaseUrl $BaseUrl -Path '/api/control/runtime/runs' -Token $Token -Body $body
     if ($response.PSObject.Properties.Name -notcontains 'operationId' -or [string]::IsNullOrWhiteSpace([string]$response.operationId)) {
-        throw "Runtime run '$Label' was not accepted: status=$($response.status) message=$($response.message)"
+        $status = Get-ResponseField -Response $response -Name 'status'
+        $title = Get-ResponseField -Response $response -Name 'title'
+        $detail = Get-ResponseField -Response $response -Name 'detail'
+        $message = Get-ResponseField -Response $response -Name 'message'
+        throw "Runtime run '$Label' was not accepted: status=$status title=$title message=$message detail=$detail"
     }
     return $response
 }
@@ -352,8 +425,8 @@ function New-InboxFixture {
     $id = [guid]::NewGuid().ToString()
     $eventId = [guid]::NewGuid().ToString()
     $sql = @"
-INSERT INTO pipeline.event_inbox ("Id","EventId","SchemaVersion","CorrelationId","Producer","EventType","AreaId","EventTime","ReceivedAt","PayloadJson","EnvelopeJson","Status","AttemptCount")
-SELECT '$id'::uuid,'$eventId'::uuid,'v1','reset-recovery-fixture','fixture','SensorReadingProduced',"Id",CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'{}','{}',$Status,0
+INSERT INTO pipeline.event_inbox ("Id","EventId","SchemaVersion","CorrelationId","Producer","EventType","AreaId","EventTime","ReceivedAt","PublishedAt","PersistedAt","PayloadJson","EnvelopeJson","Status","AttemptCount")
+SELECT '$id'::uuid,'$eventId'::uuid,'v1','reset-recovery-fixture','fixture','SensorReadingProduced',"Id",CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'{}','{}',$Status,0
 FROM control.areas WHERE "Code"='proenca-a-nova' LIMIT 1;
 "@
     Invoke-PsqlCsv -Sql $sql -OutputPath (Join-Path $OutputRoot "insert-inbox-$id.csv") | Out-Null
@@ -361,10 +434,13 @@ FROM control.areas WHERE "Code"='proenca-a-nova' LIMIT 1;
 }
 
 function Publish-RabbitMessage {
+    param([int]$Count = 1)
     $uri = "http://localhost:$RabbitManagementPort/api/exchanges/%2F/amq.default/publish"
     $auth = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("${RabbitUser}:${RabbitPassword}"))
-    $body = @{ properties = @{}; routing_key = 'np.ingestion.readings'; payload = '{"fixture":"reset-recovery"}'; payload_encoding = 'string' }
-    Invoke-WebRequest -UseBasicParsing -Method POST -Uri $uri -Headers @{ Authorization = "Basic $auth" } -ContentType 'application/json' -Body ($body | ConvertTo-Json -Depth 10) -TimeoutSec 10 | Out-Null
+    for ($i = 0; $i -lt $Count; $i++) {
+        $body = @{ properties = @{}; routing_key = 'np.ingestion.readings'; payload = ('{{"fixture":"reset-recovery","sequence":{0}}}' -f $i); payload_encoding = 'string' }
+        Invoke-WebRequest -UseBasicParsing -Method POST -Uri $uri -Headers @{ Authorization = "Basic $auth" } -ContentType 'application/json' -Body ($body | ConvertTo-Json -Depth 10) -TimeoutSec 10 | Out-Null
+    }
 }
 
 function Start-UnackedConsumer {
@@ -374,18 +450,25 @@ function Start-UnackedConsumer {
     @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
-  <ItemGroup><PackageReference Include="RabbitMQ.Client" Version="6.8.1" /></ItemGroup>
+  <ItemGroup><PackageReference Include="RabbitMQ.Client" /></ItemGroup>
 </Project>
 "@ | Set-Content -LiteralPath $csproj -Encoding UTF8
     @"
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 var factory = new ConnectionFactory { HostName = "localhost", Port = $RabbitAmqpPort, UserName = "$RabbitUser", Password = "$RabbitPassword", DispatchConsumersAsync = false };
 using var connection = factory.CreateConnection();
 using var channel = connection.CreateModel();
 channel.BasicQos(0, 1, false);
-var result = channel.BasicGet("np.ingestion.readings", autoAck: false);
-if (result is null) { Console.Error.WriteLine("No message available."); return 2; }
-Console.WriteLine(result.DeliveryTag);
+var received = new TaskCompletionSource<ulong>(TaskCreationOptions.RunContinuationsAsynchronously);
+var consumer = new EventingBasicConsumer(channel);
+consumer.Received += (_, ea) =>
+{
+    Console.WriteLine(ea.DeliveryTag);
+    received.TrySetResult(ea.DeliveryTag);
+};
+channel.BasicConsume("np.ingestion.readings", autoAck: false, consumer);
+if (await Task.WhenAny(received.Task, Task.Delay(TimeSpan.FromSeconds(60))) != received.Task) { Console.Error.WriteLine("No message delivered."); return 2; }
 await Task.Delay(TimeSpan.FromMinutes(5));
 return 0;
 "@ | Set-Content -LiteralPath (Join-Path $helper 'Program.cs') -Encoding UTF8
@@ -429,7 +512,7 @@ function Invoke-Case {
         Add-StoreRows -Case $Name -PgBefore $pgBefore -PgAfter $pgAfter -RabbitBefore $rabbitBefore -RabbitAfter $rabbitAfter -InfluxBefore $influxBefore -InfluxAfter $influxAfter
         $resetId = if ($reset.resetId) { [string]$reset.resetId } else { '' }
         $status = if ($reset.status) { [string]$reset.status } else { '' }
-        $ResetRows.Add([pscustomobject]@{ case=$Name; reset_id=$resetId; status=$status; message=([string]$reset.message); evidence_path=$caseRoot })
+        $ResetRows.Add([pscustomobject]@{ case=$Name; reset_id=$resetId; status=$status; message=(Get-ResponseField -Response $reset -Name 'message'); evidence_path=$caseRoot })
         $MatrixRows.Add([pscustomobject]@{
             case=$Name; reset_id=$resetId; operation_id=$operationId; simulation_run_id=$runId;
             postgres_before=(Get-CountSum $pgBefore); postgres_after=(Get-CountSum $pgAfter);
@@ -527,9 +610,24 @@ try {
     Invoke-Case -Name '05-reset-rejects-rabbitmq-unacknowledged' -Arrange {
         param($p)
         Stop-StartedProcess -Process $script:Prevention
-        Publish-RabbitMessage
-        $script:UnackedProcess = Start-UnackedConsumer
-        Wait-RabbitUnacknowledged -EvidencePath $p | Out-Null
+        try {
+            $beforeConsumers = Get-RabbitCounts -EvidencePath $p -Label 'consumers-before-helper'
+            $script:UnackedProcess = Start-UnackedConsumer
+            Start-Sleep -Seconds 2
+            if ($script:UnackedProcess.HasExited) {
+                throw "Unacknowledged helper exited before message publication."
+            }
+
+            Publish-RabbitMessage -Count ([Math]::Max(3, [int]$beforeConsumers.consumers + 2))
+            Wait-RabbitUnacknowledged -EvidencePath $p | Out-Null
+        }
+        catch {
+            Stop-StartedProcess -Process $script:UnackedProcess
+            $script:Prevention = Start-Prevention
+            Wait-RabbitQuiescent -EvidencePath $p -TimeoutSeconds 60 | Out-Null
+            Invoke-Reset -BaseUrl $PrimaryApi.BaseUrl -Token $PrimaryToken -EvidencePath $p -Label 'rabbit-unacked-arrange-cleanup' | Out-Null
+            throw
+        }
     } -Act {
         param($p)
         $res = Invoke-Reset -BaseUrl $PrimaryApi.BaseUrl -Token $PrimaryToken -EvidencePath $p -Label 'rabbit-unacked'
@@ -538,7 +636,7 @@ try {
         Invoke-Reset -BaseUrl $PrimaryApi.BaseUrl -Token $PrimaryToken -EvidencePath $p -Label 'rabbit-unacked-cleanup' | Out-Null
         $script:Prevention = Start-Prevention
         $res
-    } -Assert { param($reset,$pgb,$pga,$rbb,$rba,$ifb,$ifa) $reset.status -in @('Rejected','Failed') -and (Get-CountSum $pga) -eq (Get-CountSum $pgb) -and $rbb.unacknowledged -gt 0 }
+    } -Assert { param($reset,$pgb,$pga,$rbb,$rba,$ifb,$ifa) $reset.status -in @('Rejected','Failed') -and (Get-CountSum @($reset.after)) -eq (Get-CountSum @($reset.before)) -and $rbb.unacknowledged -gt 0 }
 
     Invoke-Case -Name '06-reset-after-elevated-data-volume' -Act {
         param($p)
@@ -624,6 +722,16 @@ foreach ($row in $MatrixRows) {
 }
 $lines | Set-Content -LiteralPath (Join-Path $OutputRoot 'RESET_RECOVERY_RESULTS.md') -Encoding UTF8
 
+[ordered]@{
+    schemaVersion = 1
+    component = 'reset-recovery'
+    status = if ($pass) { 'PASS' } else { 'FAIL' }
+    nativeStatus = $status
+    rowCount = $MatrixRows.Count
+    outputRoot = $OutputRoot
+    completedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
+} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $OutputRoot 'acceptance-result.json') -Encoding UTF8
+
 Get-ChildItem -LiteralPath $OutputRoot -Recurse -File |
     Where-Object { $_.Name -ne 'SHA256SUMS.txt' } |
     Sort-Object FullName |
@@ -633,3 +741,4 @@ Get-ChildItem -LiteralPath $OutputRoot -Recurse -File |
     } | Set-Content -LiteralPath (Join-Path $OutputRoot 'SHA256SUMS.txt') -Encoding UTF8
 
 if (-not $pass) { exit 1 }
+exit 0

@@ -94,7 +94,7 @@ DEFAULT_API_PROBES = (
 
 DEFAULT_WEB_PROBES = (
     Probe("web", "web-root", "/", (200,), "Web root availability."),
-    Probe("web", "web-ui-v2", "/ui-v2", (200,), "UI v2 route availability."),
+    Probe("web", "web-demo", "/demo", (200,), "Current public product route availability."),
 )
 
 

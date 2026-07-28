@@ -1,0 +1,491 @@
+{
+  "schemaVersion": 1,
+  "statuses": [
+    "PASS",
+    "FAIL",
+    "BLOCKED_PREREQUISITE",
+    "HARNESS_ERROR",
+    "NOT_SELECTED"
+  ],
+  "exitCodes": {
+    "PASS": 0,
+    "FAIL": 1,
+    "BLOCKED_PREREQUISITE": 2,
+    "HARNESS_ERROR": 3,
+    "NOT_SELECTED": 0
+  },
+  "profiles": {
+    "Static": {
+      "description": "Generated-catalogue drift checks and all maintained static repository audits.",
+      "stages": [
+        "reference-catalogues",
+        "documentation",
+        "configuration-audit",
+        "control-plane-audit",
+        "frontend-audit",
+        "workflow-audit",
+        "operations-audit",
+        "script-audit",
+        "final-repository-audit",
+        "final-delivery-audit"
+      ]
+    },
+    "Smoke": {
+      "description": "Static gates, quick build/toolchain validation and a short local functional run.",
+      "stages": [
+        "reference-catalogues",
+        "documentation",
+        "configuration-audit",
+        "control-plane-audit",
+        "frontend-audit",
+        "workflow-audit",
+        "operations-audit",
+        "script-audit",
+        "final-repository-audit",
+        "final-delivery-audit",
+        "workspace-quick",
+        "functional-smoke"
+      ]
+    },
+    "Functional": {
+      "description": "Static gates, full local tests, B/C evidence, complete P0 runtime coverage, P3 and reset/recovery.",
+      "stages": [
+        "reference-catalogues",
+        "documentation",
+        "configuration-audit",
+        "control-plane-audit",
+        "frontend-audit",
+        "workflow-audit",
+        "operations-audit",
+        "script-audit",
+        "final-repository-audit",
+        "final-delivery-audit",
+        "workspace-full",
+        "functional-bc",
+        "p0-runtime-coverage",
+        "controlled-validation-p3",
+        "reset-recovery"
+      ]
+    },
+    "Full": {
+      "description": "Functional profile plus multi-replica, autoscaling, microbenchmark smoke, live role journeys, accessibility, rate limiting and bounded HTTP/system performance evidence.",
+      "stages": [
+        "reference-catalogues",
+        "documentation",
+        "configuration-audit",
+        "control-plane-audit",
+        "frontend-audit",
+        "workflow-audit",
+        "operations-audit",
+        "script-audit",
+        "final-repository-audit",
+        "final-delivery-audit",
+        "workspace-full",
+        "functional-bc",
+        "p0-runtime-coverage",
+        "controlled-validation-p3",
+        "reset-recovery",
+        "multi-replica",
+        "autoscaling",
+        "performance-smoke",
+        "ui-performance-coverage"
+      ]
+    }
+  },
+  "components": {
+    "reference-catalogues": {
+      "category": "static",
+      "executable": "python",
+      "requiredCommands": [
+        "python"
+      ],
+      "arguments": [
+        "scripts/docs/generate_reference_catalogs.py",
+        "--repo",
+        "{repo}",
+        "--check"
+      ],
+      "timeoutSeconds": 120
+    },
+    "documentation": {
+      "category": "static",
+      "executable": "python",
+      "requiredCommands": [
+        "python"
+      ],
+      "arguments": [
+        "scripts/docs/validate_documentation.py"
+      ],
+      "timeoutSeconds": 180
+    },
+    "configuration-audit": {
+      "category": "static",
+      "executable": "python",
+      "requiredCommands": [
+        "python"
+      ],
+      "arguments": [
+        "tools/config-audit/validate.py",
+        "--repo",
+        "{repo}",
+        "--output",
+        "{stageEvidence}/result.json"
+      ],
+      "timeoutSeconds": 180
+    },
+    "control-plane-audit": {
+      "category": "static",
+      "executable": "python",
+      "requiredCommands": [
+        "python"
+      ],
+      "arguments": [
+        "tools/control-plane-audit/validate.py",
+        "--repo",
+        "{repo}",
+        "--output",
+        "{stageEvidence}/result.json"
+      ],
+      "timeoutSeconds": 180
+    },
+    "frontend-audit": {
+      "category": "static",
+      "executable": "python",
+      "requiredCommands": [
+        "python"
+      ],
+      "arguments": [
+        "tools/frontend-audit/validate.py",
+        "--repo",
+        "{repo}",
+        "--output",
+        "{stageEvidence}/result.json"
+      ],
+      "timeoutSeconds": 180
+    },
+    "workflow-audit": {
+      "category": "static",
+      "executable": "python",
+      "requiredCommands": [
+        "python"
+      ],
+      "arguments": [
+        "tools/workflow-audit/validate.py",
+        "--repo",
+        "{repo}",
+        "--output",
+        "{stageEvidence}/result.json"
+      ],
+      "timeoutSeconds": 180
+    },
+    "operations-audit": {
+      "category": "static",
+      "executable": "python",
+      "requiredCommands": [
+        "python"
+      ],
+      "arguments": [
+        "tools/operations-audit/validate.py",
+        "--repo",
+        "{repo}",
+        "--output",
+        "{stageEvidence}/result.json"
+      ],
+      "timeoutSeconds": 180
+    },
+    "script-audit": {
+      "category": "static",
+      "executable": "python",
+      "requiredCommands": [
+        "python"
+      ],
+      "arguments": [
+        "tools/script-audit/validate.py",
+        "--repo",
+        "{repo}",
+        "--output",
+        "{stageEvidence}/result.json"
+      ],
+      "timeoutSeconds": 180
+    },
+    "final-repository-audit": {
+      "category": "static",
+      "executable": "python",
+      "requiredCommands": [
+        "python"
+      ],
+      "arguments": [
+        "tools/final-audit/validate.py",
+        "--repo",
+        "{repo}",
+        "--output",
+        "{stageEvidence}/result.json"
+      ],
+      "timeoutSeconds": 180
+    },
+    "final-delivery-audit": {
+      "category": "static",
+      "executable": "python",
+      "requiredCommands": [
+        "python"
+      ],
+      "arguments": [
+        "tools/final-delivery-audit/validate.py",
+        "--repo",
+        "{repo}",
+        "--output",
+        "{stageEvidence}/result.json"
+      ],
+      "timeoutSeconds": 180
+    },
+    "workspace-quick": {
+      "category": "build",
+      "executable": "pwsh",
+      "requiredCommands": [
+        "pwsh",
+        "dotnet",
+        "node",
+        "npm"
+      ],
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/workspace.ps1",
+        "validate",
+        "-Profile",
+        "Quick"
+      ],
+      "timeoutSeconds": 1200
+    },
+    "workspace-full": {
+      "category": "test",
+      "executable": "pwsh",
+      "requiredCommands": [
+        "pwsh",
+        "dotnet",
+        "node",
+        "npm"
+      ],
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/workspace.ps1",
+        "validate",
+        "-Profile",
+        "Full"
+      ],
+      "timeoutSeconds": 3600
+    },
+    "functional-smoke": {
+      "category": "runtime",
+      "executable": "pwsh",
+      "requiredCommands": [
+        "pwsh",
+        "dotnet",
+        "node",
+        "npm",
+        "docker"
+      ],
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/validation/Invoke-LocalFunctionalValidation.ps1",
+        "-Smoke",
+        "-RunRoot",
+        "{stageEvidence}"
+      ],
+      "timeoutSeconds": 2400
+    },
+    "functional-bc": {
+      "category": "runtime",
+      "executable": "pwsh",
+      "requiredCommands": [
+        "pwsh",
+        "dotnet",
+        "node",
+        "npm",
+        "docker"
+      ],
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/validation/Invoke-LocalFunctionalValidation.ps1",
+        "-Full",
+        "-Evidence",
+        "-Ui",
+        "-RunRoot",
+        "{stageEvidence}"
+      ],
+      "timeoutSeconds": 5400
+    },
+    "controlled-validation-p3": {
+      "category": "runtime-negative",
+      "executable": "pwsh",
+      "requiredCommands": [
+        "pwsh",
+        "python",
+        "docker"
+      ],
+      "requiresControlledValidationExecution": true,
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/acceptance/Invoke-NP-ControlledValidationP3.ps1",
+        "-OutputRoot",
+        "{stageEvidence}",
+        "-TimeoutSeconds",
+        "600"
+      ],
+      "timeoutSeconds": 1800,
+      "controlledValidationExecutionArguments": [
+        "-Execute",
+        "-AcknowledgeNonProduction"
+      ]
+    },
+    "reset-recovery": {
+      "category": "recovery",
+      "executable": "pwsh",
+      "requiredCommands": [
+        "pwsh",
+        "dotnet",
+        "docker"
+      ],
+      "supportsSkipBuild": true,
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/testing/Invoke-SystemResetRecoveryMatrix.ps1",
+        "-OutputRoot",
+        "{stageEvidence}"
+      ],
+      "timeoutSeconds": 5400
+    },
+    "multi-replica": {
+      "category": "reliability",
+      "executable": "pwsh",
+      "requiredCommands": [
+        "pwsh",
+        "dotnet",
+        "docker"
+      ],
+      "supportsSkipBuild": true,
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/testing/Invoke-MultiReplicaTemporalMatrix.ps1",
+        "-OutputRoot",
+        "{stageEvidence}"
+      ],
+      "timeoutSeconds": 7200
+    },
+    "autoscaling": {
+      "category": "capacity",
+      "executable": "pwsh",
+      "requiredCommands": [
+        "pwsh",
+        "dotnet",
+        "docker"
+      ],
+      "supportsSkipBuild": true,
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/testing/Invoke-AutoscalingExperimentMatrix.ps1",
+        "-OutputRoot",
+        "{stageEvidence}"
+      ],
+      "timeoutSeconds": 10800
+    },
+    "performance-smoke": {
+      "category": "performance",
+      "executable": "pwsh",
+      "requiredCommands": [
+        "pwsh",
+        "dotnet"
+      ],
+      "supportsSkipBuild": false,
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/performance/run-benchmarks.ps1",
+        "-Profile",
+        "B0",
+        "-Filter",
+        "*SerializationBenchmarks.SerializeEnvelopeBatch*",
+        "-OutputRoot",
+        "{stageEvidence}",
+        "-TimeoutSeconds",
+        "180"
+      ],
+      "timeoutSeconds": 600
+    },
+    "p0-runtime-coverage": {
+      "category": "runtime-functional",
+      "executable": "pwsh",
+      "requiredCommands": [
+        "pwsh",
+        "python",
+        "dotnet",
+        "node",
+        "npm",
+        "docker"
+      ],
+      "supportsSkipBuild": true,
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/acceptance/Invoke-NP-P0RuntimeCoverage.ps1",
+        "-OutputRoot",
+        "{stageEvidence}",
+        "-ConfigPath",
+        "config/acceptance/p0-runtime-coverage.json"
+      ],
+      "timeoutSeconds": 10800
+    },
+    "ui-performance-coverage": {
+      "category": "ui-performance",
+      "executable": "pwsh",
+      "requiredCommands": [
+        "pwsh",
+        "python",
+        "dotnet",
+        "node",
+        "npm",
+        "docker"
+      ],
+      "supportsSkipBuild": true,
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/acceptance/Invoke-NP-UiPerformanceCoverage.ps1",
+        "-OutputRoot",
+        "{stageEvidence}",
+        "-ConfigPath",
+        "config/acceptance/ui-performance-coverage.json"
+      ],
+      "timeoutSeconds": 7200
+    }
+  }
+}

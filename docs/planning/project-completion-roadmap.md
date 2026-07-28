@@ -13,6 +13,6 @@ review_triggers: code, workflow, role, environment or evidence changes
 
 This historical path is preserved to avoid broken links. The current roadmap is represented by:
 
-- [Current project state](../current-state/project-state.md)
-- [Limitations and open gates](../current-state/limitations-and-open-gates.md)
+- [Final delivery status](../current-state/final-delivery-status.md)
+- [Final delivery execution](../testing/final-delivery-execution.md)
 - [Documentation implementation result](../governance/documentation-implementation-result.md)

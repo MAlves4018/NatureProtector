@@ -11,4 +11,4 @@ review_triggers: code, workflow, role, environment or evidence changes
 
 # V1 Implementation Map - Superseded
 
-Use [Current project state](../current-state/project-state.md) and [Architecture and runtime](../current-state/architecture-and-runtime.md).
+Use [Final delivery status](../current-state/final-delivery-status.md) and the [functional capability catalog](../reference/functional-capability-catalog.md).

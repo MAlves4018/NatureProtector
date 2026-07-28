@@ -7,6 +7,7 @@ using NatureProtector.Infrastructure.Influx.Services;
 
 namespace NatureProtector.Infrastructure.Influx.Tests.DependencyInjection;
 
+[Collection("InfluxEnvironmentVariables")]
 public sealed class ServiceCollectionExtensionsTests
 {
     [Fact]

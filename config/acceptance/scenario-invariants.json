@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-22",
+  "authority": [
+    "src/NatureProtector.Simulator.Host/Services/SimulationDegradationProfiles.cs",
+    "src/NatureProtector.Simulator.Host/Services/ReadingGenerationService.cs",
+    "src/NatureProtector.Simulator.Host/Services/SimulationRunner.cs",
+    "src/NatureProtector.Backoffice.Api/ControlPlane/Contracts/RuntimeOperationsContracts.cs"
+  ],
+  "common": {
+    "expectedObservationsFormula": "resolvedSensorCount * numberOfCycles",
+    "requiredTerminalConditions": [
+      "operation_success_terminal",
+      "run_success_terminal",
+      "accounting_settled",
+      "pending_inbox_zero",
+      "processing_inbox_zero",
+      "retry_pending_inbox_zero",
+      "simulator_process_absent",
+      "request_operation_run_correlation_consistent"
+    ]
+  },
+  "profiles": [
+    {
+      "id": "none",
+      "acceptedCount": "equals_expected",
+      "riskAssessmentCount": "equals_accepted_eligible",
+      "requiredAssertions": ["missing_zero", "rejected_zero", "quarantined_zero"]
+    },
+    {
+      "id": "missing-readings",
+      "acceptedCount": "between_zero_and_expected_exclusive",
+      "requiredAssertions": ["missing_equals_expected_minus_accepted", "same_seed_same_omission_pattern", "no_assessment_for_omitted"]
+    },
+    {
+      "id": "noise",
+      "acceptedCount": "equals_expected",
+      "baselineComparison": "same_seed_none",
+      "requiredAssertions": ["reproducible", "values_differ_from_baseline", "perturbation_above_base_noise", "physical_bounds_respected"]
+    },
+    {
+      "id": "bias",
+      "acceptedCount": "equals_expected",
+      "baselineComparison": "same_seed_none",
+      "requiredAssertions": ["temperature_delta_positive", "humidity_delta_negative", "wind_delta_positive", "reproducible"]
+    },
+    {
+      "id": "drift",
+      "acceptedCount": "equals_expected",
+      "baselineComparison": "same_seed_none",
+      "requiredAssertions": ["delta_changes_with_cycle_index", "metric_direction_matches_profile", "not_constant_offset"]
+    },
+    {
+      "id": "stuck-value",
+      "acceptedCount": "equals_expected",
+      "requiredAssertions": ["repeated_value_across_cycles_for_sensor", "event_ids_unique", "truth_context_changes"]
+    },
+    {
+      "id": "outlier",
+      "acceptedCount": "equals_expected",
+      "baselineComparison": "same_seed_none",
+      "requiredAssertions": ["deterministic_injection_subset", "material_delta_exists", "classification_and_eligibility_consistent"]
+    },
+    {
+      "id": "clipping/range",
+      "acceptedCount": "equals_expected",
+      "baselineComparison": "same_seed_none",
+      "requiredAssertions": ["profile_caps_respected", "physical_bounds_respected", "clipping_effect_observed"]
+    },
+    {
+      "id": "lag/delay",
+      "acceptedCount": "equals_expected",
+      "requiredAssertions": ["ingest_minus_event_time_matches_configured_delay", "run_or_diagnostic_exposes_delay", "freshness_consistent"]
+    },
+    {
+      "id": "duplicate",
+      "acceptedCount": "equals_expected_after_idempotency",
+      "requiredAssertions": ["duplicate_delivery_observed", "one_persisted_reading_per_event_id", "one_operational_effect_per_event_id"]
+    },
+    {
+      "id": "out-of-order",
+      "acceptedCount": "equals_expected",
+      "requiredAssertions": ["delivery_order_changed", "all_cycles_converged", "no_double_count", "terminal_state_not_regressed"]
+    },
+    {
+      "id": "retry-transient",
+      "acceptedCount": "equals_expected",
+      "requiredAssertions": ["transient_failure_attempt_exists", "retry_exists", "event_eventually_processed", "one_risk_assessment", "injected_event_not_quarantined"]
+    }
+  ],
+  "p3": {
+    "executionEnvironmentAllowlist": ["Development", "Evidence"],
+    "requiresPersistedAudit": true,
+    "cases": [
+      {"id": "invalid-json", "expectedDestination": "rejected", "riskAssessment": "forbidden"},
+      {"id": "missing-payload", "expectedDestination": "rejected", "riskAssessment": "forbidden"},
+      {"id": "unsupported-event-type", "expectedDestination": "rejected", "riskAssessment": "forbidden"},
+      {"id": "unsupported-schema-version", "expectedDestination": "rejected", "riskAssessment": "forbidden"},
+      {"id": "invalid-operational-state", "expectedDestination": "rejected", "riskAssessment": "forbidden"},
+      {"id": "sensor-not-found", "expectedDestination": "quarantined", "riskAssessment": "forbidden"},
+      {"id": "duplicate-payload-mismatch", "expectedDestination": "quarantined", "riskAssessment": "forbidden_for_divergent_payload"},
+      {"id": "retry-transient-then-success", "expectedDestination": "processed", "riskAssessment": "exactly_one"},
+      {"id": "retry-exhausted", "expectedDestination": "quarantined", "riskAssessment": "forbidden"},
+      {"id": "permanent-failure", "expectedDestination": "quarantined", "riskAssessment": "forbidden"}
+    ]
+  }
+}

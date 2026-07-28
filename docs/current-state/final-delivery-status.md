@@ -1,40 +1,59 @@
-# NatureProtector final delivery status after phases 7-10
+---
+title: Final delivery status
+status: current
+owners: engineering, QA, delivery
+source_of_truth: config/acceptance/final-delivery.json
+last_verified_at: 2026-07-22
+---
 
-## Implemented
+# NatureProtector final delivery status
 
-- hosted reconciliation of non-terminal runtime operations;
-- explicit long-run proof matrix and termination manifests;
-- E1-E6 evidence campaign with run/operation identity and hashes;
-- capacity-derived KEDA experiment generation with RabbitMQ and retry/settlement signals;
-- operational and domain time-series catalog for InfluxDB 3;
-- five provisioned Grafana dashboards;
-- near-real-time IPMA polling with deduplication and provenance;
-- conservative removal of superseded frontend surfaces and the setup-only dashboard.
+## Implemented in the repository
 
-## Proven in this repository workspace
+The repository now contains a closed five-layer delivery path:
 
-- all enforce-mode quality gates available in the sandbox;
-- frontend strict typecheck, lint, format and 76 tests;
-- Python tests for long-run manifests, E1-E6 evidence, capacity analysis, IPMA ingestion, operational line protocol, dashboards and final-delivery contract;
-- synthetic artifact pipelines and deterministic hash verification.
+1. generated functional catalogue and traceability;
+2. canonical acceptance orchestration;
+3. P0 runtime coverage;
+4. live UI, accessibility, limiter and bounded-performance coverage;
+5. final delivery gating and package verification.
 
-## Runtime gates still requiring an equipped environment
+The final layer is implemented by `scripts/release/Invoke-NP-FinalDelivery.ps1`. It requires a clean Git source, binds acceptance evidence to the same commit and source fingerprint, executes or strictly verifies a `Full / PASS` campaign, builds the release candidate and then runs clean-install, tamper-detection and functional-package-smoke gates.
 
-The following names are reserved for live proof and must not be claimed from static or synthetic validation:
+## Proven in the construction workspace
 
-- `LONG_RUN_AND_ORCHESTRATION_RUNTIME_PASS`;
-- `SYSTEM_RESET_AND_RECOVERY_PASS`;
-- `MULTI_REPLICA_TEMPORAL_CORRECTNESS_PASS`;
-- `REPORT_EVIDENCE_PORTFOLIO_READY`;
-- `AUTOSCALING_REALTIME_OBSERVABILITY_PROVED`;
-- `MERGE_CANDIDATE_READY`.
+The construction workspace has proved the static contracts, synthetic fail-closed behaviour and repository audits. It has not produced a live final-delivery `PASS`, because this environment does not provide PowerShell, .NET, Docker or PostgreSQL tooling.
 
-They require the .NET 9 SDK, PowerShell, Docker/PostgreSQL/RabbitMQ/InfluxDB/Grafana and, for Cloud Run or GKE claims, explicit staging authorization. Missing tools are a test-environment limitation, not a passing result.
+Therefore, the current truthful status is:
 
-## Delivery decision
+```text
+FINAL_DELIVERY_HARNESS_READY
+LIVE_FINAL_DELIVERY_PASS_NOT_EXECUTED_HERE
+```
 
-The source and harnesses for phases 7-10 are implemented and statically validated. Merge remains blocked until the generated Codex mission executes the live matrices, records the outputs and updates this document with commit, environment and artifact identities.
+No historical B/C, P3, performance or release output is promoted to current evidence.
 
-## External weather data scope
+## Required live closeout
 
-The IPMA adapter is currently **observability-only**: it writes provenance-rich near-real-time observations to InfluxDB for Grafana and evidence. It is not yet an input to RabbitMQ, Prevention, or the risk calculation, and no report claim may describe it as a domain decision input.
+On the equipped Windows repository, after committing the Phase 5 source and confirming a clean tree:
+
+```powershell
+$env:NP_RELIABILITY_AUTH_TOKEN = '<runtime token>'
+.\scripts\release\Invoke-NP-FinalDelivery.ps1 -Mode Execute
+```
+
+The project is locally deliverable only when the command ends with:
+
+```text
+NATUREPROTECTOR_FINAL_DELIVERY=PASS
+```
+
+and `scripts/release/verify_final_delivery.py --require-pass` accepts the generated dossier.
+
+## Claim boundary
+
+A `PASS` proves the versioned local acceptance and package contracts for the recorded commit and environment. It does not prove production/cloud authorization, scientific calibration of the candidate risk model, external user validation or operational readiness outside the tested local topology.
+
+## External weather-data boundary
+
+The IPMA integration remains **observability-only**. It writes provenance-rich external observations for dashboards and evidence; it is not an input to RabbitMQ, Prevention or the candidate risk calculation, and the final delivery gate does not raise that scientific claim.

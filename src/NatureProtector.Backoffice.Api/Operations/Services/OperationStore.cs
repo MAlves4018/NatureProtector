@@ -75,12 +75,20 @@ public sealed class FileSystemOperationStore : IOperationStore
         {
             Directory.CreateDirectory(_root);
             var target = Path.Combine(_root, $"{operation.Id:N}.json");
-            var temporary = target + ".tmp";
+            var temporary = Path.Combine(_root, $"{operation.Id:N}.{Guid.NewGuid():N}.tmp");
             await using (var stream = File.Create(temporary))
             {
                 await JsonSerializer.SerializeAsync(stream, operation, _json, cancellationToken);
             }
-            File.Move(temporary, target, true);
+
+            if (File.Exists(target))
+            {
+                File.Replace(temporary, target, destinationBackupFileName: null);
+            }
+            else
+            {
+                File.Move(temporary, target);
+            }
         }
         finally
         {

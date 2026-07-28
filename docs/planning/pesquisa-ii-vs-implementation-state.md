@@ -11,4 +11,4 @@ review_triggers: code, workflow, role, environment or evidence changes
 
 # Research versus Implementation State - Superseded
 
-Use [Data, risk and scientific boundaries](../current-state/data-risk-and-scientific-boundaries.md) and the current report integration pack.
+Use [Scenario acceptance invariants](../reference/scenario-acceptance-invariants.md) and the current report integration pack.

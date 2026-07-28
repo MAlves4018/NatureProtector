@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "defaultRepositoryRoot": "C:\\Users\\Miguel\\UNI\\6sem\\PS\\IMP\\D\\NatureProtector",
+  "defaultProfile": "Functional",
+  "profiles": {
+    "Smoke": "Clean state, prepare dependencies, build and execute a short real API/run smoke campaign.",
+    "Functional": "Smoke plus non-Docker tests, all 50 DockerIntegration tests with project infrastructure, B/C runs, 12 degradation profiles, RBAC, 28 diagnostics, alerts, observability, controlled P3 cases and reset/recovery.",
+    "Full": "Functional plus security gates, multi-replica, autoscaling, microbenchmark, live Playwright roles, accessibility, rate limiting and bounded capacity evidence."
+  },
+  "cleanupPolicy": {
+    "projectScopedOnly": true,
+    "removeComposeVolumesByDefault": true,
+    "globalDockerPrune": false,
+    "killUnknownPortOwners": false,
+    "ports": [
+      5254,
+      5260,
+      5173
+    ]
+  },
+  "testSeparation": {
+    "standardFilter": "Category!=DockerIntegration",
+    "dockerIntegrationFilter": "Category=DockerIntegration",
+    "dockerIntegrationCountExpected": 50,
+    "dockerEnvironmentSource": ".env mapped to NP_TEST_* without logging secrets"
+  }
+}

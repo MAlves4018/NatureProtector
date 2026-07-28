@@ -1,5 +1,8 @@
 # Fundação da UI v2 e expansão de capacidades
 
+> **Estado histórico:** este documento descreve a implementação intermédia UI v2. A UI atual usa rotas diretas e `webUI/src/app`; consultar [`../current-state/roles-capabilities-and-ui.md`](../current-state/roles-capabilities-and-ui.md).
+
+
 Esta página documenta a implementação UI v2 entregue pela M03 e expandida pela M04/M05, com hardening browser-auth posterior. É uma nota de implementação, não uma claim de produto.
 
 A UI v2 é uma experiência protótipo isolada em `/ui-v2`. Mantém intactas as rotas beta existentes e não altera contratos RabbitMQ, projeções API públicas, schema/migrations de base de dados, semântica de alertas, scoring, JWT claims ou nomes de roles.

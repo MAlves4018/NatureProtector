@@ -20,6 +20,7 @@ Admin,AdminExecute,admin.execute
 Admin,P3Read,p3.read
 Admin,DataContextRead,data_context.read
 Admin,HelpRead,help.read
+Admin,DBRead,db.read
 Operations,DemoRead,demo.read
 Operations,AreaRead,area.read
 Operations,RiskRead,risk.read
@@ -37,6 +38,7 @@ Operations,CloudRead,cloud.read
 Operations,CloudOperateStaging,cloud.operate.staging
 Operations,DataContextRead,data_context.read
 Operations,HelpRead,help.read
+Operations,DBRead,db.read
 Pipeline,DemoRead,demo.read
 Pipeline,AreaRead,area.read
 Pipeline,RiskRead,risk.read
@@ -52,6 +54,10 @@ QA,DemoRead,demo.read
 QA,AreaRead,area.read
 QA,RiskRead,risk.read
 QA,RunRead,run.read
+QA,ScenarioRead,scenario.read
+QA,SimulationRead,simulation.read
+QA,SimulationExecute,simulation.execute
+QA,EvidenceRead,evidence.read
 QA,QualityRead,quality.read
 QA,QualityExecuteStatic,quality.execute.static
 QA,QualityExecuteFull,quality.execute.full
@@ -76,6 +82,7 @@ ReleaseApprover,CloudDestroy,cloud.destroy
 ReleaseApprover,ApprovalReview,approval.review
 ReleaseApprover,DataContextRead,data_context.read
 ReleaseApprover,HelpRead,help.read
+ReleaseApprover,DBRead,db.read
 Sim,DemoRead,demo.read
 Sim,AreaRead,area.read
 Sim,RiskRead,risk.read

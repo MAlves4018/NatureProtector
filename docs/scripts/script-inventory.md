@@ -17,7 +17,9 @@ Classificacao usada na Fase 5:
 
 ## Superficies locais principais
 
-- `scripts\np.ps1`: canonico.
+- `scripts\np.ps1`: lifecycle local canónico.
+- `scripts\acceptance\Invoke-NP-FinalAcceptance.ps1`: aceitação final canónica e agregação de vereditos.
+- `scripts\acceptance\Invoke-NP-ControlledValidationP3.ps1`: execução P3 fail-closed com auditoria PostgreSQL da mesma `runLabel`.
 - `scripts\validation\Invoke-LocalFunctionalValidation.ps1`: harness funcional local.
 - `scripts\setup\New-LocalDotEnv.ps1`: gera `.env` local.
 - `scripts\docker\*.ps1`: infraestrutura Docker scoped ao projeto.

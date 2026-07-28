@@ -1,5 +1,5 @@
 param(
-    [string]$OutputRoot = "..\NatureProtector.brain\post-beta\Fixes\ExecutionResults\remediated-integration\multi-replica-runtime",
+    [string]$OutputRoot = "",
     [string]$ApiBaseUrl = "http://127.0.0.1:5254",
     [string]$AreaCode = "proenca-a-nova",
     [string]$ScenarioCode = "scenario_b",
@@ -8,7 +8,8 @@ param(
     [int]$IntervalSeconds = 1,
     [int]$TimeoutSeconds = 180,
     [int]$SettlementTimeoutSeconds = 90,
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$PreserveOutput
 )
 
 Set-StrictMode -Version Latest
@@ -17,11 +18,26 @@ $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot '..\common\NatureProtector.Tooling.psd1') -Force -ErrorAction Stop
 
 $RepoRoot = Find-NpRepositoryRoot -StartPath $PSScriptRoot -RequiredPaths @('NatureProtector.sln')
-$OutputRoot = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $OutputRoot))
-if (-not $OutputRoot.EndsWith('NatureProtector.brain\post-beta\Fixes\ExecutionResults\remediated-integration\multi-replica-runtime', [StringComparison]::OrdinalIgnoreCase)) {
-    throw "Refusing to clear unexpected output root: $OutputRoot"
+$ArtifactsRoot = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot 'artifacts'))
+$MatrixOutputBase = [System.IO.Path]::GetFullPath((Join-Path $ArtifactsRoot 'acceptance\matrices\multi-replica-runtime'))
+$FinalAcceptanceBase = [System.IO.Path]::GetFullPath((Join-Path $ArtifactsRoot 'final-acceptance'))
+if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
+    $runId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+    $OutputRoot = Join-Path $MatrixOutputBase $runId
 }
-if (Test-Path -LiteralPath $OutputRoot) {
+elseif (-not [System.IO.Path]::IsPathRooted($OutputRoot)) {
+    $OutputRoot = Join-Path $RepoRoot $OutputRoot
+}
+$OutputRoot = [System.IO.Path]::GetFullPath($OutputRoot)
+$matrixPrefix = $MatrixOutputBase.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+$finalAcceptancePrefix = $FinalAcceptanceBase.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+$isStandaloneRun = -not $OutputRoot.Equals($MatrixOutputBase, [StringComparison]::OrdinalIgnoreCase) -and
+    ($OutputRoot + [System.IO.Path]::DirectorySeparatorChar).StartsWith($matrixPrefix, [StringComparison]::OrdinalIgnoreCase)
+$isOrchestratedRun = ($OutputRoot + [System.IO.Path]::DirectorySeparatorChar).StartsWith($finalAcceptancePrefix, [StringComparison]::OrdinalIgnoreCase)
+if (-not $isStandaloneRun -and -not $isOrchestratedRun) {
+    throw "OutputRoot must be a run-scoped child of $MatrixOutputBase or an orchestrated final-acceptance component."
+}
+if ((Test-Path -LiteralPath $OutputRoot) -and -not $PreserveOutput) {
     Get-ChildItem -LiteralPath $OutputRoot -Force | Remove-Item -Recurse -Force
 }
 $LogsRoot = Join-Path $OutputRoot 'logs'
@@ -151,13 +167,29 @@ function Invoke-Api {
         $parameters.Body = ($Body | ConvertTo-Json -Depth 20)
     }
     $response = $null
-    for ($attempt = 1; $attempt -le 6; $attempt++) {
+    for ($attempt = 1; $attempt -le 8; $attempt++) {
         $response = Invoke-WebRequest @parameters
-        if ($response.StatusCode -ne 429 -or $attempt -eq 6) {
+        if ($response.StatusCode -ne 429 -or $attempt -eq 8) {
             break
         }
-        Add-CommandLog "HTTP 429 $Method $Path; retry $attempt/5 after 10s"
-        Start-Sleep -Seconds 10
+
+        $retryAfter = 0
+        if ($response.Headers.ContainsKey('Retry-After')) {
+            [int]::TryParse([string]$response.Headers['Retry-After'], [ref]$retryAfter) | Out-Null
+        }
+
+        $delaySeconds = if ($retryAfter -gt 0) {
+            [Math]::Min($retryAfter, 300)
+        }
+        elseif ($Method -eq 'POST' -and $Path -eq '/api/control/runtime/runs') {
+            60
+        }
+        else {
+            10
+        }
+
+        Add-CommandLog "HTTP 429 $Method $Path; retry $attempt/7 after ${delaySeconds}s"
+        Start-Sleep -Seconds $delaySeconds
     }
     if ($response.StatusCode -ge 400) {
         $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
@@ -740,6 +772,16 @@ finally {
         $summary += "- replicas=$($row.replicas) scenario=$($row.scenario) result=$($row.result) operation=$($row.operation_id) run=$($row.simulation_run_id)"
     }
     $summary | Set-Content -LiteralPath (Join-Path $OutputRoot 'MULTI_REPLICA_RESULTS.md') -Encoding UTF8
+
+    [ordered]@{
+        schemaVersion = 1
+        component = 'multi-replica'
+        status = if ($pass) { 'PASS' } else { 'FAIL' }
+        nativeStatus = if ($pass) { 'MULTI_REPLICA_TEMPORAL_CORRECTNESS_PASS' } else { 'BLOCKED' }
+        rowCount = $MatrixRows.Count
+        outputRoot = $OutputRoot
+        completedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
+    } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $OutputRoot 'acceptance-result.json') -Encoding UTF8
 
     $shaPath = Join-Path $OutputRoot 'SHA256SUMS.txt'
     Get-ChildItem -LiteralPath $OutputRoot -Recurse -File |

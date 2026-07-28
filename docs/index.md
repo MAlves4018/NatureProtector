@@ -4,8 +4,8 @@ status: CURRENT
 owner: Miguel Alves
 audience: engineering, report, presentation
 source_of_truth: repository code and configuration
-last_verified_against: NatureProtector Unified Operations Control Plane 2026-06-28
-last_verified_at: 2026-06-28
+last_verified_against: NatureProtector repository snapshot 2026-07-22
+last_verified_at: 2026-07-22
 review_triggers: code, workflow, role, environment or evidence changes
 ---
 
@@ -15,16 +15,24 @@ This portal separates the **current factual state** from history, plans, evidenc
 
 ## Start here
 
-- [Current project state](current-state/project-state.md)
-- [Architecture and runtime](current-state/architecture-and-runtime.md)
-- [Operations Control Plane](current-state/operations-control-plane.md)
+- [Final delivery status](current-state/final-delivery-status.md)
+- [Functional capability catalog](reference/functional-capability-catalog.md)
+- [Operations Control Plane](reference/operation-catalog.md)
 - [Roles, capabilities and UI journeys](current-state/roles-capabilities-and-ui.md)
-- [Quality, evidence and testing](current-state/quality-evidence-and-testing.md)
-- [Cloud and deployment](current-state/cloud-and-deployment.md)
-- [Data, risk and scientific boundaries](current-state/data-risk-and-scientific-boundaries.md)
-- [Limitations and open gates](current-state/limitations-and-open-gates.md)
+- [Quality, evidence and testing](testing/validation-gates.md)
+- [Cloud and deployment](runtime-developer-control.md)
+- [Data, risk and scientific boundaries](reference/scenario-acceptance-invariants.md)
+- [Limitations and open gates](current-state/final-delivery-status.md)
 - [Architecture diagram portfolio](architecture/diagrams/current/README.md)
 - [Complete study compendium](study/NatureProtector-Complete-Study-Compendium.md)
+- [Functional capability catalog](reference/functional-capability-catalog.md)
+- [Functional traceability matrix](reference/functional-traceability-matrix.csv)
+- [Scenario acceptance invariants](reference/scenario-acceptance-invariants.md)
+- [Current API endpoint catalog](reference/generated/api-endpoint-catalog.csv)
+- [Current UI route/capability matrix](reference/generated/ui-route-capability-matrix.csv)
+- [Phase 1 functional audit](current-state/phase-1-functional-audit-2026-07-22.md)
+- [Final acceptance runner](testing/final-acceptance-runner.md)
+- [Phase 2 acceptance orchestration](current-state/phase-2-acceptance-orchestration-2026-07-22.md)
 
 ## Documentation modes
 

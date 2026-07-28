@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "claimBoundary": "Local observed temporal scalability evidence only; not production capacity.",
+  "workloads": [
+    {
+      "id": "W1-low-constant",
+      "description": "Low constant load below the one-replica capacity region.",
+      "warmUpSeconds": 3,
+      "cooldownSeconds": 3,
+      "drainTimeoutSeconds": 120,
+      "seed": 202607271,
+      "segments": [
+        { "id": "steady-low", "kind": "constant", "durationSeconds": 30, "requestedRate": 0.6 }
+      ]
+    },
+    {
+      "id": "W2-near-knee-constant",
+      "description": "Constant load near the one-replica knee candidate.",
+      "warmUpSeconds": 3,
+      "cooldownSeconds": 3,
+      "drainTimeoutSeconds": 150,
+      "seed": 202607272,
+      "segments": [
+        { "id": "near-knee", "kind": "constant", "durationSeconds": 30, "requestedRate": 0.9 }
+      ]
+    },
+    {
+      "id": "W3-sustained-overload",
+      "description": "Sustained overload above one-replica capacity and inside the multi-replica range.",
+      "warmUpSeconds": 3,
+      "cooldownSeconds": 3,
+      "drainTimeoutSeconds": 180,
+      "seed": 202607273,
+      "segments": [
+        { "id": "overload", "kind": "constant", "durationSeconds": 36, "requestedRate": 2.25 }
+      ]
+    },
+    {
+      "id": "W4-short-spike",
+      "description": "Low base load, short spike, then low base load again.",
+      "warmUpSeconds": 3,
+      "cooldownSeconds": 3,
+      "drainTimeoutSeconds": 150,
+      "seed": 202607274,
+      "segments": [
+        { "id": "base-before", "kind": "constant", "durationSeconds": 10, "requestedRate": 0.6 },
+        { "id": "spike", "kind": "constant", "durationSeconds": 8, "requestedRate": 3.0 },
+        { "id": "base-after", "kind": "constant", "durationSeconds": 10, "requestedRate": 0.6 }
+      ]
+    },
+    {
+      "id": "W5-step-load",
+      "description": "Step load from low to medium to high and back down.",
+      "warmUpSeconds": 3,
+      "cooldownSeconds": 3,
+      "drainTimeoutSeconds": 180,
+      "seed": 202607275,
+      "segments": [
+        { "id": "low-1", "kind": "constant", "durationSeconds": 8, "requestedRate": 0.6 },
+        { "id": "medium-1", "kind": "constant", "durationSeconds": 8, "requestedRate": 1.5 },
+        { "id": "high", "kind": "constant", "durationSeconds": 10, "requestedRate": 2.75 },
+        { "id": "medium-2", "kind": "constant", "durationSeconds": 8, "requestedRate": 1.5 },
+        { "id": "low-2", "kind": "constant", "durationSeconds": 8, "requestedRate": 0.6 }
+      ]
+    },
+    {
+      "id": "W6-ramp-up",
+      "description": "Gradual ramp from low load toward multi-replica pressure.",
+      "warmUpSeconds": 3,
+      "cooldownSeconds": 3,
+      "drainTimeoutSeconds": 180,
+      "seed": 202607276,
+      "segments": [
+        { "id": "ramp", "kind": "ramp", "durationSeconds": 40, "startRate": 0.6, "endRate": 3.0 }
+      ]
+    },
+    {
+      "id": "W7-rise-hold-fall",
+      "description": "Rise, hold elevated load, then return to low load.",
+      "warmUpSeconds": 3,
+      "cooldownSeconds": 3,
+      "drainTimeoutSeconds": 210,
+      "seed": 202607277,
+      "segments": [
+        { "id": "rise", "kind": "ramp", "durationSeconds": 12, "startRate": 0.6, "endRate": 2.75 },
+        { "id": "hold", "kind": "constant", "durationSeconds": 24, "requestedRate": 2.75 },
+        { "id": "fall", "kind": "ramp", "durationSeconds": 12, "startRate": 2.75, "endRate": 0.6 }
+      ]
+    }
+  ]
+}

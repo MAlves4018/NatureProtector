@@ -3,48 +3,87 @@ id: NP-CURRENT-ROLES
 status: CURRENT
 owner: Miguel Alves
 audience: engineering, report, presentation
-source_of_truth: repository code and configuration
-last_verified_against: NatureProtector Unified Operations Control Plane 2026-06-28
-last_verified_at: 2026-06-28
-review_triggers: code, workflow, role, environment or evidence changes
+source_of_truth: OperationCapabilities.cs, OperationRoleCatalog, App.tsx and pageRegistry.ts
+last_verified_against: NatureProtector repository snapshot 2026-07-22
+last_verified_at: 2026-07-22
+review_triggers: role, capability, authorization or route changes
 ---
 
-# Roles, Capabilities and UI Journeys
+# Roles, capabilities e jornadas UI
 
-## Authority model
+## Modelo de autoridade
 
-Roles are mapped to capabilities on the server. The frontend requests the evaluated profile and uses it for navigation and affordances; server policies remain authoritative.
+O backend transforma roles em capabilities e aplica policies nos controllers/serviços. O frontend consulta `GET /api/users-roles/me/capabilities` para filtrar navegação e affordances. A ocultação de um botão ou rota nunca substitui a autorização da API.
+
+Matriz integral gerada: [../reference/generated/role-capability-matrix.csv](../reference/generated/role-capability-matrix.csv).
 
 ## Roles
 
-| Role | Main purpose | Important limits |
-|---|---|---|
-| Pipeline | Read pipeline, quality and evidence | No simulation or cloud mutation |
-| Sim | Execute simulations and inspect related evidence | No engineering deployment authority |
-| QA | Execute quality suites and evidence campaigns | No cloud mutation |
-| Operations | Read cloud/deployment state and operate staging | No automatic production authority |
-| ReleaseApprover | Review/approve production, rollback and destroy gates | Does not imply user administration |
-| Admin | Manage users/roles and application administration | Does not automatically receive production or destroy authority |
+| Role | Finalidade principal | Limites importantes |
+| --- | --- | --- |
+| `Pipeline` | Ler risco, pipeline, qualidade e evidence | Não executa simulações nem operações cloud |
+| `Sim` | Consultar cenários, executar simulações e ler evidence relacionada | Sem qualidade full, deployments ou administração |
+| `QA` | Executar qualidade/evidence e simulações de validação | Sem cloud/deployment de produção |
+| `Operations` | Ler pipeline/evidence e operar staging/deployment | Sem promoção automática a produção ou destroy |
+| `ReleaseApprover` | Rever aprovações, produção, rollback e destroy | Não administra utilizadores |
+| `Admin` | Administração da aplicação, runtime, utilizadores/roles e P3 read | Não recebe automaticamente capabilities de produção/destroy nem `approval.review` |
 
-A user may hold more than one role, but confirmation and approval steps remain explicit.
+Uma identidade pode acumular roles. Confirmação, aprovação e capability continuam separadas.
 
-## UI task surfaces
+## Rotas atuais
 
-- Public overview and data context.
-- Mission Control and release-readiness narrative.
-- Risk, pipeline, runs and simulation.
-- Quality Runs.
-- Evidence Explorer and comparisons.
-- Deployments.
-- Cloud Resources.
-- Approvals.
-- User and Role Administration.
-- Experimental/P3 surfaces where authorised.
+| Grupo | Rota | Capability(s) |
+| --- | --- | --- |
+| Público | `/demo` | `demo.read` |
+| Público | `/dashboard` | `area.read` |
+| Público | `/context` | `data_context.read` |
+| Público | `/about` | `demo.read` |
+| Operação | `/overview` | `quality.read` |
+| Operação | `/mission` | `quality.read` |
+| Operação | `/risk` | `risk.read` |
+| Simulação | `/runs` | `run.read` |
+| Simulação | `/simulation` | `simulation.read` |
+| Simulação | `/scenario-compare` | `run.read` |
+| Simulação | `/queries` | `simulation.execute` |
+| Técnica | `/pipeline` | `pipeline.read` |
+| Técnica | `/qa` | `qa.read` |
+| Técnica | `/evidence` | `evidence.read` |
+| Release | `/deployments` | `deployment.read` |
+| Release | `/deployment-health` | `deployment.read` |
+| Release | `/cloud` | `cloud.read` |
+| Release | `/approvals` | `approval.review` |
+| Administração | `/users` | `users.manage` e `roles.manage` |
+| Administração | `/admin` | `admin.read` |
+| Administração | `/p3` | `p3.read` |
 
-## Separation of powers
+A tabela gerada completa, incluindo aliases e superfícies retiradas, está em [../reference/generated/ui-route-capability-matrix.csv](../reference/generated/ui-route-capability-matrix.csv).
 
-The deliberate choice `Admin != production deploy/destroy` avoids coupling identity administration with infrastructure authority. In a one-person academic project the same person may possess multiple roles, but the system still records the distinct decision stages.
+## Aliases e inconsistências conhecidas
 
-## Current limitations
+- `/db-queries` redireciona para `/queries`.
+- `/qa-tests` apresenta uma superfície explicitamente retirada e não gera resultados.
+- `/quality` está montada e registada no `UI_PAGE_REGISTRY`, exige `quality.read` e é apresentada na navegação técnica dos perfis autorizados.
+- `/dev/runtime` e `/ui-v2` são referências históricas e não superfícies atuais suportadas.
 
-Capability evaluation is implemented. Remote execution remains dependent on configured GitHub/cloud identities and callbacks. Some UI operations are visible as blocked because the repository intentionally lacks a qualified authoritative workflow for them.
+## Jornadas mínimas por perfil
+
+| Perfil | Jornada esperada |
+| --- | --- |
+| Anónimo | demo → dashboard/context → login; sem navegação protegida |
+| Pipeline | overview/risk → runs → pipeline → QA/evidence read |
+| Sim | overview/risk → runs → simulation → comparison/queries conforme capabilities |
+| QA | overview → simulation de validação → QA → evidence/compare |
+| Operations | overview → pipeline/evidence → deployments/deployment-health → cloud staging |
+| ReleaseApprover | evidence → approvals → operações de produção explicitamente aprovadas |
+| Admin | overview → runtime/simulation → users → admin → P3 read; mutações continuam sujeitas às policies específicas |
+
+## Separação de poderes
+
+`Admin != production deploy/destroy`. Esta opção evita acoplar gestão de identidades à autoridade de infraestrutura. Mesmo num projeto académico com uma pessoa, a modelação conserva as decisões distintas.
+
+## Limitações atuais
+
+- Operações remotas dependem de providers, segredos e callbacks configurados.
+- Entradas `blocked-*` no catálogo são deliberadamente indisponíveis.
+- A UI pode apresentar `Not available`/`Not proved`; não deve inferir sucesso por ausência de erro.
+- A matriz live por todas as roles ainda deve ser integrada na campanha final automática.

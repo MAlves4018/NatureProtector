@@ -569,7 +569,7 @@ Terraform descreve intenção e cria recursos; o state é autoridade sobre a ges
 5. `Simulator.Host` e `Prevention.Host` para runtime.
 6. `Infrastructure.Postgres` para estado durável.
 7. `Backoffice.Api/Operations` para operations plane.
-8. `webUI/src/app/ui-v2` para jornadas.
+8. `webUI/src/app`, em especial `App.tsx` e `navigation/pageRegistry.ts`, para jornadas.
 9. `.github/workflows`, `infra/gcp` e `scripts/cloud` para delivery.
 10. `docs/evidence` e packages de resultado para proof.
 

@@ -1,0 +1,29 @@
+diagnostic_id,title,description
+runtime-table-counts,Runtime table counts,"Counts rows in runtime/control, pipeline and projection tables."
+active-runs,Active runs,Lists simulation runs with no EndedAt timestamp.
+latest-runs,Latest runs,Lists the latest 10 simulation runs.
+inbox-by-status,Inbox by status,Groups pipeline.event_inbox by Status.
+attempts-by-outcome,Attempts by outcome,Groups pipeline.processing_attempts by Outcome.
+failed-attempts-by-error,Failed attempts by error,Groups recent failed/retry/quarantined attempts by outcome and error.
+latest-rejected-events,Latest rejected events,Lists latest rejected events.
+latest-quarantined-events,Latest quarantined events,Lists latest quarantined events.
+latest-run-expected-vs-observed,Latest run expected vs observed,Compares latest run expected event count with accepted readings observed for that run.
+latest-run-events-by-cycle,Latest run events by cycle,Groups latest run accepted readings by logical cycle.
+latest-run-risk-by-metric,Latest run risk by metric,Groups latest run persisted risk assessments by metric type.
+latest-run-np-vs-fwi-kbdi,Latest run NP vs FWI/KBDI,Shows persisted NatureProtector score components beside FWI/KBDI context for the latest run.
+latest-run-np-vs-fwi,Latest run NP vs FWI/KBDI (legacy id),Compatibility alias for latest-run-np-vs-fwi-kbdi.
+latest-run-portuguese-context-proxy,Latest run Portuguese context proxy,"Shows the candidate, non-official Portuguese context proxy derived from FWI IPMA class and territory."
+latest-run-kbdi-series-context,Latest run KBDI series context,Shows KBDI antecedent/status signals and explicitly reports limited history.
+latest-run-components,Latest run score components,"Lists persisted M/D/T, H/F/G and C/I components for latest run assessments."
+latest-run-quality-by-profile,Latest run quality by profile,"Summarizes latest run degradation profiles, accepted readings and persisted eligibility/quality signals."
+latest-run-degradation-effects,Latest run degradation effects,"Summarizes observable effects for missing, noise and lag/delay profiles."
+latest-run-cell-context,Latest run cell context,Shows DailyCellState and territorial context fields for latest run cells.
+latest-run-fwi-input-completeness,Latest run FWI input completeness,Shows FWI/KBDI input/status completeness from persisted DailyCellState rows.
+latest-run-kbdi-input-completeness,Latest run KBDI input completeness,Compatibility diagnostic focused on KBDI status from persisted DailyCellState rows.
+latest-run-coverage-freshness,Latest run coverage freshness,"Shows current coverage, freshness and carry-forward projection statuses."
+area-operational-state,Area operational state,Shows the current persisted area operational projection.
+cell-operational-states,Cell operational states,Shows recent persisted cell operational projections.
+active-alerts,Active alerts,Lists open alerts.
+recent-alert-transitions,Recent alert transitions,Lists recent alert rows including resolved alerts.
+scenario-definition-details,Scenario definition details,Shows persisted scenario parameters and simulator options for the selected area.
+compare-latest-b-vs-c,Compare latest B vs C,Compares latest scenario_b and scenario_c runs for the selected area using persisted runtime data.

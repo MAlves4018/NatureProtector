@@ -59,7 +59,7 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
             cancellationToken));
         components.Add(await CheckHttpHealthAsync(
             "Grafana",
-            GetConfiguredUri("Grafana:Url", "http://localhost:3000/api/health"),
+            GetGrafanaHealthUri(),
             observedAt,
             expectedJsonProperty: "database",
             cancellationToken));
@@ -526,6 +526,25 @@ public sealed class RuntimeObservabilityService : IRuntimeObservabilityService
             ? configured
             : configured.TrimEnd('/') + (key.StartsWith("Grafana", StringComparison.Ordinal) ? "/api/health" : "/health");
         return new Uri(uri);
+    }
+
+    private Uri GetGrafanaHealthUri()
+    {
+        var configured = _configuration["Grafana:Url"];
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            return GetConfiguredUri("Grafana:Url", configured);
+        }
+
+        var configuredPort = _configuration["GRAFANA_PORT"];
+        if (string.IsNullOrWhiteSpace(configuredPort))
+        {
+            configuredPort = _configuration["NP_ACCEPTANCE_GRAFANA_PORT"];
+        }
+
+        return int.TryParse(configuredPort, out var port) && port is > 0 and <= 65535
+            ? new Uri($"http://localhost:{port}/api/health")
+            : new Uri("http://localhost:3000/api/health");
     }
 
     private static int? TryGetInt(JsonElement element, string propertyName)

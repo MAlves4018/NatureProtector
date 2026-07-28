@@ -44,3 +44,26 @@ Sequencia suportada:
 
 O harness deve validar login local, endpoints protegidos com token, `scenario_b`, `scenario_c` com `missing-readings`, comparacao B/C, DB, RabbitMQ, Prevention Host, UI smoke e shutdown.
 
+
+## Orquestração canónica de aceitação
+
+Para uma execução agregada usar:
+
+```powershell
+.\scripts\acceptance\Invoke-NP-FinalAcceptance.ps1 -Profile Static
+.\scripts\acceptance\Invoke-NP-FinalAcceptance.ps1 -Profile Smoke
+```
+
+Os perfis `Functional` e `Full` incluem P3 e exigem confirmação explícita, token runtime, cliente `psql`, conectividade PostgreSQL derivável de `.env` ou override e ambiente não produtivo. O estágio só passa após auditoria da mesma `runLabel`. O contrato completo está em [final-acceptance-runner.md](final-acceptance-runner.md).
+
+
+## Fecho final da entrega
+
+A criação do pacote final é fail-closed e não deve ser executada diretamente como substituto da aceitação:
+
+```powershell
+$env:NP_RELIABILITY_AUTH_TOKEN = '<runtime token>'
+.\scripts\release\Invoke-NP-FinalDelivery.ps1 -Mode Execute
+```
+
+O finalizador exige Git limpo, commit e fingerprint coincidentes com a campanha `Full / PASS`, e só depois executa build do release candidate, instalação limpa, tamper detection e smoke funcional do pacote. Ver [final-delivery-execution.md](final-delivery-execution.md).
