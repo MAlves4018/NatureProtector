@@ -53,7 +53,7 @@
     "jsdom": "^26.1.0",
     "tailwindcss": "^4.3.1",
     "typescript": "^6.0.3",
-    "vite": "^6.4.3",
+    "vite": "^8.1.5",
     "vitest": "^4.1.8"
   }
 }
