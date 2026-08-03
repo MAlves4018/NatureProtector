@@ -35,7 +35,7 @@ jobs:
           unzip -q '${{ runner.temp }}/qualification/artifact/g82-review-packet.zip' -d '${{ runner.temp }}/qualification/packet'
           python scripts/cloud/New-G82AuthorizationRequest.py --final-verdict '${{ runner.temp }}/qualification/packet/final-verdict.json' --evidence-index '${{ runner.temp }}/qualification/packet/evidence-index.json' --archive-receipt '${{ runner.temp }}/qualification/packet/archive-receipt.json' --independent-review '${{ runner.temp }}/review/artifact/independent-review.json' --independent-review-verdict '${{ runner.temp }}/review/artifact/independent-review-verdict.json' --candidate-manifest '${{ runner.temp }}/qualification/packet/candidate-manifest.json' --validity-hours '${{ inputs.validity_hours }}' --output '${{ runner.temp }}/request/authorization-request.json'
           sha256sum '${{ runner.temp }}/request/authorization-request.json' > '${{ runner.temp }}/request/authorization-request.json.sha256'
-      - uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+      - uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d
         with: {subject-path: '${{ runner.temp }}/request/authorization-request.json'}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

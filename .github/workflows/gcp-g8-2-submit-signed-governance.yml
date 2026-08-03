@@ -64,7 +64,7 @@ jobs:
           sha256sum '${{ runner.temp }}/submission/document.json' '${{ runner.temp }}/submission/document.json.sig' > '${{ runner.temp }}/submission/checksums.sha256'
           (cd '${{ runner.temp }}/submission' && zip -qr g82-signed-governance.zip document.json document.json.sig document-type.txt checksums.sha256)
       - name: Attest signed submission container
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d
         with:
           subject-path: ${{ runner.temp }}/submission/g82-signed-governance.zip
       - name: Upload signed submission
