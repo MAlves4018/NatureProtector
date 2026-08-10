@@ -145,7 +145,7 @@ jobs:
           sha256sum '${{ runner.temp }}/final/g82-pre-archive-bundle.zip' > '${{ runner.temp }}/final/g82-pre-archive-bundle.zip.sha256'
       - name: Attest ingested action bundle
         if: inputs.mode == 'ingest'
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
         with:
           subject-path: ${{ runner.temp }}/ingest/g82-action-bundle.zip
       - name: Authenticate archive identity
@@ -171,7 +171,7 @@ jobs:
           Compress-Archive -Path '${{ runner.temp }}/final/review-packet/*' -DestinationPath '${{ runner.temp }}/final/g82-review-packet.zip'
       - name: Attest pre-archive and review artifacts
         if: inputs.mode == 'finalize'
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
         with:
           subject-path: |
             ${{ runner.temp }}/final/g82-pre-archive-bundle.zip
