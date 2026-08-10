@@ -45,7 +45,7 @@ jobs:
           printf '%s' '${{ vars.G82_AUTHORIZATION_ALLOWED_SIGNERS_B64 }}' | base64 -d > "$root/decision/allowed_signers"
           python scripts/cloud/Test-G82Authorization.py --request "$root/request/artifact/authorization-request.json" --decision "$root/decision/submission/document.json" --signature "$root/decision/submission/document.json.sig" --allowed-signers "$root/decision/allowed_signers" --final-verdict "$root/qualification/packet/final-verdict.json" --evidence-index "$root/qualification/packet/evidence-index.json" --archive-receipt "$root/qualification/packet/archive-receipt.json" --independent-review "$root/review/artifact/independent-review.json" --independent-review-verdict "$root/review/artifact/independent-review-verdict.json" --candidate-manifest "$root/qualification/packet/candidate-manifest.json" --output "$root/output/authorization-verification.json"
           sha256sum "$root/output/authorization-verification.json" > "$root/output/authorization-verification.json.sha256"
-      - uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
         with: {subject-path: '${{ runner.temp }}/g82-auth/output/authorization-verification.json'}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

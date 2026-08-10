@@ -47,7 +47,7 @@ jobs:
           cp '${{ runner.temp }}/review/submission/document.json' '${{ runner.temp }}/review/independent-review.json'
           sha256sum '${{ runner.temp }}/review/independent-review.json' '${{ runner.temp }}/review/independent-review-verdict.json' > '${{ runner.temp }}/review/checksums.sha256'
       - name: Attest review verdict
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
         with:
           subject-path: |
             ${{ runner.temp }}/review/independent-review.json
