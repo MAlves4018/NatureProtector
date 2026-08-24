@@ -10,6 +10,9 @@
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" VersionOverride="6.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="6.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Options" VersionOverride="6.0.1" />
   </ItemGroup>
 
   <ItemGroup>
